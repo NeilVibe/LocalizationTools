@@ -155,6 +155,60 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"GameData auto-index skipped: {e}")
 
+    # DEV mode: auto-initialize Right Panel services with mock data
+    if config.DEV_MODE:
+        try:
+            from server.tools.ldm.services.mapdata_service import get_mapdata_service, ImageContext
+            from server.tools.ldm.services.glossary_service import get_glossary_service
+
+            mapdata_svc = get_mapdata_service()
+
+            # Populate _strkey_to_image with mock texture PNGs
+            mock_textures = base_dir / "tests" / "fixtures" / "mock_gamedata" / "textures"
+            if mock_textures.is_dir():
+                # Map StrKey patterns to texture filenames
+                strkey_texture_map = {}
+                for png_file in mock_textures.glob("*.png"):
+                    # character_varon.png -> try "Character_Varon" StrKey pattern
+                    stem = png_file.stem  # e.g., "character_varon"
+                    parts = stem.split("_", 1)
+                    if len(parts) == 2:
+                        prefix = parts[0].capitalize()  # "Character"
+                        name = "_".join(p.capitalize() for p in parts[1].split("_"))
+                        strkey_candidate = f"{prefix}_{name}"
+                        strkey_texture_map[strkey_candidate] = png_file
+
+                # Also map exact texture stems for UITextureName lookups
+                for png_file in mock_textures.glob("*.png"):
+                    mapdata_svc._dds_index[png_file.stem.lower()] = png_file
+
+                # Build ImageContext entries for known StrKeys
+                for strkey, png_path in strkey_texture_map.items():
+                    mapdata_svc._strkey_to_image[strkey] = ImageContext(
+                        texture_name=png_path.stem,
+                        dds_path=str(png_path),
+                        thumbnail_url=f"/api/ldm/mapdata/thumbnail/{png_path.stem}",
+                        has_image=True,
+                    )
+
+                mapdata_svc._loaded = True
+                logger.success(f"[DEV] MapDataService auto-init: {len(mapdata_svc._strkey_to_image)} image entries, {len(mapdata_svc._dds_index)} texture index entries")
+
+            # Initialize GlossaryService with mock staticinfo paths
+            glossary_svc = get_glossary_service()
+            mock_staticinfo = base_dir / "tests" / "fixtures" / "mock_gamedata" / "StaticInfo"
+            if mock_staticinfo.is_dir():
+                paths = {
+                    "character_folder": str(mock_staticinfo / "characterinfo"),
+                    "item_folder": str(mock_staticinfo / "iteminfo"),
+                    "faction_folder": str(mock_staticinfo / "factioninfo"),
+                }
+                glossary_svc.initialize(paths)
+                logger.success(f"[DEV] GlossaryService auto-init: {len(glossary_svc._entity_index)} entities")
+
+        except Exception as e:
+            logger.warning(f"[DEV] Right Panel auto-init skipped: {e}")
+
     logger.success("Server startup complete")
 
     yield  # Server runs here
