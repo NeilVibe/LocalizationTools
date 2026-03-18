@@ -266,6 +266,30 @@ Plans:
 - [ ] 42-02-PLAN.md -- Create 3-format mock localization data + TM entries
 - [ ] 42-03-PLAN.md -- Wire right panel tabs (TM cascade, Image, Audio, AI Context)
 
+### v4.0 Mockdata Excellence + Next Level (Phases 43+)
+
+**Milestone Goal:** Audit and elevate all mock/showcase data to maximize demo WOW factor. Ensure every page has rich, interconnected data that tells a compelling story and shows off every feature at its best.
+
+- [ ] **Phase 43: Mockdata Quality Audit + WOW Amplification** - Deep audit of all mock data (gamedata, localization, codex, map, TM) for quality, completeness, and WOW-factor contribution
+
+### Phase 43: Mockdata Quality Audit + WOW Amplification
+**Goal**: Audit every piece of mock data across all 5 pages to ensure it creates maximum WOW effect — rich entity relationships, compelling Korean translations, vivid character descriptions, meaningful TM matches, and interconnected cross-references that make the demo feel like a real game world
+**Depends on**: v3.5 complete
+**Requirements**: MOCK-AUDIT-01, MOCK-AUDIT-02, MOCK-AUDIT-03, MOCK-AUDIT-04
+**Success Criteria** (what must be TRUE):
+  1. Codex: All 5 characters have rich Korean descriptions with &lt;br/&gt; formatting, unique AI portraits, and at least 3 cross-references each (item, skill, region, faction)
+  2. Map: All 10 regions have Korean names, distinct terrain types, and route connections that form a coherent game world geography
+  3. GameData Tree: XML files parse cleanly with no empty attributes, all cross-refs resolve to existing entities, and hovering any cross-ref shows a valid preview
+  4. LanguageData Grid: All 3 showcase files (XLSX/TXT/XML) have 25+ strings each with natural Korean translations, TM tab shows exact/fuzzy/semantic matches for selected rows
+  5. Right Panel: Image tab shows character/item portraits, Audio tab finds voice files, Context tab generates AI summaries, TM tab returns 6-tier cascade results
+  6. Data Interconnection: Clicking a character in Codex → their items appear in the relationship graph → their region shows on the map → their dialogue appears in LanguageData files → TM has translations for their strings
+**Plans**: 3 plans
+
+Plans:
+- [ ] 43-01-PLAN.md -- XML entity creation + cross-ref fixes + FactionNode standardization + waypoints
+- [ ] 43-02-PLAN.md -- Localization string enrichment + TM expansion to ~50 entries
+- [ ] 43-03-PLAN.md -- KnowledgeInfo expansion to ~25 entries + 10 region textures
+
 ## Progress
 
 **Execution Order:**
