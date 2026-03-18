@@ -339,26 +339,31 @@ class GameDataContextService:
                 result["thumbnail_url"] = f"/api/ldm/mapdata/thumbnail/{value}"
                 break
 
-        # Check for audio/voice
-        for attr in VOICE_ATTRS:
-            value = str(node.attributes.get(attr, ""))
-            if value:
-                result["has_audio"] = True
-                result["voice_id"] = value
-                result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{value}"
-                break
+        # Check for audio: prefer StrKey lookup over raw VoicePath attributes
+        from server.tools.ldm.services.mapdata_service import get_mapdata_service
+        mapdata_svc = get_mapdata_service()
 
-        # Fallback: check if StrKey has audio in MapDataService
+        # First: check if StrKey has audio in MapDataService (TTS-generated WAVs)
+        strkey = str(node.attributes.get("StrKey", ""))
+        if strkey:
+            audio_ctx = mapdata_svc.get_audio_context(strkey)
+            if audio_ctx:
+                result["has_audio"] = True
+                result["voice_id"] = strkey
+                result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{strkey}"
+
+        # Fallback: check VOICE_ATTRS for production audio references
         if not result["has_audio"]:
-            strkey = str(node.attributes.get("StrKey", ""))
-            if strkey:
-                from server.tools.ldm.services.mapdata_service import get_mapdata_service
-                mapdata_svc = get_mapdata_service()
-                audio_ctx = mapdata_svc.get_audio_context(strkey)
-                if audio_ctx:
-                    result["has_audio"] = True
-                    result["voice_id"] = strkey
-                    result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{strkey}"
+            for attr in VOICE_ATTRS:
+                value = str(node.attributes.get(attr, ""))
+                if value:
+                    # Only set if audio context exists for this value
+                    audio_ctx = mapdata_svc.get_audio_context(value)
+                    if audio_ctx:
+                        result["has_audio"] = True
+                        result["voice_id"] = value
+                        result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{value}"
+                    break
 
         return result
 
