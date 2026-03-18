@@ -168,3 +168,4 @@ Build 029: add QACompiler program icon (green-emerald gradient sphere)
 Build 030: add window/taskbar icon (QACompiler icon in title bar + taskbar)
 Build 031: replace position-based column matching with header-name detection (fixes Gimmick)
 Build 032: add AppUserModelID for taskbar icon
+Build 033: fix empty master file + missing MANAGER status dropdown
