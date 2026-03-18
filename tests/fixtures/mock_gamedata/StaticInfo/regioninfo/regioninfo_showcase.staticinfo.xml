@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<RegionInfoList>
+  <RegionInfo Key="REGION_001" StrKey="Region_SealedLibrary"
+      RegionName="봉인된 도서관" RegionType="Dungeon"
+      RegionDesc="고대 현자들이 금지된 지식을 봉인한 장소.&lt;br/&gt;강력한 마법 결계로 보호되어 있으며&lt;br/&gt;오직 현자의 결사만이 출입할 수 있다."
+      RecommendLevel="40" KnowledgeKey="Knowledge_SealedLibrary"
+      UITextureName="region_fortress" />
+
+  <RegionInfo Key="REGION_002" StrKey="Region_BlackstarVillage"
+      RegionName="흑성 마을" RegionType="Town"
+      RegionDesc="모험가들의 거점이 되는 평화로운 마을.&lt;br/&gt;검은별 광석이 처음 발견된 곳으로&lt;br/&gt;대장장이 그림죠의 대장간이 있다."
+      RecommendLevel="1" KnowledgeKey="Knowledge_BlackstarVillage"
+      UITextureName="region_blackstar_village" />
+
+  <RegionInfo Key="REGION_003" StrKey="Region_DragonTomb"
+      RegionName="용의 무덤" RegionType="Dungeon"
+      RegionDesc="태고의 용이 잠든 위험한 무덤.&lt;br/&gt;고대의 보물이 잠들어 있지만&lt;br/&gt;강력한 수호 마법이 침입자를 가로막는다."
+      RecommendLevel="50" KnowledgeKey="Knowledge_DragonTomb"
+      UITextureName="region_dragon_tomb" />
+
+  <RegionInfo Key="REGION_004" StrKey="Region_SageTower"
+      RegionName="현자의 탑" RegionType="Main"
+      RegionDesc="세계의 균형을 지키는 현자들의 탑.&lt;br/&gt;현자의 결사 본부이자&lt;br/&gt;장로 바론이 수련하던 곳이다."
+      RecommendLevel="30" KnowledgeKey="Knowledge_SageTower"
+      UITextureName="region_sage_tower" />
+
+  <RegionInfo Key="REGION_005" StrKey="Region_DarkCultHQ"
+      RegionName="어둠의 교단 본부" RegionType="Fortress"
+      RegionDesc="어둠의 세력이 모이는 비밀 요새.&lt;br/&gt;그림자 암살자 키라가 훈련받은 곳이며&lt;br/&gt;봉인된 도서관을 향한 음모가 꾸며지고 있다."
+      RecommendLevel="60" KnowledgeKey="Knowledge_DarkCultHQ"
+      UITextureName="region_dark_cult_hq" />
+</RegionInfoList>

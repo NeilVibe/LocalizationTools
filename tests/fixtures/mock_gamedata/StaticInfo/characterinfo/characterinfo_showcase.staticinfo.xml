@@ -30,7 +30,7 @@
       CharacterType="NPC" Level="60" Job="Blacksmith" Race="Dwarf" Gender="Male" Title="검은별의 장인"
       UITextureName="character_grimjaw" VoicePath="audio/characters/grimjaw_forge.wem"
       KnowledgeKey="Knowledge_Grimjaw" FactionKey="Faction_SageOrder"
-      ItemKey="Item_BlackstarSword">
+      ItemKey="Item_BlackstarSword" RegionKey="Region_BlackstarVillage" SkillKey="Skill_HolyShield">
     <DialogueLine Speaker="Grimjaw" Text="검은별 대검은 내 필생의 역작이야. 이 검을 들 자격이 있는 자는 아직 나타나지 않았지." />
   </CharacterInfo>
 
@@ -41,7 +41,7 @@
       CharacterType="NPC" Level="45" Job="Scout" Race="Elf" Gender="Female" Title="숲의 안내자"
       UITextureName="character_lune" VoicePath="audio/characters/lune_whisper.wem"
       KnowledgeKey="Knowledge_Lune" FactionKey="Faction_SageOrder"
-      RegionKey="Region_SealedLibrary" />
+      RegionKey="Region_SealedLibrary" ItemKey="Item_SealScroll" SkillKey="Skill_SacredFlame" />
 
   <!-- Sorcerer Drakmar — NPC Scholar -->
   <CharacterInfo Key="CHAR_005" StrKey="Character_Drakmar"
@@ -50,6 +50,6 @@
       CharacterType="NPC" Level="75" Job="Sorcerer" Race="Human" Gender="Male" Title="고대 문서의 해독자"
       UITextureName="character_drakmar" VoicePath="audio/characters/drakmar_chant.wem"
       KnowledgeKey="Knowledge_Drakmar" FactionKey="Faction_SageOrder"
-      SkillKey="Skill_HolyShield" />
+      SkillKey="Skill_HolyShield" ItemKey="Item_PlagueCure" RegionKey="Region_SageTower" />
 
 </CharacterInfoList>

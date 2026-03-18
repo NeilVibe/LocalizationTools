@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<QuestInfoList>
+  <QuestInfo Key="QUEST_001" StrKey="Quest_SealedLibraryMain"
+      QuestName="봉인의 비밀"
+      QuestDesc="장로 바론이 봉인된 도서관에서 사라진 고대 두루마리의 행방을 조사해달라고 요청한다.&lt;br/&gt;어둠의 교단이 두루마리를 노리고 있다는 정보가 있다.&lt;br/&gt;도서관 깊숙한 곳에서 단서를 찾아야 한다."
+      QuestType="Main" RequireLevel="35"
+      RewardKey="Item_SealScroll" RegionKey="Region_SealedLibrary"
+      NPCKey="Character_ElderVaron"
+      KnowledgeKey="Knowledge_SealedLibrary" />
+
+  <QuestInfo Key="QUEST_002" StrKey="Quest_BlackstarForge"
+      QuestName="검은별의 단조"
+      QuestDesc="대장장이 그림죠가 검은별 대검의 수리를 위해 희귀한 화산 광석을 구해달라고 부탁한다.&lt;br/&gt;화산 지대에서 광석을 채굴하고 무사히 돌아와야 한다."
+      QuestType="Sub" RequireLevel="25"
+      RewardKey="Item_BlackstarSword" RegionKey="Region_BlackstarVillage"
+      NPCKey="Character_Grimjaw"
+      KnowledgeKey="Knowledge_BlackstarSword" />
+
+  <QuestInfo Key="QUEST_003" StrKey="Quest_ShadowInvestigation"
+      QuestName="그림자의 추적"
+      QuestDesc="정찰병 루네가 안개의 숲에서 어둠의 교단의 수상한 움직임을 발견한다.&lt;br/&gt;루네와 함께 숲을 탐색하고 교단의 음모를 파악해야 한다.&lt;br/&gt;위험한 적들이 곳곳에 도사리고 있으니 주의가 필요하다."
+      QuestType="Sub" RequireLevel="20"
+      RewardKey="Item_PlagueCure" RegionKey="Region_MistForest"
+      NPCKey="Character_Lune"
+      KnowledgeKey="Knowledge_MistForest" />
+</QuestInfoList>
