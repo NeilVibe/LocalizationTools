@@ -290,6 +290,11 @@ def get_or_create_user_status_column(ws, username: str, after_col: int) -> int:
     for col in range(1, ws.max_column + 1):
         header = ws.cell(row=1, column=col).value
         if header and str(header).strip().upper() == target_header.upper():
+            # Always re-apply dropdown — it may have been lost during sheet
+            # preservation, workbook reload, or rebuild.  DataValidation is NOT
+            # preserved by the cell-copy logic in get_or_create_master().
+            last_row = max(ws.max_row, 10) + 50
+            add_manager_dropdown(ws, col, end_row=last_row)
             return col
 
     # Create new column
@@ -589,17 +594,83 @@ def process_sheet(
         master_row, match_type = find_matching_row_in_master(qa_row_data, master_index, category)
 
         if master_row is None:
-            # No match found - log and skip
+            # No match found — APPEND the row to master instead of silently dropping.
+            # This prevents data loss when the template QA file had fewer rows than
+            # another tester's QA file (all non-template rows would be unmatched).
             result["match_stats"]["unmatched"] += 1
-            continue
+
+            # Build a header map for the master (once per sheet, stored locally)
+            if "_append_col_map" not in result:
+                result["_append_col_map"] = {}
+            sheet_title = master_ws.title
+            if sheet_title not in result["_append_col_map"]:
+                m_col_map = {}
+                for c in range(1, master_ws.max_column + 1):
+                    h = master_ws.cell(row=1, column=c).value
+                    if h:
+                        m_col_map[str(h).strip().upper()] = c
+                result["_append_col_map"][sheet_title] = m_col_map
+            m_col_map = result["_append_col_map"][sheet_title]
+
+            # Append: copy all base-data columns from QA row to a new master row
+            try:
+                master_row = (master_ws.max_row or 1) + 1
+                for header_upper, qa_idx in qa_col_idx.items():
+                    # Skip tester-specific columns (STATUS, COMMENT, MEMO, SCREENSHOT)
+                    if header_upper in ("STATUS", "COMMENT", "MEMO", "SCREENSHOT"):
+                        continue
+                    master_col = m_col_map.get(header_upper)
+                    if master_col is not None and qa_idx < len(row_tuple):
+                        val = row_tuple[qa_idx]
+                        if val is not None:
+                            master_ws.cell(row=master_row, column=master_col, value=val)
+            except Exception as append_err:
+                print(f"        [APPEND-ERROR] Row {qa_row}: Failed to append: {append_err}")
+                result["match_stats"]["append_errors"] = result["match_stats"].get("append_errors", 0) + 1
+                continue  # Skip — do NOT fall through to comment/screenshot processing
+
+            # Update the master index so subsequent users can match this appended row.
+            # Category-aware keys must match build_master_index() structure in matching.py.
+            category_lower = category.lower()
+            if category_lower == "contents":
+                instructions = qa_row_data.get("instructions", "")
+                if instructions:
+                    if instructions not in master_index["primary"]:
+                        master_index["primary"][instructions] = master_row
+                    master_index["all_primary"][instructions].append(master_row)
+            elif category_lower in SCRIPT_TYPE_CATEGORIES:
+                qa_translation = qa_row_data.get("translation", "")
+                qa_eventname = qa_row_data.get("eventname", "") or qa_row_data.get("stringid", "")
+                if qa_translation and qa_eventname:
+                    key = (qa_translation, qa_eventname)
+                    if key not in master_index["primary"]:
+                        master_index["primary"][key] = master_row
+                    master_index["all_primary"][key].append(master_row)
+                if qa_eventname:
+                    master_index["fallback"][qa_eventname].append(master_row)
+            else:
+                # Standard categories (Quest, Item, Knowledge, etc.)
+                qa_translation = qa_row_data.get("translation", "")
+                qa_stringid = qa_row_data.get("stringid", "")
+                if qa_translation:
+                    if qa_stringid:
+                        key = (qa_stringid, qa_translation)
+                        if key not in master_index["primary"]:
+                            master_index["primary"][key] = master_row
+                        master_index["all_primary"][key].append(master_row)
+                    master_index["fallback"][qa_translation].append(master_row)
+            master_index["consumed"].add(master_row)
+
+            result["match_stats"]["appended"] = result["match_stats"].get("appended", 0) + 1
+            # Fall through to process the comment/screenshot for this appended row
 
         # Only count rows that successfully matched (for accurate tracker stats)
         result["stats"]["total"] += 1
 
-        # Track match type
+        # Track match type (appended rows have match_type=None, already counted)
         if match_type == "exact":
             result["match_stats"]["exact"] += 1
-        else:
+        elif match_type == "fallback":
             result["match_stats"]["fallback"] += 1
 
         # Read COMMENT value from preloaded tuple (FAST)

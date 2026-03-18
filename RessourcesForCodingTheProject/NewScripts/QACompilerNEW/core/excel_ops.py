@@ -1073,7 +1073,15 @@ def get_or_create_master(
         if extracted_data:
             print(f"  Restoring tester data to new master...")
             restore_stats = restore_tester_data_to_master(wb, extracted_data, category, is_english)
-            print(f"    Restored: {restore_stats['restored']} cells, Orphaned: {restore_stats['orphaned']} rows")
+            restored = restore_stats['restored']
+            orphaned = restore_stats['orphaned']
+            print(f"    Restored: {restored} cells, Orphaned: {orphaned} rows")
+            # Safety: if orphan rate is very high, keep backup for manual recovery
+            total_entries = restored + orphaned
+            if total_entries > 0 and orphaned / total_entries > 0.5:
+                print(f"    ⚠ HIGH ORPHAN RATE ({orphaned / total_entries:.0%}) — backup preserved at {backup_path.name}")
+                print(f"    This means the template QA file structure differs significantly from the old master.")
+                wb._qacompiler_keep_backup = True
 
         # Restore preserved sheets from other categories (verbatim, with all data)
         # These sheets already contain their complete data including any tester columns
@@ -1220,9 +1228,22 @@ def add_status_dropdown(ws, col: int, start_row: int = 2, end_row: int = None):
 
 
 def add_manager_dropdown(ws, col: int, start_row: int = 2, end_row: int = None):
-    """Add manager status dropdown validation to a column."""
+    """Add manager status dropdown validation to a column.
+
+    Strips any existing DataValidation rules targeting this column first
+    to prevent rule accumulation across multiple compilation runs.
+    """
     if end_row is None:
         end_row = ws.max_row
+
+    # Remove existing rules for this column to prevent accumulation across runs.
+    col_letter = get_column_letter(col)
+    col_pattern = re.compile(rf'(?<![A-Z]){re.escape(col_letter)}(?![A-Z])')  # word-boundary match
+    if hasattr(ws, 'data_validations') and ws.data_validations.dataValidation:
+        ws.data_validations.dataValidation = [
+            v for v in ws.data_validations.dataValidation
+            if not col_pattern.search(str(v.sqref or ""))
+        ]
 
     dv = DataValidation(
         type="list",

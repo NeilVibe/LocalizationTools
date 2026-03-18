@@ -796,10 +796,38 @@ def process_category(
     # Determine if EN or CN for word counting
     is_english = (lang_label == "EN")
 
-    # Get or create master (use most recent file as template for freshest structure)
-    sorted_by_mtime = sorted(qa_folders, key=lambda x: x["xlsx_path"].stat().st_mtime, reverse=True)
-    template_xlsx = sorted_by_mtime[0]["xlsx_path"]
-    template_user = sorted_by_mtime[0]["username"]
+    # Get or create master — pick template with MOST DATA ROWS across all sheets.
+    # Using most-recent-mtime was wrong: if the newest file happened to be empty or
+    # have fewer sheets, the master inherited that sparse structure and all other
+    # testers' rows became unmatched → silently dropped → master appeared empty.
+    def _count_data_rows(xlsx_path):
+        """Count total data rows (excluding headers) across all sheets."""
+        try:
+            wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+        except Exception as e:
+            _log(f"  WARN: Cannot count rows in {xlsx_path.name}: {type(e).__name__}: {e}", 'warning')
+            return 0
+        total = sum(
+            (ws.max_row or 0) - 1
+            for sn in wb.sheetnames if sn != "STATUS"
+            for ws in [wb[sn]]
+            if ws.max_row and ws.max_row > 1
+        )
+        wb.close()
+        return total
+
+    # Pick template with most data rows; break ties by mtime (newest wins)
+    best_rows, _, best_folder = max(
+        ((_count_data_rows(qf["xlsx_path"]), qf["xlsx_path"].stat().st_mtime, qf)
+         for qf in qa_folders),
+        key=lambda x: (x[0], x[1])
+    )
+    template_xlsx = best_folder["xlsx_path"]
+    template_user = best_folder["username"]
+    _log(f"  Template: {template_user} ({best_rows} rows, most complete)")
+    if best_rows == 0:
+        _log(f"  ERROR: All QA files returned 0 data rows — cannot select template!", 'error')
+        return daily_entries, accumulated_users, dict(accumulated_stats) if accumulated_stats else {}, None, None
 
     # Use unified template-based master creation for ALL categories
     # This preserves ALL template rows (including REPORTED issues that may not have
@@ -925,10 +953,27 @@ def process_category(
                 user_stats[username]["total"] += stats.get("total", 0)
                 total_screenshots += result.get("screenshots", 0)
 
-                # Log unmatched rows as warning
+                # Log unmatched/appended rows
                 match_stats = result.get("match_stats", {})
-                if match_stats.get("unmatched", 0) > 0:
-                    _log(f"    WARN: {sheet_name}: {match_stats['unmatched']} UNMATCHED rows", 'warning')
+                appended = match_stats.get("appended", 0)
+                unmatched = match_stats.get("unmatched", 0)
+                if unmatched > 0:
+                    _log(f"    INFO: {sheet_name}: {unmatched} rows not in template, {appended} appended to master")
+
+                # Merge appended rows back to the source index so the NEXT user
+                # can find them via clone_with_fresh_consumed().  Without this,
+                # N testers with the same unmatched row would each append a duplicate.
+                if appended > 0 and user_index and sheet_name in master_indexes:
+                    src = master_indexes[sheet_name]
+                    for key, row in user_index["primary"].items():
+                        if key not in src["primary"]:
+                            src["primary"][key] = row
+                    for index_key in ("all_primary", "fallback"):
+                        for key, rows in user_index[index_key].items():
+                            existing = src[index_key].get(key, [])
+                            for r in rows:
+                                if r not in existing:
+                                    src[index_key][key].append(r)
 
                 # Count words (EN) or characters (CN) from translation column
                 # ONLY count rows where STATUS is filled (DONE rows)
@@ -1042,10 +1087,14 @@ def process_category(
         master_wb.save(master_path)
         print(f" done")
         # Clean up .bak backup now that new master is safely saved
+        # (unless high orphan rate flagged it for preservation)
         backup_path = master_path.with_suffix(".xlsx.bak")
         if backup_path.exists():
-            backup_path.unlink()
-            print(f"  Cleaned up backup: {backup_path.name}")
+            if getattr(master_wb, '_qacompiler_keep_backup', False):
+                print(f"  ⚠ Backup PRESERVED (high orphan rate): {backup_path.name}")
+            else:
+                backup_path.unlink()
+                print(f"  Cleaned up backup: {backup_path.name}")
         print(f"\n  Saved: {master_path}")
         if hidden_sheets:
             print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
@@ -1450,9 +1499,13 @@ def run_compiler(log_callback=None, progress_callback=None):
         wb.save(path)
 
         # Clean up .bak backup now that new master is safely saved
+        # (unless high orphan rate flagged it for preservation)
         backup_path = path.with_suffix(".xlsx.bak")
         if backup_path.exists():
-            backup_path.unlink()
+            if getattr(wb, '_qacompiler_keep_backup', False):
+                print(f"  ⚠ Backup PRESERVED (high orphan rate): {backup_path.name}")
+            else:
+                backup_path.unlink()
 
         return {
             "lang": lang_label,
