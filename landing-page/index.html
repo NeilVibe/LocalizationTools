@@ -6055,8 +6055,15 @@
             gl_PointSize = uSize * (300.0 / -mvPos.z);
             gl_PointSize = max(gl_PointSize, 1.0);
 
-            vColor = color;
-            vOpacity = uOpacity;
+            // Falling star effect: particles near mouse get brighter briefly
+            float mouseDist = length(pos - uMouse3D);
+            float starTrail = 0.0;
+            if (uRepelStrength > 0.0 && mouseDist < 120.0 && mouseDist > 0.1) {
+              starTrail = (1.0 - mouseDist / 120.0);
+              starTrail = starTrail * starTrail; // quadratic for sharp falloff
+            }
+            vColor = color + starTrail * vec3(0.4, 0.25, 0.1); // warm flash
+            vOpacity = uOpacity + starTrail * 0.3; // brighter near mouse
           }
         `,
         fragmentShader: `
@@ -6083,72 +6090,63 @@
       var visibleH = 2 * Math.tan(vFov / 2) * 280; // ~323 at z=280
       var visibleW = visibleH * (W / H); // ~575 at 16:9
 
-      // Mega text — fills viewport width (not a tiny center blob)
-      function megaTextPositions(text, count) {
-        var c2d = document.createElement('canvas');
-        var ctx = c2d.getContext('2d');
-        c2d.width = 1024; c2d.height = 256;
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 200px Pretendard Variable, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, 512, 128);
-        var imgData = ctx.getImageData(0, 0, 1024, 256).data;
-        var filled = [];
-        for (var y = 0; y < 256; y += 2) {
-          for (var x = 0; x < 1024; x += 2) {
-            if (imgData[(y * 1024 + x) * 4 + 3] > 128) filled.push([x, y]);
-          }
-        }
-        var spread = visibleW / 1024; // scale to fill viewport width
-        var positions = new Float32Array(count * 3);
-        for (var i = 0; i < count; i++) {
-          var px = filled.length > 0 ? filled[Math.floor(Math.random() * filled.length)] : [512, 128];
-          positions[i*3]   = (px[0] - 512) * spread;
-          positions[i*3+1] = -(px[1] - 128) * spread;
-          positions[i*3+2] = (Math.random() - 0.5) * 40;
-        }
-        return positions;
-      }
+      // ---- MORPH TARGET GENERATORS (all SPREAD across full viewport) ----
+      // Every target fills the viewport — no concentrated shapes, only ambient distributions
 
-      // DNA helix — spans full viewport width
-      function dnaHelixPositions(count) {
-        var positions = new Float32Array(count * 3);
-        var halfW = visibleW * 0.48;
-        var helixR = visibleH * 0.15;
-        for (var i = 0; i < count; i++) {
-          var t = i / count;
-          var x = (t - 0.5) * 2 * halfW;
-          var angle = t * Math.PI * 8;
-          var strand = i % 2 === 0 ? 1 : -1;
-          positions[i*3]   = x + (Math.random() - 0.5) * 12;
-          positions[i*3+1] = Math.sin(angle) * helixR * strand + (Math.random() - 0.5) * 12;
-          positions[i*3+2] = Math.cos(angle) * helixR * strand * 0.3 + (Math.random() - 0.5) * 12;
-        }
-        return positions;
-      }
-
-      // Noise field — organic spread across full viewport
-      function noiseFieldPositions(count) {
+      // Flowing waves — horizontal wave pattern across full viewport
+      function wavePositions(count) {
         var positions = new Float32Array(count * 3);
         for (var i = 0; i < count; i++) {
-          var x = (Math.random() - 0.5) * visibleW;
-          var y = (Math.random() - 0.5) * visibleH;
-          var nx = x * 0.003, ny = y * 0.003;
-          x += Math.sin(nx * 6.28 + ny * 3.14) * 30;
-          y += Math.cos(ny * 6.28 - nx * 1.57) * 30;
+          var x = (Math.random() - 0.5) * visibleW * 1.2;
+          var y = (Math.random() - 0.5) * visibleH * 1.2;
+          // Wave displacement — organic ripples
+          y += Math.sin(x * 0.015) * 40 + Math.cos(x * 0.008 + 1.5) * 25;
           positions[i*3]   = x;
           positions[i*3+1] = y;
-          positions[i*3+2] = (Math.random() - 0.5) * 60;
+          positions[i*3+2] = Math.sin(x * 0.01 + y * 0.01) * 50 + (Math.random() - 0.5) * 30;
         }
         return positions;
       }
 
-      // Supernova — EXPANDING outward (golden ratio phyllotaxis)
+      // Aurora — flowing ribbons across the viewport (like northern lights)
+      function auroraPositions(count) {
+        var positions = new Float32Array(count * 3);
+        var ribbonCount = 5;
+        for (var i = 0; i < count; i++) {
+          var ribbon = Math.floor(Math.random() * ribbonCount);
+          var t = Math.random();
+          var x = (t - 0.5) * visibleW * 1.3;
+          var baseY = (ribbon / ribbonCount - 0.5) * visibleH * 0.8;
+          var y = baseY + Math.sin(t * Math.PI * 3 + ribbon * 1.2) * 50 + (Math.random() - 0.5) * 25;
+          positions[i*3]   = x;
+          positions[i*3+1] = y;
+          positions[i*3+2] = Math.sin(t * Math.PI * 2 + ribbon) * 40 + (Math.random() - 0.5) * 20;
+        }
+        return positions;
+      }
+
+      // Star field — uniform spread with subtle clustering (like real night sky)
+      function starFieldPositions(count) {
+        var positions = new Float32Array(count * 3);
+        for (var i = 0; i < count; i++) {
+          var x = (Math.random() - 0.5) * visibleW * 1.4;
+          var y = (Math.random() - 0.5) * visibleH * 1.4;
+          // Subtle noise clustering — denser in some areas, sparser in others
+          var nx = x * 0.004, ny = y * 0.004;
+          x += Math.sin(nx * 6.28 + ny * 3.14) * 25;
+          y += Math.cos(ny * 6.28 - nx * 1.57) * 25;
+          positions[i*3]   = x;
+          positions[i*3+1] = y;
+          positions[i*3+2] = (Math.random() - 0.5) * 80;
+        }
+        return positions;
+      }
+
+      // Supernova — EXPANDING outward (golden ratio, spiral arms beyond viewport)
       function supernovaPositions(count) {
         var positions = new Float32Array(count * 3);
         var goldenAngle = Math.PI * (3 - Math.sqrt(5));
-        var maxR = Math.max(visibleW, visibleH) * 0.7;
+        var maxR = Math.max(visibleW, visibleH) * 0.8;
         for (var i = 0; i < count; i++) {
           var t = i / count;
           if (t < 0.85) {
@@ -6171,12 +6169,12 @@
         return positions;
       }
 
-      // Pre-compute all morph targets (all viewport-filling)
+      // Pre-compute all morph targets (ALL spread across viewport, no concentrated shapes)
       var morphTargets = {
         sphere: new Float32Array(pos),
-        text: megaTextPositions('LocaNext', N),
-        helix: dnaHelixPositions(N),
-        noise: noiseFieldPositions(N),
+        wave: wavePositions(N),
+        aurora: auroraPositions(N),
+        stars: starFieldPositions(N),
         supernova: supernovaPositions(N)
       };
 
@@ -6200,9 +6198,9 @@
       }
 
       var morphSections = [
-        { trigger: '#showcase',    target: 'text',      start: 'top 80%', end: 'top 20%' },
-        { trigger: '#gamedevGrid', target: 'helix',     start: 'top 80%', end: 'top 20%' },
-        { trigger: '#codex',       target: 'noise',     start: 'top 80%', end: 'top 20%' },
+        { trigger: '#showcase',    target: 'wave',      start: 'top 80%', end: 'top 20%' },
+        { trigger: '#gamedevGrid', target: 'aurora',    start: 'top 80%', end: 'top 20%' },
+        { trigger: '#codex',       target: 'stars',     start: 'top 80%', end: 'top 20%' },
         { trigger: '#closing',     target: 'supernova', start: 'top 80%', end: 'top 30%' }
       ];
       morphSections.forEach(function(sec) {
@@ -6413,9 +6411,9 @@
           geo.attributes.color.needsUpdate = true;
         }
 
-        // Mouse repulsion — feed 3D position to shader
+        // Mouse repulsion — subtle, particles gently drift away like falling stars
         mat.uniforms.uMouse3D.value.copy(mouse3D);
-        mat.uniforms.uRepelStrength.value = 1.0;
+        mat.uniforms.uRepelStrength.value = 0.5; // gentle, not aggressive
 
         // Scroll velocity reactivity — fast scroll = dramatic effects
         var scrollVelocity = window._lenis ? Math.abs(window._lenis.velocity) : 0;
@@ -6441,94 +6439,6 @@
   </script>
 
   <script>
-
-    /* ---- CONSTELLATION GLOW FIELD — cursor proximity interaction ---- */
-    (function(){
-      var constellation = document.getElementById('constellation');
-      if (!constellation || isMob || noMo) return;
-
-      var nodes = constellation.querySelectorAll('.constellation-node');
-      var hub = document.getElementById('constellationHub');
-      var lines = constellation.querySelectorAll('.constellation-line');
-      var maxDist = 180; // px radius of influence
-
-      // Track mouse over the constellation area
-      var mouseX = -9999, mouseY = -9999;
-      constellation.addEventListener('mousemove', function(e) {
-        var rect = constellation.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
-      });
-      constellation.addEventListener('mouseleave', function() {
-        mouseX = -9999; mouseY = -9999;
-        // Reset all nodes
-        nodes.forEach(function(n) {
-          var dot = n.querySelector('.constellation-node-dot');
-          var label = n.querySelector('.constellation-node-label');
-          gsap.to(dot, { scale: 1, boxShadow: '0 0 8px rgba(212,154,92,0.3)', duration: 0.4 });
-          gsap.to(label, { color: '', textShadow: 'none', duration: 0.3 });
-        });
-        lines.forEach(function(l) {
-          gsap.to(l, { opacity: parseFloat(l.dataset.baseOpacity || 0.15), duration: 0.4 });
-        });
-      });
-
-      // Store base opacity for lines
-      lines.forEach(function(l) {
-        l.dataset.baseOpacity = l.classList.contains('constellation-line--primary') ? '0.4' : '0.15';
-      });
-
-      // Proximity update loop
-      var closestNode = null;
-      function updateProximity() {
-        requestAnimationFrame(updateProximity);
-        if (mouseX < 0) return;
-
-        var minDist = Infinity;
-        nodes.forEach(function(n) {
-          var rect = n.getBoundingClientRect();
-          var conRect = constellation.getBoundingClientRect();
-          var nx = rect.left + rect.width/2 - conRect.left;
-          var ny = rect.top + rect.height/2 - conRect.top;
-          var dist = Math.sqrt((mouseX - nx) * (mouseX - nx) + (mouseY - ny) * (mouseY - ny));
-
-          var dot = n.querySelector('.constellation-node-dot');
-          var label = n.querySelector('.constellation-node-label');
-
-          if (dist < maxDist) {
-            var intensity = 1 - dist / maxDist;
-            var scale = 1 + intensity * 1.2;
-            var glowSize = 8 + intensity * 30;
-            var glowAlpha = 0.3 + intensity * 0.5;
-            dot.style.transform = 'scale(' + scale + ')';
-            dot.style.boxShadow = '0 0 ' + glowSize + 'px rgba(212,154,92,' + glowAlpha + '), 0 0 ' + (glowSize*2) + 'px rgba(232,138,58,' + (glowAlpha*0.4) + ')';
-            label.style.color = 'rgba(240,184,120,' + (0.6 + intensity * 0.4) + ')';
-            label.style.textShadow = '0 0 ' + (8 * intensity) + 'px rgba(212,154,92,' + (intensity * 0.5) + ')';
-          } else {
-            dot.style.transform = 'scale(1)';
-            dot.style.boxShadow = '0 0 8px rgba(212,154,92,0.3)';
-            label.style.color = '';
-            label.style.textShadow = 'none';
-          }
-
-          if (dist < minDist) { minDist = dist; closestNode = n; }
-        });
-
-        // Brighten lines connected to closest node
-        if (minDist < maxDist) {
-          var intensity = 1 - minDist / maxDist;
-          lines.forEach(function(l) {
-            var base = parseFloat(l.dataset.baseOpacity);
-            l.style.opacity = base + intensity * (0.6 - base);
-          });
-          // Hub pulses with proximity
-          if (hub) {
-            hub.style.filter = 'brightness(' + (1 + intensity * 0.5) + ')';
-          }
-        }
-      }
-      updateProximity();
-    })();
 
     /* ---- TYPOGRAPHY MOTION — word-by-word slide-up reveal ---- */
     (function(){
