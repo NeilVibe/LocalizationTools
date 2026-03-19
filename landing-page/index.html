@@ -128,6 +128,28 @@
     }
 
     /* ================================================================
+       ANIMATED GRADIENT BORDERS — hover-only liquid light
+       ================================================================ */
+    @property --border-angle {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+    @keyframes rotate-border { to { --border-angle: 360deg; } }
+
+    .card-glow {
+      border: 1px solid var(--border-strong);
+      transition: border-color 0.4s ease;
+    }
+    .card-glow:hover {
+      border: 1px solid transparent;
+      background:
+        linear-gradient(var(--bg-raised), var(--bg-raised)) padding-box,
+        conic-gradient(from var(--border-angle), #d49a5c, #6c8cc8, #e88a3a, #d49a5c) border-box;
+      animation: rotate-border 6s linear infinite;
+    }
+
+    /* ================================================================
        SCROLL PROGRESS
        ================================================================ */
     .scroll-progress {
@@ -4789,17 +4811,17 @@
       <div class="retro-bridge">
         <h2 class="t-display" style="font-size:clamp(24px,3.5vw,44px);">같은 AI 시너지가<br><span class="t-accent">당신의 팀</span>을 지원합니다</h2>
         <div class="retro-bridge-cards" id="retroBridgeCards">
-          <div class="retro-bridge-card">
+          <div class="retro-bridge-card card-glow">
             <div class="retro-bridge-card-icon">&#128221;</div>
             <div class="retro-bridge-card-title">TRANSLATORS</div>
             <div class="retro-bridge-card-desc">AI 번역 제안, 컨텍스트 요약, TM 자동 매칭 — 번역가가 더 빠르고 정확하게 작업할 수 있도록</div>
           </div>
-          <div class="retro-bridge-card">
+          <div class="retro-bridge-card card-glow">
             <div class="retro-bridge-card-icon">&#127912;</div>
             <div class="retro-bridge-card-title">DESIGNERS</div>
             <div class="retro-bridge-card-desc">Nano Banana로 누락 이미지 자동 생성, ElevenLabs로 캐릭터 음성 합성 — 완전한 컨텍스트 제공</div>
           </div>
-          <div class="retro-bridge-card">
+          <div class="retro-bridge-card card-glow">
             <div class="retro-bridge-card-icon">&#127918;</div>
             <div class="retro-bridge-card-title">GAME DEVELOPERS</div>
             <div class="retro-bridge-card-desc">네이밍 제안, 개체 감지, 글로서리 관리 — 원문 작성자가 다국어 환경을 사전에 최적화</div>
@@ -6726,16 +6748,22 @@
         }
       });
 
-      // Magnetic button hover
+      // Magnetic button hover with inner text parallax (Piece 4)
       document.querySelectorAll('.btn').forEach(function(btn){
+        var strength = 0.3;
         btn.addEventListener('mousemove', function(e){
           var rect = btn.getBoundingClientRect();
           var x = e.clientX - rect.left - rect.width/2;
           var y = e.clientY - rect.top - rect.height/2;
-          gsap.to(btn, { x: x*0.18, y: y*0.18, duration:0.3, ease:'power2.out' });
+          gsap.to(btn, { x: x*strength, y: y*strength, duration:0.4, ease:'power3.out' });
+          // Inner text moves MORE for parallax depth
+          var inner = btn.querySelector('span') || btn.firstElementChild;
+          if (inner) gsap.to(inner, { x: x*strength*0.5, y: y*strength*0.5, duration:0.4, ease:'power3.out' });
         });
         btn.addEventListener('mouseleave', function(){
-          gsap.to(btn, { x:0, y:0, duration:0.5, ease:'elastic.out(1, 0.4)' });
+          gsap.to(btn, { x:0, y:0, duration:0.7, ease:'elastic.out(1, 0.4)' });
+          var inner = btn.querySelector('span') || btn.firstElementChild;
+          if (inner) gsap.to(inner, { x:0, y:0, duration:0.7, ease:'elastic.out(1, 0.4)' });
         });
       });
 
