@@ -114,6 +114,20 @@
     }
 
     /* ================================================================
+       SECTION REVEAL — blur-to-sharp materialization
+       ================================================================ */
+    .section-reveal {
+      opacity: 0;
+      filter: blur(10px);
+      transform: scale(0.98) translateY(20px);
+      will-change: transform, opacity;
+    }
+    .reveal-child {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    /* ================================================================
        SCROLL PROGRESS
        ================================================================ */
     .scroll-progress {
@@ -3384,6 +3398,7 @@
         transition-duration: 0.01ms !important;
       }
       .hero-canvas { display: none; }
+      .section-reveal, .reveal-child { opacity: 1 !important; filter: none !important; transform: none !important; }
       .cursor-dot, .cursor-ring { display: none; }
       body { cursor: auto; }
       .hero-eyebrow,.hero-subtitle,.hero-cta,.scroll-hint,
@@ -4138,7 +4153,7 @@
        GAME DEV GRID — XML Data Editor with AI Assistant
        ================================================================ -->
   <div class="divider-diagonal"></div>
-  <section class="gamedev-section section" id="gamedevGrid">
+  <section class="gamedev-section section section-reveal" id="gamedevGrid">
     <div class="section-watermark" style="top:-10px;right:-3%;" aria-hidden="true">02</div>
     <div class="glow-bg" style="width:1000px;height:1000px;background:radial-gradient(circle,rgba(212,154,92,0.04),transparent 70%);top:15%;left:50%;transform:translateX(-50%);" aria-hidden="true"></div>
 
@@ -4261,7 +4276,7 @@
        CODEX — Interactive World Map + Encyclopedia
        ================================================================ -->
   <div class="divider-diagonal"></div>
-  <section class="codex-section section" id="codex">
+  <section class="codex-section section section-reveal" id="codex">
     <div class="section-watermark" style="top:-10px;left:-3%;" aria-hidden="true">03</div>
     <div class="glow-bg" style="width:1200px;height:1200px;background:radial-gradient(circle,rgba(108,140,200,0.04),transparent 70%);top:10%;left:50%;transform:translateX(-50%);" aria-hidden="true"></div>
 
@@ -4450,7 +4465,7 @@
   <!-- ================================================================
        PROBLEM → SOLUTION
        ================================================================ -->
-  <section class="section" id="problems">
+  <section class="section section-reveal" id="problems">
     <div class="section-watermark" style="top:-40px;right:-5%;" aria-hidden="true">04</div>
     <div class="glow-bg" style="width:600px;height:600px;background:radial-gradient(circle,rgba(200,122,108,0.05),transparent 70%);top:15%;left:-12%;" aria-hidden="true"></div>
     <div class="glow-bg" style="width:600px;height:600px;background:radial-gradient(circle,rgba(108,170,122,0.05),transparent 70%);bottom:5%;right:-12%;" aria-hidden="true"></div>
@@ -4582,7 +4597,7 @@
        SECTION 06: ANALYTICS & MONITORING DASHBOARD
        ================================================================ -->
   <div class="divider-diagonal"></div>
-  <section class="analytics-section section" id="analytics">
+  <section class="analytics-section section section-reveal" id="analytics">
     <div class="section-watermark" style="top:-10px;right:-3%;" aria-hidden="true">06</div>
     <div class="glow-bg" style="width:1000px;height:1000px;background:radial-gradient(circle,rgba(108,140,200,0.04),transparent 70%);top:15%;left:50%;transform:translateX(-50%);" aria-hidden="true"></div>
 
@@ -4678,7 +4693,7 @@
        SECTION 07: AI POWER STACK — Tool synergy showcase
        ================================================================ -->
   <div class="divider-diagonal"></div>
-  <section class="powerstack-section section" id="powerStack">
+  <section class="powerstack-section section section-reveal" id="powerStack">
     <div class="section-watermark" style="top:-10px;left:-4%;" aria-hidden="true">07</div>
     <div class="glow-bg" style="width:1200px;height:1200px;background:radial-gradient(circle,rgba(212,154,92,0.05),transparent 70%);top:10%;left:50%;transform:translateX(-50%);" aria-hidden="true"></div>
 
@@ -5873,6 +5888,11 @@
         scrollSmooth += (scrollTarget - scrollSmooth) * 0.03;
         cam.position.z = Math.min(entranceZ, baseZ) + (scrollSmooth - baseZ);
 
+        // Piece 2: Scroll-driven color shift (copper→blue, subliminal)
+        var scrollColorT = Math.max(0, (baseZ - scrollSmooth) / 14); // 0→1
+        scrollColorT = scrollColorT * scrollColorT; // quadratic ease
+        var coolBias = scrollColorT * 0.06; // max 6% shift
+
         // Organic breathing + twinkle + color temperature — every 3rd frame
         frameCount++;
         if (frameCount % 3 === 0) {
@@ -5896,10 +5916,10 @@
               boost = twinklePhase[j] * 0.45;
             }
 
-            // Color: temperature shift + twinkle boost
-            cArr[j3]   = Math.min(1, colOriginal[j3]   + warmth + boost);
-            cArr[j3+1] = Math.min(1, colOriginal[j3+1] + boost * 0.6);
-            cArr[j3+2] = Math.min(1, colOriginal[j3+2] - warmth * 0.5 + boost * 0.2);
+            // Color: temperature shift + scroll cool bias + twinkle boost
+            cArr[j3]   = Math.min(1, colOriginal[j3]   + warmth - coolBias + boost);
+            cArr[j3+1] = Math.min(1, colOriginal[j3+1] - coolBias * 0.3 + boost * 0.6);
+            cArr[j3+2] = Math.min(1, colOriginal[j3+2] - warmth * 0.5 + coolBias * 0.8 + boost * 0.2);
           }
           geo.attributes.position.needsUpdate = true;
           geo.attributes.color.needsUpdate = true;
@@ -6065,6 +6085,27 @@
       gsap.set(sub, { y:16 });
       gsap.set(cta, { y:16 });
       setTimeout(type, 800);
+    })();
+
+    /* ---- BLUR-TO-SHARP SECTION REVEALS (Piece 1) ---- */
+    (function(){
+      if (noMo) return;
+      document.querySelectorAll('.section-reveal').forEach(function(section){
+        var children = section.querySelectorAll('.reveal-child');
+        var tl = gsap.timeline({
+          scrollTrigger: { trigger: section, start: 'top bottom-=12%', once: true }
+        });
+        tl.to(section, {
+          opacity: 1, filter: 'blur(0px)', scale: 1, y: 0,
+          duration: 1.2, ease: 'power3.out',
+          onComplete: function(){ section.style.willChange = 'auto'; }
+        });
+        if (children.length) {
+          tl.to(children, {
+            opacity: 1, y: 0, duration: 0.7, stagger: 0.12, ease: 'power2.out'
+          }, 0.3);
+        }
+      });
     })();
 
     /* ---- CINEMATIC SCROLL REVEALS ---- */
