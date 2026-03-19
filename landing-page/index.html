@@ -6,13 +6,15 @@
   <title>LocaNext — 로컬라이제이션의 미래</title>
   <meta name="description" content="LocaNext: 로컬라이제이션과 게임 개발을 혁신하는 멀티모달 플랫폼. 오픈소스. 무료. 엔터프라이즈급.">
 
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,900;1,700&display=swap" rel="stylesheet">
 
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="https://unpkg.com/lenis@1.3.19/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+  <script src="https://unpkg.com/lenis@1.3.19/dist/lenis.min.js" defer></script>
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,7 +27,7 @@
       --border-strong: rgba(255,255,255,0.08);
       --text: #f0ece4;
       --text-dim: #9a9a9f;
-      --text-muted: #505058;
+      --text-muted: #7a7a82;
       --warm: #d49a5c;
       --warm-bright: #f0b878;
       --warm-hot: #e88a3a;
@@ -58,7 +60,7 @@
       color: var(--text);
       background: var(--bg);
       overflow-x: hidden;
-      cursor: none;
+      cursor: auto;
     }
 
     /* ================================================================
@@ -315,6 +317,7 @@
       position: absolute;
       inset: 0;
       z-index: 1;
+      cursor: none;
     }
 
     /* Ambient mesh gradient — Stripe-style drifting color wash */
@@ -324,12 +327,14 @@
       66%  { transform: translate(-4%, 4%) scale(0.97); }
       100% { transform: translate(3%, -2%) scale(1.03); }
     }
+    @keyframes meshFadeIn { from { opacity: 0; } to { opacity: 0.05; } }
     .hero::before {
       content: '';
       position: absolute;
       inset: -50%;
       z-index: 0;
       opacity: 0.05;
+      animation: meshFadeIn 2s ease-out, meshDrift 25s 2s ease-in-out infinite alternate;
       filter: blur(120px);
       pointer-events: none;
       background:
@@ -1721,7 +1726,7 @@
       transform: translateX(-50%);
       width: 120%;
       height: 60%;
-      background: url('gen-analytics-bg.png') center/cover no-repeat;
+      background: url('gen-analytics-bg.webp') center/cover no-repeat;
       opacity: 0.08;
       mask-image: linear-gradient(180deg, black 0%, transparent 100%);
       -webkit-mask-image: linear-gradient(180deg, black 0%, transparent 100%);
@@ -1934,7 +1939,7 @@
       transform: translate(-50%,-50%);
       width: 130%;
       height: 100%;
-      background: url('gen-orbit-bg.png') center/cover no-repeat;
+      background: url('gen-orbit-bg.webp') center/cover no-repeat;
       opacity: 0.06;
       pointer-events: none;
       z-index: 0;
@@ -2588,7 +2593,7 @@
     .ctx-img-scene {
       width: 100%;
       height: 100%;
-      background: url('gen-ruins-scene.png') center/cover no-repeat;
+      background: url('gen-ruins-scene.webp') center/cover no-repeat;
       position: relative;
     }
 
@@ -3089,7 +3094,7 @@
       width: 80px;
       height: 80px;
       border-radius: 12px;
-      background: url('gen-elder-varon.png') center/cover no-repeat;
+      background: url('gen-elder-varon.webp') center/cover no-repeat;
       border: 1px solid var(--border);
       overflow: hidden;
     }
@@ -3836,7 +3841,7 @@
                   <span class="entity-resolve-from">유적</span>
                   <span class="entity-resolve-arrow">→</span>
                   <span class="entity-resolve-to">
-                    <img src="gen-ruins-scene.png" alt="Ruins" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
+                    <img src="gen-ruins-scene.webp" alt="Ruins" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
                     ruins_entrance.dds + Map Pin (B1)
                   </span>
                 </div>
@@ -3844,7 +3849,7 @@
                   <span class="entity-resolve-from">장로</span>
                   <span class="entity-resolve-arrow">→</span>
                   <span class="entity-resolve-to">
-                    <img src="gen-elder-varon.png" alt="Elder Varon" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
+                    <img src="gen-elder-varon.webp" alt="Elder Varon" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
                     Elder_Varon_VO.wem (12 lines)
                   </span>
                 </div>
@@ -3852,7 +3857,7 @@
                   <span class="entity-resolve-from">여명의 검</span>
                   <span class="entity-resolve-arrow">→</span>
                   <span class="entity-resolve-to">
-                    <img src="gen-blade-of-dawn.png" alt="Blade of Dawn" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
+                    <img src="gen-blade-of-dawn.webp" alt="Blade of Dawn" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;">
                     item_sword_dawn.dds + Stats
                   </span>
                 </div>
@@ -3961,7 +3966,7 @@
                   <span class="autogen-arrow-label">NANO BANANA</span>
                 </div>
                 <div class="autogen-panel">
-                  <img src="gen-blade-of-dawn.png" alt="AI-generated sword" loading="lazy">
+                  <img src="gen-blade-of-dawn.webp" alt="AI-generated sword" loading="lazy">
                   <div class="autogen-panel-label">
                     Generated from context
                     <span class="ai-gen-badge">AI-GENERATED</span>
@@ -3983,7 +3988,7 @@
                     <span class="autogen-arrow-label">ELEVENLABS</span>
                   </div>
                   <div class="autogen-panel">
-                    <img src="gen-voice-synth.png" alt="AI-generated audio" loading="lazy">
+                    <img src="gen-voice-synth.webp" alt="AI-generated audio" loading="lazy">
                     <div class="autogen-panel-label">
                       Synthesized from script
                       <span class="ai-gen-badge">AI-GENERATED</span>
@@ -4139,7 +4144,7 @@
 
     <!-- 2K Hero Shot — Game Dev Interface -->
     <div style="position:relative;overflow:hidden;border-radius:16px;margin:0 auto 80px;max-width:1340px;">
-      <img src="gen-gamedev-hero.png" alt="LocaNext Game Dev Interface" loading="lazy" style="width:100%;display:block;opacity:0.25;">
+      <img src="gen-gamedev-hero.webp" alt="LocaNext Game Dev Interface" loading="lazy" style="width:100%;display:block;opacity:0.25;">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,14,0.3) 0%,rgba(10,10,14,0.85) 60%,var(--bg) 100%);"></div>
       <div style="position:absolute;bottom:40px;left:40px;right:40px;z-index:1;">
         <span class="t-label">게임 개발팀을 위한 인터페이스</span>
@@ -4237,7 +4242,7 @@
           </div>
           <div class="gd-ai-section">
             <div class="gd-ai-section-title">컨텍스트 이미지</div>
-            <img src="gen-blade-of-dawn.png" alt="" style="width:100%;border-radius:6px;border:1px solid var(--border);" loading="lazy">
+            <img src="gen-blade-of-dawn.webp" alt="" style="width:100%;border-radius:6px;border:1px solid var(--border);" loading="lazy">
           </div>
           <div class="gd-ai-section">
             <div class="gd-ai-section-title">유사 아이템</div>
@@ -4757,12 +4762,12 @@
         <span class="t-label">AI가 생성한 이미지들</span>
       </div>
       <div class="retro-image-grid" id="retroImageGrid">
-        <img src="gen-elder-varon.png" alt="Elder Varon — Nano Banana" loading="lazy">
-        <img src="gen-blade-of-dawn.png" alt="Blade of Dawn — Nano Banana" loading="lazy">
-        <img src="gen-ruins-scene.png" alt="Ruins Scene — Nano Banana" loading="lazy">
-        <img src="gen-world-map.png" alt="World Map — Nano Banana" loading="lazy">
-        <img src="gen-orbit-bg.png" alt="Orbit Background — Nano Banana" loading="lazy">
-        <img src="gen-analytics-bg.png" alt="Analytics Background — Nano Banana" loading="lazy">
+        <img src="gen-elder-varon.webp" alt="Elder Varon — Nano Banana" loading="lazy">
+        <img src="gen-blade-of-dawn.webp" alt="Blade of Dawn — Nano Banana" loading="lazy">
+        <img src="gen-ruins-scene.webp" alt="Ruins Scene — Nano Banana" loading="lazy">
+        <img src="gen-world-map.webp" alt="World Map — Nano Banana" loading="lazy">
+        <img src="gen-orbit-bg.webp" alt="Orbit Background — Nano Banana" loading="lazy">
+        <img src="gen-analytics-bg.webp" alt="Analytics Background — Nano Banana" loading="lazy">
       </div>
 
       <!-- Part B: The Bridge -->
@@ -4796,7 +4801,7 @@
 
       <!-- Interactive AI Swarm — living agent ecosystem -->
       <div class="swarm-container" id="swarmContainer">
-        <canvas id="swarmCanvas" style="width:100%;height:850px;cursor:pointer;"></canvas>
+        <canvas id="swarmCanvas" style="width:100%;height:850px;cursor:pointer;" aria-label="Claude Code AI 에이전트 생태계 — 인터랙티브 시각화" role="img"></canvas>
         <div class="swarm-hint" id="swarmHint">노드를 호버하여 AI 에이전트를 탐색하세요</div>
       </div>
       <script>
@@ -5667,7 +5672,7 @@
     <div class="closing-glow" id="closingGlow" aria-hidden="true"></div>
     <!-- Nano Banana cinematic background -->
     <div style="position:absolute;inset:0;z-index:0;">
-      <img src="gen-closing-epic.png" alt="" style="width:100%;height:100%;object-fit:cover;opacity:0.12;" aria-hidden="true" loading="lazy">
+      <img src="gen-closing-epic.webp" alt="" style="width:100%;height:100%;object-fit:cover;opacity:0.12;" aria-hidden="true" loading="lazy">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,var(--bg) 0%,transparent 30%,transparent 70%,var(--bg) 100%);"></div>
     </div>
     <div class="container" style="position:relative;z-index:1;">
@@ -5740,12 +5745,22 @@
       gsap.to(b, { width:'100%', ease:'none', scrollTrigger:{ trigger:document.body, start:'top top', end:'bottom bottom', scrub:0.3 }});
     })();
 
-    /* ---- THREE.JS MORPHING PARTICLE FIELD ---- */
+    /* ---- THREE.JS — conditional desktop-only load ---- */
     (function(){
       if (isMob || noMo) return;
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
+      s.onload = initParticles;
+      document.head.appendChild(s);
+    })();
+
+    function initParticles() {
       var canvas = document.getElementById('heroCanvas');
+      if (!canvas) return;
       var W = window.innerWidth, H = window.innerHeight;
-      var renderer = new THREE.WebGLRenderer({ canvas:canvas, alpha:true, antialias:false });
+      var renderer;
+      try { renderer = new THREE.WebGLRenderer({ canvas:canvas, alpha:true, antialias:false }); }
+      catch(e) { return; }
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(W, H);
 
@@ -5822,20 +5837,41 @@
         scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.5 }
       });
 
+      // B1: Particle opacity entrance (0→0.65 over 2.5s)
+      mat.opacity = 0;
+
+      // B2: Camera starts close, pulls back
+      cam.position.z = 260;
+      var baseZ = 280;
+
       var clock = new THREE.Clock();
       var frameCount = 0;
       (function anim(){
         requestAnimationFrame(anim);
         if (document.hidden) return;
         var t = clock.getElapsedTime();
+
+        // B1: Smooth opacity ramp (exponential ease-out)
+        var birthProgress = Math.min(1, t / 2.5);
+        birthProgress = 1 - Math.pow(1 - birthProgress, 3); // ease-out cubic
+        mat.opacity = 0.65 * birthProgress;
+
+        // B2: Camera pullback (260→280 over 3s)
+        var camProgress = Math.min(1, t / 3.0);
+        camProgress = 1 - Math.pow(1 - camProgress, 2); // ease-out quadratic
+        var entranceZ = 260 + 20 * camProgress;
+
+        // B3: Rotation speed ramp (0→1 over 4s)
+        var rotRamp = Math.min(1, t / 4.0);
+
         smx += (tmx-smx)*0.025;
         smy += (tmy-smy)*0.025;
-        pts.rotation.x = smy*0.08 + t*0.018;
-        pts.rotation.y = smx*0.08 + t*0.012;
+        pts.rotation.x = (smy*0.08 + t*0.018) * rotRamp;
+        pts.rotation.y = (smx*0.08 + t*0.012) * rotRamp;
 
-        // Smooth camera Z drift
+        // Smooth camera Z drift (scroll) applied on top of entrance
         scrollSmooth += (scrollTarget - scrollSmooth) * 0.03;
-        cam.position.z = scrollSmooth;
+        cam.position.z = Math.min(entranceZ, baseZ) + (scrollSmooth - baseZ);
 
         // Organic breathing + twinkle + color temperature — every 3rd frame
         frameCount++;
@@ -5870,7 +5906,7 @@
         }
         renderer.render(scene, cam);
       })();
-    })();
+    }
 
     /* ---- CONSTELLATION ENTRANCE — the hero animation ---- */
     function animateConstellation() {
