@@ -31,9 +31,9 @@
 
 ---
 
-## NEXT LAYERS (one at a time, each independent)
+## COMPLETED LAYERS (Session 2026-03-20)
 
-### Layer A: Hero Video Generation
+### Layer A: Hero Video Generation — DONE (commit 8901e9f1, fixed e35939d8)
 **Goal:** Cinematic atmospheric video behind the Three.js particles in the hero section.
 **WOW factor:** Adds depth — particles float OVER a subtly moving dark landscape/nebula.
 
@@ -56,7 +56,7 @@
 
 ---
 
-### Layer B: Constellation Glow Field
+### Layer B: Constellation Glow Field — DONE (commit b4b097f8)
 **Goal:** Language nodes in hero react to cursor proximity — glow, energy pulses, attraction.
 **WOW factor:** Hero becomes immediately interactive, users discover it and play.
 
@@ -77,7 +77,7 @@
 
 ---
 
-### Layer C: Scroll Velocity Parallax
+### Layer C: Scroll Velocity Parallax — DONE (commit 795965a6)
 **Goal:** Page responds to HOW you scroll — fast = dramatic, slow = gentle.
 **WOW factor:** Makes the page feel alive and responsive to user behavior.
 
