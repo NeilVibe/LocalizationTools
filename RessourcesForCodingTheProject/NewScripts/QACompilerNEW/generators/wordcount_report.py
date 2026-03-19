@@ -398,145 +398,131 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
         _log("No datasheets with translation data found.", 'error')
         return None
 
-    # Generate the report
+    # Generate the report — 1 sheet per language
     report_path = DATASHEET_OUTPUT / "WordCount_Report.xlsx"
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Word Count Summary"
+    wb.remove(wb.active)  # Remove default sheet
 
-    # --- TITLE ROW ---
-    row = 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
-    title_cell = ws.cell(row, 1, "WORD COUNT REPORT")
-    title_cell.font = _TITLE_FONT
-    title_cell.fill = _TITLE_FILL
-    title_cell.alignment = Alignment(horizontal="center", vertical="center")
-    for col in range(1, 8):
-        ws.cell(row, col).fill = _TITLE_FILL
+    # Group datasheets by language (extracted from filename)
+    # Pattern: Category_LQA_LANG.xlsx or Quest_LQA_LANG_*.xlsx
+    import re
+    lang_groups = {}  # lang_code -> [(cat_folder, scan)]
+    for cat_folder, scan in all_data:
+        fname = scan["filename"].upper()
+        # Try to extract language code from filename
+        # Common patterns: _ENG.xlsx, _ZHO-CN.xlsx, _FRA.xlsx, _LQA_ENG.xlsx
+        lang_match = re.search(r'_([A-Z]{2,3}(?:-[A-Z]{2})?)\.XLSX$', fname)
+        if lang_match:
+            lang = lang_match.group(1)
+        else:
+            # Fallback: use the translation column header from first sheet
+            first_header = scan["sheets"][0]["trans_col_header"] if scan["sheets"] else "UNKNOWN"
+            lang = first_header.upper().replace("TRANSLATION (", "").replace(")", "").replace("ENGLISH (", "").replace(")", "").strip()
+            if not lang or lang == "LOC":
+                lang = "UNKNOWN"
+        lang_groups.setdefault(lang, []).append((cat_folder, scan))
 
-    # --- DATE ROW ---
-    row = 2
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
-    date_cell = ws.cell(row, 1, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    date_cell.font = Font(size=10, italic=True, color="666666")
-    date_cell.alignment = Alignment(horizontal="center")
+    _log(f"  Languages detected: {', '.join(sorted(lang_groups.keys()))}")
 
-    row = 3  # spacer
-
-    # --- GRAND SUMMARY TABLE ---
-    row = 4
-    headers = ["Category", "File", "Sheets", "Total Rows", "Translated", "Korean (Untranslated)", "Words / Chars"]
-    for col, hdr in enumerate(headers, 1):
-        cell = ws.cell(row, col, hdr)
-        cell.font = _HEADER_FONT
-        cell.fill = _HEADER_FILL
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cell.border = _THIN_BORDER
-
-    grand_total_words = 0
-    grand_total_rows = 0
-    grand_total_translated = 0
-    grand_total_korean = 0
+    grand_total_count = 0
     grand_total_sheets = 0
 
-    row = 5
-    for idx, (cat_folder, scan) in enumerate(all_data):
-        total_rows = sum(s["rows"] for s in scan["sheets"])
-        total_translated = sum(s["translated"] for s in scan["sheets"])
-        total_korean = sum(s["korean"] for s in scan["sheets"])
+    for lang_code in sorted(lang_groups.keys()):
+        lang_data = lang_groups[lang_code]
 
-        fill = _DATA_FILL_A if idx % 2 == 0 else _DATA_FILL_B
+        # Create sheet for this language (max 31 chars for sheet name)
+        sheet_title = f"WordCount_{lang_code}"[:31]
+        ws = wb.create_sheet(title=sheet_title)
 
-        vals = [
-            cat_folder,
-            scan["filename"],
-            scan["total_sheets"],
-            total_rows,
-            total_translated,
-            total_korean,
-            scan["total_words"],
-        ]
-        for col, val in enumerate(vals, 1):
-            cell = ws.cell(row, col, val)
-            cell.font = _DATA_FONT
-            cell.fill = fill
-            cell.border = _THIN_BORDER
-            if isinstance(val, int):
-                cell.number_format = _NUM_FORMAT
-                cell.alignment = Alignment(horizontal="right")
-            else:
-                cell.alignment = Alignment(horizontal="left")
-
-        grand_total_words += scan["total_words"]
-        grand_total_rows += total_rows
-        grand_total_translated += total_translated
-        grand_total_korean += total_korean
-        grand_total_sheets += scan["total_sheets"]
-        row += 1
-
-    # Grand total row
-    grand_vals = [
-        "TOTAL",
-        f"{len(all_data)} file(s)",
-        grand_total_sheets,
-        grand_total_rows,
-        grand_total_translated,
-        grand_total_korean,
-        grand_total_words,
-    ]
-    for col, val in enumerate(grand_vals, 1):
-        cell = ws.cell(row, col, val)
-        cell.font = _GRAND_TOTAL_FONT
-        cell.fill = _GRAND_TOTAL_FILL
-        cell.border = _THIN_BORDER
-        if isinstance(val, int):
-            cell.number_format = _NUM_FORMAT
-            cell.alignment = Alignment(horizontal="right")
-        else:
-            cell.alignment = Alignment(horizontal="left")
-
-    row += 2  # spacer
-
-    # --- PER-DATASHEET DETAIL TABLES ---
-    for cat_folder, scan in all_data:
-        # Datasheet header
+        # --- TITLE ROW ---
+        row = 1
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
-        cell = ws.cell(row, 1, f"{cat_folder} — {scan['filename']}")
-        cell.font = Font(bold=True, size=11, color="2F5496")
-        cell.fill = PatternFill("solid", fgColor="D6E4F0")
-        cell.alignment = Alignment(horizontal="left", vertical="center")
-        for col in range(1, 8):
-            ws.cell(row, col).fill = PatternFill("solid", fgColor="D6E4F0")
-            ws.cell(row, col).border = _BOTTOM_BORDER
-        row += 1
+        title_cell = ws.cell(row, 1, f"WORD COUNT — {lang_code}")
+        title_cell.font = _TITLE_FONT
+        title_cell.fill = _TITLE_FILL
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        for c in range(1, 8):
+            ws.cell(row, c).fill = _TITLE_FILL
 
-        # Detail headers
-        detail_headers = ["Sheet/Tab", "Translation Column", "Total Rows", "Translated", "Korean", "Empty", "Words / Chars"]
-        for col, hdr in enumerate(detail_headers, 1):
-            cell = ws.cell(row, col, hdr)
-            cell.font = _SUBHEADER_FONT
-            cell.fill = _SUBHEADER_FILL
-            cell.alignment = Alignment(horizontal="center", wrap_text=True)
-            cell.border = _THIN_BORDER
-        row += 1
+        row = 2
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+        ws.cell(row, 1, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}").font = Font(size=10, italic=True, color="666666")
+        ws.cell(row, 1).alignment = Alignment(horizontal="center")
 
-        # Sheet rows
-        for s_idx, sheet in enumerate(scan["sheets"]):
-            fill = _DATA_FILL_A if s_idx % 2 == 0 else _DATA_FILL_B
-            mode_label = "chars" if sheet.get("mode") == "chars" else "words"
-            sheet_vals = [
-                sheet["name"],
-                f"{sheet['trans_col_header']} ({mode_label})",
-                sheet["rows"],
-                sheet["translated"],
-                sheet["korean"],
-                sheet["empty"],
-                sheet["count"],
+        row = 3  # spacer
+        lang_total_count = 0
+
+        # --- ONE TABLE PER CATEGORY ---
+        for cat_idx, (cat_folder, scan) in enumerate(lang_data):
+            if cat_idx > 0:
+                row += 1  # empty row between category tables
+
+            # Category header
+            row += 1
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+            cat_cell = ws.cell(row, 1, f"{cat_folder} — {scan['filename']}")
+            cat_cell.font = Font(bold=True, size=11, color="2F5496")
+            cat_cell.fill = PatternFill("solid", fgColor="D6E4F0")
+            cat_cell.alignment = Alignment(horizontal="left", vertical="center")
+            for c in range(1, 8):
+                ws.cell(row, c).fill = PatternFill("solid", fgColor="D6E4F0")
+                ws.cell(row, c).border = _BOTTOM_BORDER
+            row += 1
+
+            # Table headers
+            detail_headers = ["Sheet/Tab", "Translation Column", "Total Rows", "Translated", "Korean", "Empty", "Words / Chars"]
+            for c, hdr in enumerate(detail_headers, 1):
+                cell = ws.cell(row, c, hdr)
+                cell.font = _SUBHEADER_FONT
+                cell.fill = _SUBHEADER_FILL
+                cell.alignment = Alignment(horizontal="center", wrap_text=True)
+                cell.border = _THIN_BORDER
+            row += 1
+
+            # Sheet rows
+            for s_idx, sheet in enumerate(scan["sheets"]):
+                fill = _DATA_FILL_A if s_idx % 2 == 0 else _DATA_FILL_B
+                mode_label = "chars" if sheet.get("mode") == "chars" else "words"
+                sheet_vals = [
+                    sheet["name"],
+                    f"{sheet['trans_col_header']} ({mode_label})",
+                    sheet["rows"],
+                    sheet["translated"],
+                    sheet["korean"],
+                    sheet["empty"],
+                    sheet["count"],
+                ]
+                for c, val in enumerate(sheet_vals, 1):
+                    cell = ws.cell(row, c, val)
+                    cell.font = _DATA_FONT
+                    cell.fill = fill
+                    cell.border = _THIN_BORDER
+                    if isinstance(val, int):
+                        cell.number_format = _NUM_FORMAT
+                        cell.alignment = Alignment(horizontal="right")
+                    else:
+                        cell.alignment = Alignment(horizontal="left")
+                row += 1
+
+            # Category total
+            cat_total_count = scan["total_words"]
+            cat_total_rows = sum(s["rows"] for s in scan["sheets"])
+            cat_total_translated = sum(s["translated"] for s in scan["sheets"])
+            cat_total_korean = sum(s["korean"] for s in scan["sheets"])
+            cat_total_empty = sum(s["empty"] for s in scan["sheets"])
+            total_vals = [
+                f"TOTAL ({scan['total_sheets']} sheets)",
+                "",
+                cat_total_rows,
+                cat_total_translated,
+                cat_total_korean,
+                cat_total_empty,
+                cat_total_count,
             ]
-            for col, val in enumerate(sheet_vals, 1):
-                cell = ws.cell(row, col, val)
-                cell.font = _DATA_FONT
-                cell.fill = fill
+            for c, val in enumerate(total_vals, 1):
+                cell = ws.cell(row, c, val)
+                cell.font = _TOTAL_FONT
+                cell.fill = _TOTAL_FILL
                 cell.border = _THIN_BORDER
                 if isinstance(val, int):
                     cell.number_format = _NUM_FORMAT
@@ -544,25 +530,20 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
                 else:
                     cell.alignment = Alignment(horizontal="left")
             row += 1
+            lang_total_count += cat_total_count
 
-        # Per-datasheet total
-        total_rows_ds = sum(s["rows"] for s in scan["sheets"])
-        total_translated_ds = sum(s["translated"] for s in scan["sheets"])
-        total_korean_ds = sum(s["korean"] for s in scan["sheets"])
-        total_empty_ds = sum(s["empty"] for s in scan["sheets"])
-        ds_total_vals = [
-            f"TOTAL ({scan['total_sheets']} sheets)",
-            "",
-            total_rows_ds,
-            total_translated_ds,
-            total_korean_ds,
-            total_empty_ds,
-            scan["total_words"],
+        # Language grand total
+        row += 1
+        grand_vals = [
+            f"GRAND TOTAL — {lang_code}",
+            f"{len(lang_data)} file(s)",
+            "", "", "", "",
+            lang_total_count,
         ]
-        for col, val in enumerate(ds_total_vals, 1):
-            cell = ws.cell(row, col, val)
-            cell.font = _TOTAL_FONT
-            cell.fill = _TOTAL_FILL
+        for c, val in enumerate(grand_vals, 1):
+            cell = ws.cell(row, c, val)
+            cell.font = _GRAND_TOTAL_FONT
+            cell.fill = _GRAND_TOTAL_FILL
             cell.border = _THIN_BORDER
             if isinstance(val, int):
                 cell.number_format = _NUM_FORMAT
@@ -570,15 +551,14 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
             else:
                 cell.alignment = Alignment(horizontal="left")
 
-        row += 2  # spacer between datasheets
+        # Column widths
+        col_widths = [25, 30, 12, 14, 14, 12, 16]
+        for c, width in enumerate(col_widths, 1):
+            ws.column_dimensions[get_column_letter(c)].width = width
+        ws.freeze_panes = "A4"
 
-    # --- Column widths ---
-    col_widths = [25, 35, 12, 14, 14, 20, 16]
-    for col, width in enumerate(col_widths, 1):
-        ws.column_dimensions[get_column_letter(col)].width = width
-
-    # Freeze header
-    ws.freeze_panes = "A5"
+        grand_total_count += lang_total_count
+        grand_total_sheets += sum(s["total_sheets"] for _, s in lang_data)
 
     # Save
     try:
@@ -590,7 +570,8 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
         _log(f"  ERROR: Cannot save report: {e}", 'error')
         return None
     _log(f"  Word Count Report saved: {report_path.name}", 'success')
-    _log(f"  Grand Total: {grand_total_words:,} words across {len(all_data)} file(s), {grand_total_sheets} sheet(s)")
+    _log(f"  {len(lang_groups)} language(s): {', '.join(sorted(lang_groups.keys()))}")
+    _log(f"  Grand Total: {grand_total_count:,} words/chars across {len(all_data)} file(s), {grand_total_sheets} sheet(s)")
 
     return report_path
 
