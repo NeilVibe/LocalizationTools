@@ -93,6 +93,39 @@ Each = ~1 hour (Python wrapper + MCP tool definition).
 **NOT PRIORITY FOR LANDING PAGE** — fal.ai covers images + video.
 Build in a dedicated "local power" session when needed.
 
+## Piece 11: Ambient Soundscape (after fal-ai or ACE-Step MCP)
+- Subtle ambient drone (warm, barely audible, opt-in only)
+- UI sound effects (click on swarm nodes, whoosh on reveals)
+- 🔇 toggle button in corner — NEVER autoplay
+- Generate with: fal.ai audio models OR ACE-Step (music) + AudioLDM 2 (SFX)
+
+## FUTURE SESSION: "Local Power" — Build Free Model MCPs
+**Goal:** Full offline/free generation stack usable from Claude Code.
+**Skill:** `mcp-builder` (already installed)
+**Approach per model:**
+1. Deep research the model's Python API / CLI interface
+2. Write Python wrapper script (input→generate→save output)
+3. Create MCP tool definition (name, description, parameters)
+4. Test from Claude Code (call tool → verify output)
+5. Document in AI_POWER_STACK.md
+
+**Build order:**
+1. **ACE-Step 1.5** (<4GB) — music. UNIQUE, fal.ai can't do this. Highest value.
+2. **AudioLDM 2** (~8GB) — sound FX. UNIQUE. Pairs with ACE-Step for Piece 11.
+3. **Hunyuan3D Mini** (5-6GB) — 3D meshes. UNIQUE. No paid alternative.
+4. **Z-Image Turbo** (12GB) — images. fal.ai backup. Only if bills high.
+5. **Wan 2.2 1.3B** (8.2GB) — video. fal.ai backup. Only if bills high.
+6. **CosyVoice 2** (~6GB) — streaming TTS. Upgrade over Qwen3-TTS.
+
+**Testing each MCP:**
+- Generate 3 test outputs per model
+- Verify quality is acceptable
+- Benchmark speed (must complete in <60s for usability)
+- Confirm Claude Code can call it end-to-end
+- Compare output vs fal.ai equivalent (where applicable)
+
+**Estimated effort:** 1-2 sessions total for all 6 MCPs.
+
 ## SKIP LIST
 - Cursor trail particles (conflicts with existing cursor)
 - Radial ambient pulse (conflicts with mesh gradient + sphere)
