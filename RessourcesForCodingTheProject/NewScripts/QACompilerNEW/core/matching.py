@@ -148,6 +148,22 @@ def find_translation_col_in_headers(col_idx: dict, is_english: bool) -> int:
     if "TRANSLATION" in col_idx:
         return col_idx["TRANSLATION"]
 
+    # Final fallback: detect language code columns (e.g., ZHO-CN, FRA, DEU, CHS, JP)
+    # These appear in Quest datasheets as bare language codes after known content columns.
+    # Skip known non-translation headers to find the language column.
+    _KNOWN_NON_TRANS = {
+        "ORIGINAL", "SOURCETEXT", "STRINGKEY", "STRINGID", "COMMAND",
+        "STATUS", "COMMENT", "MEMO", "SCREENSHOT", "DATATYPE", "FILENAME",
+        "ENG", "RECORDING", "DIALOGTYPE", "GROUP", "SEQUENCENAME",
+        "DIALOGVOICE", "SUBTIMELINENAME", "EVENTNAME", "INSTRUCTIONS",
+    }
+    eng_idx = col_idx.get("ENG")
+    if eng_idx is not None:
+        # Find the first column after ENG that isn't a known header
+        for header, idx in col_idx.items():
+            if idx > eng_idx and header not in _KNOWN_NON_TRANS and not header.startswith("COMMENT_") and not header.startswith("STATUS_") and not header.startswith("TESTER_STATUS_") and not header.startswith("MANAGER_COMMENT_") and not header.startswith("SCREENSHOT_"):
+                return idx
+
     return None
 
 

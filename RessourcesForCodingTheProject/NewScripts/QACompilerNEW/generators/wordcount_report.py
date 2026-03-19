@@ -155,8 +155,12 @@ def _find_translation_col(ws) -> Optional[int]:
     Returns 1-based column index, or None if not found.
     """
     max_col = ws.max_column or 0
-    _KNOWN_NON_TRANS = {"STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "COMMAND",
-                        "STRINGKEY", "MEMO", "ORIGINAL", "ENG", "DATATYPE", "FILENAME"}
+    _KNOWN_NON_TRANS = {
+        "STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "COMMAND",
+        "STRINGKEY", "MEMO", "ORIGINAL", "ENG", "DATATYPE", "FILENAME",
+        "SOURCETEXT", "RECORDING", "DIALOGTYPE", "GROUP", "SEQUENCENAME",
+        "DIALOGVOICE", "SUBTIMELINENAME", "EVENTNAME", "INSTRUCTIONS",
+    }
 
     # Collect all headers
     headers = {}  # col -> header_upper
@@ -175,14 +179,15 @@ def _find_translation_col(ws) -> Optional[int]:
         if h.startswith("ENGLISH"):
             return col
 
-    # Pass 3: Bare language code after ENG (Quest non-ENG: Original | ENG | FRA | ...)
+    # Pass 3: Language column after ENG (Quest: Original | ENG | FRA | ... or ZHO-CN, etc.)
+    # Accept any column after ENG that isn't a known non-translation header
     eng_found = False
     for col in range(1, max_col + 1):
         h = headers.get(col, "")
         if h == "ENG":
             eng_found = True
             continue
-        if eng_found and 2 <= len(h) <= 3 and h.isalpha() and h not in _KNOWN_NON_TRANS:
+        if eng_found and h and h not in _KNOWN_NON_TRANS:
             return col
 
     # Pass 4: ENG column itself (Quest ENG datasheets)
