@@ -6182,10 +6182,24 @@
         onEnterBack: function() { transitionTo('sphere'); mat.uniforms.uMorph.value = 0; }
       });
 
+      // 3D mouse tracking for particle repulsion
+      var mouse3D = new THREE.Vector3(9999, 9999, 9999);
+      var mouseNDC = new THREE.Vector2();
+      var raycaster = new THREE.Raycaster();
+      var mousePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+      var mouseIntersect = new THREE.Vector3();
+
       var tmx=0,tmy=0,smx=0,smy=0;
       document.addEventListener('mousemove', function(e){
         tmx = (e.clientX/W - 0.5)*2;
         tmy = (e.clientY/H - 0.5)*2;
+        // 3D repulsion tracking
+        mouseNDC.x = (e.clientX / W) * 2 - 1;
+        mouseNDC.y = -(e.clientY / H) * 2 + 1;
+        raycaster.setFromCamera(mouseNDC, cam);
+        if (raycaster.ray.intersectPlane(mousePlane, mouseIntersect)) {
+          mouse3D.copy(mouseIntersect);
+        }
       });
 
       window.addEventListener('resize', function(){
@@ -6311,6 +6325,10 @@
           geo.attributes.position.needsUpdate = true;
           geo.attributes.color.needsUpdate = true;
         }
+
+        // Mouse repulsion — feed 3D position to shader
+        mat.uniforms.uMouse3D.value.copy(mouse3D);
+        mat.uniforms.uRepelStrength.value = 1.0;
 
         // Chromatic aberration subtle breathing
         if (useComposer) {
