@@ -6399,6 +6399,94 @@
 
   <script>
 
+    /* ---- CONSTELLATION GLOW FIELD — cursor proximity interaction ---- */
+    (function(){
+      var constellation = document.getElementById('constellation');
+      if (!constellation || isMob || noMo) return;
+
+      var nodes = constellation.querySelectorAll('.constellation-node');
+      var hub = document.getElementById('constellationHub');
+      var lines = constellation.querySelectorAll('.constellation-line');
+      var maxDist = 180; // px radius of influence
+
+      // Track mouse over the constellation area
+      var mouseX = -9999, mouseY = -9999;
+      constellation.addEventListener('mousemove', function(e) {
+        var rect = constellation.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+      });
+      constellation.addEventListener('mouseleave', function() {
+        mouseX = -9999; mouseY = -9999;
+        // Reset all nodes
+        nodes.forEach(function(n) {
+          var dot = n.querySelector('.constellation-node-dot');
+          var label = n.querySelector('.constellation-node-label');
+          gsap.to(dot, { scale: 1, boxShadow: '0 0 8px rgba(212,154,92,0.3)', duration: 0.4 });
+          gsap.to(label, { color: '', textShadow: 'none', duration: 0.3 });
+        });
+        lines.forEach(function(l) {
+          gsap.to(l, { opacity: parseFloat(l.dataset.baseOpacity || 0.15), duration: 0.4 });
+        });
+      });
+
+      // Store base opacity for lines
+      lines.forEach(function(l) {
+        l.dataset.baseOpacity = l.classList.contains('constellation-line--primary') ? '0.4' : '0.15';
+      });
+
+      // Proximity update loop
+      var closestNode = null;
+      function updateProximity() {
+        requestAnimationFrame(updateProximity);
+        if (mouseX < 0) return;
+
+        var minDist = Infinity;
+        nodes.forEach(function(n) {
+          var rect = n.getBoundingClientRect();
+          var conRect = constellation.getBoundingClientRect();
+          var nx = rect.left + rect.width/2 - conRect.left;
+          var ny = rect.top + rect.height/2 - conRect.top;
+          var dist = Math.sqrt((mouseX - nx) * (mouseX - nx) + (mouseY - ny) * (mouseY - ny));
+
+          var dot = n.querySelector('.constellation-node-dot');
+          var label = n.querySelector('.constellation-node-label');
+
+          if (dist < maxDist) {
+            var intensity = 1 - dist / maxDist;
+            var scale = 1 + intensity * 1.2;
+            var glowSize = 8 + intensity * 30;
+            var glowAlpha = 0.3 + intensity * 0.5;
+            dot.style.transform = 'scale(' + scale + ')';
+            dot.style.boxShadow = '0 0 ' + glowSize + 'px rgba(212,154,92,' + glowAlpha + '), 0 0 ' + (glowSize*2) + 'px rgba(232,138,58,' + (glowAlpha*0.4) + ')';
+            label.style.color = 'rgba(240,184,120,' + (0.6 + intensity * 0.4) + ')';
+            label.style.textShadow = '0 0 ' + (8 * intensity) + 'px rgba(212,154,92,' + (intensity * 0.5) + ')';
+          } else {
+            dot.style.transform = 'scale(1)';
+            dot.style.boxShadow = '0 0 8px rgba(212,154,92,0.3)';
+            label.style.color = '';
+            label.style.textShadow = 'none';
+          }
+
+          if (dist < minDist) { minDist = dist; closestNode = n; }
+        });
+
+        // Brighten lines connected to closest node
+        if (minDist < maxDist) {
+          var intensity = 1 - minDist / maxDist;
+          lines.forEach(function(l) {
+            var base = parseFloat(l.dataset.baseOpacity);
+            l.style.opacity = base + intensity * (0.6 - base);
+          });
+          // Hub pulses with proximity
+          if (hub) {
+            hub.style.filter = 'brightness(' + (1 + intensity * 0.5) + ')';
+          }
+        }
+      }
+      updateProximity();
+    })();
+
     /* ---- TYPOGRAPHY MOTION — word-by-word slide-up reveal ---- */
     (function(){
       function splitWords(selector) {
