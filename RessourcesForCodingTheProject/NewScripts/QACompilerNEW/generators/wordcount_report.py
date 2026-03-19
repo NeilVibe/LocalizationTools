@@ -22,7 +22,66 @@ from openpyxl.utils import get_column_letter
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import DATASHEET_OUTPUT
-from core.processing import count_words_english, contains_korean
+from core.processing import count_words_english, count_chars_chinese, contains_korean
+
+
+# =============================================================================
+# CJK DETECTION
+# =============================================================================
+
+# CJK language codes (character-based counting)
+_CJK_CODES = {"CHS", "CHT", "CN", "JP", "JPN", "TW", "ZH", "ZHS", "ZHT", "JA"}
+
+# CJK Unicode ranges for auto-detection
+def _contains_cjk(text: str) -> bool:
+    """Check if text contains CJK characters (Chinese/Japanese/Korean excluded — Korean handled separately)."""
+    for ch in text:
+        cp = ord(ch)
+        # CJK Unified Ideographs
+        if 0x4E00 <= cp <= 0x9FFF:
+            return True
+        # Hiragana
+        if 0x3040 <= cp <= 0x309F:
+            return True
+        # Katakana
+        if 0x30A0 <= cp <= 0x30FF:
+            return True
+        # CJK Extension A
+        if 0x3400 <= cp <= 0x4DBF:
+            return True
+    return False
+
+
+def _detect_counting_mode(trans_header: str, sample_texts: list) -> str:
+    """
+    Detect whether to count words (Latin) or characters (CJK).
+
+    Detection order:
+    1. Header contains a CJK language code (e.g., "Translation (CHS)", "CHS", "JP")
+    2. Sample text contains CJK characters → character mode
+    3. Default → word mode (Latin/English)
+
+    Returns: "words" or "chars"
+    """
+    header_upper = trans_header.strip().upper()
+
+    # Check if header contains a CJK language code
+    # e.g., "Translation (CHS)" → extract "CHS"
+    for code in _CJK_CODES:
+        if code in header_upper:
+            return "chars"
+
+    # Check if header itself IS a CJK code (Quest bare codes like "CHS", "JP")
+    clean = header_upper.strip("() ")
+    if clean in _CJK_CODES:
+        return "chars"
+
+    # Auto-detect from sample text content
+    for text in sample_texts[:10]:
+        if text and _contains_cjk(str(text)):
+            return "chars"
+
+    return "words"
 
 
 # =============================================================================
@@ -143,24 +202,33 @@ def _find_translation_col(ws) -> Optional[int]:
 # WORD COUNTING
 # =============================================================================
 
-def _count_words_in_sheet(ws, trans_col: int) -> Dict:
+def _count_words_in_sheet(ws, trans_col: int, counting_mode: str = "words") -> Dict:
     """
-    Count words in the translation column of a worksheet.
+    Count words (Latin) or characters (CJK) in the translation column.
+
+    Args:
+        ws: Worksheet
+        trans_col: 1-based column index of translation column
+        counting_mode: "words" for Latin languages, "chars" for CJK
 
     Returns dict with:
-        total_words: int
+        total_count: int (words or chars depending on mode)
         total_rows: int
         translated_rows: int (non-empty, non-Korean)
         korean_rows: int (untranslated)
         empty_rows: int
+        mode: str ("words" or "chars")
     """
     stats = {
-        "total_words": 0,
+        "total_count": 0,
         "total_rows": 0,
         "translated_rows": 0,
         "korean_rows": 0,
         "empty_rows": 0,
+        "mode": counting_mode,
     }
+
+    count_fn = count_chars_chinese if counting_mode == "chars" else count_words_english
 
     for row in range(2, (ws.max_row or 1) + 1):
         cell_value = ws.cell(row, trans_col).value
@@ -175,8 +243,8 @@ def _count_words_in_sheet(ws, trans_col: int) -> Dict:
             stats["korean_rows"] += 1
             continue
 
-        word_count = count_words_english(text)
-        stats["total_words"] += word_count
+        count = count_fn(text)
+        stats["total_count"] += count
         stats["translated_rows"] += 1
 
     return stats
@@ -230,18 +298,28 @@ def _scan_datasheet(filepath: Path, log_callback=None) -> Optional[Dict]:
                 continue
 
             trans_header = str(ws.cell(1, trans_col).value or "")
-            stats = _count_words_in_sheet(ws, trans_col)
+
+            # Collect sample texts for CJK auto-detection
+            sample_texts = []
+            for sr in range(2, min((ws.max_row or 1) + 1, 12)):
+                val = ws.cell(sr, trans_col).value
+                if val:
+                    sample_texts.append(str(val))
+
+            counting_mode = _detect_counting_mode(trans_header, sample_texts)
+            stats = _count_words_in_sheet(ws, trans_col, counting_mode)
 
             result["sheets"].append({
                 "name": sheet_name,
-                "words": stats["total_words"],
+                "count": stats["total_count"],
+                "mode": stats["mode"],
                 "rows": stats["total_rows"],
                 "translated": stats["translated_rows"],
                 "korean": stats["korean_rows"],
                 "empty": stats["empty_rows"],
                 "trans_col_header": trans_header,
             })
-            result["total_words"] += stats["total_words"]
+            result["total_words"] += stats["total_count"]
             result["total_sheets"] += 1
     finally:
         wb.close()
@@ -335,7 +413,7 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
 
     # --- GRAND SUMMARY TABLE ---
     row = 4
-    headers = ["Category", "File", "Sheets", "Total Rows", "Translated", "Korean (Untranslated)", "Word Count"]
+    headers = ["Category", "File", "Sheets", "Total Rows", "Translated", "Korean (Untranslated)", "Words / Chars"]
     for col, hdr in enumerate(headers, 1):
         cell = ws.cell(row, col, hdr)
         cell.font = _HEADER_FONT
@@ -421,7 +499,7 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
         row += 1
 
         # Detail headers
-        detail_headers = ["Sheet/Tab", "Translation Column", "Total Rows", "Translated", "Korean", "Empty", "Word Count"]
+        detail_headers = ["Sheet/Tab", "Translation Column", "Total Rows", "Translated", "Korean", "Empty", "Words / Chars"]
         for col, hdr in enumerate(detail_headers, 1):
             cell = ws.cell(row, col, hdr)
             cell.font = _SUBHEADER_FONT
@@ -433,14 +511,15 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
         # Sheet rows
         for s_idx, sheet in enumerate(scan["sheets"]):
             fill = _DATA_FILL_A if s_idx % 2 == 0 else _DATA_FILL_B
+            mode_label = "chars" if sheet.get("mode") == "chars" else "words"
             sheet_vals = [
                 sheet["name"],
-                sheet["trans_col_header"],
+                f"{sheet['trans_col_header']} ({mode_label})",
                 sheet["rows"],
                 sheet["translated"],
                 sheet["korean"],
                 sheet["empty"],
-                sheet["words"],
+                sheet["count"],
             ]
             for col, val in enumerate(sheet_vals, 1):
                 cell = ws.cell(row, col, val)
