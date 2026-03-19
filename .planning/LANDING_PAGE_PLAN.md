@@ -81,6 +81,12 @@ Potential: generate animated swarm visualization background with Kling
 - brains-trust (second opinion on design decisions)
 - Critique skill (audit after each piece)
 
+## FUTURE: Build Local Model MCP Wrappers (if fal.ai too expensive)
+- Use `mcp-builder` skill to create custom MCP server
+- Wrap: Z-Image Turbo (images), Wan 2.2 (video), ACE-Step (music), AudioLDM 2 (sound FX)
+- Each model = one Python script + MCP tool definition (~1 hour each)
+- Only build when needed — fal.ai covers everything for now
+
 ## SKIP LIST
 - Cursor trail particles (conflicts with existing cursor)
 - Radial ambient pulse (conflicts with mesh gradient + sphere)
