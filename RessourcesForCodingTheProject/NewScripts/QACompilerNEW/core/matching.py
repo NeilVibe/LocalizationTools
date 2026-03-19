@@ -458,6 +458,11 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
         # Use header-name detection — no position fallback
         trans_col_idx = find_translation_col_in_headers(col_idx, is_english)
         _match_log(f"  Translation column (header-based): index={trans_col_idx}")
+        if trans_col_idx is None:
+            available = [h for h in col_idx.keys()]
+            print(f"    ⚠ WARNING: No translation column found! Headers: {available}")
+            print(f"    ⚠ Expected headers starting with 'TRANSLATION' or 'ENGLISH'. Matching will fail for ALL rows.")
+            _match_log(f"  CRITICAL: No translation column! Headers: {available}", "ERROR")
 
         for row_idx, row_tuple in enumerate(data_rows, start=2):
             stringid = sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else ""

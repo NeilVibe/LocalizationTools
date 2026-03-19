@@ -401,6 +401,10 @@ def extract_tester_data_from_master(
             from core.matching import find_translation_col_in_headers
             trans_col_idx_resolved = find_translation_col_in_headers(col_map, is_english)
             # find_translation_col_in_headers returns 0-based index (matching col_map format)
+            if trans_col_idx_resolved is None:
+                available = [h for h in col_map.keys()]
+                print(f"    ⚠ WARNING: No translation column in {sheet_name}! Headers: {available[:15]}")
+                print(f"    ⚠ Extraction will skip all rows — manager data at risk!")
 
             sheet_data = {}
 
@@ -669,10 +673,20 @@ def restore_tester_data_to_master(
             else:
                 if len(content_key) >= 2:
                     stringid, translation = content_key[0], content_key[1]
-                    if stringid and translation:
-                        pk = (stringid, translation)
-                        if pk in master_index.get("all_primary", {}):
-                            matching_rows = list(master_index["all_primary"][pk])
+                    if translation:
+                        # Try primary match (stringid + translation) first
+                        if stringid:
+                            pk = (stringid, translation)
+                            if pk in master_index.get("all_primary", {}):
+                                matching_rows = list(master_index["all_primary"][pk])
+                        # If no stringid OR no primary match, try fallback immediately
+                        # This catches group header rows with empty StringKey
+                        if not matching_rows and translation in master_index.get("fallback", {}):
+                            for row in master_index["fallback"][translation]:
+                                if row not in master_index["consumed"]:
+                                    matching_rows.append(row)
+                                    print(f"      [FALLBACK] Key sid={stringid!r} matched via translation to row {row}")
+                                    break
 
             if matching_rows:
                 primary_matched[content_key] = matching_rows
@@ -716,6 +730,20 @@ def restore_tester_data_to_master(
         all_matched = {**primary_matched, **fallback_matched}
         unmatched = set(sheet_data.keys()) - set(all_matched.keys())
         sheet_orphaned += sum(len(sheet_data[k]) for k in unmatched)
+
+        # Debug: log orphaned entries with manager data (helps diagnose data loss)
+        if unmatched:
+            orphaned_with_manager = 0
+            for ck in unmatched:
+                for u, ud in sheet_data[ck].items():
+                    if ud.get("manager_status") or ud.get("manager_comment"):
+                        orphaned_with_manager += 1
+            if orphaned_with_manager > 0:
+                print(f"      ⚠ {orphaned_with_manager} orphaned entries have MANAGER data that will be LOST!")
+                for ck in list(unmatched)[:5]:  # Show first 5
+                    users = list(sheet_data[ck].keys())
+                    has_mgr = any(sheet_data[ck][u].get("manager_status") for u in users)
+                    print(f"        Key={ck[:2] if len(ck) >= 2 else ck}, Users={users}, HasMgrStatus={has_mgr}")
 
         for content_key, matching_rows in all_matched.items():
             user_data_dict = sheet_data[content_key]
@@ -902,6 +930,158 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
         print(f"    Duplicate post-process: replicated {total_filled} cells across duplicate rows")
 
     return total_filled
+
+
+# =============================================================================
+# MASTER FILE BEAUTIFICATION
+# =============================================================================
+
+# --- Section header colors ---
+_CONTENT_HEADER_FILL = PatternFill("solid", fgColor="4472C4")     # Dark blue
+_CONTENT_HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
+_TESTER_HEADER_FILL = PatternFill("solid", fgColor="70AD47")      # Green
+_TESTER_HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
+_MANAGER_HEADER_FILL = PatternFill("solid", fgColor="ED7D31")     # Orange
+_MANAGER_HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
+
+# --- Data row alternating fills ---
+_ROW_FILL_A = PatternFill("solid", fgColor="F2F7FB")              # Very light blue
+_ROW_FILL_B = PatternFill("solid", fgColor="FFFFFF")              # White
+
+# --- Section border (thick left side to separate sections) ---
+_SECTION_LEFT_BORDER = Border(
+    left=Side(style="medium", color="333333"),
+    right=Side(style="thin", color="D9D9D9"),
+    top=Side(style="thin", color="D9D9D9"),
+    bottom=Side(style="thin", color="D9D9D9"),
+)
+_NORMAL_BORDER = Border(
+    left=Side(style="thin", color="D9D9D9"),
+    right=Side(style="thin", color="D9D9D9"),
+    top=Side(style="thin", color="D9D9D9"),
+    bottom=Side(style="thin", color="D9D9D9"),
+)
+_HEADER_BORDER = Border(
+    left=Side(style="thin", color="FFFFFF"),
+    right=Side(style="thin", color="FFFFFF"),
+    top=Side(style="medium", color="333333"),
+    bottom=Side(style="medium", color="333333"),
+)
+
+
+def beautify_master_sheet(ws) -> int:
+    """
+    Apply beautiful formatting to a master sheet with clear visual separation
+    between Content columns, QA Tester sections, and Manager sections.
+
+    Column layout per user:
+      [Content cols...] | COMMENT_{user} TESTER_STATUS_{user} | STATUS_{user} MANAGER_COMMENT_{user} | SCREENSHOT_{user}
+
+    Color coding:
+      - Content columns: Blue headers
+      - QA Tester columns (COMMENT_, TESTER_STATUS_): Green headers
+      - Manager columns (STATUS_, MANAGER_COMMENT_): Orange headers
+      - Screenshot: Green (part of tester section)
+
+    Returns number of header cells styled.
+    """
+    if ws.max_row is None or ws.max_row < 2:
+        return 0
+    if ws.max_column is None or ws.max_column < 1:
+        return 0
+
+    styled = 0
+    max_col = ws.max_column
+
+    # Classify each column
+    for col in range(1, max_col + 1):
+        header_val = ws.cell(1, col).value
+        if not header_val:
+            continue
+        header_upper = str(header_val).strip().upper()
+
+        # Determine section
+        is_tester = header_upper.startswith("COMMENT_") or header_upper.startswith("TESTER_STATUS_") or header_upper.startswith("SCREENSHOT_")
+        is_manager = header_upper.startswith("STATUS_") or header_upper.startswith("MANAGER_COMMENT_")
+
+        # Style header
+        header_cell = ws.cell(1, col)
+        header_cell.border = _HEADER_BORDER
+        header_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        if is_tester:
+            header_cell.fill = _TESTER_HEADER_FILL
+            header_cell.font = _TESTER_HEADER_FONT
+        elif is_manager:
+            header_cell.fill = _MANAGER_HEADER_FILL
+            header_cell.font = _MANAGER_HEADER_FONT
+        else:
+            header_cell.fill = _CONTENT_HEADER_FILL
+            header_cell.font = _CONTENT_HEADER_FONT
+
+        # Check if this column starts a new section (first COMMENT_ or first STATUS_ for a user)
+        is_section_start = header_upper.startswith("COMMENT_") or header_upper.startswith("STATUS_")
+
+        # Style data rows with alternating fills and section borders
+        for row in range(2, (ws.max_row or 1) + 1):
+            cell = ws.cell(row, col)
+            # Only apply alternating fill if cell doesn't already have a meaningful fill
+            # (preserves status-specific coloring from restore_tester_data_to_master)
+            current_fill = cell.fill
+            has_custom_fill = False
+            if current_fill and current_fill.patternType and current_fill.patternType != "none":
+                fg = current_fill.fgColor
+                if fg is not None:
+                    if fg.rgb and fg.rgb not in (None, "00000000", "FFFFFFFF"):
+                        has_custom_fill = True
+                    elif getattr(fg, 'indexed', None) is not None or getattr(fg, 'theme', None) is not None:
+                        has_custom_fill = True
+
+            if not has_custom_fill:
+                cell.fill = _ROW_FILL_A if (row % 2 == 0) else _ROW_FILL_B
+
+            # Apply section border (thick left) at section starts
+            if is_section_start:
+                cell.border = _SECTION_LEFT_BORDER
+            elif cell.border is None or not cell.border.left or cell.border.left.style is None:
+                cell.border = _NORMAL_BORDER
+
+        styled += 1
+
+    if styled > 0:
+        print(f"      Beautified: {styled} columns styled (blue=content, green=tester, orange=manager)")
+
+    return styled
+
+
+def reapply_manager_dropdowns(ws) -> int:
+    """
+    Re-apply MANAGER_STATUS_OPTIONS dropdown to ALL STATUS_{username} columns.
+
+    This ensures manager status dropdowns (FIXED, REPORTED, CHECKING, NON ISSUE)
+    are always present after master rebuild, even if the column existed before.
+
+    Returns number of columns with dropdowns applied.
+    """
+    applied = 0
+    max_col = ws.max_column or 0
+    max_row = ws.max_row
+    if max_row is None or max_row < 2:
+        return 0
+
+    for col in range(1, max_col + 1):
+        header_val = ws.cell(1, col).value
+        if not header_val:
+            continue
+        header_upper = str(header_val).strip().upper()
+        if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+            add_manager_dropdown(ws, col=col, start_row=2, end_row=max_row)
+            applied += 1
+
+    if applied > 0:
+        print(f"      Manager dropdowns: applied to {applied} STATUS_ columns")
+
+    return applied
 
 
 # =============================================================================

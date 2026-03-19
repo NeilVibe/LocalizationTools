@@ -1,7 +1,7 @@
 # ISSUE: Manager Transfer Bug + Row Union Cleanup + Unified Data Model
 
 **Date:** 2026-02-08
-**Status:** IN PROGRESS
+**Status:** FIX APPLIED (2026-03-19) — matching logic fixed, beautification added, manager dropdowns re-applied
 **Severity:** HIGH
 
 ---

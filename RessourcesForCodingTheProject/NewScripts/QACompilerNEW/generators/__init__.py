@@ -160,6 +160,16 @@ def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
     total_kr = sum(len(s) for s in results['korean_strings'].values())
     _log(f"Total: {total_kr:,} Korean strings collected")
 
+    # Generate Word Count Report for all generated datasheets
+    if results["categories_processed"]:
+        try:
+            from generators.wordcount_report import generate_wordcount_report
+            report_path = generate_wordcount_report(log_callback=log_callback)
+            if report_path:
+                results["wordcount_report"] = str(report_path)
+        except Exception as e:
+            _log(f"  Warning: Word Count Report failed: {e}", 'warning')
+
     _log(f"Generation complete: {results['files_created']} file(s) for {len(results['categories_processed'])} categories",
          'success' if results["success"] else 'warning')
 

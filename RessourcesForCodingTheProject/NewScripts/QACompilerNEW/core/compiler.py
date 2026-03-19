@@ -122,7 +122,9 @@ from core.excel_ops import (
     copy_images_with_unique_names,
     build_column_map,
     preload_worksheet_data,
-    replicate_duplicate_row_data
+    replicate_duplicate_row_data,
+    beautify_master_sheet,
+    reapply_manager_dropdowns,
 )
 from core.processing import (
     process_sheet, update_status_sheet,
@@ -1485,17 +1487,33 @@ def run_compiler(log_callback=None, progress_callback=None):
         # 0. Post-process: replicate data across duplicate rows
         replicate_duplicate_row_data(wb, cat, is_eng)
 
-        # 1. Update STATUS sheet
+        # 1. Re-apply manager dropdowns (before autofit)
+        for sheet_name in wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
+            ws = wb[sheet_name]
+            if ws.max_row and ws.max_row >= 2:
+                reapply_manager_dropdowns(ws)
+
+        # 2. Update STATUS sheet
         if users:
             update_status_sheet(wb, users, dict(stats))
 
-        # 2. Autofit (returns preloaded sheet data for reuse)
+        # 3. Autofit (returns preloaded sheet data for reuse)
         sheet_data_cache = autofit_rows_with_wordwrap(wb)
 
-        # 3. Hide empty rows/sheets/columns (reuses preloaded data — avoids redundant load)
+        # 4. Hide empty rows/sheets/columns (reuses preloaded data — avoids redundant load)
         hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb, preloaded_sheets=sheet_data_cache)
 
-        # 4. Save
+        # 5. Beautify LAST — after autofit so header colors/alignment aren't stomped
+        for sheet_name in wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
+            ws = wb[sheet_name]
+            if ws.max_row and ws.max_row >= 2:
+                beautify_master_sheet(ws)
+
+        # 6. Save
         wb.save(path)
 
         # Clean up .bak backup now that new master is safely saved
@@ -1538,6 +1556,9 @@ def run_compiler(log_callback=None, progress_callback=None):
                     _log(f"  Master_{master} [{lang}]: {users} users, {hidden} rows hidden, saved", 'success')
             except Exception as e:
                 _log(f"ERROR: Failed to finalize: {e}", 'error')
+                import traceback
+                traceback.print_exc()
+                raise
 
     # Show skipped categories
     for category in CATEGORIES:

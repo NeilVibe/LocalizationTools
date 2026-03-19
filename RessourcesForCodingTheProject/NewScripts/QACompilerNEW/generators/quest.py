@@ -168,6 +168,61 @@ def _tr_sid(
         return get_first_translation(tbl, text)
 
 
+def _build_mission_desc_rows(
+    m,
+    mission_depth: int,
+    eng_tbl, lang_tbl,
+    source_file: str,
+    export_index,
+    consumer,
+) -> List[Row]:
+    """
+    Build Desc and CompleteLog rows for a Mission element.
+
+    Desc = objective text shown BEFORE mission completion.
+    CompleteLog = summary text shown AFTER mission completion.
+    Both are stacked at mission_depth + 1, right after the Mission Name row.
+
+    Returns list of Row tuples (0-2 rows depending on what attributes exist).
+    """
+    desc_rows = []
+    desc_depth = mission_depth + 1
+
+    # Desc (BEFORE completion)
+    desc_kr = m.get("Desc") or ""
+    if desc_kr and desc_kr.replace("<br/>", "").replace("<BR/>", "").strip():
+        _collect_korean_string(desc_kr)
+        loc_desc, sid_desc = _tr_sid(desc_kr, lang_tbl, source_file, export_index, consumer)
+        desc_rows.append((
+            desc_depth,
+            desc_kr,
+            _tr(desc_kr, eng_tbl, source_file, export_index, None),
+            loc_desc,
+            "",  # No StringKey for Desc
+            sid_desc,
+            False, False,
+            "", "", "", ""
+        ))
+
+    # CompleteLog (AFTER completion)
+    clog_kr = m.get("CompleteLog") or ""
+    if clog_kr and clog_kr.replace("<br/>", "").replace("<BR/>", "").strip():
+        _collect_korean_string(clog_kr)
+        loc_clog, sid_clog = _tr_sid(clog_kr, lang_tbl, source_file, export_index, consumer)
+        desc_rows.append((
+            desc_depth,
+            clog_kr,
+            _tr(clog_kr, eng_tbl, source_file, export_index, None),
+            loc_clog,
+            "",  # No StringKey for CompleteLog
+            sid_clog,
+            False, False,
+            "", "", "", ""
+        ))
+
+    return desc_rows
+
+
 def _parse_vec3(s: str) -> Optional[Tuple[float, float, float]]:
     """Parse a vector3 string into a tuple of floats."""
     parts = [p for p in s.replace(",", " ").split() if p]
@@ -925,6 +980,11 @@ def build_rows_main(
                 cmd, "", "", ""
             ))
 
+            # Desc + CompleteLog rows (depth 3, same as SubMission)
+            rows.extend(_build_mission_desc_rows(
+                m, 2, eng_tbl, lang_tbl, source_file, export_index, consumer
+            ))
+
             # SubMission rows
             for s in m.findall("SubMission"):
                 sk = s.get("Name") or ""
@@ -1070,6 +1130,11 @@ def build_rows_faction(
                     False, True, cmd, "", "", ""
                 ))
 
+                # Desc + CompleteLog rows
+                rows.extend(_build_mission_desc_rows(
+                    m, 1, eng_tbl, lang_tbl, source_file, export_index, consumer
+                ))
+
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
                     _collect_korean_string(sk)
@@ -1147,6 +1212,11 @@ def build_rows_daily(
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd, "", "", ""
+                ))
+
+                # Desc + CompleteLog rows
+                rows.extend(_build_mission_desc_rows(
+                    m, 1, eng_tbl, lang_tbl, source_file, export_index, consumer
                 ))
 
                 for s in m.findall("SubMission"):
@@ -1254,6 +1324,11 @@ def build_rows_challenge(
                     False, True, cmd2, "", "", ""
                 ))
 
+                # Desc + CompleteLog rows
+                rows.extend(_build_mission_desc_rows(
+                    m, 1, eng_tbl, lang_tbl, source_file, export_index, consumer
+                ))
+
                 for s in m.findall("SubMission"):
                     sk = s.get("Name") or ""
                     _collect_korean_string(sk)
@@ -1332,6 +1407,11 @@ def build_rows_minigame(
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd, "", "", ""
+                ))
+
+                # Desc + CompleteLog rows
+                rows.extend(_build_mission_desc_rows(
+                    m, 1, eng_tbl, lang_tbl, source_file, export_index, consumer
                 ))
 
                 for s in m.findall("SubMission"):
