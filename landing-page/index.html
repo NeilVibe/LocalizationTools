@@ -5796,6 +5796,7 @@
     /* ---- Lenis Smooth Scroll — premium scroll feel ---- */
     if (!noMo && typeof Lenis !== 'undefined') {
       var lenis = new Lenis({ duration: 1.2, smoothWheel: true, touchMultiplier: 1.5 });
+      window._lenis = lenis; // Expose for module access
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add(function(time){ lenis.raf(time * 1000); });
       gsap.ticker.lagSmoothing(0);
@@ -6382,9 +6383,17 @@
         mat.uniforms.uMouse3D.value.copy(mouse3D);
         mat.uniforms.uRepelStrength.value = 1.0;
 
-        // Chromatic aberration subtle breathing
+        // Scroll velocity reactivity — fast scroll = dramatic effects
+        var scrollVelocity = window._lenis ? Math.abs(window._lenis.velocity) : 0;
+        var velNorm = Math.min(scrollVelocity / 5, 1); // normalize: 0→1 (5 = fast scroll)
+        var velSmooth = velNorm; // could add smoothing here if jittery
+
+        // Chromatic aberration: base breathing + velocity boost
         if (useComposer) {
-          chromaticPass.uniforms.uIntensity.value = 0.001 + Math.sin(t * 0.3) * 0.0004;
+          var chromBase = 0.001 + Math.sin(t * 0.3) * 0.0004;
+          chromaticPass.uniforms.uIntensity.value = chromBase + velNorm * 0.003;
+          // Bloom: subtle boost on fast scroll
+          bloomPass.strength = 0.8 + velNorm * 0.6;
         }
 
         // Render — composer with bloom + chromatic, or fallback to basic
