@@ -1189,16 +1189,19 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
 
         # Column hiding: Hide COMMENT_{User} columns that are entirely empty in this sheet
         hidden_cols_this_sheet = 0
+        # Always log column hiding decisions (not just debug mode)
+        print(f" columns: {len(comment_cols)} COMMENT_ cols, {len(cols_with_comments)} have data", end="")
         for col in comment_cols:
-            if col not in cols_with_comments:
-                header = ws.cell(row=1, column=col).value
-                username = str(header).replace("COMMENT_", "") if header else ""
-                username_upper = username.upper()
+            header = ws.cell(row=1, column=col).value
+            username = str(header).replace("COMMENT_", "") if header else ""
+            username_upper = username.upper()
 
+            if col not in cols_with_comments:
                 # Hide the COMMENT_{User} column
                 col_letter = get_column_letter(col)
                 ws.column_dimensions[col_letter].hidden = True
                 hidden_cols_this_sheet += 1
+                print(f"\n      HIDE: {username} (col {col}, no data)", end="")
 
                 # Hide paired columns using pre-built maps (O(1) lookup)
                 for paired_col in [screenshot_cols_map.get(username_upper),
@@ -1208,9 +1211,8 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                     if paired_col:
                         ws.column_dimensions[get_column_letter(paired_col)].hidden = True
                         hidden_cols_this_sheet += 1
-
-                if debug:
-                    print(f"    [DEBUG] Hidden empty column group for user: {username}")
+            else:
+                print(f"\n      KEEP: {username} (col {col}, has data)", end="")
 
         hidden_columns_total += hidden_cols_this_sheet
 
