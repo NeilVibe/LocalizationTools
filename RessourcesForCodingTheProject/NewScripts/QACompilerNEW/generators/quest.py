@@ -200,7 +200,7 @@ def _build_mission_desc_rows(
             loc_desc,
             "",  # No StringKey for Desc
             sid_desc,
-            False, False,
+            False, True,
             "", "", "", ""
         ))
 
@@ -216,7 +216,7 @@ def _build_mission_desc_rows(
             loc_clog,
             "",  # No StringKey for CompleteLog
             sid_clog,
-            False, False,
+            False, True,
             "", "", "", ""
         ))
 

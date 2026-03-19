@@ -20,8 +20,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 import sys
-if __name__ == "__main__":
-    sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import DATASHEET_OUTPUT
 from core.processing import count_words_english, contains_korean
 
