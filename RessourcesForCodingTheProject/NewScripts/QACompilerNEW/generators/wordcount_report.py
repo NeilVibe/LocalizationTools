@@ -139,39 +139,44 @@ _SKIP_PATTERNS = [
 ]
 
 
+def _read_headers(ws) -> Dict[int, str]:
+    """
+    Read header row using iter_rows (streaming-safe for read_only mode).
+
+    Returns: {1-based_col_index: HEADER_UPPER}
+    """
+    headers = {}
+    header_iter = ws.iter_rows(min_row=1, max_row=1, values_only=True)
+    header_tuple = next(header_iter, None)
+    if header_tuple:
+        for idx, val in enumerate(header_tuple):
+            if val:
+                headers[idx + 1] = str(val).strip().upper()
+    return headers
+
+
+_KNOWN_NON_TRANS = {
+    "STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "COMMAND",
+    "STRINGKEY", "MEMO", "ORIGINAL", "ENG", "DATATYPE", "FILENAME",
+    "SOURCETEXT", "RECORDING", "DIALOGTYPE", "GROUP", "SEQUENCENAME",
+    "DIALOGVOICE", "SUBTIMELINENAME", "EVENTNAME", "INSTRUCTIONS",
+}
+
+
 def _find_translation_col(ws) -> Optional[int]:
     """
     Find the translation column in a worksheet by header name.
-
-    Detection order:
-    1. "TRANSLATION*" headers (highest priority — used by Item, Character, etc.)
-    2. "ENGLISH*" headers (used by Knowledge, Region, etc.)
-    3. Bare language codes after ENG column (Quest non-ENG: FRA, DEU, CHS, etc.)
-    4. "ENG" as last resort (Quest ENG datasheets)
-    5. "TEXT" (Script category)
-
-    Skips Korean source columns (SourceText, Original).
+    Uses iter_rows for read_only compatibility (no ws.cell calls).
 
     Returns 1-based column index, or None if not found.
     """
-    max_col = ws.max_column or 0
-    _KNOWN_NON_TRANS = {
-        "STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "COMMAND",
-        "STRINGKEY", "MEMO", "ORIGINAL", "ENG", "DATATYPE", "FILENAME",
-        "SOURCETEXT", "RECORDING", "DIALOGTYPE", "GROUP", "SEQUENCENAME",
-        "DIALOGVOICE", "SUBTIMELINENAME", "EVENTNAME", "INSTRUCTIONS",
-    }
+    headers = _read_headers(ws)
+    if not headers:
+        return None
 
-    # Collect all headers
-    headers = {}  # col -> header_upper
-    for col in range(1, max_col + 1):
-        header = ws.cell(1, col).value
-        if header:
-            headers[col] = str(header).strip().upper()
-
-    # Pass 1: TRANSLATION* (best match — explicit translation column)
+    # Pass 1: TRANSLATION* (best match — Item, Character, Skill, Knowledge, Help, etc.)
     for col, h in headers.items():
-        if h.startswith("TRANSLATION") and not any(h.startswith(s) for s in _SKIP_PATTERNS):
+        if h.startswith("TRANSLATION"):
             return col
 
     # Pass 2: ENGLISH* (e.g., "English (ENG)")
@@ -179,21 +184,20 @@ def _find_translation_col(ws) -> Optional[int]:
         if h.startswith("ENGLISH"):
             return col
 
-    # Pass 3: Language column after ENG (Quest: Original | ENG | FRA | ... or ZHO-CN, etc.)
-    # Accept any column after ENG that isn't a known non-translation header
-    eng_found = False
-    for col in range(1, max_col + 1):
-        h = headers.get(col, "")
-        if h == "ENG":
-            eng_found = True
-            continue
-        if eng_found and h and h not in _KNOWN_NON_TRANS:
-            return col
-
-    # Pass 4: ENG column itself (Quest ENG datasheets)
+    # Pass 3: Language column after ENG (Quest: Original | ENG | ZHO-CN | ...)
+    eng_col = None
     for col, h in headers.items():
         if h == "ENG":
-            return col
+            eng_col = col
+            break
+    if eng_col is not None:
+        for col in sorted(headers.keys()):
+            if col > eng_col and headers[col] not in _KNOWN_NON_TRANS:
+                return col
+
+    # Pass 4: ENG column itself (Quest ENG datasheets)
+    if eng_col is not None:
+        return eng_col
 
     # Pass 5: TEXT (Script category)
     for col, h in headers.items():
@@ -210,19 +214,14 @@ def _find_translation_col(ws) -> Optional[int]:
 def _count_words_in_sheet(ws, trans_col: int, counting_mode: str = "words") -> Dict:
     """
     Count words (Latin) or characters (CJK) in the translation column.
+    Uses iter_rows for streaming performance (instant, not minutes).
 
     Args:
         ws: Worksheet
         trans_col: 1-based column index of translation column
         counting_mode: "words" for Latin languages, "chars" for CJK
 
-    Returns dict with:
-        total_count: int (words or chars depending on mode)
-        total_rows: int
-        translated_rows: int (non-empty, non-Korean)
-        korean_rows: int (untranslated)
-        empty_rows: int
-        mode: str ("words" or "chars")
+    Returns dict with counts and mode.
     """
     stats = {
         "total_count": 0,
@@ -234,9 +233,14 @@ def _count_words_in_sheet(ws, trans_col: int, counting_mode: str = "words") -> D
     }
 
     count_fn = count_chars_chinese if counting_mode == "chars" else count_words_english
+    col_idx = trans_col - 1  # iter_rows uses 0-based tuples
 
-    for row in range(2, (ws.max_row or 1) + 1):
-        cell_value = ws.cell(row, trans_col).value
+    for row_tuple in ws.iter_rows(min_row=2, values_only=True):
+        if col_idx >= len(row_tuple):
+            stats["empty_rows"] += 1
+            continue
+
+        cell_value = row_tuple[col_idx]
         if cell_value is None or str(cell_value).strip() == "":
             stats["empty_rows"] += 1
             continue
@@ -299,17 +303,20 @@ def _scan_datasheet(filepath: Path, log_callback=None) -> Optional[Dict]:
 
             trans_col = _find_translation_col(ws)
             if trans_col is None:
-                _log(f"    Skipped sheet '{sheet_name}': no translation column found", 'warning')
+                headers_found = _read_headers(ws)
+                _log(f"    Skipped sheet '{sheet_name}': no translation column found (headers: {list(headers_found.values())[:8]})", 'warning')
                 continue
 
-            trans_header = str(ws.cell(1, trans_col).value or "")
+            # Get header name from cached headers (no ws.cell call)
+            sheet_headers = _read_headers(ws)
+            trans_header = sheet_headers.get(trans_col, "")
 
-            # Collect sample texts for CJK auto-detection
+            # Collect sample texts for CJK auto-detection using iter_rows
             sample_texts = []
-            for sr in range(2, min((ws.max_row or 1) + 1, 12)):
-                val = ws.cell(sr, trans_col).value
-                if val:
-                    sample_texts.append(str(val))
+            col_idx = trans_col - 1
+            for row_tuple in ws.iter_rows(min_row=2, max_row=min(11, ws.max_row or 1), values_only=True):
+                if col_idx < len(row_tuple) and row_tuple[col_idx]:
+                    sample_texts.append(str(row_tuple[col_idx]))
 
             counting_mode = _detect_counting_mode(trans_header, sample_texts)
             stats = _count_words_in_sheet(ws, trans_col, counting_mode)
