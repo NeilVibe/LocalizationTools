@@ -418,6 +418,65 @@
       animation: meshDriftSlow 45s ease-in-out infinite alternate;
     }
 
+    /* Ambient light orbs — Apple macOS style drifting color pools */
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      mix-blend-mode: screen;
+      will-change: transform;
+      opacity: 0;
+      animation: orbFadeIn 3s ease-out forwards;
+    }
+    .ambient-orb--copper {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(212,154,92,0.12) 0%, transparent 70%);
+      top: 8%; left: 12%;
+      animation: orbFadeIn 3s ease-out forwards, orbDrift1 20s 3s ease-in-out infinite alternate;
+    }
+    .ambient-orb--blue {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(108,140,200,0.10) 0%, transparent 70%);
+      bottom: 15%; right: 8%;
+      animation: orbFadeIn 3s 0.5s ease-out forwards, orbDrift2 25s 3.5s ease-in-out infinite alternate;
+    }
+    .ambient-orb--warm {
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, rgba(232,138,58,0.08) 0%, transparent 70%);
+      top: 55%; left: 50%;
+      animation: orbFadeIn 3s 1s ease-out forwards, orbDrift3 18s 4s ease-in-out infinite alternate;
+    }
+    @keyframes orbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes orbDrift1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(80px,-40px) scale(1.15); } }
+    @keyframes orbDrift2 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-60px,30px) scale(0.9); } }
+    @keyframes orbDrift3 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(40px,50px) scale(1.1); } }
+
+    /* Sweeping light beam — slow cinematic sweep every 10s */
+    .hero-sweep {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .hero-sweep::before {
+      content: '';
+      position: absolute;
+      top: -20%; left: -30%;
+      width: 160%; height: 140%;
+      background: linear-gradient(105deg, transparent 0%, transparent 42%, rgba(212,154,92,0.03) 45%, rgba(212,154,92,0.06) 50%, rgba(212,154,92,0.03) 55%, transparent 58%, transparent 100%);
+      animation: sweepBeam 12s ease-in-out infinite;
+      will-change: transform;
+    }
+    @keyframes sweepBeam {
+      0%   { transform: translateX(-60%) rotate(-5deg); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { transform: translateX(60%) rotate(-5deg); opacity: 0; }
+    }
+
     @keyframes meshFadeIn { from { opacity: 0; } to { opacity: 0.05; } }
     .hero::before {
       content: '';
@@ -3514,6 +3573,12 @@
 
   <section class="hero" id="hero">
     <div class="hero-depth" aria-hidden="true"></div>
+    <!-- Ambient light orbs — Apple macOS style -->
+    <div class="ambient-orb ambient-orb--copper" aria-hidden="true"></div>
+    <div class="ambient-orb ambient-orb--blue" aria-hidden="true"></div>
+    <div class="ambient-orb ambient-orb--warm" aria-hidden="true"></div>
+    <!-- Sweeping light beam -->
+    <div class="hero-sweep" aria-hidden="true"></div>
     <div class="hero-content">
       <div class="hero-eyebrow" id="heroEyebrow">
         <span class="hero-eyebrow-dot"></span>
@@ -6596,6 +6661,7 @@
 
       // 4. Data pulses — looping after entrance completes
       setTimeout(startPulses, 2000);
+      setTimeout(startConstellationLife, 3000);
     }
 
     var pulsesPaused = false;
@@ -6647,6 +6713,130 @@
 
         setTimeout(animatePulse, delays[i] * 1000);
       });
+    }
+
+    /* ---- CONSTELLATION LIFE — auto-animation with data exchange ---- */
+    function startConstellationLife() {
+      var constellation = document.getElementById('constellation');
+      var nodes = constellation ? constellation.querySelectorAll('.constellation-node') : [];
+      var svg = constellation ? constellation.querySelector('.constellation-svg') : null;
+      var hubCore = constellation ? constellation.querySelector('.constellation-hub-core') : null;
+      if (!constellation || !svg || !nodes.length) return;
+
+      // Node coordinates in SVG viewBox (matching positions)
+      var nodeCoords = [
+        {x:60,y:27}, {x:300,y:14}, {x:540,y:41},    // KR, EN, JP (primary)
+        {x:0,y:163}, {x:600,y:163}, {x:84,y:299},    // DE, CN, FR
+        {x:324,y:326}, {x:552,y:286}, {x:144,y:116}, // TW, PT, TR
+        {x:468,y:224}, {x:192,y:231}, {x:456,y:102}  // RU, TH, ES
+      ];
+      var hubXY = {x:300, y:170};
+
+      // Create exchange dot
+      var exDot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      exDot.setAttribute('r','3');
+      exDot.setAttribute('fill','#f0a050');
+      exDot.setAttribute('filter','url(#pulseGlow)');
+      exDot.style.opacity = '0';
+      svg.appendChild(exDot);
+
+      // Create sonar ring elements inside constellation
+      for (var si = 0; si < 3; si++) {
+        var ring = document.createElement('div');
+        ring.className = 'sonar-ring';
+        ring.style.cssText = 'position:absolute;top:50%;left:50%;width:40px;height:40px;border-radius:50%;border:1px solid rgba(212,154,92,0.12);transform:translate(-50%,-50%) scale(1);pointer-events:none;opacity:0;will-change:transform,opacity;';
+        ring.dataset.delay = si * 2.5;
+        constellation.appendChild(ring);
+      }
+      // Animate sonar rings
+      gsap.to('.sonar-ring', {
+        scale: 10, opacity: 0, duration: 5, ease: 'power1.out',
+        stagger: { each: 2.5, repeat: -1 }
+      });
+      gsap.set('.sonar-ring', { opacity: 0.3 });
+
+      // Node breathing — staggered with golden angle offset
+      nodes.forEach(function(n, i) {
+        var dot = n.querySelector('.constellation-node-dot');
+        if (!dot) return;
+        var phase = (i * 137.5 / 360) * 4;
+        var isPrimary = n.classList.contains('constellation-node--primary');
+        gsap.to(dot, {
+          scale: isPrimary ? 1.12 : 1.2,
+          duration: 2.5 + (i % 3) * 0.5,
+          ease: 'sine.inOut', repeat: -1, yoyo: true, delay: phase
+        });
+      });
+
+      // Data exchange cycles
+      function runExchange() {
+        if (pulsesPaused) { setTimeout(runExchange, 3000); return; }
+        var from = Math.floor(Math.random() * 3); // primary node
+        var to = 3 + Math.floor(Math.random() * 9); // secondary node
+        var fromC = nodeCoords[from], toC = nodeCoords[to];
+
+        var tl = gsap.timeline({
+          onComplete: function() { setTimeout(runExchange, 3500 + Math.random() * 3000); }
+        });
+
+        // Hub flares
+        if (hubCore) {
+          tl.to(hubCore, { boxShadow: '0 0 40px rgba(232,138,58,0.5)', duration: 0.3, ease: 'power2.out' });
+          tl.to(hubCore, { boxShadow: '', duration: 0.6, ease: 'power2.inOut' });
+        }
+
+        // Activate source node
+        var srcDot = nodes[from].querySelector('.constellation-node-dot');
+        tl.to(srcDot, { scale: 1.6, duration: 0.3, ease: 'power2.out' }, 0.2);
+        tl.to(srcDot, { scale: 1, duration: 0.5, ease: 'power2.inOut' }, 0.8);
+
+        // Exchange dot travels: source → hub → destination
+        tl.set(exDot, { attr: {cx: fromC.x, cy: fromC.y}, opacity: 0 }, 0.3);
+        tl.to(exDot, { opacity: 0.9, duration: 0.15 }, 0.3);
+        tl.to(exDot, { attr: {cx: hubXY.x, cy: hubXY.y}, duration: 0.5, ease: 'power2.in' }, 0.45);
+        tl.to(exDot, { attr: {cx: toC.x, cy: toC.y}, duration: 0.5, ease: 'power2.out' }, 0.95);
+        tl.to(exDot, { opacity: 0, duration: 0.2 }, 1.35);
+
+        // Activate destination node
+        var dstDot = nodes[to] ? nodes[to].querySelector('.constellation-node-dot') : null;
+        if (dstDot) {
+          tl.to(dstDot, { scale: 1.5, duration: 0.3, ease: 'power2.out' }, 1.2);
+          tl.to(dstDot, { scale: 1, duration: 0.5, ease: 'power2.inOut' }, 1.7);
+        }
+      }
+      setTimeout(runExchange, 1000);
+
+      // Translation previews — show a word in each language periodically
+      var translations = [
+        {i:0,t:'안녕하세요'},{i:1,t:'Hello'},{i:2,t:'こんにちは'},
+        {i:3,t:'Hallo'},{i:4,t:'你好'},{i:5,t:'Bonjour'},
+        {i:6,t:'你好'},{i:7,t:'Olá'},{i:8,t:'Merhaba'},
+        {i:9,t:'Привет'},{i:10,t:'สวัสดี'},{i:11,t:'Hola'}
+      ];
+      function showTranslation() {
+        if (pulsesPaused) { setTimeout(showTranslation, 3000); return; }
+        var pick = translations[Math.floor(Math.random() * translations.length)];
+        var node = nodes[pick.i];
+        if (!node) { setTimeout(showTranslation, 2000); return; }
+
+        var preview = document.createElement('span');
+        preview.style.cssText = 'position:absolute;font-family:var(--mono);font-size:9px;color:rgba(240,160,80,0.6);white-space:nowrap;pointer-events:none;text-shadow:0 0 6px rgba(232,138,58,0.3);opacity:0;transform:translateY(4px);';
+        preview.textContent = pick.t;
+        // Position near the node
+        var nodeRect = node.getBoundingClientRect();
+        var conRect = constellation.getBoundingClientRect();
+        preview.style.left = (nodeRect.left - conRect.left + nodeRect.width/2) + 'px';
+        preview.style.top = (nodeRect.bottom - conRect.top + 4) + 'px';
+        preview.style.transform = 'translateX(-50%) translateY(4px)';
+        constellation.appendChild(preview);
+
+        var tl = gsap.timeline({
+          onComplete: function() { if (preview.parentNode) preview.parentNode.removeChild(preview); setTimeout(showTranslation, 4000 + Math.random() * 3000); }
+        });
+        tl.to(preview, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
+        tl.to(preview, { opacity: 0, y: -4, duration: 0.4, ease: 'power2.in' }, '+=1.5');
+      }
+      setTimeout(showTranslation, 5000);
     }
 
     /* ---- TYPEWRITER with dramatic timing ---- */
