@@ -169,6 +169,10 @@
     /* ================================================================
        SCROLL PROGRESS
        ================================================================ */
+    /* Typography motion — word-by-word slide-up reveal */
+    .word-reveal { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.05em; }
+    .word-reveal-inner { display: inline-block; transform: translateY(110%); will-change: transform; }
+
     .scroll-progress {
       position: fixed;
       top: 0;
@@ -6239,6 +6243,27 @@
         scrollTrigger: { trigger: '#closing', start: 'top 80%', end: 'top 30%', scrub: 1 }
       });
 
+      // Supernova — bloom intensity spike when particles converge at closing
+      ScrollTrigger.create({
+        trigger: '#closing', start: 'top 40%', end: 'top 10%', scrub: 1,
+        onUpdate: function(self) {
+          var p = self.progress;
+          if (useComposer) {
+            bloomPass.strength = 0.8 + p * 2.5;
+            chromaticPass.uniforms.uIntensity.value = 0.001 + p * 0.004;
+          }
+        }
+      });
+      ScrollTrigger.create({
+        trigger: '#powerStack', start: 'top top',
+        onEnterBack: function() {
+          if (useComposer) {
+            gsap.to(bloomPass, { strength: 0.8, duration: 1 });
+            chromaticPass.uniforms.uIntensity.value = 0.001;
+          }
+        }
+      });
+
       // B1: Particle opacity entrance (0→0.65 over 2.5s)
       // mat starts at opacity 0 (uniform default)
 
@@ -6346,6 +6371,70 @@
   </script>
 
   <script>
+
+    /* ---- TYPOGRAPHY MOTION — word-by-word slide-up reveal ---- */
+    (function(){
+      function splitWords(selector) {
+        document.querySelectorAll(selector).forEach(function(el) {
+          if (el.dataset.split) return;
+          el.dataset.split = 'true';
+          // Process child nodes, preserving existing spans and br tags
+          var nodes = el.childNodes;
+          var frag = document.createDocumentFragment();
+          nodes.forEach(function(node) {
+            if (node.nodeType === 1) {
+              // Element node — preserve spans, br tags
+              if (node.tagName === 'BR') {
+                frag.appendChild(node.cloneNode());
+                return;
+              }
+              // For spans (like t-accent), wrap their text content
+              var wrapper = node.cloneNode(false);
+              var words = (node.textContent || '').split(/\s+/).filter(Boolean);
+              words.forEach(function(word, i) {
+                var wr = document.createElement('span');
+                wr.className = 'word-reveal';
+                var inner = document.createElement('span');
+                inner.className = 'word-reveal-inner';
+                inner.textContent = word;
+                wr.appendChild(inner);
+                wrapper.appendChild(wr);
+                if (i < words.length - 1) wrapper.appendChild(document.createTextNode(' '));
+              });
+              frag.appendChild(wrapper);
+            } else if (node.nodeType === 3) {
+              // Text node — split into words
+              var words = node.textContent.split(/\s+/).filter(Boolean);
+              words.forEach(function(word, i) {
+                var wr = document.createElement('span');
+                wr.className = 'word-reveal';
+                var inner = document.createElement('span');
+                inner.className = 'word-reveal-inner';
+                inner.textContent = word;
+                wr.appendChild(inner);
+                frag.appendChild(wr);
+                if (i < words.length - 1) frag.appendChild(document.createTextNode(' '));
+              });
+            }
+          });
+          el.textContent = '';
+          el.appendChild(frag);
+        });
+      }
+
+      splitWords('.closing-tag, #showcase .t-display, #gamedevGrid .t-display, #codex .t-display');
+
+      document.querySelectorAll('[data-split]').forEach(function(el) {
+        var words = el.querySelectorAll('.word-reveal-inner');
+        if (!words.length) return;
+        ScrollTrigger.create({
+          trigger: el, start: 'top 85%', once: true,
+          onEnter: function() {
+            gsap.to(words, { y: '0%', duration: 0.7, stagger: 0.06, ease: 'power3.out' });
+          }
+        });
+      });
+    })();
 
     /* ---- CONSTELLATION ENTRANCE — the hero animation ---- */
     function animateConstellation() {
