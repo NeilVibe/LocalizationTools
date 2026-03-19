@@ -81,11 +81,17 @@ Potential: generate animated swarm visualization background with Kling
 - brains-trust (second opinion on design decisions)
 - Critique skill (audit after each piece)
 
-## FUTURE: Build Local Model MCP Wrappers (if fal.ai too expensive)
-- Use `mcp-builder` skill to create custom MCP server
-- Wrap: Z-Image Turbo (images), Wan 2.2 (video), ACE-Step (music), AudioLDM 2 (sound FX)
-- Each model = one Python script + MCP tool definition (~1 hour each)
-- Only build when needed — fal.ai covers everything for now
+## FUTURE: Build Local Model MCP Wrappers (ONLY if fal.ai too expensive)
+Priority order for building custom MCPs using `mcp-builder` skill:
+1. **Z-Image Turbo** (Alibaba, Apache 2.0, 12GB) — free image gen, replaces Nano Banana 2
+2. **Wan 2.2 1.3B** (Alibaba, Apache 2.0, 8.2GB) — free video gen, replaces Kling 3.0
+3. **ACE-Step 1.5** (Apache 2.0, <4GB) — music gen, UNIQUE (fal.ai can't do this)
+4. **Hunyuan3D Mini** (Tencent, Apache 2.0, 5-6GB) — 3D mesh gen, UNIQUE
+5. **AudioLDM 2** (Apache 2.0, ~8GB) — sound FX from text, UNIQUE
+6. **CosyVoice 2** (Alibaba, Apache 2.0, ~6GB) — streaming TTS with emotions
+Each = ~1 hour (Python wrapper + MCP tool definition).
+**NOT PRIORITY FOR LANDING PAGE** — fal.ai covers images + video.
+Build in a dedicated "local power" session when needed.
 
 ## SKIP LIST
 - Cursor trail particles (conflicts with existing cursor)
