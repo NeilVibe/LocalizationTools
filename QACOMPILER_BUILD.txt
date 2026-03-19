@@ -175,3 +175,4 @@ Build 202603192353: remove row append, clean template masters
 Build 202603192357: word count CJK chars + Latin words
 Build 202603200009: fix ZHO-CN language code detection
 Build 202603200012: streaming word count + ZHO-CN headers
+Build 202603200048: word count 1 sheet per language
