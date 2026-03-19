@@ -933,6 +933,100 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
 
 
 # =============================================================================
+# FINAL COLUMN SWEEP — hide user columns with nothing visible
+# =============================================================================
+
+def final_column_sweep(wb) -> int:
+    """
+    ULTIMATE FINAL PASS: After ALL processing (restore, process, hide rows, beautify),
+    check each user's column block. If a user's COMMENT column has ZERO visible content
+    (all cells empty or all on hidden rows), hide the entire column block.
+
+    This catches:
+    - Columns that were empty from the start (should already be hidden, safety net)
+    - Columns where ALL the user's comments are on HIDDEN rows (FIXED/resolved)
+    - Columns created by restore but never populated (orphaned user columns)
+
+    Returns total columns hidden.
+    """
+    total_hidden = 0
+
+    for sheet_name in wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+
+        ws = wb[sheet_name]
+        if ws.max_row is None or ws.max_row < 2:
+            continue
+
+        # Build header map
+        header_map = {}  # col (1-based) -> HEADER_UPPER
+        for col in range(1, (ws.max_column or 0) + 1):
+            val = ws.cell(1, col).value
+            if val:
+                header_map[col] = str(val).strip().upper()
+
+        # Find all user column groups
+        user_cols = {}  # username_upper -> {"comment": col, "status": col, ...}
+        for col, header in header_map.items():
+            if header.startswith("COMMENT_"):
+                uname = header[8:]
+                user_cols.setdefault(uname, {})["comment"] = col
+            elif header.startswith("STATUS_") and not header.startswith("TESTER_STATUS_"):
+                uname = header[7:]
+                user_cols.setdefault(uname, {})["status"] = col
+            elif header.startswith("TESTER_STATUS_"):
+                uname = header[14:]
+                user_cols.setdefault(uname, {})["tester_status"] = col
+            elif header.startswith("MANAGER_COMMENT_"):
+                uname = header[16:]
+                user_cols.setdefault(uname, {})["manager_comment"] = col
+            elif header.startswith("SCREENSHOT_"):
+                uname = header[11:]
+                user_cols.setdefault(uname, {})["screenshot"] = col
+
+        if not user_cols:
+            continue
+
+        # For each user, check if their COMMENT column has ANY visible content
+        for uname, cols in user_cols.items():
+            comment_col = cols.get("comment")
+            if comment_col is None:
+                continue
+
+            # Check if column is already hidden
+            col_letter = get_column_letter(comment_col)
+            if ws.column_dimensions[col_letter].hidden:
+                continue  # Already hidden, skip
+
+            # Scan ALL data rows — check if ANY visible row has content
+            has_visible_content = False
+            for row in range(2, ws.max_row + 1):
+                # Skip hidden rows
+                if ws.row_dimensions[row].hidden:
+                    continue
+
+                cell_value = ws.cell(row, comment_col).value
+                if cell_value is not None and str(cell_value).strip():
+                    has_visible_content = True
+                    break
+
+            if not has_visible_content:
+                # Hide entire column block for this user
+                for col_key in ("comment", "status", "tester_status", "manager_comment", "screenshot"):
+                    c = cols.get(col_key)
+                    if c:
+                        ws.column_dimensions[get_column_letter(c)].hidden = True
+                        total_hidden += 1
+                print(f"      SWEEP-HIDE: {uname} (no visible content on {sheet_name})")
+
+    if total_hidden > 0:
+        print(f"    Final sweep: hid {total_hidden} columns with no visible content")
+
+    return total_hidden
+
+
+# =============================================================================
 # MASTER FILE BEAUTIFICATION
 # =============================================================================
 

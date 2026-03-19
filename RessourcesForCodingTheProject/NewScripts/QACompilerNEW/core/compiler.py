@@ -125,6 +125,7 @@ from core.excel_ops import (
     replicate_duplicate_row_data,
     beautify_master_sheet,
     reapply_manager_dropdowns,
+    final_column_sweep,
 )
 from core.processing import (
     process_sheet, update_status_sheet,
@@ -1505,7 +1506,7 @@ def run_compiler(log_callback=None, progress_callback=None):
         # 4. Hide empty rows/sheets/columns (reuses preloaded data — avoids redundant load)
         hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb, preloaded_sheets=sheet_data_cache)
 
-        # 5. Beautify LAST — after autofit so header colors/alignment aren't stomped
+        # 5. Beautify — after autofit so header colors/alignment aren't stomped
         for sheet_name in wb.sheetnames:
             if sheet_name == "STATUS":
                 continue
@@ -1513,7 +1514,12 @@ def run_compiler(log_callback=None, progress_callback=None):
             if ws.max_row and ws.max_row >= 2:
                 beautify_master_sheet(ws)
 
-        # 6. Save
+        # 6. FINAL COLUMN SWEEP — absolute last step before save
+        # Hides user column blocks where ALL visible rows are empty
+        # (catches columns where all comments are on hidden/resolved rows)
+        final_column_sweep(wb)
+
+        # 7. Save
         wb.save(path)
 
         # Clean up .bak backup now that new master is safely saved
