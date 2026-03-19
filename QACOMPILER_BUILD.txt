@@ -170,3 +170,4 @@ Build 031: replace position-based column matching with header-name detection (fi
 Build 032: add AppUserModelID for taskbar icon
 Build 033: fix empty master file + missing MANAGER status dropdown
 Build 202603192256: feat - manager data fix, CompleteLog, Word Count Report
+Build 202603192332: fix word count import + bold desc/completelog
