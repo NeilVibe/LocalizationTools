@@ -5411,9 +5411,10 @@
             }
           }
 
-          // Breathing animation
+          // Breathing animation + pulse cascade glow
+          var gm = n.glowMult || 1;
           var breath = Math.sin(t * 0.8 + n.breathPhase) * 0.04;
-          var r = n.baseR * n.scale * (1 + breath);
+          var r = n.baseR * n.scale * (1 + breath) * (1 + (gm - 1) * 0.06);
           if (isHovered) r *= 1.18;
 
           // Ease position
@@ -5485,9 +5486,9 @@
             }
           }
 
-          // Outer glow (all nodes)
-          var glowR = r + (isHovered ? 20 : 8);
-          var glowAlpha = isHovered ? 0.35 : (isConnectedToHovered ? 0.2 : 0.12);
+          // Outer glow (all nodes) — amplified by pulse cascade
+          var glowR = r + (isHovered ? 20 : 8) + (gm - 1) * 12;
+          var glowAlpha = (isHovered ? 0.35 : (isConnectedToHovered ? 0.2 : 0.12)) * gm;
           try {
             var grad2 = ctx.createRadialGradient(n.x, n.y, r * 0.4, n.x, n.y, glowR);
             grad2.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * glowAlpha) + ')');
@@ -5580,22 +5581,33 @@
         }
 
         function drawParticles() {
+          ctx.globalCompositeOperation = 'lighter';
           for (var i = particles.length - 1; i >= 0; i--) {
             var p = particles[i];
             p.progress += p.speed;
             if (p.progress >= 1) { particles.splice(i, 1); continue; }
 
-            var px = p.from.x + (p.to.x - p.from.x) * p.progress;
-            var py = p.from.y + (p.to.y - p.from.y) * p.progress;
-            // Fade in/out
-            var pa = p.alpha * Math.sin(p.progress * Math.PI);
             var rgb = hexToRgb(p.color);
+            // Bezier curve for organic path
+            var mx = (p.from.x + p.to.x) / 2 + (p.from.y - p.to.y) * 0.12;
+            var my = (p.from.y + p.to.y) / 2 + (p.to.x - p.from.x) * 0.12;
 
-            ctx.beginPath();
-            ctx.arc(px, py, p.size, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + pa + ')';
-            ctx.fill();
+            // Trail: 5 fading dots behind the particle (falling star trace)
+            for (var ti = 4; ti >= 0; ti--) {
+              var tp = Math.max(0, p.progress - ti * 0.02);
+              var t1 = 1 - tp;
+              var tpx = t1*t1*p.from.x + 2*t1*tp*mx + tp*tp*p.to.x;
+              var tpy = t1*t1*p.from.y + 2*t1*tp*my + tp*tp*p.to.y;
+              var trailAlpha = p.alpha * Math.sin(tp * Math.PI) * (1 - ti * 0.2);
+              if (trailAlpha < 0.01) continue;
+              var trailSize = p.size * (1 - ti * 0.12);
+              ctx.beginPath();
+              ctx.arc(tpx, tpy, trailSize, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + trailAlpha + ')';
+              ctx.fill();
+            }
           }
+          ctx.globalCompositeOperation = 'source-over';
         }
 
         function drawTooltip() {
@@ -5691,9 +5703,31 @@
           drawGalaxyBackground();
           drawAmbient();
 
-          // Spawn particles periodically
+          // Pulse cascade — heartbeat wave from center outward every 4s
+          if (!window._pulseInit) {
+            window._pulseInit = true;
+            nodes.forEach(function(n) { n.glowMult = 1; });
+            function pulseWave() {
+              if (!activated) return;
+              nodes.forEach(function(n) {
+                var dist = n.tier === 'center' ? 0 : (n.tier === 'queen' || n.tier === 'inner') ? 1 : 2;
+                // Find far-outer nodes
+                if (n.orbitRadius && n.orbitRadius > 300) dist = 3;
+                var target = { glowMult: n.glowMult };
+                gsap.to(n, { glowMult: 2.5, duration: 0.35, delay: dist * 0.25,
+                  ease: 'power2.out', onComplete: function() {
+                    gsap.to(n, { glowMult: 1, duration: 0.6, ease: 'power2.inOut' });
+                  }
+                });
+              });
+            }
+            setInterval(pulseWave, 4500);
+            setTimeout(pulseWave, 1500); // first pulse shortly after activation
+          }
+
+          // Spawn particles periodically (increased rate for denser flow)
           particleTimer += 0.016;
-          if (particleTimer > 0.15 && activated) {
+          if (particleTimer > 0.08 && activated) {
             particleTimer = 0;
             var ci = Math.floor(Math.random() * connections.length);
             spawnParticle(connections[ci]);
