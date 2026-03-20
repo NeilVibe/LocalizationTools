@@ -217,36 +217,62 @@ No reinstall needed!
 - Col 3: Dialog Voice
 - Col 4+: TBD
 
-**Current TRANSLATION_COLS setting:** `{"eng": 2, "other": 3}` - **MAY NEED UPDATE** once actual structure confirmed.
+**Translation detection:** Uses header-name cascade in `matching.py` (not position-based).
 
 **Folder naming:**
 - `Username_Sequencer` → Master_Script.xlsx
 - `Username_Dialog` → Master_Script.xlsx
 
-## Column Detection: Name vs Position
+## Column Detection: ALL By Header Name
 
-**IMPORTANT:** QACompiler uses a MIX of column detection methods:
+**ALL columns are detected by header name, never by position.**
 
 | Column | Detection Method | Notes |
 |--------|------------------|-------|
+| Translation | **By header NAME** | `find_translation_col_in_headers()` — 5-pass cascade |
 | STATUS | **By header NAME** | `find_column_by_header("STATUS")` |
 | COMMENT | **By header NAME** | `find_column_by_header("COMMENT")` |
 | MEMO | **By header NAME** | Script-type only: `find_column_by_header("MEMO")` |
 | SCREENSHOT | **By header NAME** | `find_column_by_header("SCREENSHOT")` |
 | STRINGID | **By header NAME** | `find_column_by_header("STRINGID")` |
 | EventName | **By header NAME** | Script-type only: `find_column_by_header("EventName")` |
-| **Translation** | **HARDCODED POSITION** | Uses `TRANSLATION_COLS[category]["eng"/"other"]` |
 
-**Why Translation uses position:**
-- Translation column position varies by category (Item uses col 5/7, standard uses 2/3)
-- Position is configured in `config.py` TRANSLATION_COLS
-- Allows different layouts per category without changing header names
+### ⚠ CRITICAL: Header Sync Rule
+
+**If you change or add a translation column header in ANY generator, you MUST update the detection logic to match.** Detection uses pattern matching, NOT imports from generators. A mismatch means the translation column returns None → masterfile compilation silently produces empty output.
+
+**Bug example (2026-03-20):** Quest used bare `ENG` header but detector had `ENG` in `_KNOWN_NON_TRANS`. English masterfiles compiled empty. Chinese worked fine.
+
+**When changing headers, update ALL of these:**
+1. `core/matching.py` → `find_translation_col_in_headers()`
+2. `core/matching.py` → `find_translation_col_in_ws()`
+3. `generators/wordcount_report.py` → `_find_translation_col()`
+4. `docs/MASTERFILE_COMPILATION_GUIDE.md`
+
+### Translation Header Patterns Per Generator
+
+| Generator | ENG Header | Non-ENG Header |
+|-----------|-----------|----------------|
+| quest.py | bare `ENG` | bare language code (`ZHO-CN`, `FRA`) |
+| item.py, character.py, skill.py, itemknowledgecluster.py | `Translation (ENG)` | `Translation (ZHO-CN)` etc. |
+| help.py, knowledge.py, gimmick.py, region.py | `English (ENG)` | `Translation (LANG)` |
+| script.py | `Text` / `Translation` | `Text` / `Translation` |
+
+### Translation Column Detection Cascade (matching.py)
+
+| Pass | Match Rule | Example |
+|------|-----------|---------|
+| 1 | `"TEXT"` exact (Script) | `Text` |
+| 2 | `"ENGLISH*"` prefix (ENG workbooks) | `English (ENG)` |
+| 3 | `"TRANSLATION (ENG)"` exact (ENG workbooks) | `Translation (ENG)` |
+| 4 | `"TRANSLATION*"` prefix (non-ENG) | `Translation (ZHO-CN)` |
+| 5 | `"ENG"` exact (Quest ENG datasheets) | `ENG` |
+| 6 | First non-known column after ENG | `ZHO-CN`, `FRA` |
 
 **Key functions:**
-- `find_column_by_header(ws, name)` → Searches row 1 for matching header, returns column index
-- `get_translation_column(category, is_english)` → Returns hardcoded position from TRANSLATION_COLS
-
-**If column positions don't match TRANSLATION_COLS:** Matching will fail silently (wrong column data used)
+- `find_translation_col_in_headers(col_idx, is_english)` → 0-based index from preloaded dict
+- `find_translation_col_in_ws(ws, is_english)` → 1-based index from worksheet
+- `find_column_by_header(ws, name)` → Case-insensitive exact match
 
 ## Tracker-Only Update (core/tracker_update.py)
 
@@ -303,13 +329,8 @@ python main.py --update-tracker
 
 ### Modify Column Layout
 
-Edit `config.py`:
-```python
-TRANSLATION_COLS = {
-    "Quest": {"KR": 3, "EN": 4, "Trans": 5, "Status": 6},
-    ...
-}
-```
+Edit the header list in the generator's write function (e.g., `generators/quest.py` line 1541).
+Then update detection in `core/matching.py` — see "Header Sync Rule" above.
 
 ## Debugging
 
@@ -359,7 +380,7 @@ logger.warning(f"GDP-003: Matched {matched} / {total}")
 | Datasheet generation | `generators/*.py` | `base.py` |
 | Transfer/merge | `core/transfer.py` | `matching.py` |
 | Master building | `core/compiler.py` | `matching.py`, `processing.py` |
-| Content-based matching | `core/matching.py` | `config.py` (TRANSLATION_COLS) |
+| Content-based matching | `core/matching.py` | `excel_ops.py` (header detection) |
 | Tracker-only update | `core/tracker_update.py` | `tracker/data.py` |
 | Coverage tracking | `tracker/coverage.py` | `total.py` |
 | Config/paths | `config.py` | - |
