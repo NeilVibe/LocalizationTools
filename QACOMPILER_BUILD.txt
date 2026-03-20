@@ -178,3 +178,4 @@ Build 202603200012: streaming word count + ZHO-CN headers
 Build 202603200048: word count 1 sheet per language
 Build 202603200054: debug column hiding + word count per language
 Build 202603200102: final column sweep for resolved users
+Build 202603200300: fix English Quest translation column detection — bare ENG header was skipped

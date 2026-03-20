@@ -134,6 +134,9 @@ def find_translation_col_in_headers(col_idx: dict, is_english: bool) -> int:
         for header, idx in col_idx.items():
             if header.startswith("TRANSLATION"):
                 return idx
+        # Quest datasheets use bare "ENG" as the translation column
+        if "ENG" in col_idx:
+            return col_idx["ENG"]
     else:
         # OTHER workbooks: "TRANSLATION (...)" but NOT "TRANSLATION (ENG)"
         for header, idx in col_idx.items():
@@ -203,6 +206,9 @@ def find_translation_col_in_ws(ws, is_english: bool) -> int:
         for header, col in headers.items():
             if header.startswith("TRANSLATION"):
                 return col
+        # Quest datasheets use bare "ENG" as the translation column
+        if "ENG" in headers:
+            return headers["ENG"]
     else:
         for header, col in headers.items():
             if header.startswith("TRANSLATION") and header != "TRANSLATION (ENG)":
