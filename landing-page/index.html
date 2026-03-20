@@ -106,8 +106,23 @@
     .cursor-ring.hovering { width: 60px; height: 60px; border-color: var(--warm); }
 
     @media (max-width: 768px) {
-      body { cursor: auto; }
+      body { cursor: auto; font-size: 16px; }
       .cursor-dot, .cursor-ring { display: none; }
+      /* Hero mobile polish */
+      .hero { padding: 0 20px; }
+      .hero-title { font-size: clamp(26px, 7vw, 40px); line-height: 1.2; margin-bottom: 16px; }
+      .hero-subtitle { font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+      .hero-eyebrow { margin-bottom: 20px; }
+      /* Hide heavy hero effects on mobile */
+      .ambient-orb, .hero-sweep, .sonar-ring { display: none; }
+      /* Constellation — give it room to breathe */
+      .constellation { margin-top: 16px; }
+      /* Sections — tighter but still readable */
+      .t-display { font-size: clamp(24px, 6vw, 36px) !important; }
+      .t-label { font-size: 11px; }
+      /* Closing */
+      .closing-tag { font-size: clamp(24px, 6vw, 40px); }
+      .closing-sub { font-size: 14px; }
     }
 
     /* ================================================================
