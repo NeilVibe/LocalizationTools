@@ -2,7 +2,8 @@
 
 > Content complete. Now layering WOW effects one at a time.
 > Each layer = hive research → brainstorm → implement → verify → commit.
-> Latest stable: d7e9540e (2026-03-20)
+> **STABLE REVISION: 5664e549 (2026-03-20)** — User approved. Full cinematic pipeline + hero animations.
+> Previous stable: ed6832ee (2026-03-19)
 
 ## COMPLETED
 
