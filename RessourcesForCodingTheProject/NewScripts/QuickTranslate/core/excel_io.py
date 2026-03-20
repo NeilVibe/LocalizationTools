@@ -325,7 +325,7 @@ def read_corrections_from_excel(
 
                 entry = {
                     "string_id": str(string_id).strip() if has_id else "",
-                    "str_origin": normalize_text(str_origin) if str_origin else "",
+                    "str_origin": normalize_text(_convert_linebreaks_for_excel(str(str_origin).strip())) if str_origin else "",
                     "corrected": corrected_str,  # Preserve linebreaks! Don't normalize output text
                 }
 
@@ -333,7 +333,7 @@ def read_corrections_from_excel(
                 if descorigin_col is not None:
                     do_val = row[descorigin_col - 1].value if descorigin_col <= len(row) else None
                     if do_val is not None and str(do_val).strip():
-                        entry["desc_origin"] = str(do_val).strip()
+                        entry["desc_origin"] = _convert_linebreaks_for_excel(str(do_val).strip())
                 if desc_col is not None:
                     d_val = row[desc_col - 1].value if desc_col <= len(row) else None
                     # Formula safeguard: neutralize bad Desc values (don't skip row)
@@ -954,9 +954,9 @@ def merge_corrections_to_excel(
             dv_val = ws.cell(row=row_idx, column=desc_col).value if desc_col else None
 
             sid = str(sid_val).strip() if sid_val is not None else ""
-            so = str(so_val).strip() if so_val is not None else ""
+            so = _convert_linebreaks_for_excel(str(so_val).strip()) if so_val is not None else ""
             sv = str(str_val).strip() if str_val is not None else ""
-            do_str = str(do_val).strip() if do_val is not None else ""
+            do_str = _convert_linebreaks_for_excel(str(do_val).strip()) if do_val is not None else ""
             dv_str = str(dv_val).strip() if dv_val is not None else ""
 
             if not sid:
