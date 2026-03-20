@@ -194,3 +194,4 @@ Build 068: add QT program icon (blue-cyan gradient sphere)
 Build 069: add window/taskbar icon (QT icon in title bar + taskbar)
 Build 070: add AppUserModelID for taskbar icon
 Build 071: add StrOrigin+FileName 2-pass match mode with fuzzy variant
+Build 072: preprocess Excel linebreaks in StrOrigin/DescOrigin for matching
