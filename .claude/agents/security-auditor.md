@@ -84,7 +84,7 @@ async def get_all_users(
 | Priority | Location | What to Check |
 |----------|----------|---------------|
 | HIGH | `server/tools/ldm/routes/` | Auth on all endpoints |
-| HIGH | `server/auth/` | Token handling, password hashing |
+| HIGH | `server/api/auth_async.py`, `server/utils/auth.py` | Token handling, password hashing |
 | HIGH | `.env*` files | Not committed to git |
 | MEDIUM | `server/database/` | Parameterized queries |
 | MEDIUM | `locaNext/src/` | XSS in Svelte components |

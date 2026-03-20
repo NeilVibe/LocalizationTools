@@ -185,7 +185,8 @@ curl -H "Authorization: Bearer TOKEN" http://localhost:8888/api/ldm/tm-tree
 |------|---------|
 | `locaNext/electron/main.js` | Electron main process |
 | `locaNext/electron/preload.js` | Bridge to renderer |
-| `locaNext/electron/python-manager.js` | Python process management |
+| `locaNext/electron/bootstrap.js` | App bootstrap & process management |
+| `locaNext/electron/first-run-setup.js` | First-run setup & initialization |
 
 ### Common Node.js Issues
 | Issue | Symptom | Fix |

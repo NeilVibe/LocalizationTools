@@ -11,15 +11,20 @@ model: haiku
 
 | Project | CI Platform | Trigger File | Workflow Location |
 |---------|-------------|--------------|-------------------|
-| **LocaNext** | Gitea Actions | `GITEA_TRIGGER.txt` | `.gitea/workflows/build.yml` |
+| **LocaNext** | GitHub + Gitea | `BUILD_TRIGGER.txt` (GitHub) / `GITEA_TRIGGER.txt` (Gitea) | `.github/workflows/build-electron.yml` / `.gitea/workflows/build.yml` |
+| **DataListGenerator** | GitHub Actions | `DATALISTGENERATOR_BUILD.txt` | `.github/workflows/datalistgenerator-build.yml` |
+| **ExtractAnything** | GitHub Actions | `EXTRACTANYTHING_BUILD.txt` | `.github/workflows/extractanything-build.yml` |
 | **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | `.github/workflows/languagedataexporter-build.yml` |
+| **MapDataGenerator** | GitHub Actions | `MAPDATAGENERATOR_BUILD.txt` | `.github/workflows/mapdatagenerator-build.yml` |
 | **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | `.github/workflows/qacompiler-build.yml` |
-| **QuickTranslate** | GitHub Actions | `QUICKTRANSLATE_BUILD.txt` | `.github/workflows/quicktranslate-build.yml` |
+| **QuickCheck** | GitHub Actions | `QUICKCHECK_BUILD.txt` | `.github/workflows/quickcheck-build.yml` |
 | **QuickSearch** | GitHub Actions | `QUICKSEARCH_BUILD.txt` | `.github/workflows/quicksearch-build.yml` |
+| **QuickTranslate** | GitHub Actions | `QUICKTRANSLATE_BUILD.txt` | `.github/workflows/quicktranslate-build.yml` |
+| **TranslationBank** | GitHub Actions | `TRANSLATIONBANK_BUILD.txt` | `.github/workflows/translationbank-build.yml` |
 
 ---
 
-## LocaNext (Gitea Actions)
+## LocaNext (GitHub + Gitea Actions)
 
 ### Trigger Build
 ```bash
@@ -43,7 +48,7 @@ python3 -c "
 import sqlite3
 c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
-STATUS = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN', 7:'BLOCK'}
+STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
 for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
 ```
 

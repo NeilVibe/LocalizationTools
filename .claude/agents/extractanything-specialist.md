@@ -1,6 +1,6 @@
 ---
 name: extractanything-specialist
-description: ExtractAnything project specialist. Use when working on extraction, diff, long string, no-voice, blacklist, string eraser, string add, file eraser tabs, or XML/Excel I/O operations.
+description: ExtractAnything project specialist. Use when working on extraction, diff, long string, no-voice, blacklist, string eraser, string add, file eraser, xml tools tabs, or XML/Excel I/O operations.
 tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
@@ -33,7 +33,7 @@ model: opus
 
 ---
 
-## 8 Tabs
+## 9 Tabs
 
 | Tab | Engine | Purpose |
 |-----|--------|---------|
@@ -45,6 +45,7 @@ model: opus
 | Str Erase | `string_eraser_tab.py` + `string_eraser_engine.py` | Remove LocStr by StringID+StrOrigin match |
 | Str Add | `string_add_tab.py` + `string_add_engine.py` | Add missing LocStr by StringID+StrOrigin diff |
 | File Erase | `file_eraser_tab.py` + `file_eraser_engine.py` | Move files matching source stems to backup |
+| XML Tools | `xml_tools_tab.py` + `xml_tools_engine.py` | 8 miscellaneous LocStr operations (grafted from QSS) |
 
 ---
 
@@ -74,7 +75,8 @@ ExtractAnything/
 │   ├── blacklist_engine.py     # Blacklist term matching
 │   ├── string_eraser_engine.py # LocStr removal by key match
 │   ├── string_add_engine.py    # LocStr addition by key diff
-│   └── file_eraser_engine.py   # File stem matching + move
+│   ├── file_eraser_engine.py   # File stem matching + move
+│   └── xml_tools_engine.py     # 8 misc LocStr operations (from QSS)
 │
 ├── gui/                        # tkinter GUI
 │   ├── app.py                  # Main window, notebook, log, settings bar
@@ -87,6 +89,7 @@ ExtractAnything/
 │   ├── string_eraser_tab.py    # String Eraser tab
 │   ├── string_add_tab.py       # String Add tab
 │   ├── file_eraser_tab.py      # File Eraser tab
+│   ├── xml_tools_tab.py        # XML Tools tab
 │   └── path_filter_dialog.py   # Path filter selection dialog
 │
 └── installer/
@@ -110,10 +113,16 @@ ExtractAnything/
 ```
 
 ### Key Matching (String Eraser / String Add)
-2-step cascade: exact normalized → nospace normalized.
+
+**String Eraser:** 2-step cascade — exact normalized → nospace normalized.
 ```python
 key = (sid.lower(), normalize_text(str_origin))
 nospace_key = (sid.lower(), normalize_nospace(normalize_text(str_origin)))
+```
+
+**String Add:** EXACT matching only (space-sensitive). No nospace fallback.
+```python
+key = (sid.lower(), normalize_text(str_origin))
 ```
 
 ### Thread Safety
