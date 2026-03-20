@@ -6365,6 +6365,37 @@
         scrollTarget = baseZ - pct * 14;
       }, { passive: true });
 
+      // ---- CINEMATIC CAMERA PATH — scroll drives camera through particle cloud ----
+      var cameraPath = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 260),       // Start: close, inside sphere
+        new THREE.Vector3(30, 20, 300),      // Pull back slightly, drift right
+        new THREE.Vector3(-20, -10, 340),    // Continue back, drift left
+        new THREE.Vector3(40, 30, 380),      // Higher, further, orbit right
+        new THREE.Vector3(-30, -20, 420),    // Sweep left and up
+        new THREE.Vector3(0, 0, 500)         // End: way back, see full supernova
+      ]);
+      var cameraLookPath = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),          // Look at center
+        new THREE.Vector3(10, 5, 0),          // Slight offset
+        new THREE.Vector3(-5, -3, 0),         // Drift
+        new THREE.Vector3(15, 10, 0),         // Track right
+        new THREE.Vector3(-10, -5, 0),        // Track left
+        new THREE.Vector3(0, 0, 0)            // Back to center
+      ]);
+      var cameraProgress = { value: 0 };
+      var lookTarget = new THREE.Vector3();
+
+      // Drive camera along path with full-page scroll
+      ScrollTrigger.create({
+        trigger: 'body',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 2,
+        onUpdate: function(self) {
+          cameraProgress.value = self.progress;
+        }
+      });
+
       // Hero video — fades out past hero, expands back at power stack + closing
       var heroVideo = document.querySelector('.hero-video');
       if (heroVideo) {
@@ -6470,9 +6501,19 @@
         pts.rotation.x = (smy*0.08 + t*0.018) * rotRamp;
         pts.rotation.y = (smx*0.08 + t*0.012) * rotRamp;
 
-        // Smooth camera Z drift (scroll) applied on top of entrance
+        // Cinematic camera path — spline-driven by scroll progress
         scrollSmooth += (scrollTarget - scrollSmooth) * 0.03;
-        cam.position.z = Math.min(entranceZ, baseZ) + (scrollSmooth - baseZ);
+        if (birthProgress >= 1 && cameraProgress.value > 0.01) {
+          // After entrance animation, camera follows spline
+          var camPt = cameraPath.getPointAt(cameraProgress.value);
+          var lookPt = cameraLookPath.getPointAt(cameraProgress.value);
+          cam.position.lerp(camPt, 0.05);
+          lookTarget.lerp(lookPt, 0.05);
+          cam.lookAt(lookTarget);
+        } else {
+          // During entrance, use original Z animation
+          cam.position.z = Math.min(entranceZ, baseZ) + (scrollSmooth - baseZ);
+        }
 
         // Piece 2: Scroll-driven color shift (copper→blue, subliminal)
         var scrollColorT = Math.max(0, (baseZ - scrollSmooth) / 14); // 0→1
