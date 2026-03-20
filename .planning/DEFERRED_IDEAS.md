@@ -245,6 +245,26 @@ All pieces exist in the codebase or are proven technology. Implementation is ass
 
 ---
 
+---
+
+## Local AI Generation Models — Remaining Installs (Deferred 2026-03-19)
+
+> **Z-Image Turbo and Hunyuan3D 2 Mini are DONE and production-ready.**
+> Remaining models deferred — install when actually needed.
+
+| # | Model | What | VRAM | Install When |
+|---|-------|------|------|-------------|
+| 3 | **ACE-Step 1.5** | Music generation (full songs, vocals) | <4GB | Landing page Piece 11 (ambient soundscape) |
+| 4 | **AudioLDM 2** | Sound effects (whoosh, click, rain) | ~8GB | When adding UI sounds to landing page |
+| 5 | **Wan 2.2 5B** | Image-to-video (ambient loops) | ~8GB | When Kling costs too much for ambient video |
+| 6 | **CosyVoice 2** | Emotional TTS upgrade | ~6GB | Low priority — Qwen3-TTS works fine |
+
+**Reference:** `docs/reference/FREE_MODEL_MCP_PLAN.md` has full specs, code samples, VRAM budgets for each.
+**MCP server:** `scripts/mcp/local_models_mcp.py` — add tools here when installing.
+**All Apache 2.0 licensed, all run on RTX 4070 Ti (12GB), all free forever.**
+
+---
+
 *Captured: 2026-03-14 during Phase 1 planning session*
 *Updated: 2026-03-14 with Game Dev Grid concrete demo scenario, Codex interactive encyclopedia, world map, QA pipeline integration, and implementation priority*
 *Source: User vision dumps (3 sessions)*
