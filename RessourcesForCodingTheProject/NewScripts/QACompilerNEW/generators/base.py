@@ -27,7 +27,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import DEPTH_COLORS, STATUS_OPTIONS, EXPORT_FOLDER, RESOURCE_FOLDER
+import config as _cfg
+from config import DEPTH_COLORS, STATUS_OPTIONS, EXPORT_FOLDER
 
 # =============================================================================
 # LOGGING
@@ -119,7 +120,7 @@ def get_strkey_lookup() -> Dict[str, str]:
     global _STRKEY_LOOKUP
     if _STRKEY_LOOKUP is None:
         log.info("Building StrKey → DevMemo/DevComment lookup...")
-        _STRKEY_LOOKUP = _build_strkey_lookup(RESOURCE_FOLDER)
+        _STRKEY_LOOKUP = _build_strkey_lookup(_cfg.RESOURCE_FOLDER)
         log.info("Indexed %d StrKey entries", len(_STRKEY_LOOKUP))
     return _STRKEY_LOOKUP
 
