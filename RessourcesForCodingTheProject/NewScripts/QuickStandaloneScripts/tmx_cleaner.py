@@ -330,6 +330,195 @@ def clean_path(path: str, dry_run: bool = False):
 
 
 # =============================================================================
+# TMX → EXCEL CONVERSION (clean + dedup + export)
+# =============================================================================
+
+def parse_tmx_to_rows(fpath: str) -> list[dict]:
+    """
+    Parse a TMX file into a list of row dicts.
+    Each row: {changedate, creationdate, creationid, changeid, client, project,
+               domain, subject, corrected, aligned, x_document, x_context,
+               ko_seg, tgt_seg, tgt_lang}
+
+    Cleans all <seg> contents during extraction.
+    """
+    raw_text = read_file(fpath)
+
+    # Strip XML decl and DOCTYPE
+    body = re.sub(r'^<\?xml[^>]*\?>\s*', '', raw_text, flags=re.MULTILINE)
+    body = re.sub(r'<!DOCTYPE[^>]*>\s*', '', body, flags=re.IGNORECASE)
+
+    parser = etree.XMLParser(remove_blank_text=True, recover=True)
+    try:
+        root = etree.fromstring(body.encode('utf-8'), parser=parser)
+    except Exception as e:
+        print(f"[ERROR] Cannot parse {fpath}: {e}")
+        return []
+
+    XML_NS = "http://www.w3.org/XML/1998/namespace"
+    rows = []
+
+    for tu in root.iter('tu'):
+        row = {
+            'changedate': tu.get('changedate', ''),
+            'creationdate': tu.get('creationdate', ''),
+            'creationid': tu.get('creationid', ''),
+            'changeid': tu.get('changeid', ''),
+            'client': '',
+            'project': '',
+            'domain': '',
+            'subject': '',
+            'corrected': '',
+            'aligned': '',
+            'x_document': '',
+            'x_context': '',
+            'ko_seg': '',
+            'tgt_seg': '',
+            'tgt_lang': '',
+        }
+
+        # Extract <prop> values
+        for prop in tu.findall('prop'):
+            ptype = prop.get('type', '')
+            pval = (prop.text or '').strip()
+            if ptype == 'client':
+                row['client'] = pval
+            elif ptype == 'project':
+                row['project'] = pval
+            elif ptype == 'domain':
+                row['domain'] = pval
+            elif ptype == 'subject':
+                row['subject'] = pval
+            elif ptype == 'corrected':
+                row['corrected'] = pval
+            elif ptype == 'aligned':
+                row['aligned'] = pval
+            elif ptype == 'x-document':
+                row['x_document'] = pval
+            elif ptype == 'x-context':
+                row['x_context'] = pval
+
+        # Extract <tuv> segments
+        for tuv in tu.findall('tuv'):
+            lang = tuv.get(f'{{{XML_NS}}}lang', tuv.get('lang', '')).lower()
+            seg = tuv.find('seg')
+            if seg is None:
+                continue
+
+            # Get raw seg content (including child tags) as string
+            seg_text = etree.tostring(seg, encoding='unicode', method='xml')
+            # Strip <seg> and </seg> wrappers
+            seg_text = re.sub(r'^<seg[^>]*>', '', seg_text)
+            seg_text = re.sub(r'</seg>$', '', seg_text)
+            seg_text = seg_text.strip()
+
+            # Clean the segment
+            cleaned = clean_segment(seg_text)
+
+            if lang == 'ko':
+                row['ko_seg'] = cleaned
+            else:
+                row['tgt_seg'] = cleaned
+                row['tgt_lang'] = lang
+
+        rows.append(row)
+
+    return rows
+
+
+def dedup_rows(rows: list[dict]) -> list[dict]:
+    """
+    Deduplicate by (x_context, ko_seg).
+    Keep the row with the LATEST changedate.
+    """
+    seen: dict[tuple, dict] = {}
+
+    for row in rows:
+        key = (row['x_context'], row['ko_seg'])
+        if key in seen:
+            # Keep the one with later changedate
+            if row['changedate'] > seen[key]['changedate']:
+                seen[key] = row
+        else:
+            seen[key] = row
+
+    return list(seen.values())
+
+
+def write_excel(rows: list[dict], output_path: str):
+    """Write rows to Excel using xlsxwriter."""
+    import xlsxwriter
+
+    wb = xlsxwriter.Workbook(output_path)
+    ws = wb.add_worksheet('TMX Clean')
+
+    # Headers
+    headers = [
+        'KO (Source)', 'EN (Target)', 'x-context', 'x-document',
+        'changedate', 'creationdate', 'changeid', 'creationid',
+        'client', 'project', 'domain', 'subject',
+        'corrected', 'aligned', 'tgt_lang'
+    ]
+    keys = [
+        'ko_seg', 'tgt_seg', 'x_context', 'x_document',
+        'changedate', 'creationdate', 'changeid', 'creationid',
+        'client', 'project', 'domain', 'subject',
+        'corrected', 'aligned', 'tgt_lang'
+    ]
+
+    # Header format
+    hdr_fmt = wb.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1})
+    cell_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
+
+    for col, h in enumerate(headers):
+        ws.write(0, col, h, hdr_fmt)
+
+    for row_idx, row in enumerate(rows, 1):
+        for col, key in enumerate(keys):
+            ws.write(row_idx, col, row.get(key, ''), cell_fmt)
+
+    # Column widths
+    ws.set_column(0, 0, 50)   # KO
+    ws.set_column(1, 1, 50)   # EN
+    ws.set_column(2, 2, 22)   # x-context
+    ws.set_column(3, 3, 30)   # x-document
+    ws.set_column(4, 5, 20)   # dates
+    ws.set_column(6, 7, 15)   # ids
+    ws.set_column(8, 14, 12)  # props
+
+    # Autofilter
+    ws.autofilter(0, 0, len(rows), len(headers) - 1)
+
+    wb.close()
+    print(f"[EXCEL] Written {len(rows)} rows to: {output_path}")
+
+
+def clean_and_convert_to_excel(fpath: str):
+    """
+    Full pipeline: TMX → clean → dedup → Excel.
+    Output file: same name as input but _clean.xlsx
+    """
+    print(f"[1/3] Parsing and cleaning: {fpath}")
+    rows = parse_tmx_to_rows(fpath)
+    print(f"       Found {len(rows)} TU entries")
+
+    print(f"[2/3] Deduplicating by (x-context + KO seg), keeping latest changedate...")
+    before = len(rows)
+    rows = dedup_rows(rows)
+    dupes = before - len(rows)
+    print(f"       {dupes} duplicates removed → {len(rows)} unique rows")
+
+    # Output path: same name but _clean.xlsx
+    base = os.path.splitext(fpath)[0]
+    output_path = f"{base}_clean.xlsx"
+
+    print(f"[3/3] Writing Excel...")
+    write_excel(rows, output_path)
+    print(f"\n[DONE] {output_path}")
+    return output_path
+
+
+# =============================================================================
 # CLI
 # =============================================================================
 
@@ -340,7 +529,7 @@ def pick_file():
     root = tk.Tk()
     root.withdraw()
     fpath = filedialog.askopenfilename(
-        title="Select TMX file to clean",
+        title="Select TMX file to clean and convert to Excel",
         filetypes=[("TMX files", "*.tmx"), ("All files", "*.*")]
     )
     root.destroy()
@@ -349,10 +538,14 @@ def pick_file():
 
 def main():
     parser = argparse.ArgumentParser(
-        description='TMX Cleaner — Strip all CAT tool markup from TMX files'
+        description='TMX Cleaner — Strip CAT tool markup from TMX, convert to Excel'
     )
-    parser.add_argument('path', nargs='?', default=None, help='TMX file or folder to clean (opens file picker if omitted)')
-    parser.add_argument('--dry', action='store_true', help='Preview changes without writing')
+    parser.add_argument('path', nargs='?', default=None,
+                        help='TMX file or folder (opens file picker if omitted)')
+    parser.add_argument('--dry', action='store_true',
+                        help='Preview changes without writing')
+    parser.add_argument('--tmx-only', action='store_true',
+                        help='Clean TMX in-place without Excel conversion')
     args = parser.parse_args()
 
     path = args.path
@@ -361,8 +554,21 @@ def main():
         if not path:
             print("[CANCELLED] No file selected.")
             return
+        # File picker → always do Excel conversion
+        clean_and_convert_to_excel(path)
+        return
 
-    clean_path(path, dry_run=args.dry)
+    if args.tmx_only:
+        clean_path(path, dry_run=args.dry)
+    else:
+        if os.path.isfile(path):
+            clean_and_convert_to_excel(path)
+        else:
+            # Folder mode: process each TMX
+            for dirpath, _, filenames in os.walk(path):
+                for fn in filenames:
+                    if fn.lower().endswith('.tmx'):
+                        clean_and_convert_to_excel(os.path.join(dirpath, fn))
 
 
 if __name__ == '__main__':
