@@ -87,31 +87,33 @@ _STRKEY_LOOKUP: Optional[Dict[str, str]] = None  # StrKey.lower() → DevMemo/De
 def _build_strkey_lookup(resource_folder: Path) -> Dict[str, str]:
     """Scan StaticInfo XMLs for StrKey → DevMemo/DevComment mapping.
 
-    Looks for elements with StrKey attribute and extracts the Korean
-    display name from DevMemo or DevComment attribute.
+    Uses parse_xml_file() for proper XML sanitization and virtual ROOT wrapper
+    (StaticInfo XMLs don't have a single root element).
 
     Returns:
         {strkey_lower: korean_text}
     """
     lookup: Dict[str, str] = {}
     if not resource_folder or not resource_folder.exists():
+        log.warning("StrKey lookup: RESOURCE_FOLDER is None or does not exist: %s", resource_folder)
         return lookup
 
+    file_count = 0
     for xml_path in resource_folder.rglob("*.xml"):
-        try:
-            tree = ET.parse(str(xml_path))
-            root = tree.getroot()
-            for el in root.iter():
-                strkey = el.get("StrKey")
-                if not strkey:
-                    continue
-                # Try DevMemo first, then DevComment
-                korean = el.get("DevMemo") or el.get("DevComment") or ""
-                if korean and strkey.lower() not in lookup:
-                    lookup[strkey.lower()] = korean
-        except Exception:
+        root = parse_xml_file(xml_path)
+        if root is None:
             continue
+        file_count += 1
+        for el in root.iter():
+            strkey = el.get("StrKey")
+            if not strkey:
+                continue
+            # Try DevMemo first, then DevComment
+            korean = el.get("DevMemo") or el.get("DevComment") or ""
+            if korean and strkey.lower() not in lookup:
+                lookup[strkey.lower()] = korean
 
+    log.info("StrKey lookup: scanned %d XML files, found %d StrKey entries", file_count, len(lookup))
     return lookup
 
 
@@ -146,10 +148,16 @@ def resolve_staticinfo_codes(text: str) -> str:
             strkey = parts[-1]
             korean = lookup.get(strkey.lower())
             if korean:
+                log.debug("StaticInfo code resolved: %s → %s (via StrKey=%s)", code, korean, strkey)
                 return korean
+            else:
+                log.warning("StaticInfo code NOT resolved: %s (StrKey=%s not in %d-entry lookup)", code, strkey, len(lookup))
         return code  # Unknown code — leave as-is
 
-    return _staticinfo_code_re.sub(_replace_code, text)
+    result = _staticinfo_code_re.sub(_replace_code, text)
+    if result != text:
+        log.info("StaticInfo resolution: '%s' → '%s'", text[:80], result[:80])
+    return result
 
 
 def br_to_newline(text: str) -> str:
