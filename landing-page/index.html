@@ -71,7 +71,7 @@
       color: var(--text);
       background: var(--bg);
       overflow-x: hidden;
-      cursor: none;
+      cursor: auto;
     }
 
     /* ================================================================
@@ -104,10 +104,6 @@
 
     .cursor-dot.hovering { width: 16px; height: 16px; }
     .cursor-ring.hovering { width: 60px; height: 60px; border-color: var(--warm); }
-
-    /* Hide system cursor everywhere on desktop — custom dot/ring replaces it */
-    a, button, .btn, .mockup-tab, .nav-item, [style*="cursor:pointer"],
-    canvas, input, select, textarea, label { cursor: none; }
 
     @media (max-width: 768px) {
       body { cursor: auto; font-size: 16px; }
@@ -648,7 +644,7 @@
       gap: 8px;
       transform: translate(-50%, -50%);
       opacity: 0;
-      cursor: none;
+      cursor: default;
     }
 
     .constellation-node-dot {
@@ -1578,7 +1574,7 @@
       align-items: center;
       gap: 6px;
     }
-    .gd-tree-item { padding-left: 0; cursor: none; }
+    .gd-tree-item { padding-left: 0; cursor: pointer; }
     .gd-tree-item:hover { color: var(--warm); }
     .gd-tree-item.active { color: var(--warm); font-weight: 700; }
     .gd-tree-item.depth1 { padding-left: 16px; }
@@ -1593,7 +1589,7 @@
       color: var(--warm);
       font-size: 11px;
       text-align: center;
-      cursor: none;
+      cursor: pointer;
     }
 
     .gd-editor { padding: 24px; }
@@ -1688,7 +1684,7 @@
     .codex-nav-item {
       padding: 8px 14px;
       color: var(--text-dim);
-      cursor: none;
+      cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1753,7 +1749,7 @@
     .codex-pin {
       position: absolute;
       z-index: 3;
-      cursor: none;
+      cursor: pointer;
     }
     .codex-pin-dot {
       width: 14px;
@@ -1857,7 +1853,7 @@
        INTERACTIVE GRID ROWS — hover/click effects
        ================================================================ */
     .ctx-grid-row:not(.ctx-grid-row--head) {
-      cursor: none;
+      cursor: pointer;
       transition: background 0.2s, border-color 0.2s;
     }
     .ctx-grid-row:not(.ctx-grid-row--head):hover {
@@ -2132,19 +2128,6 @@
       width: 100%;
       max-width: 1100px;
       margin: 60px auto 0;
-    }
-    .swarm-bio-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      pointer-events: none;
-    }
-    #swarmCanvas {
-      position: relative;
-      z-index: 1;
     }
     .swarm-hint {
       position: absolute;
@@ -2559,7 +2542,7 @@
       font-family: var(--mono);
       color: var(--text-muted);
       border-radius: 6px 6px 0 0;
-      cursor: none;
+      cursor: default;
     }
 
     .ctx-chrome-tab.active {
@@ -2598,7 +2581,7 @@
     .ctx-fe-item {
       padding: 5px 14px;
       color: var(--text-dim);
-      cursor: none;
+      cursor: default;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -2728,7 +2711,7 @@
       color: var(--text-muted);
       border-bottom: 2px solid transparent;
       transition: color 0.3s, border-color 0.3s;
-      cursor: none;
+      cursor: default;
     }
 
     .ctx-panel-tab.active {
@@ -2872,7 +2855,7 @@
       align-items: center;
       justify-content: center;
       color: var(--bg);
-      cursor: none;
+      cursor: default;
     }
 
     .ctx-audio-time {
@@ -5000,8 +4983,7 @@
 
       <!-- Interactive AI Swarm — living agent ecosystem -->
       <div class="swarm-container" id="swarmContainer">
-        <canvas id="swarmBioCanvas" class="swarm-bio-canvas" aria-hidden="true"></canvas>
-        <canvas id="swarmCanvas" style="width:100%;height:850px;cursor:none;" aria-label="Claude Code AI 에이전트 생태계 — 인터랙티브 시각화" role="img"></canvas>
+        <canvas id="swarmCanvas" style="width:100%;height:850px;cursor:pointer;" aria-label="Claude Code AI 에이전트 생태계 — 인터랙티브 시각화" role="img"></canvas>
         <div class="swarm-hint" id="swarmHint">노드를 호버하여 AI 에이전트를 탐색하세요</div>
       </div>
       <script>
@@ -5454,11 +5436,11 @@
             var dx = n.x - mx, dy = n.y - my;
             if (Math.sqrt(dx*dx + dy*dy) < n.r * n.scale + 12) {
               hoveredNode = n;
-              canvas.style.cursor = 'none';
+              canvas.style.cursor = 'pointer';
               return;
             }
           }
-          canvas.style.cursor = 'none';
+          canvas.style.cursor = 'default';
         });
         canvas.addEventListener('mouseleave', function() { mx = -1000; my = -1000; hoveredNode = null; });
         canvas.addEventListener('click', function() { activate(); });
@@ -5850,226 +5832,6 @@
 
         // Expose activate for scroll trigger
         window._swarmActivate = activate;
-      })();
-      </script>
-
-      <!-- Deep Sea Bioluminescent Swarm — light trails behind swarm nodes -->
-      <script type="module">
-      import * as THREE from 'three';
-      import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-      import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-      import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
-      (function() {
-        var canvas = document.getElementById('swarmBioCanvas');
-        if (!canvas || window.matchMedia('(max-width: 768px)').matches) return;
-
-        var container = canvas.parentElement;
-        var W = container.clientWidth;
-        var H = container.clientHeight || 850;
-
-        var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
-        renderer.setSize(W, H);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-        var scene = new THREE.Scene();
-        var camera = new THREE.OrthographicCamera(-W/2, W/2, H/2, -H/2, 0.1, 1000);
-        camera.position.z = 100;
-
-        var composer = new EffectComposer(renderer);
-        composer.addPass(new RenderPass(scene, camera));
-        var bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 1.2, 0.6, 0.3);
-        composer.addPass(bloom);
-
-        // === Boids Config ===
-        var NUM_BOIDS = 70;
-        var TRAIL_LENGTH = 20;
-        var MAX_SPEED = 0.8;
-        var PERCEPTION = 60;
-        var SEPARATION_DIST = 15;
-
-        var COLORS = [
-          new THREE.Color(0x00D4FF),  // primary cyan 70%
-          new THREE.Color(0x00FFE5),  // core glow 20%
-          new THREE.Color(0x007EFF),  // deep blue 5%
-          new THREE.Color(0x958CF9),  // rare purple 5%
-        ];
-
-        function pickColor() {
-          var r = Math.random();
-          if (r < 0.7) return COLORS[0];
-          if (r < 0.9) return COLORS[1];
-          if (r < 0.95) return COLORS[2];
-          return COLORS[3];
-        }
-
-        function Boid() {
-          this.x = (Math.random() - 0.5) * W * 0.8;
-          this.y = (Math.random() - 0.5) * H * 0.8;
-          this.vx = (Math.random() - 0.5) * MAX_SPEED;
-          this.vy = (Math.random() - 0.5) * MAX_SPEED;
-          this.phase = Math.random() * Math.PI * 2;
-          this.color = pickColor();
-          this.trail = new Float32Array(TRAIL_LENGTH * 2);
-          this.trailHead = 0;
-          this.trailCount = 0;
-          for (var i = 0; i < TRAIL_LENGTH; i++) {
-            this.trail[i * 2] = this.x;
-            this.trail[i * 2 + 1] = this.y;
-          }
-        }
-
-        function updateBoids(boids, time) {
-          for (var i = 0; i < boids.length; i++) {
-            var b = boids[i];
-            var sepX = 0, sepY = 0, aliVx = 0, aliVy = 0, cohX = 0, cohY = 0, neighbors = 0;
-            for (var j = 0; j < boids.length; j++) {
-              if (i === j) continue;
-              var o = boids[j];
-              var dx = o.x - b.x, dy = o.y - b.y;
-              var dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist > PERCEPTION) continue;
-              neighbors++;
-              if (dist < SEPARATION_DIST && dist > 0.001) {
-                sepX -= dx / dist; sepY -= dy / dist;
-              }
-              aliVx += o.vx; aliVy += o.vy;
-              cohX += o.x; cohY += o.y;
-            }
-            if (neighbors > 0) {
-              b.vx += sepX * 0.05 + (aliVx / neighbors - b.vx) * 0.02 + (cohX / neighbors - b.x) * 0.01;
-              b.vy += sepY * 0.05 + (aliVy / neighbors - b.vy) * 0.02 + (cohY / neighbors - b.y) * 0.01;
-            }
-            b.vy += Math.sin(time * 0.3 + b.phase) * 0.005;
-            b.vx += (Math.random() - 0.5) * 0.02;
-            b.vy += (Math.random() - 0.5) * 0.02;
-            var speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-            if (speed > MAX_SPEED) { b.vx = (b.vx / speed) * MAX_SPEED; b.vy = (b.vy / speed) * MAX_SPEED; }
-            var margin = 80, halfW = W / 2, halfH = H / 2;
-            if (b.x > halfW - margin) b.vx -= 0.03;
-            if (b.x < -halfW + margin) b.vx += 0.03;
-            if (b.y > halfH - margin) b.vy -= 0.03;
-            if (b.y < -halfH + margin) b.vy += 0.03;
-            b.x += b.vx; b.y += b.vy;
-            b.trail[b.trailHead * 2] = b.x;
-            b.trail[b.trailHead * 2 + 1] = b.y;
-            b.trailHead = (b.trailHead + 1) % TRAIL_LENGTH;
-            if (b.trailCount < TRAIL_LENGTH) b.trailCount++;
-          }
-        }
-
-        // === Trail Geometry ===
-        var totalPoints = NUM_BOIDS * TRAIL_LENGTH;
-        var trailPositions = new Float32Array(totalPoints * 3);
-        var trailColors = new Float32Array(totalPoints * 3);
-        var trailAlphas = new Float32Array(totalPoints);
-        var trailSizes = new Float32Array(totalPoints);
-
-        var trailGeo = new THREE.BufferGeometry();
-        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
-        trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
-        trailGeo.setAttribute('alpha', new THREE.BufferAttribute(trailAlphas, 1));
-        trailGeo.setAttribute('size', new THREE.BufferAttribute(trailSizes, 1));
-        trailGeo.attributes.position.usage = THREE.DynamicDrawUsage;
-        trailGeo.attributes.alpha.usage = THREE.DynamicDrawUsage;
-
-        var trailMat = new THREE.ShaderMaterial({
-          vertexShader: [
-            'attribute float alpha;',
-            'attribute float size;',
-            'attribute vec3 color;',
-            'varying float vAlpha;',
-            'varying vec3 vColor;',
-            'void main() {',
-            '  vAlpha = alpha;',
-            '  vColor = color;',
-            '  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);',
-            '  gl_PointSize = size * (300.0 / -mvPos.z);',
-            '  gl_Position = projectionMatrix * mvPos;',
-            '}'
-          ].join('\n'),
-          fragmentShader: [
-            'varying float vAlpha;',
-            'varying vec3 vColor;',
-            'void main() {',
-            '  float dist = length(gl_PointCoord - vec2(0.5));',
-            '  float glow = exp(-dist * dist * 8.0);',
-            '  float core = smoothstep(0.5, 0.0, dist);',
-            '  float a = (glow * 0.6 + core * 0.4) * vAlpha;',
-            '  if (a < 0.01) discard;',
-            '  gl_FragColor = vec4(vColor * (1.0 + core * 2.0), a);',
-            '}'
-          ].join('\n'),
-          transparent: true,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-
-        var trailPoints = new THREE.Points(trailGeo, trailMat);
-        scene.add(trailPoints);
-
-        function updateTrailGeometry(boids, time) {
-          var idx = 0;
-          for (var i = 0; i < boids.length; i++) {
-            var b = boids[i];
-            var pulse = 0.7 + 0.3 * Math.sin(time * 2.0 + b.phase);
-            for (var t = 0; t < TRAIL_LENGTH; t++) {
-              var ri = ((b.trailHead - 1 - t + TRAIL_LENGTH) % TRAIL_LENGTH);
-              trailPositions[idx * 3] = b.trail[ri * 2];
-              trailPositions[idx * 3 + 1] = b.trail[ri * 2 + 1];
-              trailPositions[idx * 3 + 2] = 0;
-              var age = t / TRAIL_LENGTH;
-              trailAlphas[idx] = (t < b.trailCount) ? (1.0 - age) * pulse : 0;
-              trailSizes[idx] = (t === 0) ? 6.0 : 3.0 * (1.0 - age * 0.5);
-              trailColors[idx * 3] = b.color.r;
-              trailColors[idx * 3 + 1] = b.color.g;
-              trailColors[idx * 3 + 2] = b.color.b;
-              idx++;
-            }
-          }
-          trailGeo.attributes.position.needsUpdate = true;
-          trailGeo.attributes.alpha.needsUpdate = true;
-          trailGeo.attributes.size.needsUpdate = true;
-        }
-
-        // === Init Boids ===
-        var boids = [];
-        for (var i = 0; i < NUM_BOIDS; i++) boids.push(new Boid());
-
-        // === Visibility Gate ===
-        var bioVisible = false;
-        var bioObserver = new IntersectionObserver(function(entries) {
-          bioVisible = entries[0].isIntersecting;
-        }, { threshold: 0.1 });
-        bioObserver.observe(container);
-
-        // === Resize Handler ===
-        window.addEventListener('resize', function() {
-          var newW = container.clientWidth;
-          var newH = container.clientHeight || 850;
-          if (newW === W && newH === H) return;
-          W = newW; H = newH;
-          renderer.setSize(W, H);
-          camera.left = -W/2; camera.right = W/2;
-          camera.top = H/2; camera.bottom = -H/2;
-          camera.updateProjectionMatrix();
-          bloom.resolution.set(W, H);
-          composer.setSize(W, H);
-        });
-
-        // === Animation Loop ===
-        var bioTime = 0;
-        var bioFrame = 0;
-        function animateBio() {
-          requestAnimationFrame(animateBio);
-          if (!bioVisible) return;
-          bioTime += 0.016;
-          bioFrame++;
-          if (bioFrame % 2 === 0) updateBoids(boids, bioTime);
-          updateTrailGeometry(boids, bioTime);
-          composer.render();
-        }
-        animateBio();
       })();
       </script>
 
