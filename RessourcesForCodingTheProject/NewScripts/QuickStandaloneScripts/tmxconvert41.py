@@ -1641,7 +1641,7 @@ def clean_tmx_folder_data(input_folder):
 
     logging.info(f"[CLEAN-TMX] Cleaning TMX files in: {input_folder}")
 
-    # regexes & helpers (unchanged)
+    # regexes & helpers
     SEG_RE = re.compile(r'(<seg[^>]*>)(.*?)(</seg>)', re.DOTALL | re.IGNORECASE)
     ZERO_WIDTH_RE = re.compile(r'[\u200B\u200C\u200D]')
     BPT_EPT_RE = re.compile(
@@ -1654,6 +1654,21 @@ def clean_tmx_folder_data(input_folder):
     PH_RE = re.compile(
         r'<ph\b(?![^>]*\btype=[\'"]fmt[\'"])[^>]*>(.*?)</ph>',
         flags=re.DOTALL | re.IGNORECASE
+    )
+    # Self-closing <ph .../> tags (e.g. <ph x="1"/>)
+    PH_SELFCLOSE_RE = re.compile(
+        r'<ph\b[^>]*/\s*>',
+        flags=re.IGNORECASE
+    )
+    # Generic <bpt>...<ept> pairs — keep inner text between them
+    GENERIC_BPT_EPT_RE = re.compile(
+        r'<bpt\b[^>]*>[^<]*</bpt>(.*?)<ept\b[^>]*>[^<]*</ept>',
+        flags=re.DOTALL | re.IGNORECASE
+    )
+    # Formatting <ph> content detection (Word/XLIFF formatting like <cf ...>, <b>, <i>, etc.)
+    FORMATTING_CONTENT_RE = re.compile(
+        r'^<(?:cf\b|/cf|b>|/b>|i>|/i>|u>|/u>|sub>|/sub>|sup>|/sup>)',
+        flags=re.IGNORECASE
     )
 
     def make_writable(path):
@@ -1684,24 +1699,50 @@ def clean_tmx_folder_data(input_folder):
             ident, inner = m.group(1), m.group(2)
             return f'{{Staticinfo:Knowledge:{ident}#{inner}}}'
         content = BPT_EPT_RE.sub(_bpt_repl, content)
-        # 3) reverse non-fmt <ph>→ their val
+        # 3) generic <bpt>...<ept> pairs — keep inner text only
+        content = GENERIC_BPT_EPT_RE.sub(r'\1', content)
+        # 4) reverse non-fmt <ph> → smart extraction (val > displaytext > raw inner)
         def _ph_repl(m):
             ph_inner = m.group(1)
+            if not ph_inner or ph_inner.isspace():
+                return ''
             decoded = html.unescape(ph_inner)
+            # Priority 1: extract val="..." (keep HTML entities intact from original)
             vm = re.search(r'val="([^"]+)"', decoded)
-            return vm.group(1) if vm else ''
+            if vm:
+                val = vm.group(1)
+                # Re-encode & as &amp; to preserve entities like &desc; in TMX
+                val = val.replace('&', '&amp;')
+                return val
+            # Priority 2: if it's formatting content (cf, b, i, etc.) → remove
+            if FORMATTING_CONTENT_RE.search(decoded):
+                return ''
+            # Priority 3: if it looks like mq:rxt/mq:tag with displaytext but no val → extract displaytext
+            dm = re.search(r'displaytext="([^"]+)"', decoded)
+            if dm:
+                return dm.group(1)
+            # Priority 4: if decoded is a structural XML tag BUT not a known placeholder → remove
+            #   Exclude <br/> variants which are legitimate content
+            stripped = decoded.strip()
+            if (stripped.startswith('<') and stripped.endswith('>')
+                    and not re.match(r'<\s*br\s*/?\s*>', stripped, re.IGNORECASE)):
+                return ''
+            # Priority 5: raw inner text as-is (NEVER delete real content)
+            return ph_inner
         content = PH_RE.sub(_ph_repl, content)
-        # 4) drop any fmt placeholders
+        # 5) remove self-closing <ph .../> tags
+        content = PH_SELFCLOSE_RE.sub('', content)
+        # 6) drop any fmt placeholders
         content = re.sub(
             r'<ph\b[^>]*\btype=[\'"]fmt[\'"][^>]*>.*?</ph>',
             '',
             content,
             flags=re.DOTALL | re.IGNORECASE
         )
-        # 5) normalize newlines → &lt;br/&gt;
+        # 7) normalize newlines → &lt;br/&gt;
         content = re.sub(r'\r\n|\r|\n', '&lt;br/&gt;', content)
         content = content.replace('\\n', '&lt;br/&gt;')
-        # 6) normalize <br> variants → &lt;br/&gt;
+        # 8) normalize <br> variants → &lt;br/&gt;
         content = re.sub(r'&amp;lt;br\s*/&amp;gt;', '&lt;br/&gt;', content, flags=re.IGNORECASE)
         content = re.sub(r'<\s*br\s*/?\s*>', '&lt;br/&gt;', content, flags=re.IGNORECASE)
         content = content.replace('<br/', '&lt;br/&gt;')
