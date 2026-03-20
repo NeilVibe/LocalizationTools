@@ -6212,8 +6212,6 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
     // Access globals from classic scripts above
     var gsap = window.gsap;
@@ -6719,46 +6717,6 @@
       cam.position.z = 260;
       baseZ = 280;
 
-      // === 3D LocaNext Logo — closing section grand finale ===
-      var logoMesh = null;
-      scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-      var logoLight = new THREE.DirectionalLight(0xd49a5c, 0.6);
-      logoLight.position.set(5, 5, 10);
-      scene.add(logoLight);
-
-      var fontLoader = new FontLoader();
-      fontLoader.load('helvetiker_regular.typeface.json', function(font) {
-        var textGeo = new TextGeometry('LocaNext', {
-          font: font,
-          size: 14,
-          depth: 2.5,
-          curveSegments: 8,
-          bevelEnabled: true,
-          bevelThickness: 0.4,
-          bevelSize: 0.25,
-          bevelSegments: 3,
-        });
-        textGeo.computeBoundingBox();
-        var center = new THREE.Vector3();
-        textGeo.boundingBox.getCenter(center);
-        textGeo.translate(-center.x, -center.y, -center.z);
-
-        var textMat = new THREE.MeshStandardMaterial({
-          color: 0xd49a5c,
-          emissive: 0xd49a5c,
-          emissiveIntensity: 0.5,
-          metalness: 0.7,
-          roughness: 0.3,
-          transparent: true,
-          opacity: 0,
-        });
-
-        logoMesh = new THREE.Mesh(textGeo, textMat);
-        logoMesh.position.set(0, 0, 0);
-        logoMesh.visible = false;
-        scene.add(logoMesh);
-      });
-
       var clock = new THREE.Clock();
       var frameCount = 0;
       var perfStart = performance.now();
@@ -6864,20 +6822,6 @@
           chromaticPass.uniforms.uIntensity.value = chromBase + velNorm * 0.003;
           // Bloom: subtle boost on fast scroll
           bloomPass.strength = 0.8 + velNorm * 0.6;
-        }
-
-        // 3D Logo — fade in during closing section (last 20% of scroll)
-        if (logoMesh) {
-          var logoStart = 0.8; // appear at 80% scroll
-          var logoP = Math.max(0, (cameraProgress.value - logoStart) / (1 - logoStart));
-          logoP = logoP * logoP; // ease-in quadratic
-          logoMesh.visible = logoP > 0.01;
-          if (logoMesh.visible) {
-            logoMesh.material.opacity = logoP;
-            logoMesh.scale.setScalar(0.5 + logoP * 0.5);
-            logoMesh.rotation.y += 0.003;
-            logoMesh.rotation.x = Math.sin(logoP * Math.PI) * 0.12;
-          }
         }
 
         // Render — composer with bloom + chromatic, or fallback to basic
