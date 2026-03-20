@@ -180,3 +180,4 @@ Build 202603200054: debug column hiding + word count per language
 Build 202603200102: final column sweep for resolved users
 Build 202603200300: fix English Quest translation column detection — bare ENG header was skipped
 Build 202603201600: use language data StrOrigin for SourceText column instead of raw game data
+Build 202603201630: cascading normalization for StrOrigin matching + StaticInfo code resolution
