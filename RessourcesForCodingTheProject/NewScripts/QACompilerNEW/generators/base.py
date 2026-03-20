@@ -27,7 +27,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import DEPTH_COLORS, STATUS_OPTIONS, EXPORT_FOLDER
+from config import DEPTH_COLORS, STATUS_OPTIONS, EXPORT_FOLDER, RESOURCE_FOLDER
 
 # =============================================================================
 # LOGGING
@@ -48,6 +48,8 @@ def get_logger(name: str) -> logging.Logger:
     return log
 
 
+log = get_logger("base")
+
 # =============================================================================
 # TEXT NORMALIZATION
 # =============================================================================
@@ -55,6 +57,7 @@ def get_logger(name: str) -> logging.Logger:
 _placeholder_suffix_re = re.compile(r'\{([^#}]+)#[^}]+\}')
 _br_tag_re = re.compile(r'<br\s*/?>', flags=re.IGNORECASE)
 _whitespace_re = re.compile(r'\s+', flags=re.UNICODE)
+_staticinfo_code_re = re.compile(r'\{StaticInfo:[^}]+\}')
 
 
 def normalize_placeholders(text: str) -> str:
@@ -71,6 +74,81 @@ def normalize_placeholders(text: str) -> str:
     text = _br_tag_re.sub(' ', text)
     text = _whitespace_re.sub(' ', text).strip()
     return text
+
+
+# =============================================================================
+# STATICINFO CODE RESOLUTION ({StaticInfo:Category:StrKey} → Korean)
+# =============================================================================
+
+_STRKEY_LOOKUP: Optional[Dict[str, str]] = None  # StrKey.lower() → DevMemo/DevComment
+
+
+def _build_strkey_lookup(resource_folder: Path) -> Dict[str, str]:
+    """Scan StaticInfo XMLs for StrKey → DevMemo/DevComment mapping.
+
+    Looks for elements with StrKey attribute and extracts the Korean
+    display name from DevMemo or DevComment attribute.
+
+    Returns:
+        {strkey_lower: korean_text}
+    """
+    lookup: Dict[str, str] = {}
+    if not resource_folder or not resource_folder.exists():
+        return lookup
+
+    for xml_path in resource_folder.rglob("*.xml"):
+        try:
+            tree = ET.parse(str(xml_path))
+            root = tree.getroot()
+            for el in root.iter():
+                strkey = el.get("StrKey")
+                if not strkey:
+                    continue
+                # Try DevMemo first, then DevComment
+                korean = el.get("DevMemo") or el.get("DevComment") or ""
+                if korean and strkey.lower() not in lookup:
+                    lookup[strkey.lower()] = korean
+        except Exception:
+            continue
+
+    return lookup
+
+
+def get_strkey_lookup() -> Dict[str, str]:
+    """Lazy-load and cache the StrKey → Korean lookup."""
+    global _STRKEY_LOOKUP
+    if _STRKEY_LOOKUP is None:
+        log.info("Building StrKey → DevMemo/DevComment lookup...")
+        _STRKEY_LOOKUP = _build_strkey_lookup(RESOURCE_FOLDER)
+        log.info("Indexed %d StrKey entries", len(_STRKEY_LOOKUP))
+    return _STRKEY_LOOKUP
+
+
+def resolve_staticinfo_codes(text: str) -> str:
+    """Resolve {StaticInfo:Category:StrKey} codes to Korean text.
+
+    Example: '{StaticInfo:Status:Fishing}-힘겨루기' → '낚시-힘겨루기'
+
+    Extracts the last segment after ':' as StrKey, looks up DevMemo/DevComment,
+    and replaces the full code. Unknown codes are left as-is.
+    """
+    if '{StaticInfo:' not in text:
+        return text
+
+    lookup = get_strkey_lookup()
+
+    def _replace_code(m: re.Match) -> str:
+        code = m.group(0)  # e.g. {StaticInfo:Status:Fishing}
+        # Extract last segment after last ':'
+        parts = code.strip('{}').split(':')
+        if len(parts) >= 3:
+            strkey = parts[-1]
+            korean = lookup.get(strkey.lower())
+            if korean:
+                return korean
+        return code  # Unknown code — leave as-is
+
+    return _staticinfo_code_re.sub(_replace_code, text)
 
 
 def br_to_newline(text: str) -> str:
@@ -107,8 +185,6 @@ def is_good_translation(text: str) -> bool:
 
 _EXPORT_INDEX: Optional[Dict[str, Set[str]]] = None  # Module-level cache
 _ORDERED_EXPORT_INDEX: Optional[Dict[str, Dict[str, List[str]]]] = None
-
-log = get_logger("base")
 
 
 def build_export_indexes(
@@ -277,6 +353,40 @@ def get_export_key(data_filename: str) -> str:
     return data_filename.lower().replace(".xml", "").replace(".loc", "")
 
 
+# =============================================================================
+# CASCADING NORMALIZATION
+# =============================================================================
+# Each level is a function that normalizes text differently.
+# The cascade tries each level until candidates are found in the language table.
+# Extensible — add new functions to NORMALIZATION_CASCADE to handle new patterns.
+
+NORMALIZATION_CASCADE = [
+    # Level 0+1: normalize_placeholders (strip placeholder suffixes, br→space, collapse ws)
+    lambda text: normalize_placeholders(text),
+    # Level 2: resolve {StaticInfo:...} codes first, then normalize
+    lambda text: normalize_placeholders(resolve_staticinfo_codes(text)),
+]
+
+
+def _find_candidates_cascading(
+    korean_text: str,
+    lang_table: Dict[str, List[Tuple[str, str, str]]],
+) -> Tuple[Optional[List[Tuple[str, str, str]]], str]:
+    """Try each normalization level until candidates are found.
+
+    Returns:
+        (candidates, normalized_key) or (None, "") if no match at any level.
+    """
+    for normalize_fn in NORMALIZATION_CASCADE:
+        normalized = normalize_fn(korean_text)
+        if not normalized:
+            continue
+        candidates = lang_table.get(normalized)
+        if candidates:
+            return candidates, normalized
+    return None, ""
+
+
 def resolve_translation(
     korean_text: str,
     lang_table: Dict[str, List[Tuple[str, str, str]]],
@@ -285,19 +395,18 @@ def resolve_translation(
     consumer: Optional[StringIdConsumer] = None,
 ) -> Tuple[str, str, str]:
     """
-    Resolve correct translation using EXPORT mapping for duplicate disambiguation.
+    Resolve correct translation using cascading normalization + EXPORT disambiguation.
 
-    When the same Korean text appears in multiple files with different translations,
-    this function uses the EXPORT folder to find which StringID belongs to the
-    current data file, returning the context-appropriate translation.
+    Tries each normalization level sequentially until candidates are found in the
+    language table. Then disambiguates using consumer (order-based) or export index
+    (file-set-based) to find the correct match for the current data file.
 
     Algorithm:
-    1. Normalize Korean text
-    2. Get all (translation, stringid, str_origin) tuples for this text
-    3. If only one → use it
-    4. If consumer provided → try order-based consumption (Nth occurrence → Nth StringID)
-    5. If multiple → find StringID that exists in matching EXPORT file
-    6. Fallback → first good translation (no Korean)
+    1. Cascading normalization — try each level until candidates found
+    2. If only one candidate → use it
+    3. If consumer provided → try order-based consumption (Nth occurrence → Nth StringID)
+    4. If multiple → find StringID that exists in matching EXPORT file
+    5. Fallback → first good translation (no Korean)
 
     Args:
         korean_text: The Korean source text to translate
@@ -315,12 +424,8 @@ def resolve_translation(
     if not korean_text:
         return ("", "", "")
 
-    normalized = normalize_placeholders(korean_text)
-    if not normalized:
-        return ("", "", "")
-
-    # Get all translation candidates
-    candidates = lang_table.get(normalized)
+    # Cascading normalization — try each level until candidates found
+    candidates, normalized = _find_candidates_cascading(korean_text, lang_table)
     if not candidates:
         return ("", "", "")
 
@@ -329,9 +434,14 @@ def resolve_translation(
         return candidates[0]
 
     # Multiple candidates — try order-based consumption first (most precise)
+    # NOTE: consumer always uses level-0/1 normalized key (normalize_placeholders)
+    # because the ordered export index was built with that normalization.
+    # If cascade matched at a higher level, consumer lookup may return None — that's OK,
+    # we fall through to export-index file-set matching.
     if consumer and data_filename:
         export_key = get_export_key(data_filename)
-        target_sid = consumer.consume(normalized, export_key)
+        consumer_key = normalize_placeholders(korean_text)
+        target_sid = consumer.consume(consumer_key, export_key)
         if target_sid:
             # Try exact match first (SID + translation from lang_table)
             for translation, stringid, str_origin in candidates:
@@ -542,8 +652,7 @@ def get_first_translation(
     Returns:
         (translation, stringid, str_origin) or ("", "", "") if not found
     """
-    normalized = normalize_placeholders(korean_text)
-    candidates = lang_table.get(normalized, [])
+    candidates, _ = _find_candidates_cascading(korean_text, lang_table)
     return candidates[0] if candidates else ("", "", "")
 
 
