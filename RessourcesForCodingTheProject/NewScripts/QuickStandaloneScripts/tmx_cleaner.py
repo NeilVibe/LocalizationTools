@@ -139,7 +139,7 @@ def clean_segment(content: str) -> str:
 
     # 2) MemoQ StaticInfo bpt/ept → {StaticInfo:Category:ID#inner}
     def _staticinfo_repl(m):
-        category, ident, inner = m.group(1), m.group(2), m.group(3)
+        category, ident, inner = m.group(1).strip(), m.group(2).strip(), m.group(3)
         return f'{{StaticInfo:{category}:{ident}#{inner}}}'
     content = MEMOQ_BPT_EPT_ESCAPED_RE.sub(_staticinfo_repl, content)
     content = MEMOQ_BPT_EPT_PLAIN_RE.sub(_staticinfo_repl, content)
@@ -230,7 +230,8 @@ def detect_encoding(raw_bytes: bytes) -> str:
 
 def read_file(path: str) -> str:
     """Read a file with auto-detected encoding."""
-    raw = open(path, 'rb').read()
+    with open(path, 'rb') as f:
+        raw = f.read()
     enc = detect_encoding(raw)
     try:
         return raw.decode(enc)
@@ -431,12 +432,17 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
     Deduplicate by (x_context, ko_seg).
     Keep the row with the LATEST changedate.
     """
+    # Warn if most rows lack x-context (dedup becomes KO-text-only)
+    empty_ctx = sum(1 for r in rows if not r['x_context'])
+    if rows and empty_ctx > len(rows) * 0.5:
+        print(f"  WARNING: {empty_ctx}/{len(rows)} rows have no x-context — dedup is by KO text only")
+
     seen: dict[tuple, dict] = {}
 
     for row in rows:
         key = (row['x_context'], row['ko_seg'])
         if key in seen:
-            # Keep the one with later changedate
+            # Keep the one with later changedate (string compare works for YYYYMMDDTHHMMSSZ format)
             if row['changedate'] > seen[key]['changedate']:
                 seen[key] = row
         else:
