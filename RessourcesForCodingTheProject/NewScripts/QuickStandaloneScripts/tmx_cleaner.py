@@ -333,15 +333,36 @@ def clean_path(path: str, dry_run: bool = False):
 # CLI
 # =============================================================================
 
+def pick_file():
+    """Open a tkinter file dialog to select a TMX file."""
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    fpath = filedialog.askopenfilename(
+        title="Select TMX file to clean",
+        filetypes=[("TMX files", "*.tmx"), ("All files", "*.*")]
+    )
+    root.destroy()
+    return fpath
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='TMX Cleaner — Strip all CAT tool markup from TMX files'
     )
-    parser.add_argument('path', help='TMX file or folder to clean')
+    parser.add_argument('path', nargs='?', default=None, help='TMX file or folder to clean (opens file picker if omitted)')
     parser.add_argument('--dry', action='store_true', help='Preview changes without writing')
     args = parser.parse_args()
 
-    clean_path(args.path, dry_run=args.dry)
+    path = args.path
+    if not path:
+        path = pick_file()
+        if not path:
+            print("[CANCELLED] No file selected.")
+            return
+
+    clean_path(path, dry_run=args.dry)
 
 
 if __name__ == '__main__':
