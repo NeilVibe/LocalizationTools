@@ -664,20 +664,30 @@ def combine_xmls_to_tmx(input_folder, output_file, target_language, postprocess=
         return False
         
         
-def batch_normal_tmx_from_folders(input_folders, output_dir, target_language):
+def batch_tmx_from_folders(input_folders, output_dir, target_language, postprocess=False):
     """
-    For each folder in input_folders, create a NORMAL TMX (no postprocess)
-    and save it to output_dir with the name <FOLDERNAME>.tmx.
+    For each folder in input_folders, create a TMX and save it to output_dir
+    with the name <FOLDERNAME>.tmx.
+
+    Args:
+        postprocess: False = NORMAL TMX, True = MemoQ-TMX (with mq:rxt placeholders)
+
     Returns a list of (input_folder, output_file, success) tuples.
     """
+    mode = "MemoQ-TMX" if postprocess else "NORMAL TMX"
     results = []
     for folder in input_folders:
         folder_name = os.path.basename(os.path.normpath(folder))
         out_file = os.path.join(output_dir, f"{folder_name}.tmx")
-        print(f"[BATCH] Processing: {folder} -> {out_file}")
-        ok = combine_xmls_to_tmx(folder, out_file, target_language, postprocess=False)
+        print(f"[BATCH-{mode}] Processing: {folder} -> {out_file}")
+        ok = combine_xmls_to_tmx(folder, out_file, target_language, postprocess=postprocess)
         results.append((folder, out_file, ok))
     return results
+
+
+def batch_normal_tmx_from_folders(input_folders, output_dir, target_language):
+    """Legacy wrapper — calls batch_tmx_from_folders with postprocess=False."""
+    return batch_tmx_from_folders(input_folders, output_dir, target_language, postprocess=False)
 
         
         
@@ -2051,6 +2061,12 @@ class ConverterGUI(tk.Tk):
             command=self.normal_tmx_batch_gui
         ).grid(row=0, column=3, padx=5)
 
+        tk.Button(
+            btn_frame,
+            text="MemoQ-TMX (BATCH)",
+            command=self.memoq_tmx_batch_gui
+        ).grid(row=0, column=4, padx=5)
+
 
         tk.Button(btn_frame, text="Extract KR/Empty in One File", command=self.extract_korean_or_empty).grid(row=1, column=0, padx=5)
         tk.Button(btn_frame, text="TMX Fix", command=self.tmx_fix).grid(row=1, column=1, padx=5)
@@ -2546,8 +2562,43 @@ class ConverterGUI(tk.Tk):
             "Batch Complete",
             msg
         ))
-            
-            
+
+    def memoq_tmx_batch_gui(self):
+        input_folders = self.ask_subfolders_multiple(
+            title="Select Parent Folder and Subfolders to Batch Convert to MemoQ-TMX"
+        )
+        if not input_folders:
+            messagebox.showinfo("Info", "No folders selected. Batch cancelled.")
+            return
+
+        output_dir = filedialog.askdirectory(
+            title="Select Output Directory for MemoQ-TMX Files"
+        )
+        if not output_dir:
+            messagebox.showinfo("Info", "No output directory selected. Batch cancelled.")
+            return
+
+        tgt_key = self.target_language.get()
+        tgt_code = self.language_options.get(tgt_key, "en-US")
+
+        threading.Thread(
+            target=self.threaded_memoq_tmx_batch,
+            args=(input_folders, output_dir, tgt_code),
+            daemon=True
+        ).start()
+
+    def threaded_memoq_tmx_batch(self, input_folders, output_dir, tgt_code):
+        results = batch_tmx_from_folders(input_folders, output_dir, tgt_code, postprocess=True)
+        summary = []
+        for folder, out_file, ok in results:
+            status = "OK" if ok else "FAILED"
+            summary.append(f"{os.path.basename(folder)}: {status} ({out_file})")
+        msg = "Batch MemoQ-TMX complete:  " + " ".join(summary)
+        self.after(0, lambda: messagebox.showinfo(
+            "Batch Complete",
+            msg
+        ))
+
     def ask_subfolders_multiple(self, title="Select Folders"):
         """
         Pops up a dialog to select a parent folder, then lets the user select multiple subfolders.
