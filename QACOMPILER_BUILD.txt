@@ -182,3 +182,4 @@ Build 202603200300: fix English Quest translation column detection — bare ENG 
 Build 202603201600: use language data StrOrigin for SourceText column instead of raw game data
 Build 202603201630: cascading normalization for StrOrigin matching + StaticInfo code resolution
 Build 202603201700: fix RESOURCE_FOLDER import-time None bug in StaticInfo code resolution
+Build 202603201730: fix StrKey lookup XML parsing (use parse_xml_file with sanitization)
