@@ -96,6 +96,30 @@ def sanitize_stringid_for_match(value) -> str:
 
 # =============================================================================
 # COLUMN DETECTION
+#
+# CRITICAL RULE: If you change or add a header in ANY generator, you MUST
+# update the detection logic below to match. The detection uses pattern
+# matching (prefix, exact match), NOT imports from generators. A mismatch
+# means the translation column returns None → masterfile compilation silently
+# produces empty output for that language.
+#
+# Current header patterns by generator:
+#   quest.py      → bare "ENG" / bare language code (ZHO-CN, FRA, ...)
+#   item.py       → "Translation ({CODE})"
+#   character.py  → "Translation ({CODE})"
+#   skill.py      → "Translation ({CODE})"
+#   itemknowledgecluster.py → "Translation ({CODE})"
+#   help.py       → "English (ENG)" (no Translation col for ENG)
+#   knowledge.py  → "English (ENG)" (no Translation col for ENG)
+#   gimmick.py    → "English (ENG)" (no Translation col for ENG)
+#   region.py     → "English (ENG)" (no Translation col for ENG)
+#   script.py     → "Text" / "Translation" (bare, no language code)
+#
+# If you add a new generator or change a header format, update:
+#   1. find_translation_col_in_headers() below
+#   2. find_translation_col_in_ws() below
+#   3. _find_translation_col() in generators/wordcount_report.py
+#   4. docs/MASTERFILE_COMPILATION_GUIDE.md
 # =============================================================================
 
 def find_translation_col_in_headers(col_idx: dict, is_english: bool) -> int:
