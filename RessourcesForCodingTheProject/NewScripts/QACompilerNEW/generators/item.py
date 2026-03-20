@@ -226,7 +226,7 @@ def get_display_name(
 
     kor_name = group_names.get(group_key, "")
     if kor_name:
-        eng_name, _ = get_first_translation(eng_tbl, kor_name)
+        eng_name, _, _ = get_first_translation(eng_tbl, kor_name)
         if eng_name and is_good_translation(eng_name):
             return sanitize_filename(eng_name)
 
@@ -714,7 +714,7 @@ def write_item_excel(
     # sorted write loop below would break the consumer's pointer, so we
     # resolve here first and store results keyed by (item_strkey, field).
     # ------------------------------------------------------------------
-    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (ik, field) -> (trans, sid)
+    pre: Dict[Tuple[str, str], Tuple[str, str, str]] = {}  # (ik, field) -> (trans, sid, str_origin)
     for ik, entry in items.items():  # insertion order = document order
         pre[(ik, "item_name")] = resolve_translation(
             entry.item_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
@@ -766,42 +766,42 @@ def write_item_excel(
         # Collect primary triples: (kor_text, translation, stringid)
         primary_triples: Set[Tuple[str, str, str]] = set()
         # ItemData
-        t, s = pre[(ik, "item_name")]
+        t, s, _ = pre[(ik, "item_name")]
         if entry.item_name_kor:
             primary_triples.add((entry.item_name_kor, t, s))
-        t, s = pre[(ik, "item_desc")]
+        t, s, _ = pre[(ik, "item_desc")]
         if entry.item_desc_kor:
             primary_triples.add((entry.item_desc_kor, t, s))
         # ChildKnowledgeData (Pass 0)
-        for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+        for i, (cname, cdesc, _csrc) in enumerate(entry.child_knowledge_entries):
             if cname:
-                t, s = pre.get((ik, f"ck_{i}_name"), ("", ""))
+                t, s, _ = pre.get((ik, f"ck_{i}_name"), ("", "", ""))
                 primary_triples.add((cname, t, s))
             if cdesc:
-                t, s = pre.get((ik, f"ck_{i}_desc"), ("", ""))
+                t, s, _ = pre.get((ik, f"ck_{i}_desc"), ("", "", ""))
                 primary_triples.add((cdesc, t, s))
         # KnowledgeData (Pass 1)
         if entry.knowledge_name_kor:
-            t, s = pre[(ik, "knowledge_name")]
+            t, s, _ = pre[(ik, "knowledge_name")]
             primary_triples.add((entry.knowledge_name_kor, t, s))
         if entry.knowledge_desc_kor:
-            t, s = pre[(ik, "knowledge_desc")]
+            t, s, _ = pre[(ik, "knowledge_desc")]
             primary_triples.add((entry.knowledge_desc_kor, t, s))
         # InspectData + InspectKnowledgeData
-        for i, (idesc, ikname, ikdesc, _) in enumerate(entry.inspect_entries):
-            t, s = pre.get((ik, f"inspect_{i}_desc"), ("", ""))
+        for i, (idesc, ikname, ikdesc, _iksrc) in enumerate(entry.inspect_entries):
+            t, s, _ = pre.get((ik, f"inspect_{i}_desc"), ("", "", ""))
             primary_triples.add((idesc, t, s))
             if ikname:
-                t, s = pre.get((ik, f"inspect_{i}_kname"), ("", ""))
+                t, s, _ = pre.get((ik, f"inspect_{i}_kname"), ("", "", ""))
                 primary_triples.add((ikname, t, s))
             if ikdesc:
-                t, s = pre.get((ik, f"inspect_{i}_kdesc"), ("", ""))
+                t, s, _ = pre.get((ik, f"inspect_{i}_kdesc"), ("", "", ""))
                 primary_triples.add((ikdesc, t, s))
 
         # Check KnowledgeData2 fields against primary triples
         entity_deduped = False
         if entry.knowledge2_name_kor:
-            t, s = pre[(ik, "knowledge2_name")]
+            t, s, _ = pre[(ik, "knowledge2_name")]
             if (entry.knowledge2_name_kor, t, s) in primary_triples:
                 dedup_skip.add((ik, "knowledge2_name"))
                 dedup_count += 1
@@ -809,7 +809,7 @@ def write_item_excel(
                 log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
                           entry.knowledge2_name_kor[:40], ik)
         if entry.knowledge2_desc_kor:
-            t, s = pre[(ik, "knowledge2_desc")]
+            t, s, _ = pre[(ik, "knowledge2_desc")]
             if (entry.knowledge2_desc_kor, t, s) in primary_triples:
                 dedup_skip.add((ik, "knowledge2_desc"))
                 dedup_count += 1
@@ -876,54 +876,54 @@ def write_item_excel(
                     excel_row += 1
 
                 # 1. ItemData -- ItemName (always output)
-                t, s = pre[(ik, "item_name")]
-                _write_row("ItemData", entry.item_name_kor, t, s)
+                t, s, so = pre[(ik, "item_name")]
+                _write_row("ItemData", so if so else entry.item_name_kor, t, s)
 
                 # 2. ItemData -- ItemDesc (always output)
-                t, s = pre[(ik, "item_desc")]
-                _write_row("ItemData", entry.item_desc_kor, t, s)
+                t, s, so = pre[(ik, "item_desc")]
+                _write_row("ItemData", so if so else entry.item_desc_kor, t, s)
 
                 # 2b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
-                for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                for i, (cname, cdesc, _csrc) in enumerate(entry.child_knowledge_entries):
                     if cname:
-                        t, s = pre.get((ik, f"ck_{i}_name"), ("", ""))
-                        _write_row("ChildKnowledgeData", cname, t, s)
+                        t, s, so = pre.get((ik, f"ck_{i}_name"), ("", "", ""))
+                        _write_row("ChildKnowledgeData", so if so else cname, t, s)
                     if cdesc:
-                        t, s = pre.get((ik, f"ck_{i}_desc"), ("", ""))
-                        _write_row("ChildKnowledgeData", cdesc, t, s)
+                        t, s, so = pre.get((ik, f"ck_{i}_desc"), ("", "", ""))
+                        _write_row("ChildKnowledgeData", so if so else cdesc, t, s)
 
                 # 3. KnowledgeData -- Name (skip if empty)
                 if entry.knowledge_name_kor:
-                    t, s = pre[(ik, "knowledge_name")]
-                    _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
+                    t, s, so = pre[(ik, "knowledge_name")]
+                    _write_row("KnowledgeData", so if so else entry.knowledge_name_kor, t, s)
 
                 # 4. KnowledgeData -- Desc (skip if empty)
                 if entry.knowledge_desc_kor:
-                    t, s = pre[(ik, "knowledge_desc")]
-                    _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
+                    t, s, so = pre[(ik, "knowledge_desc")]
+                    _write_row("KnowledgeData", so if so else entry.knowledge_desc_kor, t, s)
 
                 # 5. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty or deduped)
                 if entry.knowledge2_name_kor and (ik, "knowledge2_name") not in dedup_skip:
-                    t, s = pre[(ik, "knowledge2_name")]
-                    _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
+                    t, s, so = pre[(ik, "knowledge2_name")]
+                    _write_row("KnowledgeData2", so if so else entry.knowledge2_name_kor, t, s)
 
                 # 6. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty or deduped)
                 if entry.knowledge2_desc_kor and (ik, "knowledge2_desc") not in dedup_skip:
-                    t, s = pre[(ik, "knowledge2_desc")]
-                    _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+                    t, s, so = pre[(ik, "knowledge2_desc")]
+                    _write_row("KnowledgeData2", so if so else entry.knowledge2_desc_kor, t, s)
 
                 # 7. InspectData + InspectKnowledgeData (Pattern A: recipe, Pattern B: book)
-                for i, (idesc, ikname, ikdesc, _) in enumerate(entry.inspect_entries):
+                for i, (idesc, ikname, ikdesc, _iksrc) in enumerate(entry.inspect_entries):
                     # InspectData -- the Desc text from <InspectData> element
-                    t, s = pre.get((ik, f"inspect_{i}_desc"), ("", ""))
-                    _write_row("InspectData", idesc, t, s)
+                    t, s, so = pre.get((ik, f"inspect_{i}_desc"), ("", "", ""))
+                    _write_row("InspectData", so if so else idesc, t, s)
                     # InspectKnowledgeData -- linked via RewardKnowledgeKey (if exists)
                     if ikname:
-                        t, s = pre.get((ik, f"inspect_{i}_kname"), ("", ""))
-                        _write_row("InspectKnowledgeData", ikname, t, s)
+                        t, s, so = pre.get((ik, f"inspect_{i}_kname"), ("", "", ""))
+                        _write_row("InspectKnowledgeData", so if so else ikname, t, s)
                     if ikdesc:
-                        t, s = pre.get((ik, f"inspect_{i}_kdesc"), ("", ""))
-                        _write_row("InspectKnowledgeData", ikdesc, t, s)
+                        t, s, so = pre.get((ik, f"inspect_{i}_kdesc"), ("", "", ""))
+                        _write_row("InspectKnowledgeData", so if so else ikdesc, t, s)
 
         # Sheet cosmetics
         if excel_row > 2:

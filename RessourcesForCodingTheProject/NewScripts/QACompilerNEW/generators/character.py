@@ -296,7 +296,7 @@ def write_character_excel(
     # occurrence in the XML data file.  Sorting entries by strkey would
     # break that order, so we resolve here first, then store results.
     # ------------------------------------------------------------------
-    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (strkey, field) -> (trans, sid)
+    pre: Dict[Tuple[str, str], Tuple[str, str, str]] = {}  # (strkey, field) -> (trans, sid, str_origin)
     for gk in sorted(groups.keys()):
         for entry in groups[gk]:  # list order = document order
             pre[(entry.strkey, "char_name")] = resolve_translation(
@@ -338,29 +338,29 @@ def write_character_excel(
             # Collect primary triples: (kor_text, translation, stringid)
             primary_triples: Set[Tuple[str, str, str]] = set()
             # CharacterData
-            t, s = pre[(entry.strkey, "char_name")]
+            t, s, _ = pre[(entry.strkey, "char_name")]
             if entry.char_name_kor:
                 primary_triples.add((entry.char_name_kor, t, s))
             # ChildKnowledgeData (Pass 0)
-            for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+            for i, (cname, cdesc, _csrc) in enumerate(entry.child_knowledge_entries):
                 if cname:
-                    t, s = pre.get((entry.strkey, f"ck_{i}_name"), ("", ""))
+                    t, s, _ = pre.get((entry.strkey, f"ck_{i}_name"), ("", "", ""))
                     primary_triples.add((cname, t, s))
                 if cdesc:
-                    t, s = pre.get((entry.strkey, f"ck_{i}_desc"), ("", ""))
+                    t, s, _ = pre.get((entry.strkey, f"ck_{i}_desc"), ("", "", ""))
                     primary_triples.add((cdesc, t, s))
             # KnowledgeData (Pass 1)
             if entry.knowledge_name_kor:
-                t, s = pre[(entry.strkey, "knowledge_name")]
+                t, s, _ = pre[(entry.strkey, "knowledge_name")]
                 primary_triples.add((entry.knowledge_name_kor, t, s))
             if entry.knowledge_desc_kor:
-                t, s = pre[(entry.strkey, "knowledge_desc")]
+                t, s, _ = pre[(entry.strkey, "knowledge_desc")]
                 primary_triples.add((entry.knowledge_desc_kor, t, s))
 
             # Check KnowledgeData2 fields against primary triples
             entity_deduped = False
             if entry.knowledge2_name_kor:
-                t, s = pre[(entry.strkey, "knowledge2_name")]
+                t, s, _ = pre[(entry.strkey, "knowledge2_name")]
                 if (entry.knowledge2_name_kor, t, s) in primary_triples:
                     dedup_skip.add((entry.strkey, "knowledge2_name"))
                     dedup_count += 1
@@ -368,7 +368,7 @@ def write_character_excel(
                     log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
                               entry.knowledge2_name_kor[:40], entry.strkey)
             if entry.knowledge2_desc_kor:
-                t, s = pre[(entry.strkey, "knowledge2_desc")]
+                t, s, _ = pre[(entry.strkey, "knowledge2_desc")]
                 if (entry.knowledge2_desc_kor, t, s) in primary_triples:
                     dedup_skip.add((entry.strkey, "knowledge2_desc"))
                     dedup_count += 1
@@ -439,37 +439,37 @@ def write_character_excel(
                 excel_row += 1
 
             # 1. CharacterData -- CharacterName (always output, with COMMAND)
-            t, s = pre[(entry.strkey, "char_name")]
-            _write_row("CharacterData", entry.char_name_kor, t, s, command)
+            t, s, so = pre[(entry.strkey, "char_name")]
+            _write_row("CharacterData", so if so else entry.char_name_kor, t, s, command)
 
             # 1b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
-            for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+            for i, (cname, cdesc, _csrc) in enumerate(entry.child_knowledge_entries):
                 if cname:
-                    t, s = pre.get((entry.strkey, f"ck_{i}_name"), ("", ""))
-                    _write_row("ChildKnowledgeData", cname, t, s)
+                    t, s, so = pre.get((entry.strkey, f"ck_{i}_name"), ("", "", ""))
+                    _write_row("ChildKnowledgeData", so if so else cname, t, s)
                 if cdesc:
-                    t, s = pre.get((entry.strkey, f"ck_{i}_desc"), ("", ""))
-                    _write_row("ChildKnowledgeData", cdesc, t, s)
+                    t, s, so = pre.get((entry.strkey, f"ck_{i}_desc"), ("", "", ""))
+                    _write_row("ChildKnowledgeData", so if so else cdesc, t, s)
 
             # 2. KnowledgeData -- Name (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_name_kor:
-                t, s = pre[(entry.strkey, "knowledge_name")]
-                _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
+                t, s, so = pre[(entry.strkey, "knowledge_name")]
+                _write_row("KnowledgeData", so if so else entry.knowledge_name_kor, t, s)
 
             # 3. KnowledgeData -- Desc (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_desc_kor:
-                t, s = pre[(entry.strkey, "knowledge_desc")]
-                _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
+                t, s, so = pre[(entry.strkey, "knowledge_desc")]
+                _write_row("KnowledgeData", so if so else entry.knowledge_desc_kor, t, s)
 
             # 4. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty or deduped)
             if entry.knowledge2_name_kor and (entry.strkey, "knowledge2_name") not in dedup_skip:
-                t, s = pre[(entry.strkey, "knowledge2_name")]
-                _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
+                t, s, so = pre[(entry.strkey, "knowledge2_name")]
+                _write_row("KnowledgeData2", so if so else entry.knowledge2_name_kor, t, s)
 
             # 5. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty or deduped)
             if entry.knowledge2_desc_kor and (entry.strkey, "knowledge2_desc") not in dedup_skip:
-                t, s = pre[(entry.strkey, "knowledge2_desc")]
-                _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+                t, s, so = pre[(entry.strkey, "knowledge2_desc")]
+                _write_row("KnowledgeData2", so if so else entry.knowledge2_desc_kor, t, s)
 
         # Sheet cosmetics
         if excel_row > 2:

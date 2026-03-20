@@ -133,9 +133,9 @@ def _tr(
 ) -> str:
     """Get translation from table (context-aware resolution with EXPORT fallback)."""
     if source_file and export_index:
-        translation, _ = resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
+        translation, _, _ = resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
     else:
-        translation, _ = get_first_translation(tbl, text)
+        translation, _, _ = get_first_translation(tbl, text)
     return translation
 
 
@@ -148,9 +148,9 @@ def _sid(
 ) -> str:
     """Get StringID from table (context-aware resolution with EXPORT fallback)."""
     if source_file and export_index:
-        _, stringid = resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
+        _, stringid, _ = resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
     else:
-        _, stringid = get_first_translation(tbl, text)
+        _, stringid, _ = get_first_translation(tbl, text)
     return stringid
 
 
@@ -163,9 +163,10 @@ def _tr_sid(
 ) -> Tuple[str, str]:
     """Get translation AND StringID from single resolve call (avoids double consumption)."""
     if source_file and export_index:
-        return resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
+        trans, sid, _str_origin = resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
     else:
-        return get_first_translation(tbl, text)
+        trans, sid, _str_origin = get_first_translation(tbl, text)
+    return trans, sid
 
 
 def _build_mission_desc_rows(

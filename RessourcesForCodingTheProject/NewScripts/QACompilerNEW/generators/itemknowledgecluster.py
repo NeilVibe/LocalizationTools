@@ -712,7 +712,7 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             consumer = StringIdConsumer(ordered_idx)
             for cluster in unsorted_clusters:
                 for crow in cluster.rows:
-                    crow.pre_trans, crow.pre_sid = resolve_translation(
+                    crow.pre_trans, crow.pre_sid, _str_origin = resolve_translation(
                         crow.kor_text, tbl, crow.source_file, export_index,
                         consumer=consumer,
                     )

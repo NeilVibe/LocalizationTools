@@ -304,22 +304,23 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
         if source_file and export_index:
-            eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+            eng_tr, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            eng_tr, sid_eng = get_first_translation(eng_tbl, text)
-        loc_tr, sid_other = "", ""
+            eng_tr, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+        loc_tr, sid_other, str_origin = "", "", ""
         if lang_tbl:
             if source_file and export_index:
-                loc_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
+                loc_tr, sid_other, str_origin = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
             else:
-                loc_tr, sid_other = get_first_translation(lang_tbl, text)
+                loc_tr, sid_other, str_origin = get_first_translation(lang_tbl, text)
         sid = sid_other if not is_eng else sid_eng
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth
 
-        # Column A: Original (KR)
-        c1 = ws.cell(row_idx, 1, br_to_newline(text))
+        # Column A: Original (KR) — use str_origin from target language if available
+        kor_display = str_origin if str_origin else text
+        c1 = ws.cell(row_idx, 1, br_to_newline(kor_display))
         c1.fill = fill
         c1.font = font
         c1.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")

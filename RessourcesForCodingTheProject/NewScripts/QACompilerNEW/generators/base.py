@@ -279,11 +279,11 @@ def get_export_key(data_filename: str) -> str:
 
 def resolve_translation(
     korean_text: str,
-    lang_table: Dict[str, List[Tuple[str, str]]],
+    lang_table: Dict[str, List[Tuple[str, str, str]]],
     data_filename: str = "",
     export_index: Optional[Dict[str, Set[str]]] = None,
     consumer: Optional[StringIdConsumer] = None,
-) -> Tuple[str, str]:
+) -> Tuple[str, str, str]:
     """
     Resolve correct translation using EXPORT mapping for duplicate disambiguation.
 
@@ -293,7 +293,7 @@ def resolve_translation(
 
     Algorithm:
     1. Normalize Korean text
-    2. Get all (translation, stringid) pairs for this text
+    2. Get all (translation, stringid, str_origin) tuples for this text
     3. If only one → use it
     4. If consumer provided → try order-based consumption (Nth occurrence → Nth StringID)
     5. If multiple → find StringID that exists in matching EXPORT file
@@ -302,7 +302,7 @@ def resolve_translation(
     Args:
         korean_text: The Korean source text to translate
         lang_table: Language table with ALL translations stored as lists
-                    {normalized_korean: [(translation, stringid), ...]}
+                    {normalized_korean: [(translation, stringid, str_origin), ...]}
         data_filename: Source data file name (e.g., "skillinfo_pc.staticinfo.xml")
         export_index: Optional pre-loaded EXPORT index (uses global cache if None)
         consumer: Optional StringIdConsumer for order-based disambiguation.
@@ -310,19 +310,19 @@ def resolve_translation(
                   returns the Nth StringID from document order.
 
     Returns:
-        Tuple of (translation, stringid). Returns ("", "") if not found.
+        Tuple of (translation, stringid, str_origin). Returns ("", "", "") if not found.
     """
     if not korean_text:
-        return ("", "")
+        return ("", "", "")
 
     normalized = normalize_placeholders(korean_text)
     if not normalized:
-        return ("", "")
+        return ("", "", "")
 
     # Get all translation candidates
     candidates = lang_table.get(normalized)
     if not candidates:
-        return ("", "")
+        return ("", "", "")
 
     # If only one candidate, no disambiguation needed — just return it
     if len(candidates) == 1:
@@ -334,15 +334,15 @@ def resolve_translation(
         target_sid = consumer.consume(normalized, export_key)
         if target_sid:
             # Try exact match first (SID + translation from lang_table)
-            for translation, stringid in candidates:
+            for translation, stringid, str_origin in candidates:
                 if stringid == target_sid:
-                    return (translation, stringid)
+                    return (translation, stringid, str_origin)
             # SID not in lang_table candidates — use SID from export directly,
             # pair with best available translation
-            for translation, stringid in candidates:
+            for translation, stringid, str_origin in candidates:
                 if is_good_translation(translation):
-                    return (translation, target_sid)
-            return (candidates[0][0], target_sid)
+                    return (translation, target_sid, str_origin)
+            return (candidates[0][0], target_sid, candidates[0][2])
 
     # Fall back to file-set matching using EXPORT index
     if data_filename:
@@ -354,14 +354,14 @@ def resolve_translation(
 
         if export_stringids:
             # Find candidate whose StringID is in this EXPORT file
-            for translation, stringid in candidates:
+            for translation, stringid, str_origin in candidates:
                 if stringid in export_stringids:
-                    return (translation, stringid)
+                    return (translation, stringid, str_origin)
 
     # Fallback: prefer good translation (no Korean)
-    for translation, stringid in candidates:
+    for translation, stringid, str_origin in candidates:
         if is_good_translation(translation):
-            return (translation, stringid)
+            return (translation, stringid, str_origin)
 
     # Last resort: return first candidate
     return candidates[0]
@@ -463,7 +463,7 @@ def iter_xml_files(
 # LANGUAGE TABLE LOADING
 # =============================================================================
 
-def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, str]]]]:
+def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, str, str]]]]:
     """
     Load all non-Korean language tables with normalized placeholder keys.
 
@@ -480,7 +480,7 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, st
     Note: The list preserves all translations for a given Korean text.
           Good translations (no Korean) are sorted to the front.
     """
-    tables: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}
+    tables: Dict[str, Dict[str, List[Tuple[str, str, str]]]] = {}
 
     for path in iter_xml_files(folder):
         stem = path.stem.lower()
@@ -494,7 +494,7 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, st
         if root_el is None:
             continue
 
-        tbl: Dict[str, List[Tuple[str, str]]] = {}
+        tbl: Dict[str, List[Tuple[str, str, str]]] = {}
 
         for loc in root_el.iter("LocStr"):
             origin = loc.get("StrOrigin") or ""
@@ -511,7 +511,8 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, st
                 tbl[normalized_origin] = []
 
             # Add this translation (avoid exact duplicates)
-            entry = (tr, sid)
+            # origin = raw StrOrigin from language data (preserves <br/> tags)
+            entry = (tr, sid, origin)
             if entry not in tbl[normalized_origin]:
                 tbl[normalized_origin].append(entry)
 
@@ -525,9 +526,9 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, st
 
 
 def get_first_translation(
-    lang_table: Dict[str, List[Tuple[str, str]]],
+    lang_table: Dict[str, List[Tuple[str, str, str]]],
     korean_text: str
-) -> Tuple[str, str]:
+) -> Tuple[str, str, str]:
     """
     Simple lookup that returns the first (best) translation.
 
@@ -535,15 +536,15 @@ def get_first_translation(
     context-aware duplicate resolution.
 
     Args:
-        lang_table: Language table {normalized_korean: [(translation, stringid), ...]}
+        lang_table: Language table {normalized_korean: [(translation, stringid, str_origin), ...]}
         korean_text: Korean text to translate
 
     Returns:
-        (translation, stringid) or ("", "") if not found
+        (translation, stringid, str_origin) or ("", "", "") if not found
     """
     normalized = normalize_placeholders(korean_text)
     candidates = lang_table.get(normalized, [])
-    return candidates[0] if candidates else ("", "")
+    return candidates[0] if candidates else ("", "", "")
 
 
 # =============================================================================
@@ -674,7 +675,7 @@ class RowItem:
 def emit_rows_to_worksheet(
     ws,
     rows: List[RowItem],
-    lang_table: Dict[str, List[Tuple[str, str]]],
+    lang_table: Dict[str, List[Tuple[str, str, str]]],
     lang_code: str,
     include_translation_col: bool = True,
     data_filename: str = "",
@@ -709,19 +710,20 @@ def emit_rows_to_worksheet(
     for item in rows:
         # Use context-aware resolution if data_filename is provided
         if data_filename:
-            translation, stringid = resolve_translation(
+            translation, stringid, str_origin = resolve_translation(
                 item.text, lang_table, data_filename, export_index,
                 consumer=consumer,
             )
         else:
             # Fallback to simple first-translation lookup
-            translation, stringid = get_first_translation(lang_table, item.text)
+            translation, stringid, str_origin = get_first_translation(lang_table, item.text)
 
         # Write cells
         col = 1
 
-        # Original (KR)
-        cell = ws.cell(row=current_row, column=col, value=br_to_newline(item.text))
+        # Original (KR) — use StrOrigin from language data when available
+        source_text = str_origin if str_origin else item.text
+        cell = ws.cell(row=current_row, column=col, value=br_to_newline(source_text))
         cell.fill = get_depth_fill(item.depth)
         cell.font = get_depth_font(item.depth)
         cell.alignment = Alignment(wrap_text=True, vertical="top")

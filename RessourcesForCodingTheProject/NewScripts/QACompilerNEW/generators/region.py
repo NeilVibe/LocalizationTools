@@ -933,18 +933,18 @@ def get_translated_tab_name(
     is_eng = lang_code.lower() == "eng"
 
     if is_eng:
-        trans, _ = get_first_translation(eng_tbl, korean_name)
+        trans, _, _ = get_first_translation(eng_tbl, korean_name)
         title = trans.strip() if trans else korean_name.strip()
     else:
         if lang_tbl:
-            trans, _ = get_first_translation(lang_tbl, korean_name)
+            trans, _, _ = get_first_translation(lang_tbl, korean_name)
             if trans and is_good_translation(trans):
                 title = trans.strip()
             else:
-                trans_eng, _ = get_first_translation(eng_tbl, korean_name)
+                trans_eng, _, _ = get_first_translation(eng_tbl, korean_name)
                 title = trans_eng.strip() if trans_eng else korean_name.strip()
         else:
-            trans_eng, _ = get_first_translation(eng_tbl, korean_name)
+            trans_eng, _, _ = get_first_translation(eng_tbl, korean_name)
             title = trans_eng.strip() if trans_eng else korean_name.strip()
 
     if not title:
@@ -1005,15 +1005,15 @@ def write_sheet_content(
         # For ENG workbook: eng_consumer disambiguates StringIDs
         # For non-ENG: consumer=None (display-only), StringID comes from lang_tbl
         if source_file and export_index:
-            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+            trans_eng, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            trans_eng, sid_eng = get_first_translation(eng_tbl, text)
-        trans_other = sid_other = ""
+            trans_eng, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+        trans_other = sid_other = str_origin = ""
         if not is_eng and lang_tbl:
             if source_file and export_index:
-                trans_other, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
+                trans_other, sid_other, str_origin = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
             else:
-                trans_other, sid_other = get_first_translation(lang_tbl, text)
+                trans_other, sid_other, str_origin = get_first_translation(lang_tbl, text)
 
         # DataType
         c_dtype = sheet.cell(r_idx, 1, data_type)
@@ -1022,8 +1022,9 @@ def write_sheet_content(
         c_dtype.alignment = Alignment(horizontal="center", vertical="center")
         c_dtype.border = THIN_BORDER
 
-        # Original
-        c_orig = sheet.cell(r_idx, 2, br_to_newline(text))
+        # Original — use str_origin from target language if available
+        kor_display = str_origin if str_origin else text
+        c_orig = sheet.cell(r_idx, 2, br_to_newline(kor_display))
         c_orig.fill = fill
         c_orig.font = font
         c_orig.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")

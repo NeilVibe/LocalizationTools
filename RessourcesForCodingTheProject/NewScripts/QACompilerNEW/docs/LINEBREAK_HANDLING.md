@@ -53,6 +53,14 @@ QuickTranslate:  must convert \n → <br/> to match XML targets
 
 **Fix applied in QuickTranslate** (2026-03-20): `_convert_linebreaks_for_excel()` is now called as a preprocess on StrOrigin and DescOrigin when reading from Excel, converting `\n` → `<br/>` before matching.
 
+## StrOrigin Fix (2026-03-20)
+
+**Problem:** SourceText (KR) column used raw game data Korean text, which can differ from language data `StrOrigin` (linebreaks, whitespace, placeholder formatting). This caused matching failures in QuickTranslate.
+
+**Fix:** `resolve_translation()` and `get_first_translation()` now return a 3-tuple `(translation, stringid, str_origin)`. All generators use `str_origin` (from language data) for the SourceText column, falling back to game data text when no match is found.
+
+Changed files: `base.py` (language table + resolve functions) + all 9 generator files.
+
 ## Future Consideration
 
 The cleaner approach would be to **remove `br_to_newline()` entirely** and keep `<br/>` as-is in Excel cells. This preserves the canonical format throughout the pipeline and eliminates the need for re-conversion downstream.

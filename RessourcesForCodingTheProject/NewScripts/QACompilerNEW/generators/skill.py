@@ -513,41 +513,41 @@ def _write_skill_rows(
         return excel_row
 
     # 1. SkillData -- SkillName (always)
-    t, s = pre.get((sk_lower, "skill_name"), ("", ""))
-    excel_row = _write_row(f"{prefix}SkillData", entry.skill_name_kor, t, s)
+    t, s, so = pre.get((sk_lower, "skill_name"), ("", "", ""))
+    excel_row = _write_row(f"{prefix}SkillData", so if so else entry.skill_name_kor, t, s)
 
     # 2. SkillData -- SkillDesc (always, even if empty)
-    t, s = pre.get((sk_lower, "skill_desc"), ("", ""))
-    excel_row = _write_row(f"{prefix}SkillData", entry.skill_desc_kor, t, s)
+    t, s, so = pre.get((sk_lower, "skill_desc"), ("", "", ""))
+    excel_row = _write_row(f"{prefix}SkillData", so if so else entry.skill_desc_kor, t, s)
 
     # 2b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
-    for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+    for i, (cname, cdesc, _csrc) in enumerate(entry.child_knowledge_entries):
         if cname:
-            t, s = pre.get((sk_lower, f"ck_{i}_name"), ("", ""))
-            excel_row = _write_row(f"{prefix}ChildKnowledgeData", cname, t, s)
+            t, s, so = pre.get((sk_lower, f"ck_{i}_name"), ("", "", ""))
+            excel_row = _write_row(f"{prefix}ChildKnowledgeData", so if so else cname, t, s)
         if cdesc:
-            t, s = pre.get((sk_lower, f"ck_{i}_desc"), ("", ""))
-            excel_row = _write_row(f"{prefix}ChildKnowledgeData", cdesc, t, s)
+            t, s, so = pre.get((sk_lower, f"ck_{i}_desc"), ("", "", ""))
+            excel_row = _write_row(f"{prefix}ChildKnowledgeData", so if so else cdesc, t, s)
 
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
-        t, s = pre.get((sk_lower, "knowledge_name"), ("", ""))
-        excel_row = _write_row(f"{prefix}KnowledgeData", entry.knowledge_name_kor, t, s)
+        t, s, so = pre.get((sk_lower, "knowledge_name"), ("", "", ""))
+        excel_row = _write_row(f"{prefix}KnowledgeData", so if so else entry.knowledge_name_kor, t, s)
 
     # 4. KnowledgeData -- Desc (skip if empty)
     if entry.knowledge_desc_kor:
-        t, s = pre.get((sk_lower, "knowledge_desc"), ("", ""))
-        excel_row = _write_row(f"{prefix}KnowledgeData", entry.knowledge_desc_kor, t, s)
+        t, s, so = pre.get((sk_lower, "knowledge_desc"), ("", "", ""))
+        excel_row = _write_row(f"{prefix}KnowledgeData", so if so else entry.knowledge_desc_kor, t, s)
 
     # 5. KnowledgeData2 -- Name (skip if empty)
     if entry.knowledge2_name_kor:
-        t, s = pre.get((sk_lower, "knowledge2_name"), ("", ""))
-        excel_row = _write_row(f"{prefix}KnowledgeData2", entry.knowledge2_name_kor, t, s)
+        t, s, so = pre.get((sk_lower, "knowledge2_name"), ("", "", ""))
+        excel_row = _write_row(f"{prefix}KnowledgeData2", so if so else entry.knowledge2_name_kor, t, s)
 
     # 6. KnowledgeData2 -- Desc (skip if empty)
     if entry.knowledge2_desc_kor:
-        t, s = pre.get((sk_lower, "knowledge2_desc"), ("", ""))
-        excel_row = _write_row(f"{prefix}KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+        t, s, so = pre.get((sk_lower, "knowledge2_desc"), ("", "", ""))
+        excel_row = _write_row(f"{prefix}KnowledgeData2", so if so else entry.knowledge2_desc_kor, t, s)
 
     # --- Sub-skill nesting via LearnKnowledgeKey ---
     # Always show knowledge children under their parent. No dedup — if a skill
@@ -581,7 +581,7 @@ def _write_skill_rows(
                 child_fill = _fill_sub
                 child_depth = depth + 1
                 if child.name_kor:
-                    t_name, s_name = pre.get((child_sk, "kchild_name"), ("", ""))
+                    t_name, s_name, _so_name = pre.get((child_sk, "kchild_name"), ("", "", ""))
                     _vals = ["SubKnowledgeData", group_info,
                              br_to_newline(child.name_kor), br_to_newline(t_name),
                              "", "", "", s_name]
@@ -602,7 +602,7 @@ def _write_skill_rows(
                     ws.cell(excel_row, 8).number_format = '@'
                     excel_row += 1
                 if child.desc_kor:
-                    t_desc, s_desc = pre.get((child_sk, "kchild_desc"), ("", ""))
+                    t_desc, s_desc, _so_desc = pre.get((child_sk, "kchild_desc"), ("", "", ""))
                     _vals = ["SubKnowledgeData", group_info,
                              br_to_newline(child.desc_kor), br_to_newline(t_desc),
                              "", "", "", s_desc]
@@ -686,7 +686,7 @@ def write_skill_excel(
     # preserves insertion order = XML scan order of skillinfo_pc).
     # Then resolve knowledge-only children (not in skill_lookup).
     # ------------------------------------------------------------------
-    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}
+    pre: Dict[Tuple[str, str], Tuple[str, str, str]] = {}  # (sk, field) -> (trans, sid, str_origin)
     seen_kchildren: Set[str] = set()
 
     for sk, entry in skill_lookup.items():
