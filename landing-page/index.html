@@ -71,7 +71,7 @@
       color: var(--text);
       background: var(--bg);
       overflow-x: hidden;
-      cursor: auto;
+      cursor: none;
     }
 
     /* ================================================================
@@ -104,6 +104,9 @@
 
     .cursor-dot.hovering { width: 16px; height: 16px; }
     .cursor-ring.hovering { width: 60px; height: 60px; border-color: var(--warm); }
+
+    /* Hide system cursor everywhere on desktop — custom dot/ring replaces it */
+    a, button, .btn, .mockup-tab, .nav-item, canvas, input, select, textarea, label { cursor: none; }
 
     @media (max-width: 768px) {
       body { cursor: auto; font-size: 16px; }
@@ -644,7 +647,7 @@
       gap: 8px;
       transform: translate(-50%, -50%);
       opacity: 0;
-      cursor: default;
+      cursor: none;
     }
 
     .constellation-node-dot {
@@ -1574,7 +1577,7 @@
       align-items: center;
       gap: 6px;
     }
-    .gd-tree-item { padding-left: 0; cursor: pointer; }
+    .gd-tree-item { padding-left: 0; cursor: none; }
     .gd-tree-item:hover { color: var(--warm); }
     .gd-tree-item.active { color: var(--warm); font-weight: 700; }
     .gd-tree-item.depth1 { padding-left: 16px; }
@@ -1589,7 +1592,7 @@
       color: var(--warm);
       font-size: 11px;
       text-align: center;
-      cursor: pointer;
+      cursor: none;
     }
 
     .gd-editor { padding: 24px; }
@@ -1684,7 +1687,7 @@
     .codex-nav-item {
       padding: 8px 14px;
       color: var(--text-dim);
-      cursor: pointer;
+      cursor: none;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1749,7 +1752,7 @@
     .codex-pin {
       position: absolute;
       z-index: 3;
-      cursor: pointer;
+      cursor: none;
     }
     .codex-pin-dot {
       width: 14px;
@@ -1853,7 +1856,7 @@
        INTERACTIVE GRID ROWS — hover/click effects
        ================================================================ */
     .ctx-grid-row:not(.ctx-grid-row--head) {
-      cursor: pointer;
+      cursor: none;
       transition: background 0.2s, border-color 0.2s;
     }
     .ctx-grid-row:not(.ctx-grid-row--head):hover {
@@ -2542,7 +2545,7 @@
       font-family: var(--mono);
       color: var(--text-muted);
       border-radius: 6px 6px 0 0;
-      cursor: default;
+      cursor: none;
     }
 
     .ctx-chrome-tab.active {
@@ -2581,7 +2584,7 @@
     .ctx-fe-item {
       padding: 5px 14px;
       color: var(--text-dim);
-      cursor: default;
+      cursor: none;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -2711,7 +2714,7 @@
       color: var(--text-muted);
       border-bottom: 2px solid transparent;
       transition: color 0.3s, border-color 0.3s;
-      cursor: default;
+      cursor: none;
     }
 
     .ctx-panel-tab.active {
@@ -2855,7 +2858,7 @@
       align-items: center;
       justify-content: center;
       color: var(--bg);
-      cursor: default;
+      cursor: none;
     }
 
     .ctx-audio-time {
@@ -5436,11 +5439,11 @@
             var dx = n.x - mx, dy = n.y - my;
             if (Math.sqrt(dx*dx + dy*dy) < n.r * n.scale + 12) {
               hoveredNode = n;
-              canvas.style.cursor = 'pointer';
+              canvas.style.cursor = 'none';
               return;
             }
           }
-          canvas.style.cursor = 'default';
+          canvas.style.cursor = 'none';
         });
         canvas.addEventListener('mouseleave', function() { mx = -1000; my = -1000; hoveredNode = null; });
         canvas.addEventListener('click', function() { activate(); });
