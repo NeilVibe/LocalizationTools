@@ -148,7 +148,10 @@ Plans:
   2. User can navigate items by ItemGroupInfo category/group hierarchy tabs and the item count updates per tab
   3. Selecting an item opens a detail panel with knowledge resolution displayed as tabs (3 passes + InspectData)
   4. User can search across Korean name, translated name, StrKey, and description fields with results updating as they type
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 46-01-PLAN.md — Item Codex backend API endpoints + Pydantic schemas (Wave 1)
+- [ ] 46-02-PLAN.md — Item Codex Svelte 5 UI + navigation wiring (Wave 2)
 
 ### Phase 47: Character Codex UI
 **Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields. All data from MegaIndex.
@@ -258,7 +261,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 3/3 | Complete | 2026-03-18 |
 | 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
-| 46. Item Codex | v5.0 | 0/? | Not started | - |
+| 46. Item Codex | v5.0 | 0/2 | Planned | - |
 | 47. Character Codex | v5.0 | 0/? | Not started | - |
 | 48. Audio Codex | v5.0 | 0/? | Not started | - |
 | 49. Region Codex + Interactive Map | v5.0 | 0/? | Not started | - |
@@ -272,3 +275,4 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 *Phase 41 planned: 2026-03-18*
 *Phase 42 planned: 2026-03-18*
 *v5.0 Offline Production Bundle + Full Codex added: 2026-03-21*
+*Phase 46 planned: 2026-03-21*
