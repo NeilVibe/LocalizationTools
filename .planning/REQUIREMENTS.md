@@ -12,10 +12,10 @@
 
 ### VERIFY -- Codex UI Verification
 
-- [ ] **VERIFY-01**: Item Codex page renders card grid with DDS images, group hierarchy tabs, and search — verified with Playwright screenshot
-- [ ] **VERIFY-02**: Character Codex page renders card grid with portraits, category tabs, and Race/Gender/Age/Job detail — verified with screenshot
-- [ ] **VERIFY-03**: Audio Codex page renders list with category tree sidebar, inline play buttons, and script text — verified with screenshot
-- [ ] **VERIFY-04**: Region Codex page renders split layout with faction tree and d3-zoom map with WorldPosition nodes — verified with screenshot
+- [x] **VERIFY-01**: Item Codex page renders card grid with DDS images, group hierarchy tabs, and search — verified with Playwright screenshot
+- [x] **VERIFY-02**: Character Codex page renders card grid with portraits, category tabs, and Race/Gender/Age/Job detail — verified with screenshot
+- [x] **VERIFY-03**: Audio Codex page renders list with category tree sidebar, inline play buttons, and script text — verified with screenshot
+- [x] **VERIFY-04**: Region Codex page renders split layout with faction tree and d3-zoom map with WorldPosition nodes — verified with screenshot
 
 ### RPANEL -- Right Panel Verification
 
@@ -53,10 +53,10 @@
 |-------------|-------|--------|
 | INIT-01 | Phase 52 | Complete |
 | INIT-02 | Phase 52 | Complete |
-| VERIFY-01 | Phase 53 | Pending |
-| VERIFY-02 | Phase 53 | Pending |
-| VERIFY-03 | Phase 53 | Pending |
-| VERIFY-04 | Phase 53 | Pending |
+| VERIFY-01 | Phase 53 | Complete |
+| VERIFY-02 | Phase 53 | Complete |
+| VERIFY-03 | Phase 53 | Complete |
+| VERIFY-04 | Phase 53 | Complete |
 | RPANEL-01 | Phase 53 | Pending |
 | RPANEL-02 | Phase 53 | Pending |
 | TM-01 | Phase 54 | Pending |

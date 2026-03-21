@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Testing + Polish
 status: unknown
-stopped_at: Completed 52-01-PLAN.md
-last_updated: "2026-03-21T18:33:59.466Z"
+stopped_at: Completed 53-01-PLAN.md
+last_updated: "2026-03-21T19:00:34.439Z"
 progress:
   total_phases: 11
   completed_phases: 8
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 18
+  completed_plans: 17
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Every v5.0 feature verified working end-to-end with mock data. Polish rough edges. Production-ready demo.
-**Current focus:** Phase 52 — dev-init-megaindex-wiring
+**Current focus:** Phase 53 — codex-right-panel-verification
 
 ## Current Position
 
-Phase: 52 (dev-init-megaindex-wiring) — EXECUTING
-Plan: 1 of 1
+Phase: 53 (codex-right-panel-verification) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Plan: 1 of 1
 - Phase 55 depends on all prior phases (final smoke test)
 - [Phase 52]: MegaIndex auto-build runs before MapDataService/GlossaryService in DEV lifespan
 - [Phase 52]: configure_for_mock_gamedata bypasses drive/branch substitution entirely for DEV mode
+- [Phase 53]: Rename .ts to .svelte.ts for Svelte 5 runes; add world_position to tree API for map rendering
 
 ### Pending Todos
 
@@ -61,6 +62,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T18:33:59.463Z
-Stopped at: Completed 52-01-PLAN.md
+Last session: 2026-03-21T19:00:34.436Z
+Stopped at: Completed 53-01-PLAN.md
 Resume file: None
