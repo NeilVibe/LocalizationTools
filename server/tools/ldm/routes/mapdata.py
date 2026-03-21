@@ -18,8 +18,9 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
-from server.tools.ldm.services.mapdata_service import (
-    get_mapdata_service,
+from server.tools.ldm.services.mapdata_service import get_mapdata_service
+from server.tools.ldm.services.perforce_path_service import (
+    get_perforce_path_service,
     convert_to_wsl_path,
     KNOWN_BRANCHES,
 )
@@ -72,6 +73,19 @@ class ConfigureResponse(BaseModel):
     branch: str
     drive: str
     message: str
+
+
+class PathConfigRequest(BaseModel):
+    drive: str = Field(..., min_length=1, max_length=1, description="Drive letter")
+    branch: str = Field(..., description="Perforce branch name")
+
+
+class PathStatusResponse(BaseModel):
+    drive: str
+    branch: str
+    paths_resolved: int
+    known_branches: list[str]
+    known_drives: list[str]
 
 
 # =============================================================================
@@ -265,6 +279,50 @@ async def get_mapdata_status(
     service = get_mapdata_service()
     status = service.get_status()
     return StatusResponse(
-        **status,
+        loaded=status["loaded"],
+        branch=status["branch"],
+        drive=status["drive"],
+        image_count=status["image_count"],
+        audio_count=status["audio_count"],
         known_branches=KNOWN_BRANCHES,
     )
+
+
+@router.get("/mapdata/paths/status", response_model=PathStatusResponse)
+async def get_paths_status(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get PerforcePathService status (drive, branch, resolved path count)."""
+    path_service = get_perforce_path_service()
+    return PathStatusResponse(**path_service.get_status())
+
+
+@router.post("/mapdata/paths/configure", response_model=PathStatusResponse)
+async def configure_paths(
+    request: PathConfigRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Configure drive letter and branch for PerforcePathService.
+
+    Also re-initializes MapDataService with the new settings.
+    """
+    path_service = get_perforce_path_service()
+
+    drive = request.drive.upper().strip()
+    branch = request.branch.strip()
+
+    try:
+        path_service.configure(drive, branch)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Re-initialize MapDataService with the new drive/branch
+    mapdata_service = get_mapdata_service()
+    mapdata_service.initialize(branch=branch, drive=drive)
+
+    logger.info(
+        f"[MAPDATA] User {current_user['username']} configured paths: "
+        f"drive={drive}, branch={branch}"
+    )
+
+    return PathStatusResponse(**path_service.get_status())

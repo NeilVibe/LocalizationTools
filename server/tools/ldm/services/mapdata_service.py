@@ -15,27 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from loguru import logger
 
-
-# =============================================================================
-# Known Branches & Path Templates
-# (Adapted from MapDataGenerator/config.py)
-# =============================================================================
-
-KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
-
-PATH_TEMPLATES = {
-    'faction_folder':    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
-    'loc_folder':        r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc",
-    'knowledge_folder':  r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo",
-    'waypoint_folder':   r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo",
-    'texture_folder':    r"F:\perforce\common\mainline\commonresource\ui\texture\image",
-    'character_folder':  r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo",
-    'audio_folder':      r"F:\perforce\cd\mainline\resource\sound\windows\English(US)",
-    'audio_folder_kr':   r"F:\perforce\cd\mainline\resource\sound\windows\Korean",
-    'audio_folder_zh':   r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)",
-    'export_folder':     r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__",
-    'vrs_folder':        r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
-}
+from server.tools.ldm.services.perforce_path_service import get_perforce_path_service
 
 
 # =============================================================================
@@ -162,54 +142,6 @@ def build_dds_index(texture_folder: Path) -> Dict[str, Path]:
 
 
 # =============================================================================
-# Helper Functions
-# =============================================================================
-
-def convert_to_wsl_path(windows_path: str) -> str:
-    """Convert Windows path to WSL path.
-
-    F:\\perforce\\... -> /mnt/f/perforce/...
-    Already-unix paths pass through unchanged.
-    """
-    if not windows_path:
-        return ""
-
-    # Already a Unix path
-    if windows_path.startswith("/"):
-        return windows_path
-
-    # Check for drive letter pattern (X:\...)
-    if len(windows_path) >= 2 and windows_path[1] == ":":
-        drive = windows_path[0].lower()
-        rest = windows_path[2:].replace("\\", "/")
-        return f"/mnt/{drive}{rest}"
-
-    return windows_path
-
-
-def generate_paths(drive: str, branch: str) -> dict:
-    """Generate all resolved paths from templates with given drive and branch.
-
-    Args:
-        drive: Drive letter (single character, e.g. "F")
-        branch: Branch name (e.g. "mainline", "cd_beta")
-
-    Returns:
-        Dict with keys matching PATH_TEMPLATES, values are resolved path strings.
-    """
-    result = {}
-    for key, template in PATH_TEMPLATES.items():
-        path = template
-        # Replace drive letter
-        if path.startswith("F:") or path.startswith("f:"):
-            path = f"{drive}:{path[2:]}"
-        # Replace branch
-        path = path.replace("mainline", branch)
-        result[key] = path
-    return result
-
-
-# =============================================================================
 # MapDataService
 # =============================================================================
 
@@ -228,6 +160,7 @@ class MapDataService:
         self._loaded: bool = False
         self._branch: str = "mainline"
         self._drive: str = "F"
+        self._path_service = get_perforce_path_service()
 
     def initialize(self, branch: str = "mainline", drive: str = "F") -> bool:
         """Initialize the service by building indexes from real XML data.
@@ -252,26 +185,21 @@ class MapDataService:
         self._branch = branch
         self._drive = drive
 
-        paths = generate_paths(drive, branch)
+        self._path_service.configure(drive, branch)
+        knowledge_folder = self._path_service.resolve("knowledge_folder")
+        texture_folder = self._path_service.resolve("texture_folder")
+
         logger.info(
             f"[MAPDATA] Initializing MapDataService: branch={branch}, drive={drive}, "
-            f"texture_folder={paths.get('texture_folder', 'N/A')}"
+            f"texture_folder={texture_folder}"
         )
 
         parser = get_xml_parsing_engine()
 
         # Build knowledge table from KnowledgeInfo XMLs
-        knowledge_path_str = paths.get("knowledge_folder", "")
-        knowledge_wsl = convert_to_wsl_path(knowledge_path_str)
-        knowledge_folder = Path(knowledge_wsl) if knowledge_wsl else Path(".")
-
         self._knowledge_table = build_knowledge_table(knowledge_folder, parser)
 
         # Build DDS texture index
-        texture_path_str = paths.get("texture_folder", "")
-        texture_wsl = convert_to_wsl_path(texture_path_str)
-        texture_folder = Path(texture_wsl) if texture_wsl else Path(".")
-
         self._dds_index = build_dds_index(texture_folder)
 
         # Resolve image chains: StrKey -> Knowledge -> UITextureName -> DDS
@@ -413,6 +341,7 @@ class MapDataService:
             "drive": self._drive,
             "image_count": len(self._strkey_to_image),
             "audio_count": len(self._strkey_to_audio),
+            "path_service": self._path_service.get_status(),
         }
 
 
