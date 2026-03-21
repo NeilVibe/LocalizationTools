@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="DLG_VARON_01" StrOrigin="봉인된 도서관에 오신 것을 환영합니다." Str="봉인된 도서관에 오신 것을 환영합니다."/>
+  <LocStr StringId="DLG_VARON_02" StrOrigin="성스러운 불꽃이 그대를 인도하리라." Str="성스러운 불꽃이 그대를 인도하리라."/>
+  <LocStr StringId="DLG_KIRA_01" StrOrigin="네 화살은 빗나갔어." Str="네 화살은 빗나갔어."/>
+  <LocStr StringId="DLG_KIRA_02" StrOrigin="어둠의 힘 앞에 무릎을 꿇어라." Str="어둠의 힘 앞에 무릎을 꿇어라."/>
+  <LocStr StringId="DLG_GRIMJAW_01" StrOrigin="검은별 대검은 내 필생의 역작이야." Str="검은별 대검은 내 필생의 역작이야."/>
+  <LocStr StringId="DLG_GRIMJAW_02" StrOrigin="용암석으로 만든 방어구는 최고급이지." Str="용암석으로 만든 방어구는 최고급이지."/>
+  <LocStr StringId="DLG_LUNE_01" StrOrigin="숲 너머에 수상한 움직임이 있어." Str="숲 너머에 수상한 움직임이 있어."/>
+  <LocStr StringId="DLG_LUNE_02" StrOrigin="이 길은 안전해, 내가 확인했어." Str="이 길은 안전해, 내가 확인했어."/>
+  <LocStr StringId="DLG_DRAKMAR_01" StrOrigin="고대 주문의 힘이 느껴진다." Str="고대 주문의 힘이 느껴진다."/>
+  <LocStr StringId="DLG_DRAKMAR_02" StrOrigin="방패 마법으로 도서관을 지키겠다." Str="방패 마법으로 도서관을 지키겠다."/>
+</LanguageData>
