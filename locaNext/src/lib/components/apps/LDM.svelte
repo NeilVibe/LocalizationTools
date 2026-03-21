@@ -7,7 +7,7 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
-  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex } from "$lib/stores/navigation.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -31,6 +31,8 @@
   import ItemCodexPage from "$lib/components/pages/ItemCodexPage.svelte";
   // Phase 47: Character Codex page
   import CharacterCodexPage from "$lib/components/pages/CharacterCodexPage.svelte";
+  // Phase 48: Audio Codex page
+  import AudioCodexPage from "$lib/components/pages/AudioCodexPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -925,6 +927,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'character-codex'}
         <!-- Phase 47: Character Codex -->
         <CharacterCodexPage />
+      {:else if $currentPage === 'audio-codex'}
+        <!-- Phase 48: Audio Codex -->
+        <AudioCodexPage />
       {:else if $currentPage === 'worldmap'}
         <!-- Phase 20: Interactive World Map -->
         <WorldMapPage />

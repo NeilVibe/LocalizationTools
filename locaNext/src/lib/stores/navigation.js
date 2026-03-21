@@ -153,6 +153,14 @@ export function goToCharacterCodex() {
 }
 
 /**
+ * Phase 48: Navigate to Audio Codex page
+ */
+export function goToAudioCodex() {
+  currentPage.set('audio-codex');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
