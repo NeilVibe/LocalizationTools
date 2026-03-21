@@ -178,7 +178,7 @@ Plans:
   4. User can navigate audio entries by category tree derived from export folder hierarchy (Dialog, QuestDialog, etc.)
 **Plans**: 2 plans
 Plans:
-- [ ] 48-01-PLAN.md — Audio Codex backend API (schemas + routes + WEM streaming)
+- [x] 48-01-PLAN.md — Audio Codex backend API (schemas + routes + WEM streaming)
 - [ ] 48-02-PLAN.md — Audio Codex Svelte 5 UI + navigation wiring
 
 ### Phase 49: Region Codex UI + Interactive Map
@@ -269,7 +269,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
 | 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 48. Audio Codex | v5.0 | 0/2 | In Progress | - |
+| 48. Audio Codex | v5.0 | 1/2 | In Progress|  |
 | 49. Region Codex + Interactive Map | v5.0 | 0/? | Not started | - |
 | 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |

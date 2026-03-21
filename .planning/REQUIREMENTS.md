@@ -13,10 +13,10 @@
 
 ### AUDIO -- Audio Codex
 
-- [ ] **AUDIO-01**: Audio Codex page with card grid, search, and category tree navigation
-- [ ] **AUDIO-02**: AudioIndex chain resolves WEM->EventName->StringId->StrOrigin/KOR/ENG script lines (ported from MapDataGenerator linkage.py)
-- [ ] **AUDIO-03**: Inline WEM->WAV streaming playback with play/stop/duration and script text overlay
-- [ ] **AUDIO-04**: Category tree from export folder hierarchy (Dialog/QuestDialog, etc.) for audio browsing
+- [x] **AUDIO-01**: Audio Codex page with card grid, search, and category tree navigation
+- [x] **AUDIO-02**: AudioIndex chain resolves WEM->EventName->StringId->StrOrigin/KOR/ENG script lines (ported from MapDataGenerator linkage.py)
+- [x] **AUDIO-03**: Inline WEM->WAV streaming playback with play/stop/duration and script text overlay
+- [x] **AUDIO-04**: Category tree from export folder hierarchy (Dialog/QuestDialog, etc.) for audio browsing
 
 ### ITEM -- Item Codex
 
@@ -83,10 +83,10 @@
 | INFRA-01 | Phase 45 | Complete |
 | INFRA-02 | Phase 45 | Complete |
 | INFRA-03 | Phase 45 | Complete |
-| AUDIO-01 | Phase 48 | Pending |
-| AUDIO-02 | Phase 48 | Pending |
-| AUDIO-03 | Phase 48 | Pending |
-| AUDIO-04 | Phase 48 | Pending |
+| AUDIO-01 | Phase 48 | Complete |
+| AUDIO-02 | Phase 48 | Complete |
+| AUDIO-03 | Phase 48 | Complete |
+| AUDIO-04 | Phase 48 | Complete |
 | ITEM-01 | Phase 46 | Complete |
 | ITEM-02 | Phase 46 | Complete |
 | ITEM-03 | Phase 46 | Complete |

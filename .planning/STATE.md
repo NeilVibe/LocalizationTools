@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 47-02-PLAN.md (Character Codex UI)
-last_updated: "2026-03-21T12:34:47.832Z"
+stopped_at: Completed 48-01-PLAN.md (Audio Codex Backend API)
+last_updated: "2026-03-21T12:43:40.283Z"
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 47 — Character Codex UI
+**Current focus:** Phase 48 — Audio Codex UI
 
 ## Current Position
 
-Phase: 48
-Plan: Not started
+Phase: 48 (Audio Codex UI) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -59,6 +59,8 @@ Plan: Not started
 - [Phase 47]: Reused KnowledgePassEntry from codex_items; filename-based category extraction; race/gender parsed from use_macro tokens
 - [Phase 47]: Flat category tabs (not tree) for character filtering matching backend filename-based extraction
 - [Phase 47]: Attributes tab replaces InspectData for characters (use_macro instead of InspectData)
+- [Phase 48]: D20 export_path directory tree for audio categories (nested, roll-up counts)
+- [Phase 48]: D11 event_to_stringid as master list for audio entries; stream endpoint unauthenticated for <audio> compatibility
 
 ### Pending Todos
 
@@ -73,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:34:22.978Z
-Stopped at: Completed 47-02-PLAN.md (Character Codex UI)
+Last session: 2026-03-21T12:43:40.280Z
+Stopped at: Completed 48-01-PLAN.md (Audio Codex Backend API)
 Resume file: None
