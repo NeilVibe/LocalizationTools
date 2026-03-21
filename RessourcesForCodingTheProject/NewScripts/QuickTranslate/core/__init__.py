@@ -90,6 +90,8 @@ from .tmx_tools import (
     combine_xmls_to_tmx,
     batch_tmx_from_folders,
     clean_and_convert_to_excel,
+    convert_to_memoq_tmx,
+    SUFFIX_TO_BCP47,
 )
 from .eventname_resolver import (
     get_eventname_mapping,
@@ -188,4 +190,6 @@ __all__ = [
     "combine_xmls_to_tmx",
     "batch_tmx_from_folders",
     "clean_and_convert_to_excel",
+    "convert_to_memoq_tmx",
+    "SUFFIX_TO_BCP47",
 ]

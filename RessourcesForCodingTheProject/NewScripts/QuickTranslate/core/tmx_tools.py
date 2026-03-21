@@ -17,12 +17,24 @@ import html
 import logging
 import os
 import re
+from datetime import datetime
+from pathlib import Path
 
 from lxml import etree
 
 from .korean_detection import is_korean_text
+from .source_scanner import scan_source_for_languages
 
 logger = logging.getLogger(__name__)
+
+# QuickTranslate suffix -> MemoQ BCP-47 language codes
+SUFFIX_TO_BCP47 = {
+    "ENG": "en-US",    "FRE": "fr-FR",    "GER": "de-DE",
+    "ITA": "it-IT",    "JPN": "ja-JP",    "KOR": "ko",
+    "POL": "pl-PL",    "POR-BR": "pt-BR", "RUS": "ru-RU",
+    "SPA-ES": "es-ES", "SPA-MX": "es-MX", "TUR": "tr-TR",
+    "ZHO-CN": "zh-CN", "ZHO-TW": "zh-TW",
+}
 
 # =============================================================================
 # COMPILED REGEX PATTERNS  (from tmx_cleaner.py)
@@ -567,6 +579,67 @@ def batch_tmx_from_folders(
         logger.info(f"[BATCH-{mode}] Processing: {folder} -> {out_file}")
         ok = combine_xmls_to_tmx(folder, out_file, target_language, postprocess=postprocess)
         results.append((folder, out_file, ok))
+    return results
+
+
+def convert_to_memoq_tmx(input_path: str) -> list[tuple[str, str, bool]]:
+    """
+    Auto-detect languages from input path, create one MemoQ TMX per language.
+
+    Uses scan_source_for_languages() -- same logic as QuickTranslate Tab 1.
+    Skips KOR (source language -- Korean target produces empty TMX since
+    is_korean_text filters all TUs).
+
+    Returns list of (language_code, output_file, success) tuples.
+    """
+    path = Path(input_path)
+    scan = scan_source_for_languages(path)
+
+    if not scan.lang_files:
+        logger.warning("[TMX] No language files detected in: %s", input_path)
+        if scan.unrecognized:
+            logger.warning("[TMX] %d unrecognized items (no language suffix)",
+                           len(scan.unrecognized))
+        return []
+
+    creation_id = f"QT_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+    # Determine output base name
+    if path.is_file():
+        base_name = path.stem
+        output_dir = str(path.parent)
+    else:
+        base_name = path.name
+        output_dir = str(path)
+
+    results = []
+    for lang_code, files in scan.lang_files.items():
+        upper = lang_code.upper()
+
+        # Skip KOR -- would produce empty TMX
+        if upper == "KOR":
+            logger.info("[TMX] Skipping KOR (source language -- would produce empty TMX)")
+            continue
+
+        bcp47 = SUFFIX_TO_BCP47.get(upper, lang_code.lower())
+        out_file = os.path.join(output_dir, f"{base_name}_{upper}.tmx")
+
+        # Convert Path objects to strings for combine_xmls_to_tmx
+        file_list = [str(f) for f in files]
+
+        logger.info("[TMX] Converting %d files for %s -> %s (lang=%s)",
+                     len(file_list), upper, out_file, bcp47)
+
+        ok = combine_xmls_to_tmx(
+            input_folder=output_dir,
+            output_file=out_file,
+            target_language=bcp47,
+            postprocess=True,
+            file_list=file_list,
+            creation_id=creation_id,
+        )
+        results.append((upper, out_file, ok))
+
     return results
 
 
