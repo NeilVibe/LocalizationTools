@@ -111,29 +111,32 @@
 
 **Milestone Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines -- graceful degradation when Qwen/FAISS/TTS unavailable.
 
-- [ ] **Phase 45: Foundation Infrastructure** - PerforcePathService, AICapabilityService, and graceful degradation UI for all downstream Codex work
-- [ ] **Phase 46: Item Codex** - Browse/search items with DDS images, category hierarchy, and knowledge resolution tabs
-- [ ] **Phase 47: Character Codex** - Browse/search characters with portraits, filename-based grouping, and detail fields
-- [ ] **Phase 48: Audio Codex** - Browse/search audio with WEM playback, EventName-to-StringId chain, and category tree
-- [ ] **Phase 49: Region Codex + Interactive Map** - FactionGroup tree navigation with WorldPosition coordinates on interactive d3-zoom map
-- [ ] **Phase 50: StringID-to-Audio Integration** - Reverse lookup from StringID to audio with inline player in LDM translation grid
+- [ ] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing.
+- [ ] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel
+- [ ] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail
+- [ ] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation
+- [ ] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map
+- [ ] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID
 - [ ] **Phase 51: Offline Production Bundle** - SQLite-only mode, Model2Vec light build, vgmstream bundling, factory audit, fresh-machine smoke test
 
 ## Phase Details
 
-### Phase 45: Foundation Infrastructure
-**Goal**: All Codex services have a shared path resolution layer and runtime AI capability detection, so users see graceful degradation badges instead of crashes when AI engines are unavailable
+### Phase 45: MegaIndex + Foundation Infrastructure
+**Goal**: Build a unified MegaIndex (35 dicts, ~190MB, ~25s build) that parses ALL game data once and provides O(1) lookups in every direction (StringId→audio, StrKey→image, entity→translations). Also: PerforcePathService for path resolution, AICapabilityService for runtime engine detection, and graceful degradation UI. This phase replaces CodexService's XML scanning and MapDataService's parsing with one unified build.
 **Depends on**: v4.0 complete
 **Requirements**: INFRA-01, INFRA-02, INFRA-03
 **Success Criteria** (what must be TRUE):
-  1. User can configure data source paths (drive letter, branch name) in settings and all Codex pages resolve file paths through PerforcePathService without hardcoded paths
-  2. Settings page shows live AI capability badges (Model2Vec, FAISS, Ollama, TTS) with green/red status reflecting actual runtime availability
-  3. When Ollama or TTS is unavailable, AI-dependent UI sections (summaries, voice generation) hide gracefully with an informational message instead of showing errors or broken controls
+  1. MegaIndex.build() parses all game data XMLs and builds 35 dicts (21 direct, 7 reverse, 7 composed) in under 30 seconds
+  2. MegaIndex provides O(1) lookups: get_image_path(strkey), get_audio_path_by_stringid(string_id), stringid_to_entity(string_id), resolve_translation(korean_text, lang)
+  3. User can configure data source paths (drive letter, branch name) in settings; PerforcePathService resolves all Perforce path templates
+  4. Settings page shows live AI capability badges (Model2Vec, FAISS, Ollama, TTS) with green/red status
+  5. AI-dependent UI sections hide gracefully when engines unavailable — informational message instead of errors
+  6. CodexService and MapDataService consume MegaIndex instead of doing independent parsing
 **Plans**: TBD
 
-### Phase 46: Item Codex
-**Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution
-**Depends on**: Phase 45 (PerforcePathService for file resolution)
+### Phase 46: Item Codex UI
+**Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution. All data comes from MegaIndex — no parsing in this phase.
+**Depends on**: Phase 45 (MegaIndex provides item_by_strkey, item_group_hierarchy, strkey_to_image_path)
 **Requirements**: ITEM-01, ITEM-02, ITEM-03, ITEM-04
 **Success Criteria** (what must be TRUE):
   1. Item Codex page displays a card grid with DDS item images, Korean and translated names, and category badges for each item
@@ -142,9 +145,9 @@
   4. User can search across Korean name, translated name, StrKey, and description fields with results updating as they type
 **Plans**: TBD
 
-### Phase 47: Character Codex
-**Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields
-**Depends on**: Phase 45 (PerforcePathService for file resolution)
+### Phase 47: Character Codex UI
+**Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields. All data from MegaIndex.
+**Depends on**: Phase 45 (MegaIndex provides character_by_strkey, strkey_to_image_path)
 **Requirements**: CHAR-01, CHAR-02, CHAR-03, CHAR-04
 **Success Criteria** (what must be TRUE):
   1. Character Codex page displays a card grid with character portraits, names, and category tabs
@@ -153,9 +156,9 @@
   4. User can search across character names, StrKey, and attribute fields with results updating as they type
 **Plans**: TBD
 
-### Phase 48: Audio Codex
-**Goal**: Users can browse, search, and play back game audio files with script text overlay, navigating by export folder category tree
-**Depends on**: Phase 45 (PerforcePathService for file resolution)
+### Phase 48: Audio Codex UI
+**Goal**: Users can browse, search, and play back game audio files with script text overlay, navigating by export folder category tree. All data from MegaIndex.
+**Depends on**: Phase 45 (MegaIndex provides wem_by_event, event_to_stringid, event_to_script_kr/eng, event_to_export_path)
 **Requirements**: AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04
 **Success Criteria** (what must be TRUE):
   1. Audio Codex page displays a card grid with search and inline play buttons for each audio entry
@@ -164,9 +167,9 @@
   4. User can navigate audio entries by category tree derived from export folder hierarchy (Dialog, QuestDialog, etc.)
 **Plans**: TBD
 
-### Phase 49: Region Codex + Interactive Map
-**Goal**: Users can browse regions by faction hierarchy and see real WorldPosition coordinates on an interactive map that extends the existing World Map page
-**Depends on**: Phase 45 (PerforcePathService for file resolution)
+### Phase 49: Region Codex UI + Interactive Map
+**Goal**: Users can browse regions by faction hierarchy and see real WorldPosition coordinates on an interactive map. All data from MegaIndex.
+**Depends on**: Phase 45 (MegaIndex provides region_by_strkey, faction tree, region_display_names, strkey_to_image_path)
 **Requirements**: REGION-01, REGION-02, REGION-03, REGION-04
 **Success Criteria** (what must be TRUE):
   1. Region Codex page displays a FactionGroup-to-Faction-to-FactionNode tree navigation for browsing regions
@@ -175,13 +178,13 @@
   4. User can filter regions by FactionGroup using tabs at the top of the page
 **Plans**: TBD
 
-### Phase 50: StringID-to-Audio Integration
-**Goal**: Users editing translations can hear the original voice line for any string that has available audio, directly from the LDM translation grid
-**Depends on**: Phase 48 (Audio Codex provides AudioIndex chain and playback infrastructure)
+### Phase 50: StringID-to-Audio/Image Integration
+**Goal**: Wire MegaIndex reverse lookups to the existing LDM grid RightPanel so translators get audio + image + entity context for any StringID. Most UI already exists (AudioTab, ImageTab) — this phase wires the real data.
+**Depends on**: Phase 45 (MegaIndex provides stringid_to_audio_path C3, stringid_to_entity C7, strkey_to_image_path C1)
 **Requirements**: STRID-01, STRID-02
 **Success Criteria** (what must be TRUE):
-  1. Reverse lookup from any StringID resolves through AudioIndex to the corresponding WEM file path when audio exists
-  2. Selecting a row in the LDM translation grid that has available audio shows an inline audio player with play/stop and script text
+  1. Selecting a row in LDM grid with available audio shows inline player with play/stop, script text (KOR+ENG), and WEM path — via MegaIndex C3 lookup
+  2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab — via MegaIndex C7→C1 chain
 **Plans**: TBD
 
 ### Phase 51: Offline Production Bundle
