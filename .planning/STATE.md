@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 46-02-PLAN.md (Item Codex Frontend)
-last_updated: "2026-03-21T12:18:22.782Z"
+stopped_at: Completed 47-01-PLAN.md (Character Codex Backend)
+last_updated: "2026-03-21T12:26:56.669Z"
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 46 — Item Codex UI
+**Current focus:** Phase 47 — Character Codex UI
 
 ## Current Position
 
-Phase: 47
-Plan: Not started
+Phase: 47 (Character Codex UI) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: Not started
 - [Phase 46]: Item Codex routes at /codex/items sub-prefix, coexisting with generic /codex routes
 - [Phase 46]: Reused CodexCard with entity shape transform for Item Codex cards
 - [Phase 46]: Knowledge tabs: Pass 0+1 combined as Knowledge, Pass 2 as Related, separate InspectData and Info
+- [Phase 47]: Reused KnowledgePassEntry from codex_items; filename-based category extraction; race/gender parsed from use_macro tokens
 
 ### Pending Todos
 
@@ -70,6 +71,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:15:53.610Z
-Stopped at: Completed 46-02-PLAN.md (Item Codex Frontend)
+Last session: 2026-03-21T12:26:56.666Z
+Stopped at: Completed 47-01-PLAN.md (Character Codex Backend)
 Resume file: None

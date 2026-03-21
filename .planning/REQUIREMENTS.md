@@ -27,10 +27,10 @@
 
 ### CHAR -- Character Codex
 
-- [ ] **CHAR-01**: Character Codex page with card grid showing portraits, names, and category tabs
-- [ ] **CHAR-02**: Filename-based grouping (NPC, MONSTER, etc.) for category navigation (ported from QACompiler character.py)
-- [ ] **CHAR-03**: Character detail panel with Race/Gender/Age/Job fields and knowledge panel
-- [ ] **CHAR-04**: Text search across character names, StrKey, and attribute fields
+- [x] **CHAR-01**: Character Codex page with card grid showing portraits, names, and category tabs
+- [x] **CHAR-02**: Filename-based grouping (NPC, MONSTER, etc.) for category navigation (ported from QACompiler character.py)
+- [x] **CHAR-03**: Character detail panel with Race/Gender/Age/Job fields and knowledge panel
+- [x] **CHAR-04**: Text search across character names, StrKey, and attribute fields
 
 ### REGION -- Region Codex + Interactive Map
 
@@ -91,10 +91,10 @@
 | ITEM-02 | Phase 46 | Complete |
 | ITEM-03 | Phase 46 | Complete |
 | ITEM-04 | Phase 46 | Complete |
-| CHAR-01 | Phase 47 | Pending |
-| CHAR-02 | Phase 47 | Pending |
-| CHAR-03 | Phase 47 | Pending |
-| CHAR-04 | Phase 47 | Pending |
+| CHAR-01 | Phase 47 | Complete |
+| CHAR-02 | Phase 47 | Complete |
+| CHAR-03 | Phase 47 | Complete |
+| CHAR-04 | Phase 47 | Complete |
 | REGION-01 | Phase 49 | Pending |
 | REGION-02 | Phase 49 | Pending |
 | REGION-03 | Phase 49 | Pending |
