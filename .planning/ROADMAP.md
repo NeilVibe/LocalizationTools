@@ -276,7 +276,10 @@ Plans:
   4. Default row color in LanguageData grid is grey (neutral), not yellow
   5. Yellow color only appears when user explicitly sets "needs confirmation" via hotkey or button
   6. Confirmed/approved rows display blue-green color
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
+- [ ] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
 
 ### Phase 55: End-to-End Smoke Test
 **Goal**: Automated Playwright test visits every page and tab, takes screenshots, and all pass without errors
@@ -286,7 +289,10 @@ Plans:
   1. Playwright smoke test navigates to all 11 pages (Files, LanguageData, GameData, Codex, Item Codex, Character Codex, Audio Codex, Region Codex, Map, TM, Settings)
   2. Each page renders without console errors or blank screens -- verified by screenshot comparison
   3. Screenshots saved as artifacts for visual review
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
+- [ ] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
 
 ## Progress
 
@@ -349,8 +355,8 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete | 2026-03-21 |
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete    | 2026-03-21 |
-| 53. Codex + Right Panel Verification | v5.1 | 2/2 | Complete   | 2026-03-21 |
-| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/? | Not started | - |
+| 53. Codex + Right Panel Verification | v5.1 | 2/2 | Complete    | 2026-03-21 |
+| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/2 | Not started | - |
 | 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
 
 ---
