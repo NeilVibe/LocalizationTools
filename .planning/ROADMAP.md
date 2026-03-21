@@ -202,7 +202,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Selecting a row in LDM grid with available audio shows inline player with play/stop, script text (KOR+ENG), and WEM path — via MegaIndex C3 lookup
   2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab — via MegaIndex C7→C1 chain
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
 
 ### Phase 51: Offline Production Bundle
 **Goal**: The application runs as a self-contained bundle on disconnected machines with no PostgreSQL, no heavy AI, and all core features functional
@@ -214,7 +216,9 @@ Plans:
   3. vgmstream-cli is bundled in Electron extraResources and WEM-to-WAV conversion works without external tool installation
   4. Factory/Abstraction/Repo pattern audit confirms all gamedata code paths work correctly with SQLite backend
   5. Fresh-machine smoke test passes -- PyInstaller bundle starts, all 5 main pages load, Codex browsing and translation editing work without AI engines
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
 
 ## Progress
 
@@ -274,7 +278,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |
+| 50. StringID-to-Audio Integration | v5.0 | 0/1 | Not started | - |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
 
 ---
