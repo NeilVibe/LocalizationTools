@@ -19,8 +19,8 @@
 
 ### RPANEL -- Right Panel Verification
 
-- [ ] **RPANEL-01**: Image tab shows entity DDS portrait when selecting a LanguageData row with a StringID linked to an entity (via MegaIndex C7→C1)
-- [ ] **RPANEL-02**: Audio tab plays WEM audio with script text when selecting a row with available audio (via MegaIndex C3)
+- [x] **RPANEL-01**: Image tab shows entity DDS portrait when selecting a LanguageData row with a StringID linked to an entity (via MegaIndex C7→C1)
+- [x] **RPANEL-02**: Audio tab plays WEM audio with script text when selecting a row with available audio (via MegaIndex C3)
 
 ### TM -- Translation Memory Flow
 
@@ -57,8 +57,8 @@
 | VERIFY-02 | Phase 53 | Complete |
 | VERIFY-03 | Phase 53 | Complete |
 | VERIFY-04 | Phase 53 | Complete |
-| RPANEL-01 | Phase 53 | Pending |
-| RPANEL-02 | Phase 53 | Pending |
+| RPANEL-01 | Phase 53 | Complete |
+| RPANEL-02 | Phase 53 | Complete |
 | TM-01 | Phase 54 | Pending |
 | TM-02 | Phase 54 | Pending |
 | TM-03 | Phase 54 | Pending |
