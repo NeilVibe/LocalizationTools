@@ -216,9 +216,10 @@ Plans:
   3. vgmstream-cli is bundled in Electron extraResources and WEM-to-WAV conversion works without external tool installation
   4. Factory/Abstraction/Repo pattern audit confirms all gamedata code paths work correctly with SQLite backend
   5. Fresh-machine smoke test passes -- PyInstaller bundle starts, all 5 main pages load, Codex browsing and translation editing work without AI engines
-**Plans**: 1 plan
+**Plans**: 2 plans
 Plans:
-- [ ] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
+- [ ] 51-01-PLAN.md — Model2Vec download, vgmstream bundling, electron-builder config, SQLite WAL hardening (Wave 1)
+- [ ] 51-02-PLAN.md — Factory/Repo audit (all 9 repos) + offline smoke test (Wave 2)
 
 ## Progress
 
@@ -279,7 +280,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete    | 2026-03-21 |
-| 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
+| 51. Offline Production Bundle | v5.0 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-14*
