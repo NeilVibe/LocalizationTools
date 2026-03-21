@@ -46,9 +46,9 @@
 
 ### OFFLINE -- Offline Production Bundle
 
-- [ ] **OFFLINE-01**: SQLite-only mode with no PostgreSQL dependency for disconnected machines
-- [ ] **OFFLINE-02**: Model2Vec bundled in light build (no Qwen 0.6B, no heavy AI engines)
-- [ ] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM->WAV conversion
+- [x] **OFFLINE-01**: SQLite-only mode with no PostgreSQL dependency for disconnected machines
+- [x] **OFFLINE-02**: Model2Vec bundled in light build (no Qwen 0.6B, no heavy AI engines)
+- [x] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM->WAV conversion
 - [ ] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit -- verify all gamedata paths work offline with SQLite
 - [ ] **OFFLINE-05**: Fresh-machine smoke test passing (PyInstaller bundle, all core features functional without AI)
 
@@ -101,9 +101,9 @@
 | REGION-04 | Phase 49 | Complete |
 | STRID-01 | Phase 50 | Complete |
 | STRID-02 | Phase 50 | Complete |
-| OFFLINE-01 | Phase 51 | Pending |
-| OFFLINE-02 | Phase 51 | Pending |
-| OFFLINE-03 | Phase 51 | Pending |
+| OFFLINE-01 | Phase 51 | Complete |
+| OFFLINE-02 | Phase 51 | Complete |
+| OFFLINE-03 | Phase 51 | Complete |
 | OFFLINE-04 | Phase 51 | Pending |
 | OFFLINE-05 | Phase 51 | Pending |
 
