@@ -155,6 +155,33 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"GameData auto-index skipped: {e}")
 
+    # DEV mode: auto-build MegaIndex from mock_gamedata fixtures
+    if config.DEV_MODE:
+        try:
+            from server.tools.ldm.services.perforce_path_service import get_perforce_path_service
+            from server.tools.ldm.services.mega_index import get_mega_index
+
+            mock_gamedata_dir = base_dir / "tests" / "fixtures" / "mock_gamedata"
+            if mock_gamedata_dir.is_dir():
+                # Point PerforcePathService at mock_gamedata before building
+                path_svc = get_perforce_path_service()
+                path_svc.configure_for_mock_gamedata(mock_gamedata_dir)
+
+                # Build MegaIndex (35 dicts, all entity types)
+                mega = get_mega_index()
+                mega.build()
+                logger.success(
+                    f"[DEV] MegaIndex auto-built: {len(mega.item_by_strkey)} items, "
+                    f"{len(mega.character_by_strkey)} characters, "
+                    f"{len(mega.region_by_strkey)} regions, "
+                    f"{len(mega.knowledge_by_strkey)} knowledge entries "
+                    f"in {mega._build_time:.1f}s"
+                )
+            else:
+                logger.warning(f"[DEV] mock_gamedata not found at {mock_gamedata_dir}, skipping MegaIndex auto-build")
+        except Exception as e:
+            logger.warning(f"[DEV] MegaIndex auto-build skipped: {e}")
+
     # DEV mode: auto-initialize Right Panel services with mock data
     if config.DEV_MODE:
         try:
