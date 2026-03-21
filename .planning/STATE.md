@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 45-01-PLAN.md
-last_updated: "2026-03-21T11:35:04.508Z"
+stopped_at: Completed 45-02-PLAN.md (AI Capability Service)
+last_updated: "2026-03-21T11:36:33.006Z"
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 45 (MegaIndex + Foundation Infrastructure) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -47,6 +47,8 @@ Plan: 2 of 4
 - Offline bundle must be last phase -- packaging after all features built
 - [Phase 45]: Merged KNOWN_BRANCHES from QACompiler and MapDataGenerator into unified 5-branch list
 - [Phase 45]: Added SCHEMA_REGISTRY dict for dynamic type access in MegaIndex schemas
+- [Phase 45]: Named AI capabilities route ai_capabilities.py to avoid conflict with existing admin capabilities.py
+- [Phase 45]: Used Svelte 5 module-level $state in .ts for aiCapabilityStore (new pattern vs existing Svelte 4 writable stores)
 
 ### Pending Todos
 
@@ -61,6 +63,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T11:35:04.506Z
-Stopped at: Completed 45-01-PLAN.md
+Last session: 2026-03-21T11:36:33.003Z
+Stopped at: Completed 45-02-PLAN.md (AI Capability Service)
 Resume file: None
