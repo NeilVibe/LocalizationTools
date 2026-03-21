@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 49-02-PLAN.md (Region Codex UI + Interactive Map)
-last_updated: "2026-03-21T13:09:19.670Z"
+stopped_at: Completed 50-01-PLAN.md (StringID-to-Audio/Image Integration)
+last_updated: "2026-03-21T13:17:32.015Z"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 6
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 49 — Region Codex UI + Interactive Map
+**Current focus:** Phase 50 — StringID-to-Audio/Image Integration
 
 ## Current Position
 
-Phase: 50
-Plan: Not started
+Phase: 50 (StringID-to-Audio/Image Integration) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Plan: Not started
 - [Phase 49]: Region name prefers display_name over name field; /tree before /{strkey} for FastAPI path matching
 - [Phase 49]: Reused parchment aesthetic from MapCanvas with prefixed SVG filter IDs (rcm-*) to avoid conflicts
 - [Phase 49]: Region tree uses client-side filtering; Map icon for Regions tab (Earth used by World Map)
+- [Phase 50]: C7 bridge lookup order: direct entity strkey in C1, then containment scan
 
 ### Pending Todos
 
@@ -82,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T13:08:37.682Z
-Stopped at: Completed 49-02-PLAN.md (Region Codex UI + Interactive Map)
+Last session: 2026-03-21T13:17:32.012Z
+Stopped at: Completed 50-01-PLAN.md (StringID-to-Audio/Image Integration)
 Resume file: None

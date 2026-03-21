@@ -41,8 +41,8 @@
 
 ### STRID -- StringID->Audio Integration
 
-- [ ] **STRID-01**: Reverse lookup from StringID->AudioIndex->WEM file path for any string with available audio
-- [ ] **STRID-02**: Inline audio player in LDM translation grid when selecting a row with available audio
+- [x] **STRID-01**: Reverse lookup from StringID->AudioIndex->WEM file path for any string with available audio
+- [x] **STRID-02**: Inline audio player in LDM translation grid when selecting a row with available audio
 
 ### OFFLINE -- Offline Production Bundle
 
@@ -99,8 +99,8 @@
 | REGION-02 | Phase 49 | Complete |
 | REGION-03 | Phase 49 | Complete |
 | REGION-04 | Phase 49 | Complete |
-| STRID-01 | Phase 50 | Pending |
-| STRID-02 | Phase 50 | Pending |
+| STRID-01 | Phase 50 | Complete |
+| STRID-02 | Phase 50 | Complete |
 | OFFLINE-01 | Phase 51 | Pending |
 | OFFLINE-02 | Phase 51 | Pending |
 | OFFLINE-03 | Phase 51 | Pending |

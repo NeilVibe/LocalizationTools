@@ -116,7 +116,7 @@
 - [x] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail (completed 2026-03-21)
 - [x] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation (completed 2026-03-21)
 - [x] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map (completed 2026-03-21)
-- [ ] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID
+- [x] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID (completed 2026-03-21)
 - [ ] **Phase 51: Offline Production Bundle** - SQLite-only mode, Model2Vec light build, vgmstream bundling, factory audit, fresh-machine smoke test
 
 ## Phase Details
@@ -204,7 +204,7 @@ Plans:
   2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab — via MegaIndex C7→C1 chain
 **Plans**: 1 plan
 Plans:
-- [ ] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
+- [x] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
 
 ### Phase 51: Offline Production Bundle
 **Goal**: The application runs as a self-contained bundle on disconnected machines with no PostgreSQL, no heavy AI, and all core features functional
@@ -278,7 +278,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 50. StringID-to-Audio Integration | v5.0 | 0/1 | Not started | - |
+| 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete   | 2026-03-21 |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
 
 ---
