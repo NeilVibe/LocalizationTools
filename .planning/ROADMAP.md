@@ -289,10 +289,9 @@ Plans:
   1. Playwright smoke test navigates to all 11 pages (Files, LanguageData, GameData, Codex, Item Codex, Character Codex, Audio Codex, Region Codex, Map, TM, Settings)
   2. Each page renders without console errors or blank screens -- verified by screenshot comparison
   3. Screenshots saved as artifacts for visual review
-**Plans**: 2 plans
+**Plans**: 1 plan
 Plans:
-- [x] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
-- [ ] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
+- [ ] 55-01-PLAN.md -- Playwright smoke test: visit all 11 pages, screenshot, verify no errors (Wave 1)
 
 ## Progress
 
@@ -356,8 +355,8 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete    | 2026-03-21 |
 | 53. Codex + Right Panel Verification | v5.1 | 2/2 | Complete    | 2026-03-21 |
-| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 2/2 | Complete   | 2026-03-21 |
-| 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
+| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 2/2 | Complete    | 2026-03-21 |
+| 55. End-to-End Smoke Test | v5.1 | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-14*
@@ -368,3 +367,4 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 *v5.0 Offline Production Bundle + Full Codex added: 2026-03-21*
 *v5.0 shipped, v5.1 Testing + Polish added: 2026-03-22*
 *Phase 52 planned: 2026-03-22*
+*Phase 55 planned: 2026-03-22*
