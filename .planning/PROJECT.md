@@ -63,20 +63,18 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v5.0 Offline Production Bundle + Full Codex
+## Current Milestone: v5.1 Testing + Polish
 
-**Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines — graceful degradation when Qwen/FAISS/TTS unavailable.
+**Goal:** Verify all v5.0 features work end-to-end in DEV mode with mock data. Fix TM flow, FAISS auto-build, LanguageData grid colors, and MegaIndex DEV init. Every page, every tab, every interaction tested and polished.
 
 **Target features:**
-- Offline-first bundle — SQLite backend, no PostgreSQL dependency, light build (Model2Vec only, no Qwen)
-- Perforce data parsing — real paths from QACompiler + MapDataGenerator mapping rules
-- Audio Codex UI — exact MapDataGenerator logic (branch/drive/language selection, playback), new Svelte 5 UI
-- Item Codex UI — browse/search items with images, QACompiler Item generator data
-- Character Codex UI — browse/search characters with images, QACompiler Character generator data
-- Region Codex UI + Interactive Map — WorldPosition from QACompiler Region generator, images, node map
-- StringID → Audio mapping — audio player for StringIDs with available audio
-- Graceful AI degradation — core features work without Qwen/FAISS/TTS
-- Verify gamedata offline/online parity — Factory/Abstraction/Repo pattern audit
+- DEV server verification — all 4 new Codex UIs render with mock data
+- MegaIndex DEV auto-init — build() on server start in DEV mode
+- TM flow verification — auto-register on reviewed status, FAISS index build
+- FAISS auto-build on TM upload/modification (currently manual trigger)
+- LanguageData grid default color — grey default, yellow = needs confirmation (hotkey), blue-green = confirmed
+- Right panel verification — Image + Audio tabs light up for StringIDs with mock data
+- End-to-end smoke test with Playwright
 - Bundling: Model2Vec (light), WEM decoder, no heavy Qwen 0.6B in light build
 
 ### Out of Scope
