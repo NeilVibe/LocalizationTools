@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Testing + Polish
-status: ready_to_plan
-stopped_at: Roadmap created for v5.1 (Phases 52-55)
-last_updated: "2026-03-22T00:00:00.000Z"
+status: unknown
+stopped_at: Completed 52-01-PLAN.md
+last_updated: "2026-03-21T18:33:59.466Z"
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 16
+  completed_plans: 16
 ---
 
 # Project State
@@ -19,16 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Every v5.0 feature verified working end-to-end with mock data. Polish rough edges. Production-ready demo.
-**Current focus:** Phase 52 -- DEV Init + MegaIndex Wiring
+**Current focus:** Phase 52 — dev-init-megaindex-wiring
 
 ## Current Position
 
-Phase: 52 of 55 (DEV Init + MegaIndex Wiring)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-22 -- v5.1 roadmap created
-
-Progress: [░░░░░░░░░░] 0%
+Phase: 52 (dev-init-megaindex-wiring) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -50,6 +46,8 @@ Progress: [░░░░░░░░░░] 0%
 - LanguageData grid default color must be grey, not yellow
 - Phase 53 and 54 are independent after Phase 52 (could parallelize)
 - Phase 55 depends on all prior phases (final smoke test)
+- [Phase 52]: MegaIndex auto-build runs before MapDataService/GlossaryService in DEV lifespan
+- [Phase 52]: configure_for_mock_gamedata bypasses drive/branch substitution entirely for DEV mode
 
 ### Pending Todos
 
@@ -63,6 +61,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22
-Stopped at: v5.1 roadmap created (Phases 52-55)
+Last session: 2026-03-21T18:33:59.463Z
+Stopped at: Completed 52-01-PLAN.md
 Resume file: None

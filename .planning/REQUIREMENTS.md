@@ -7,8 +7,8 @@
 
 ### INIT -- MegaIndex DEV Initialization
 
-- [ ] **INIT-01**: MegaIndex.build() runs automatically on DEV server start, populating all 35 dicts from mock_gamedata fixtures
-- [ ] **INIT-02**: PerforcePathService auto-configures to mock_gamedata path in DEV mode (no manual settings needed)
+- [x] **INIT-01**: MegaIndex.build() runs automatically on DEV server start, populating all 35 dicts from mock_gamedata fixtures
+- [x] **INIT-02**: PerforcePathService auto-configures to mock_gamedata path in DEV mode (no manual settings needed)
 
 ### VERIFY -- Codex UI Verification
 
@@ -51,8 +51,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | Phase 52 | Pending |
-| INIT-02 | Phase 52 | Pending |
+| INIT-01 | Phase 52 | Complete |
+| INIT-02 | Phase 52 | Complete |
 | VERIFY-01 | Phase 53 | Pending |
 | VERIFY-02 | Phase 53 | Pending |
 | VERIFY-03 | Phase 53 | Pending |

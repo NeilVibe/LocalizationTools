@@ -247,7 +247,7 @@ Plans:
   3. All Codex API endpoints return populated data immediately after DEV server starts (no manual build step needed)
 **Plans**: 1 plan
 Plans:
-- [ ] 52-01-PLAN.md -- PerforcePathService mock_gamedata auto-detect + MegaIndex lifespan wiring (Wave 1)
+- [x] 52-01-PLAN.md -- PerforcePathService mock_gamedata auto-detect + MegaIndex lifespan wiring (Wave 1)
 
 ### Phase 53: Codex + Right Panel Verification
 **Goal**: All 4 new Codex UIs render correctly with mock data and right panel Image/Audio tabs light up for StringIDs with linked entities
@@ -345,7 +345,7 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete | 2026-03-21 |
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
-| 52. DEV Init + MegaIndex Wiring | v5.1 | 0/1 | Not started | - |
+| 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete   | 2026-03-21 |
 | 53. Codex + Right Panel Verification | v5.1 | 0/? | Not started | - |
 | 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/? | Not started | - |
 | 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
