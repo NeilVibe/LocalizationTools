@@ -112,7 +112,7 @@
 **Milestone Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines -- graceful degradation when Qwen/FAISS/TTS unavailable.
 
 - [x] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing. (completed 2026-03-21)
-- [ ] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel
+- [x] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel (completed 2026-03-21)
 - [ ] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail
 - [ ] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation
 - [ ] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map
@@ -151,7 +151,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 46-01-PLAN.md — Item Codex backend API endpoints + Pydantic schemas (Wave 1)
-- [ ] 46-02-PLAN.md — Item Codex Svelte 5 UI + navigation wiring (Wave 2)
+- [x] 46-02-PLAN.md — Item Codex Svelte 5 UI + navigation wiring (Wave 2)
 
 ### Phase 47: Character Codex UI
 **Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields. All data from MegaIndex.
@@ -261,7 +261,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 3/3 | Complete | 2026-03-18 |
 | 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
-| 46. Item Codex | v5.0 | 1/2 | In Progress|  |
+| 46. Item Codex | v5.0 | 2/2 | Complete   | 2026-03-21 |
 | 47. Character Codex | v5.0 | 0/? | Not started | - |
 | 48. Audio Codex | v5.0 | 0/? | Not started | - |
 | 49. Region Codex + Interactive Map | v5.0 | 0/? | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 46-01-PLAN.md (Item Codex Backend)
-last_updated: "2026-03-21T12:09:25.636Z"
+stopped_at: Completed 46-02-PLAN.md (Item Codex Frontend)
+last_updated: "2026-03-21T12:15:53.613Z"
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -54,6 +54,8 @@ Plan: 2 of 2
 - [Phase 45]: CodexService and MapDataService now delegate all XML parsing to MegaIndex singleton -- single parse replaces 3 independent scans
 - [Phase 46]: Knowledge 3-pass resolution: Pass 0 (shared key siblings), Pass 1 (direct key), Pass 2 (name match)
 - [Phase 46]: Item Codex routes at /codex/items sub-prefix, coexisting with generic /codex routes
+- [Phase 46]: Reused CodexCard with entity shape transform for Item Codex cards
+- [Phase 46]: Knowledge tabs: Pass 0+1 combined as Knowledge, Pass 2 as Related, separate InspectData and Info
 
 ### Pending Todos
 
@@ -68,6 +70,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:09:25.633Z
-Stopped at: Completed 46-01-PLAN.md (Item Codex Backend)
+Last session: 2026-03-21T12:15:53.610Z
+Stopped at: Completed 46-02-PLAN.md (Item Codex Frontend)
 Resume file: None
