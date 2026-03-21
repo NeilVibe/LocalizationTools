@@ -132,7 +132,12 @@
   4. Settings page shows live AI capability badges (Model2Vec, FAISS, Ollama, TTS) with green/red status
   5. AI-dependent UI sections hide gracefully when engines unavailable — informational message instead of errors
   6. CodexService and MapDataService consume MegaIndex instead of doing independent parsing
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 46: Item Codex UI
 **Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution. All data comes from MegaIndex — no parsing in this phase.
@@ -143,7 +148,12 @@
   2. User can navigate items by ItemGroupInfo category/group hierarchy tabs and the item count updates per tab
   3. Selecting an item opens a detail panel with knowledge resolution displayed as tabs (3 passes + InspectData)
   4. User can search across Korean name, translated name, StrKey, and description fields with results updating as they type
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 47: Character Codex UI
 **Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields. All data from MegaIndex.
@@ -154,7 +164,12 @@
   2. User can filter characters by filename-based groups (NPC, MONSTER, etc.) using navigation tabs
   3. Selecting a character opens a detail panel showing Race, Gender, Age, Job fields and a knowledge panel with cross-references
   4. User can search across character names, StrKey, and attribute fields with results updating as they type
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 48: Audio Codex UI
 **Goal**: Users can browse, search, and play back game audio files with script text overlay, navigating by export folder category tree. All data from MegaIndex.
@@ -165,7 +180,12 @@
   2. AudioIndex chain resolves WEM files through EventName to StringId to StrOrigin/KOR/ENG script lines, displayed as text overlay during playback
   3. User can play/stop WEM audio with duration display via server-side WEM-to-WAV streaming conversion
   4. User can navigate audio entries by category tree derived from export folder hierarchy (Dialog, QuestDialog, etc.)
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 49: Region Codex UI + Interactive Map
 **Goal**: Users can browse regions by faction hierarchy and see real WorldPosition coordinates on an interactive map. All data from MegaIndex.
@@ -176,7 +196,12 @@
   2. Selecting a region shows a detail panel with WorldPosition coordinates, DisplayName, and knowledge cross-references
   3. Interactive map renders real WorldPosition coordinates via d3-zoom, extending the existing WorldMap page pattern
   4. User can filter regions by FactionGroup using tabs at the top of the page
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 50: StringID-to-Audio/Image Integration
 **Goal**: Wire MegaIndex reverse lookups to the existing LDM grid RightPanel so translators get audio + image + entity context for any StringID. Most UI already exists (AudioTab, ImageTab) — this phase wires the real data.
@@ -185,7 +210,12 @@
 **Success Criteria** (what must be TRUE):
   1. Selecting a row in LDM grid with available audio shows inline player with play/stop, script text (KOR+ENG), and WEM path — via MegaIndex C3 lookup
   2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab — via MegaIndex C7→C1 chain
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ### Phase 51: Offline Production Bundle
 **Goal**: The application runs as a self-contained bundle on disconnected machines with no PostgreSQL, no heavy AI, and all core features functional
@@ -197,7 +227,12 @@
   3. vgmstream-cli is bundled in Electron extraResources and WEM-to-WAV conversion works without external tool installation
   4. Factory/Abstraction/Repo pattern audit confirms all gamedata code paths work correctly with SQLite backend
   5. Fresh-machine smoke test passes -- PyInstaller bundle starts, all 5 main pages load, Codex browsing and translation editing work without AI engines
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas
+- [ ] 45-02-PLAN.md — AICapabilityService + capability badges UI
+- [ ] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts)
+- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex
 
 ## Progress
 
