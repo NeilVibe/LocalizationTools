@@ -383,6 +383,8 @@ def combine_xmls_to_tmx(
     output_file: str,
     target_language: str,
     postprocess: bool = True,
+    file_list: list[str] | None = None,
+    creation_id: str | None = None,
 ) -> bool:
     """
     Combine all XML files in input_folder into a single TMX file.
@@ -391,7 +393,7 @@ def combine_xmls_to_tmx(
     Description TUs: keep all (no dedup).
     """
     try:
-        xml_files = get_all_xml_files(input_folder)
+        xml_files = file_list if file_list else get_all_xml_files(input_folder)
         total_files = len(xml_files)
         logger.info(f"[TMX] Total XML files found: {total_files}")
 
@@ -452,8 +454,8 @@ def combine_xmls_to_tmx(
                         and not is_korean_text(target_text)):
                     tu = etree.Element(
                         "tu",
-                        creationid="CombinedConversion",
-                        changeid="CombinedConversion"
+                        creationid=creation_id or "CombinedConversion",
+                        changeid=creation_id or "CombinedConversion"
                     )
 
                     tuv_ko = etree.SubElement(
@@ -489,8 +491,8 @@ def combine_xmls_to_tmx(
 
                     desc_tu = etree.Element(
                         "tu",
-                        creationid="PAAT",
-                        changeid="PAAT"
+                        creationid=creation_id or "PAAT",
+                        changeid=creation_id or "PAAT"
                     )
 
                     tuv_ko_d = etree.SubElement(
