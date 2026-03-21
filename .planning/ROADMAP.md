@@ -192,7 +192,7 @@ Plans:
   4. User can filter regions by FactionGroup using tabs at the top of the page
 **Plans**: 2 plans
 Plans:
-- [ ] 49-01-PLAN.md — Region Codex backend API (schemas + routes + faction tree) (Wave 1)
+- [x] 49-01-PLAN.md — Region Codex backend API (schemas + routes + faction tree) (Wave 1)
 - [ ] 49-02-PLAN.md — Region Codex Svelte 5 UI + d3-zoom map + navigation wiring (Wave 2)
 
 ### Phase 50: StringID-to-Audio/Image Integration
@@ -273,7 +273,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 49. Region Codex + Interactive Map | v5.0 | 0/2 | Not started | - |
+| 49. Region Codex + Interactive Map | v5.0 | 1/2 | In Progress|  |
 | 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
 

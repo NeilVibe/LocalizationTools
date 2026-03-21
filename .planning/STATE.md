@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 48-02-PLAN.md (Audio Codex Frontend UI)
-last_updated: "2026-03-21T12:50:17.267Z"
+stopped_at: Completed 49-01-PLAN.md (Region Codex Backend API)
+last_updated: "2026-03-21T13:00:31.778Z"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 48 — Audio Codex UI
+**Current focus:** Phase 49 — Region Codex UI + Interactive Map
 
 ## Current Position
 
-Phase: 49
-Plan: Not started
+Phase: 49 (Region Codex UI + Interactive Map) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -64,6 +64,8 @@ Plan: Not started
 - [Phase 48]: Two-column sidebar tree layout for audio (unique among Codex pages) because export_path hierarchy is nested
 - [Phase 48]: List layout (not card grid) for audio entries because text-heavy with script lines
 - [Phase 48]: Custom lightweight tree with 3 depth levels (not Carbon TreeView) for category sidebar
+- [Phase 49]: Faction parent lookup iterates faction_by_strkey checking node_strkeys (O(F) per region)
+- [Phase 49]: Region name prefers display_name over name field; /tree before /{strkey} for FastAPI path matching
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:49:45.421Z
-Stopped at: Completed 48-02-PLAN.md (Audio Codex Frontend UI)
+Last session: 2026-03-21T13:00:31.775Z
+Stopped at: Completed 49-01-PLAN.md (Region Codex Backend API)
 Resume file: None

@@ -34,10 +34,10 @@
 
 ### REGION -- Region Codex + Interactive Map
 
-- [ ] **REGION-01**: Region Codex page with FactionGroup->Faction->FactionNode tree navigation
-- [ ] **REGION-02**: Region detail panel with WorldPosition, DisplayName, and knowledge cross-references
-- [ ] **REGION-03**: Interactive map with real WorldPosition coordinates via d3-zoom (extends existing WorldMap page)
-- [ ] **REGION-04**: FactionGroup tabs for filtering regions by faction hierarchy
+- [x] **REGION-01**: Region Codex page with FactionGroup->Faction->FactionNode tree navigation
+- [x] **REGION-02**: Region detail panel with WorldPosition, DisplayName, and knowledge cross-references
+- [x] **REGION-03**: Interactive map with real WorldPosition coordinates via d3-zoom (extends existing WorldMap page)
+- [x] **REGION-04**: FactionGroup tabs for filtering regions by faction hierarchy
 
 ### STRID -- StringID->Audio Integration
 
@@ -95,10 +95,10 @@
 | CHAR-02 | Phase 47 | Complete |
 | CHAR-03 | Phase 47 | Complete |
 | CHAR-04 | Phase 47 | Complete |
-| REGION-01 | Phase 49 | Pending |
-| REGION-02 | Phase 49 | Pending |
-| REGION-03 | Phase 49 | Pending |
-| REGION-04 | Phase 49 | Pending |
+| REGION-01 | Phase 49 | Complete |
+| REGION-02 | Phase 49 | Complete |
+| REGION-03 | Phase 49 | Complete |
+| REGION-04 | Phase 49 | Complete |
 | STRID-01 | Phase 50 | Pending |
 | STRID-02 | Phase 50 | Pending |
 | OFFLINE-01 | Phase 51 | Pending |
