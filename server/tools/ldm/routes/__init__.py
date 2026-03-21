@@ -25,6 +25,7 @@ from .ai_suggestions import router as ai_suggestions_router
 from .gamedata import router as gamedata_router
 from .ai_capabilities import router as ai_capabilities_router
 from .mega_index import router as mega_index_router
+from .codex_items import router as codex_items_router  # Phase 46: Item Codex
 
 __all__ = [
     "health_router",
@@ -48,4 +49,5 @@ __all__ = [
     "gamedata_router",
     "ai_capabilities_router",
     "mega_index_router",
+    "codex_items_router",
 ]
