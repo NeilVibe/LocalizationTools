@@ -20,10 +20,10 @@
 
 ### ITEM -- Item Codex
 
-- [ ] **ITEM-01**: Item Codex page with card grid showing DDS images, Korean/translated names, and category badges
-- [ ] **ITEM-02**: ItemGroupInfo hierarchy for category/group navigation tabs (ported from QACompiler item.py)
-- [ ] **ITEM-03**: Item detail panel with knowledge resolution (3 passes + InspectData) displayed as tabs
-- [ ] **ITEM-04**: Text search across Korean name, translated name, StrKey, and description fields
+- [x] **ITEM-01**: Item Codex page with card grid showing DDS images, Korean/translated names, and category badges
+- [x] **ITEM-02**: ItemGroupInfo hierarchy for category/group navigation tabs (ported from QACompiler item.py)
+- [x] **ITEM-03**: Item detail panel with knowledge resolution (3 passes + InspectData) displayed as tabs
+- [x] **ITEM-04**: Text search across Korean name, translated name, StrKey, and description fields
 
 ### CHAR -- Character Codex
 
@@ -87,10 +87,10 @@
 | AUDIO-02 | Phase 48 | Pending |
 | AUDIO-03 | Phase 48 | Pending |
 | AUDIO-04 | Phase 48 | Pending |
-| ITEM-01 | Phase 46 | Pending |
-| ITEM-02 | Phase 46 | Pending |
-| ITEM-03 | Phase 46 | Pending |
-| ITEM-04 | Phase 46 | Pending |
+| ITEM-01 | Phase 46 | Complete |
+| ITEM-02 | Phase 46 | Complete |
+| ITEM-03 | Phase 46 | Complete |
+| ITEM-04 | Phase 46 | Complete |
 | CHAR-01 | Phase 47 | Pending |
 | CHAR-02 | Phase 47 | Pending |
 | CHAR-03 | Phase 47 | Pending |

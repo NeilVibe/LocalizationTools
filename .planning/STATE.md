@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 45-04-PLAN.md (Service Migration) -- Phase 45 COMPLETE
-last_updated: "2026-03-21T11:53:17.410Z"
+stopped_at: Completed 46-01-PLAN.md (Item Codex Backend)
+last_updated: "2026-03-21T12:09:25.636Z"
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 45 — MegaIndex + Foundation Infrastructure
+**Current focus:** Phase 46 — Item Codex UI
 
 ## Current Position
 
-Phase: 46
-Plan: Not started
+Phase: 46 (Item Codex UI) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Plan: Not started
 - [Phase 45]: StaticInfo folder derived from knowledge_folder.parent instead of new PATH_TEMPLATE key
 - [Phase 45]: C2 strkey_to_audio_path uses direct matching; full chain deferred to Audio Codex phase
 - [Phase 45]: CodexService and MapDataService now delegate all XML parsing to MegaIndex singleton -- single parse replaces 3 independent scans
+- [Phase 46]: Knowledge 3-pass resolution: Pass 0 (shared key siblings), Pass 1 (direct key), Pass 2 (name match)
+- [Phase 46]: Item Codex routes at /codex/items sub-prefix, coexisting with generic /codex routes
 
 ### Pending Todos
 
@@ -66,6 +68,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T11:50:01.137Z
-Stopped at: Completed 45-04-PLAN.md (Service Migration) -- Phase 45 COMPLETE
+Last session: 2026-03-21T12:09:25.633Z
+Stopped at: Completed 46-01-PLAN.md (Item Codex Backend)
 Resume file: None
