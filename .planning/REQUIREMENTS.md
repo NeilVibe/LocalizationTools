@@ -30,9 +30,9 @@
 
 ### COLOR -- LanguageData Grid Colors
 
-- [ ] **COLOR-01**: Default row color is grey (neutral) — not yellow
-- [ ] **COLOR-02**: Yellow color only appears when user explicitly sets "needs confirmation" via hotkey or button
-- [ ] **COLOR-03**: Blue-green color for confirmed/approved rows
+- [x] **COLOR-01**: Default row color is grey (neutral) — not yellow
+- [x] **COLOR-02**: Yellow color only appears when user explicitly sets "needs confirmation" via hotkey or button
+- [x] **COLOR-03**: Blue-green color for confirmed/approved rows
 
 ### SMOKE -- End-to-End Smoke Test
 
@@ -62,9 +62,9 @@
 | TM-01 | Phase 54 | Pending |
 | TM-02 | Phase 54 | Pending |
 | TM-03 | Phase 54 | Pending |
-| COLOR-01 | Phase 54 | Pending |
-| COLOR-02 | Phase 54 | Pending |
-| COLOR-03 | Phase 54 | Pending |
+| COLOR-01 | Phase 54 | Complete |
+| COLOR-02 | Phase 54 | Complete |
+| COLOR-03 | Phase 54 | Complete |
 | SMOKE-01 | Phase 55 | Pending |
 
 **Coverage:**
