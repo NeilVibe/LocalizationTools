@@ -260,7 +260,10 @@ Plans:
   4. Region Codex page renders split layout with faction tree and d3-zoom map with WorldPosition nodes -- verified with screenshot
   5. Selecting a LanguageData row with a linked entity shows its DDS portrait in the Image tab (via MegaIndex C7->C1)
   6. Selecting a LanguageData row with available audio plays WEM audio with script text in the Audio tab (via MegaIndex C3)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 53-01-PLAN.md -- Verify all 4 Codex UIs render with mock data (Wave 1)
+- [ ] 53-02-PLAN.md -- Verify RightPanel Image/Audio tabs for linked StringIDs (Wave 1)
 
 ### Phase 54: TM Flow + FAISS Auto-Build + Grid Colors
 **Goal**: Translation memory workflow is end-to-end functional (edit -> reviewed -> TM auto-register -> FAISS rebuild -> cascade search returns results) and LanguageData grid uses the correct color scheme
@@ -345,8 +348,8 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete | 2026-03-21 |
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
-| 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete   | 2026-03-21 |
-| 53. Codex + Right Panel Verification | v5.1 | 0/? | Not started | - |
+| 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete    | 2026-03-21 |
+| 53. Codex + Right Panel Verification | v5.1 | 0/2 | Not started | - |
 | 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/? | Not started | - |
 | 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
 
