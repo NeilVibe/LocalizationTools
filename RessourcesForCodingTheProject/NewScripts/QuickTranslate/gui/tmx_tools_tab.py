@@ -147,8 +147,6 @@ class TMXToolsTab(tk.Frame):
                                    "Please select a file or folder first.")
             return
 
-        logger.info("[TMX] Starting MemoQ-TMX conversion: %s", path)
-
         def _run():
             try:
                 results = convert_to_memoq_tmx(path)
@@ -193,8 +191,6 @@ class TMXToolsTab(tk.Frame):
         if not fpath:
             return
 
-        logger.info("[TMX Cleaner] Processing: %s", fpath)
-
         def _run():
             try:
                 out = clean_and_convert_to_excel(fpath)
@@ -202,7 +198,7 @@ class TMXToolsTab(tk.Frame):
                     "TMX Cleaner", f"Excel exported:\n{out}"))
             except Exception as exc:
                 err_msg = str(exc)
-                logger.error("TMX Cleaner failed: %s", err_msg,
+                logger.error("[TMX Cleaner] Failed: %s", err_msg,
                              exc_info=True)
                 self.after(0, lambda em=err_msg: messagebox.showerror(
                     "TMX Cleaner Error", f"Failed: {em}"))

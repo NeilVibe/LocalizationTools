@@ -407,10 +407,10 @@ def combine_xmls_to_tmx(
     try:
         xml_files = file_list if file_list else get_all_xml_files(input_folder)
         total_files = len(xml_files)
-        logger.info(f"[TMX] Total XML files found: {total_files}")
+        logger.info(f"[TMX] Found {total_files} XML file(s) to process")
 
         if not xml_files:
-            logger.error("[TMX] No XML files found.")
+            logger.warning("[TMX] No XML files found — nothing to convert")
             return False
 
         # Build TMX skeleton
@@ -433,8 +433,12 @@ def combine_xmls_to_tmx(
         main_tu_map = {}   # (korean_text, string_id) → (mtime, tu_element)
         desc_tu_list = []
 
+        total_entries = 0
+        total_desc = 0
+        skipped_korean = 0
+
         for idx, xml_file_path in enumerate(xml_files, 1):
-            logger.info(f"[TMX] Processing file {idx} of {total_files}: {xml_file_path}")
+            logger.info(f"  [{idx}/{total_files}] {os.path.basename(xml_file_path)}")
 
             try:
                 if os.path.getsize(xml_file_path) == 0:
@@ -464,6 +468,7 @@ def combine_xmls_to_tmx(
                 if (target_text
                         and string_id
                         and not is_korean_text(target_text)):
+                    total_entries += 1
                     tu = etree.Element(
                         "tu",
                         creationid=creation_id or "CombinedConversion",
@@ -486,6 +491,9 @@ def combine_xmls_to_tmx(
                     key = (korean_text, string_id)
                     if key not in main_tu_map or file_mtime > main_tu_map[key][0]:
                         main_tu_map[key] = (file_mtime, tu)
+
+                elif target_text and is_korean_text(target_text):
+                    skipped_korean += 1
 
                 # DESCRIPTION TRANSLATION UNIT
                 if (string_id
@@ -531,6 +539,17 @@ def combine_xmls_to_tmx(
                     etree.SubElement(desc_tu, "prop", type="x-document").text = doc_name
                     etree.SubElement(desc_tu, "prop", type="x-context").text  = string_id
                     desc_tu_list.append(desc_tu)
+                    total_desc += 1
+
+        # Dedup summary
+        deduped = total_entries - len(main_tu_map)
+        logger.info(f"[TMX] Scanned {total_entries} TUs from {total_files} files")
+        if deduped > 0:
+            logger.info(f"  Dedup: {deduped} duplicate(s) removed -> {len(main_tu_map)} unique main TUs")
+        if total_desc:
+            logger.info(f"  Descriptions: {total_desc} desc TU(s)")
+        if skipped_korean:
+            logger.info(f"  Skipped: {skipped_korean} untranslated (Korean) entries")
 
         # WRITE OUT TMX
         for _, tu in main_tu_map.values():
@@ -538,18 +557,22 @@ def combine_xmls_to_tmx(
         for tu in desc_tu_list:
             body.append(tu)
 
+        total_tus = len(main_tu_map) + len(desc_tu_list)
+        logger.info(f"[TMX] Writing {total_tus} TU(s) to TMX...")
+
         xml_bytes = etree.tostring(
             tmx, pretty_print=True, encoding='UTF-8', xml_declaration=True
         )
         xml_str = xml_bytes.decode('utf-8')
 
         if postprocess:
+            logger.info("[TMX] Postprocessing: adding MemoQ bpt/ept/ph markup...")
             xml_str = postprocess_tmx_string(xml_str)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(xml_str)
 
-        logger.info(f"[TMX] Successfully combined into: {output_file}")
+        logger.info(f"[TMX] Done -> {os.path.basename(output_file)} ({total_tus} TUs)")
         return True
 
     except Exception as e:
@@ -593,14 +616,22 @@ def convert_to_memoq_tmx(input_path: str) -> list[tuple[str, str, bool]]:
     Returns list of (language_code, output_file, success) tuples.
     """
     path = Path(input_path)
+    logger.info("=" * 60)
+    logger.info("[MemoQ-TMX] Scanning for languages: %s", path.name)
     scan = scan_source_for_languages(path)
 
     if not scan.lang_files:
-        logger.warning("[TMX] No language files detected in: %s", input_path)
+        logger.warning("[MemoQ-TMX] No language files detected in: %s", input_path)
         if scan.unrecognized:
-            logger.warning("[TMX] %d unrecognized items (no language suffix)",
+            logger.warning("  %d unrecognized items (no language suffix)",
                            len(scan.unrecognized))
         return []
+
+    # Show detected languages
+    lang_list = [f"{k.upper()} ({len(v)} files)" for k, v in sorted(scan.lang_files.items())]
+    logger.info("  Detected: %s", ", ".join(lang_list))
+    if scan.unrecognized:
+        logger.warning("  %d unrecognized items skipped", len(scan.unrecognized))
 
     creation_id = f"QT_{datetime.now().strftime('%Y%m%d_%H%M')}"
 
@@ -613,22 +644,23 @@ def convert_to_memoq_tmx(input_path: str) -> list[tuple[str, str, bool]]:
         output_dir = str(path)
 
     results = []
-    for lang_code, files in scan.lang_files.items():
+    langs_to_convert = [
+        (k, v) for k, v in scan.lang_files.items() if k.upper() != "KOR"
+    ]
+    if len(langs_to_convert) < len(scan.lang_files):
+        logger.info("  Skipping KOR (source language)")
+
+    for i, (lang_code, files) in enumerate(langs_to_convert, 1):
         upper = lang_code.upper()
-
-        # Skip KOR -- would produce empty TMX
-        if upper == "KOR":
-            logger.info("[TMX] Skipping KOR (source language -- would produce empty TMX)")
-            continue
-
         bcp47 = SUFFIX_TO_BCP47.get(upper, lang_code.lower())
         out_file = os.path.join(output_dir, f"{base_name}_{upper}.tmx")
 
         # Convert Path objects to strings for combine_xmls_to_tmx
         file_list = [str(f) for f in files]
 
-        logger.info("[TMX] Converting %d files for %s -> %s (lang=%s)",
-                     len(file_list), upper, out_file, bcp47)
+        logger.info("-" * 40)
+        logger.info("[MemoQ-TMX] (%d/%d) %s — %d file(s), target=%s",
+                     i, len(langs_to_convert), upper, len(file_list), bcp47)
 
         ok = combine_xmls_to_tmx(
             input_folder=output_dir,
@@ -639,6 +671,16 @@ def convert_to_memoq_tmx(input_path: str) -> list[tuple[str, str, bool]]:
             creation_id=creation_id,
         )
         results.append((upper, out_file, ok))
+
+    # Final summary
+    logger.info("=" * 60)
+    ok_count = sum(1 for _, _, ok in results if ok)
+    fail_count = len(results) - ok_count
+    logger.info("[MemoQ-TMX] Complete: %d language(s) converted, %d failed",
+                ok_count, fail_count)
+    for lang, out, ok in results:
+        status = "OK" if ok else "FAILED"
+        logger.info("  %s: %s -> %s", lang, status, os.path.basename(out))
 
     return results
 
@@ -814,20 +856,36 @@ def clean_and_convert_to_excel(fpath: str) -> str:
     Output file: same name as input but _clean.xlsx.
     Returns the output path.
     """
-    logger.info(f"[1/3] Parsing and cleaning: {fpath}")
-    rows = parse_tmx_to_rows(fpath)
-    logger.info(f"       Found {len(rows)} TU entries")
+    logger.info("=" * 60)
+    logger.info("[TMX Cleaner] %s", os.path.basename(fpath))
+    logger.info("-" * 40)
 
-    logger.info("[2/3] Deduplicating by (x-context + KO seg), keeping latest changedate...")
+    logger.info("[1/3] Parsing TMX and cleaning CAT markup...")
+    rows = parse_tmx_to_rows(fpath)
+    if not rows:
+        logger.warning("  No TU entries found — file may be empty or malformed")
+        raise ValueError(f"No TU entries found in {os.path.basename(fpath)}")
+    # Count languages found
+    langs = set(r.get('tgt_lang', '') for r in rows if r.get('tgt_lang'))
+    logger.info(f"  Parsed {len(rows)} TU entries")
+    if langs:
+        logger.info(f"  Target language(s): {', '.join(sorted(langs))}")
+
+    logger.info("[2/3] Deduplicating by (x-context + KO text), keeping latest...")
     before = len(rows)
     rows = dedup_rows(rows)
     dupes = before - len(rows)
-    logger.info(f"       {dupes} duplicates removed -> {len(rows)} unique rows")
+    if dupes:
+        logger.info(f"  {dupes} duplicate(s) removed -> {len(rows)} unique rows")
+    else:
+        logger.info(f"  No duplicates found ({len(rows)} rows)")
 
     base = os.path.splitext(fpath)[0]
     output_path = f"{base}_clean.xlsx"
 
-    logger.info("[3/3] Writing Excel...")
+    logger.info("[3/3] Writing Excel (3 columns: StrOrigin, Correction, StringID)...")
     write_excel(rows, output_path)
-    logger.info(f"[DONE] {output_path}")
+
+    logger.info("=" * 60)
+    logger.info("[TMX Cleaner] Done -> %s (%d rows)", os.path.basename(output_path), len(rows))
     return output_path
