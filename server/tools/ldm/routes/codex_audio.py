@@ -1,0 +1,305 @@
+"""Audio Codex API endpoints -- paginated list, category tree, detail, WEM streaming.
+
+Phase 48: Audio Codex UI -- thin wrappers around MegaIndex O(1) lookups.
+All data comes from MegaIndex D10/D11/D20/D21/C4/C5 dicts.
+
+Endpoints:
+  GET /codex/audio            - Paginated audio list with category/search filtering
+  GET /codex/audio/categories - Category tree from D20 export_path grouping
+  GET /codex/audio/stream/{event_name} - WEM-to-WAV streaming (unauthenticated for <audio>)
+  GET /codex/audio/{event_name}        - Full audio detail
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
+from loguru import logger
+
+from server.utils.dependencies import get_current_active_user_async
+from server.tools.ldm.schemas.codex_audio import (
+    AudioCardResponse,
+    AudioCategoryNode,
+    AudioCategoryTreeResponse,
+    AudioDetailResponse,
+    AudioListResponse,
+)
+from server.tools.ldm.services.mega_index import get_mega_index
+from server.tools.ldm.services.media_converter import get_media_converter
+from server.tools.ldm.services.perforce_path_service import convert_to_wsl_path
+
+
+router = APIRouter(prefix="/codex/audio", tags=["Codex Audio"])
+
+
+# =============================================================================
+# Helpers
+# =============================================================================
+
+
+def _build_audio_card(event_name: str, mega) -> AudioCardResponse:
+    """Build an AudioCardResponse from MegaIndex lookups."""
+    event_lower = event_name.lower()
+    return AudioCardResponse(
+        event_name=event_name,
+        string_id=mega.event_to_stringid_lookup(event_name),
+        script_kr=mega.get_script_kr(event_name),
+        script_eng=mega.get_script_eng(event_name),
+        export_path=mega.event_to_export_path.get(event_lower),
+        has_wem=mega.get_audio_path_by_event(event_name) is not None,
+        xml_order=mega.event_to_xml_order.get(event_lower),
+    )
+
+
+def _build_category_tree(
+    event_to_export_path: Dict[str, str],
+) -> List[AudioCategoryNode]:
+    """Build nested category tree from D20 export_path grouping.
+
+    Each export_path like "Dialog/QuestDialog/SubFolder" becomes a nested tree:
+    Dialog -> QuestDialog -> SubFolder with counts at each level.
+    """
+    # Count events per full path
+    path_counts: Dict[str, int] = defaultdict(int)
+    for _event, export_path in event_to_export_path.items():
+        if export_path:
+            path_counts[export_path] += 1
+
+    # Build tree structure from all paths
+    # node_map: full_path -> {name, children_map, count}
+    node_map: Dict[str, dict] = {}
+
+    for full_path, count in path_counts.items():
+        parts = full_path.split("/")
+        for i, part in enumerate(parts):
+            current_path = "/".join(parts[: i + 1])
+            if current_path not in node_map:
+                node_map[current_path] = {
+                    "name": part,
+                    "full_path": current_path,
+                    "count": 0,
+                    "children": {},
+                }
+            # Only leaf paths get the count
+            if current_path == full_path:
+                node_map[current_path]["count"] += count
+
+            # Wire parent -> child
+            if i > 0:
+                parent_path = "/".join(parts[:i])
+                if parent_path in node_map:
+                    node_map[parent_path]["children"][current_path] = True
+
+    def _to_node(path: str) -> AudioCategoryNode:
+        info = node_map[path]
+        children = []
+        for child_path in sorted(info["children"].keys()):
+            children.append(_to_node(child_path))
+        # Roll up count: own count + sum of children
+        total_count = info["count"] + sum(c.count for c in children)
+        return AudioCategoryNode(
+            name=info["name"],
+            full_path=info["full_path"],
+            count=total_count,
+            children=children,
+        )
+
+    # Find root nodes (paths with no parent in node_map)
+    roots = []
+    for path in sorted(node_map.keys()):
+        parts = path.split("/")
+        if len(parts) == 1:
+            roots.append(_to_node(path))
+
+    return roots
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
+
+
+@router.get("/categories", response_model=AudioCategoryTreeResponse)
+async def get_audio_categories(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get hierarchical category tree from D20 export_path grouping.
+
+    Returns nested tree structure with event counts per category.
+    """
+    try:
+        mega = get_mega_index()
+        categories = _build_category_tree(mega.event_to_export_path)
+        total_events = len(mega.event_to_export_path)
+
+        return AudioCategoryTreeResponse(
+            categories=categories,
+            total_events=total_events,
+        )
+    except Exception as exc:
+        logger.error(f"[Audio Codex] get_audio_categories failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/stream/{event_name}")
+async def stream_audio(event_name: str):
+    """Stream WAV audio for an event_name.
+
+    Looks up WEM path via MegaIndex D10, converts WEM -> WAV via MediaConverter,
+    and returns the WAV file. Unauthenticated for <audio> element compatibility.
+    """
+    mega = get_mega_index()
+    wem_path = mega.get_audio_path_by_event(event_name)
+
+    if wem_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No audio found for event '{event_name}'",
+        )
+
+    # If the path is already a WAV file, serve it directly
+    if wem_path.suffix.lower() == ".wav" and wem_path.exists():
+        return FileResponse(str(wem_path), media_type="audio/wav")
+
+    # Convert Windows path to WSL path, then WEM -> WAV
+    wsl_path = convert_to_wsl_path(str(wem_path))
+    converter = get_media_converter()
+
+    wav_path = await asyncio.to_thread(
+        converter.convert_wem_to_wav, Path(wsl_path)
+    )
+    if wav_path is None:
+        raise HTTPException(status_code=500, detail="Audio conversion failed")
+
+    return FileResponse(str(wav_path), media_type="audio/wav")
+
+
+@router.get("/{event_name}", response_model=AudioDetailResponse)
+async def get_audio_detail(
+    event_name: str,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get full audio detail for a single event.
+
+    Returns all MegaIndex lookups plus computed stream URL.
+    """
+    try:
+        mega = get_mega_index()
+
+        # Check event exists in D11 (events with StringId linkage)
+        string_id = mega.event_to_stringid_lookup(event_name)
+        if string_id is None:
+            # Also check D10 (events with WEM path but no StringId)
+            wem_path = mega.get_audio_path_by_event(event_name)
+            if wem_path is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Audio event not found: {event_name}",
+                )
+
+        event_lower = event_name.lower()
+        wem_path = mega.get_audio_path_by_event(event_name)
+        has_wem = wem_path is not None
+
+        return AudioDetailResponse(
+            event_name=event_name,
+            string_id=string_id,
+            script_kr=mega.get_script_kr(event_name),
+            script_eng=mega.get_script_eng(event_name),
+            export_path=mega.event_to_export_path.get(event_lower),
+            has_wem=has_wem,
+            xml_order=mega.event_to_xml_order.get(event_lower),
+            wem_path=str(wem_path) if wem_path else None,
+            stream_url=f"/api/ldm/codex/audio/stream/{event_name}" if has_wem else None,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"[Audio Codex] get_audio_detail failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/", response_model=AudioListResponse)
+async def list_audio(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    category: Optional[str] = Query(None, description="Filter by D20 export_path prefix"),
+    q: Optional[str] = Query(None, description="Search across event_name, script, stringid"),
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get paginated audio list with optional category filtering and text search.
+
+    - category: filters by D20 export_path prefix (e.g. "Dialog/QuestDialog")
+    - q: searches across event_name, script_kr (C4), script_eng (C5), string_id (D11)
+    """
+    try:
+        mega = get_mega_index()
+
+        # Master list: all events from D11 (events with StringId linkage)
+        all_events = list(mega.event_to_stringid.keys())
+
+        # Category filter via D20 export_path prefix
+        if category:
+            category_lower = category.lower()
+            all_events = [
+                ev for ev in all_events
+                if mega.event_to_export_path.get(ev, "").lower().startswith(category_lower)
+            ]
+
+        # Text search filtering
+        if q:
+            q_lower = q.lower()
+            filtered = []
+            for ev in all_events:
+                # Check event_name
+                if q_lower in ev:
+                    filtered.append(ev)
+                    continue
+                # Check string_id
+                sid = mega.event_to_stringid.get(ev, "")
+                if q_lower in sid.lower():
+                    filtered.append(ev)
+                    continue
+                # Check script_kr (C4)
+                script_kr = mega.get_script_kr(ev)
+                if script_kr and q_lower in script_kr.lower():
+                    filtered.append(ev)
+                    continue
+                # Check script_eng (C5)
+                script_eng = mega.get_script_eng(ev)
+                if script_eng and q_lower in script_eng.lower():
+                    filtered.append(ev)
+                    continue
+            all_events = filtered
+
+        # Sort by xml_order (D21) if available, else alphabetical
+        def _sort_key(ev: str):
+            order = mega.event_to_xml_order.get(ev)
+            if order is not None:
+                return (0, order, ev)
+            return (1, 0, ev)
+
+        all_events.sort(key=_sort_key)
+
+        total = len(all_events)
+        paginated = all_events[offset: offset + limit]
+
+        # Build cards
+        items = [_build_audio_card(ev, mega) for ev in paginated]
+
+        return AudioListResponse(
+            items=items,
+            total=total,
+            offset=offset,
+            limit=limit,
+            has_more=(offset + limit) < total,
+            category_filter=category,
+        )
+    except Exception as exc:
+        logger.error(f"[Audio Codex] list_audio failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
