@@ -1,261 +1,116 @@
-# Requirements: LocaNext v3.3
+# Requirements: LocaNext v5.0
 
-**Defined:** 2026-03-17
-**Core Value:** All 5 pages polished to production quality -- consistent, performant, beautiful, one unified app experience.
+**Defined:** 2026-03-21
+**Core Value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
 
-## v3.3 Requirements
+## v5.0 Requirements
 
-### FND -- Design Foundation
+### INFRA — Shared Infrastructure
 
-- [x] **FND-01**: CSS custom properties defined in app.css for spacing scale, color tokens, shadow tokens, and border-radius -- all pages use tokens instead of hardcoded values
-- [x] **FND-02**: Shared PageHeader component with consistent padding, title styling, and optional action slot used across all 5 pages
-- [x] **FND-03**: Shared SkeletonCard component matching Codex card dimensions for loading states
-- [x] **FND-04**: Shared EmptyState component (icon + headline + description + optional CTA) used when pages have no data
-- [x] **FND-05**: Shared ErrorState component (error message + retry button) used for inline error recovery on all pages
-- [x] **FND-06**: Shared InfiniteScroll component using IntersectionObserver with $effect cleanup for paginated loading
+- [ ] **INFRA-01**: PerforcePathService with drive/branch config resolves data paths for all Codex types (ported from MapDataGenerator config.py)
+- [ ] **INFRA-02**: AICapabilityService detects Model2Vec/FAISS/Ollama/TTS availability at startup and exposes runtime status
+- [ ] **INFRA-03**: AI capability badges shown in settings page; AI-dependent UI sections hide gracefully when engines unavailable
 
-### CDX -- Codex Revamp
+### AUDIO — Audio Codex
 
-- [x] **CDX-01**: Codex loads entities in pages of 50 via paginated API (offset/limit) instead of loading all at once
-- [x] **CDX-02**: IntersectionObserver sentinel triggers next page load as user scrolls near bottom
-- [x] **CDX-03**: Skeleton cards show during page load, matching real card dimensions
-- [x] **CDX-04**: Entity images use loading="lazy" with placeholder shown until image enters viewport
-- [x] **CDX-05**: Search-first UX -- search bar prominent at top, results update as user types with debounce
-- [x] **CDX-06**: Category tabs with counts, cached per tab so switching is instant
-- [x] **CDX-07**: Codex feels like a polished encyclopedia -- consistent card sizes, smooth transitions, no layout shift
+- [ ] **AUDIO-01**: Audio Codex page with card grid, search, and category tree navigation
+- [ ] **AUDIO-02**: AudioIndex chain resolves WEM→EventName→StringId→StrOrigin/KOR/ENG script lines (ported from MapDataGenerator linkage.py)
+- [ ] **AUDIO-03**: Inline WEM→WAV streaming playback with play/stop/duration and script text overlay
+- [ ] **AUDIO-04**: Category tree from export folder hierarchy (Dialog/QuestDialog, etc.) for audio browsing
 
-### GDT -- GameData Tree Polish
+### ITEM — Item Codex
 
-- [x] **GDT-01**: GameData Tree page passes full UI/UX audit (spacing, colors, dark mode, empty states, loading states)
-- [x] **GDT-02**: Node detail panel has consistent spacing, proper typography hierarchy, and smooth transitions
-- [x] **GDT-03**: Context Intelligence Panel (right panel) has polished tabs, loading states, and empty states for each section
-- [x] **GDT-04**: Tree performance verified with 1000+ nodes -- no scroll lag, expand/collapse stays smooth
+- [ ] **ITEM-01**: Item Codex page with card grid showing DDS images, Korean/translated names, and category badges
+- [ ] **ITEM-02**: ItemGroupInfo hierarchy for category/group navigation tabs (ported from QACompiler item.py)
+- [ ] **ITEM-03**: Item detail panel with knowledge resolution (3 passes + InspectData) displayed as tabs
+- [ ] **ITEM-04**: Text search across Korean name, translated name, StrKey, and description fields
 
-### LDG -- Language Data Grid Polish
+### CHAR — Character Codex
 
-- [x] **LDG-01**: Language Data Grid passes full UI/UX audit (column alignment, status colors in dark mode, empty states)
-- [x] **LDG-02**: Loading states use skeleton rows matching grid dimensions instead of spinner
-- [x] **LDG-03**: Search/filter bar has consistent styling with other pages, clear feedback on empty results
+- [ ] **CHAR-01**: Character Codex page with card grid showing portraits, names, and category tabs
+- [ ] **CHAR-02**: Filename-based grouping (NPC, MONSTER, etc.) for category navigation (ported from QACompiler character.py)
+- [ ] **CHAR-03**: Character detail panel with Race/Gender/Age/Job fields and knowledge panel
+- [ ] **CHAR-04**: Text search across character names, StrKey, and attribute fields
 
-### WMP -- World Map Polish
+### REGION — Region Codex + Interactive Map
 
-- [x] **WMP-01**: World Map passes quick UI/UX audit (node styling, route lines, tooltips, dark mode)
-- [x] **WMP-02**: Empty state when no map data is loaded shows helpful message
+- [ ] **REGION-01**: Region Codex page with FactionGroup→Faction→FactionNode tree navigation
+- [ ] **REGION-02**: Region detail panel with WorldPosition, DisplayName, and knowledge cross-references
+- [ ] **REGION-03**: Interactive map with real WorldPosition coordinates via d3-zoom (extends existing WorldMap page)
+- [ ] **REGION-04**: FactionGroup tabs for filtering regions by faction hierarchy
 
-### TMP -- TM Panel Polish
+### STRID — StringID→Audio Integration
 
-- [x] **TMP-01**: TM Panel passes UI/UX audit (match percentages, diff highlighting, dark mode consistency)
-- [x] **TMP-02**: Loading and empty states for TM suggestions are polished
+- [ ] **STRID-01**: Reverse lookup from StringID→AudioIndex→WEM file path for any string with available audio
+- [ ] **STRID-02**: Inline audio player in LDM translation grid when selecting a row with available audio
 
-### XPG -- Cross-Page Consistency
+### OFFLINE — Offline Production Bundle
 
-- [x] **XPG-01**: All 5 pages use the shared PageHeader component with consistent look
-- [x] **XPG-02**: Dark mode works consistently across all pages -- no hardcoded colors, no missing tokens
-- [x] **XPG-03**: Sidebar navigation has consistent active states, hover effects, and spacing
-- [x] **XPG-04**: Error handling is consistent -- all pages use ErrorState component with retry
+- [ ] **OFFLINE-01**: SQLite-only mode with no PostgreSQL dependency for disconnected machines
+- [ ] **OFFLINE-02**: Model2Vec bundled in light build (no Qwen 0.6B, no heavy AI engines)
+- [ ] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM→WAV conversion
+- [ ] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit — verify all gamedata paths work offline with SQLite
+- [ ] **OFFLINE-05**: Fresh-machine smoke test passing (PyInstaller bundle, all core features functional without AI)
 
-### VER -- Verification
+## v6.0 Requirements (Deferred)
 
-- [x] **VER-01**: Playwright screenshots captured for all 5 pages in both light and dark mode (10 screenshots minimum)
-- [x] **VER-02**: Performance benchmark -- Codex loads 500 entities without visible lag, initial render under 1 second
-- [x] **VER-03**: No memory leaks -- opening and closing pages repeatedly shows stable memory usage
-- [x] **VER-04**: All existing API tests still pass after polish changes (zero regressions)
+### Audio Enhancement
 
-## Future Requirements
+- **AUDIO-VRS-01**: VRS chronological ordering for audio entries (quest-order playback)
+- **AUDIO-LANG-01**: Multi-language audio folder switching in UI (EN/KR/ZH)
 
-### Advanced Polish (v3.4+)
+### Region Enhancement
 
-- **ADV-01**: Keyboard shortcuts overlay / command palette
-- **ADV-02**: Custom scrollbar styling
-- **ADV-03**: Animation library for complex transitions
-- **ADV-04**: Themeable color scheme beyond dark/light
+- **REGION-SHOP-01**: Shop + SceneObjectData positions on region map overlay
+- **REGION-POS-01**: 3-hop Knowledge_Contents position chain (KnowledgeInfo→UIMapTextureInfo→LevelGimmickSceneObjectInfo)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Full redesign / layout changes | Polish only -- structure stays, visual quality improves |
-| New features / functionality | Pure UX quality pass, no new capabilities |
-| Backend architectural changes | Only minimal Codex pagination param addition |
-| Mobile responsiveness | Desktop-only Electron app |
-| Accessibility audit (WCAG) | Carbon handles baseline a11y; deep audit is v3.4+ |
+| Audio editing/waveform UI | CAT tool, not audio editor — simple play/stop/duration only |
+| CRUD operations on Codex entities | Read-only encyclopedia; Game Dev Grid handles editing (built in v3.0) |
+| Perforce VCS integration (sync/checkout) | Just parse path patterns for file resolution, no VCS coupling |
+| Full Qwen AI in offline bundle | 2.3GB defeats light bundle purpose; Model2Vec only |
+| Multi-language audio folder switching | 1 project = 1 language; auto-detect from Perforce path |
+| MapDataGenerator tkinter GUI porting | Port DATA LOGIC only, build new Svelte 5 UI |
+| Real-time audio recording | TTS auto-gen already exists in v3.5 as fallback |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 32 | Complete |
-| FND-02 | Phase 32 | Complete |
-| FND-03 | Phase 32 | Complete |
-| FND-04 | Phase 32 | Complete |
-| FND-05 | Phase 32 | Complete |
-| FND-06 | Phase 32 | Complete |
-| CDX-01 | Phase 33 | Complete |
-| CDX-02 | Phase 33 | Complete |
-| CDX-03 | Phase 33 | Complete |
-| CDX-04 | Phase 33 | Complete |
-| CDX-05 | Phase 33 | Complete |
-| CDX-06 | Phase 33 | Complete |
-| CDX-07 | Phase 33 | Complete |
-| GDT-01 | Phase 34 | Complete |
-| GDT-02 | Phase 34 | Complete |
-| GDT-03 | Phase 34 | Complete |
-| GDT-04 | Phase 34 | Complete |
-| LDG-01 | Phase 34 | Complete |
-| LDG-02 | Phase 34 | Complete |
-| LDG-03 | Phase 34 | Complete |
-| WMP-01 | Phase 34 | Complete |
-| WMP-02 | Phase 34 | Complete |
-| TMP-01 | Phase 34 | Complete |
-| TMP-02 | Phase 34 | Complete |
-| XPG-01 | Phase 35 | Complete |
-| XPG-02 | Phase 35 | Complete |
-| XPG-03 | Phase 35 | Complete |
-| XPG-04 | Phase 35 | Complete |
-| VER-01 | Phase 36 | Complete |
-| VER-02 | Phase 36 | Complete |
-| VER-03 | Phase 36 | Complete |
-| VER-04 | Phase 36 | Complete |
+| INFRA-01 | — | Pending |
+| INFRA-02 | — | Pending |
+| INFRA-03 | — | Pending |
+| AUDIO-01 | — | Pending |
+| AUDIO-02 | — | Pending |
+| AUDIO-03 | — | Pending |
+| AUDIO-04 | — | Pending |
+| ITEM-01 | — | Pending |
+| ITEM-02 | — | Pending |
+| ITEM-03 | — | Pending |
+| ITEM-04 | — | Pending |
+| CHAR-01 | — | Pending |
+| CHAR-02 | — | Pending |
+| CHAR-03 | — | Pending |
+| CHAR-04 | — | Pending |
+| REGION-01 | — | Pending |
+| REGION-02 | — | Pending |
+| REGION-03 | — | Pending |
+| REGION-04 | — | Pending |
+| STRID-01 | — | Pending |
+| STRID-02 | — | Pending |
+| OFFLINE-01 | — | Pending |
+| OFFLINE-02 | — | Pending |
+| OFFLINE-03 | — | Pending |
+| OFFLINE-04 | — | Pending |
+| OFFLINE-05 | — | Pending |
 
 **Coverage:**
-- v3.3 requirements: 32 total
-- Mapped to phases: 32/32
-- Unmapped: 0
-
-## v3.5 Requirements -- WOW Showcase
-
-### WOW -- XML Viewer Polish (Phase 37)
-
-- [x] **WOW-01**: XML attributes have semantic color highlighting -- cross-refs blue, identity gold, editable green, stats cyan, media purple
-- [x] **WOW-02**: Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail
-- [x] **WOW-03**: Panel entrance has slide-in animation, tab switch has crossfade, image load has shimmer-to-reveal
-- [x] **WOW-04**: Clicking an attribute value copies to clipboard with visual ripple feedback
-
-### WOW -- Fantasy World Map (Phase 38)
-
-- [x] **WOW-05**: Map has parchment background via CSS gradients + ornamental SVG border frame
-- [x] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
-- [x] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
-- [x] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
-- [x] **WOW-09**: Click region -> smooth zoom-to-fit via d3 transition + detail panel slides in
-
-### WOW -- Codex Enhancement (Phase 39)
-
-- [x] **WOW-10**: Entity cards have glassmorphism (backdrop-filter blur + semi-transparent bg) with AI portrait
-- [x] **WOW-11**: Hovering card produces parallax shift on background image
-- [x] **WOW-12**: D3 force-directed graph shows entity relationships with typed link styles
-- [x] **WOW-13**: Hovering graph node highlights connected nodes and dims unconnected
-
-### WOW -- Cross-cutting Polish (Phase 40)
-
-- [x] **WOW-14**: Page navigation has crossfade transition
-- [x] **WOW-15**: All loading states use shimmer skeletons matching content dimensions
-- [x] **WOW-16**: Ctrl+K opens command palette for global entity search
-- [x] **WOW-17**: Toast notifications slide in from top-right with auto-dismiss
-
-**v3.5 Coverage:**
-- v3.5 requirements: 17 total
-- Mapped to phases: 17/17
-- Unmapped: 0
-
-## Phase 41 Requirements -- Qwen3-TTS Korean Voice Generation
-
-### TTS -- Text-to-Speech Voice Generation
-
-- [x] **TTS-01**: TTSService singleton with lazy Qwen3-TTS model loading (loads on first request, not on startup)
-- [x] **TTS-02**: 5 character voice profiles with distinct voice instructions (Elder Varon=wise/slow, Kira=cold/sharp, Grimjaw=gruff/strong, Lune=young/alert, Drakmar=mysterious/echoing)
-- [x] **TTS-03**: POST /api/ldm/codex/generate-voice/{strkey} generates .wav audio and returns audio URL with duration
-- [x] **TTS-04**: Generated audio cached on disk at mock_gamedata/audio/{strkey}.wav -- repeat calls return cached version without regeneration
-- [x] **TTS-05**: Codex entity detail shows "Generate Voice" button, loading state during generation, audio player with auto-play after generation, and regenerate option
-
-**Phase 41 Coverage:**
-- Phase 41 requirements: 5 total
-- Mapped to plans: 5/5 (TTS-01..04 -> Plan 01, TTS-05 -> Plan 02)
-- Unmapped: 0
-
-| Requirement | Phase | Plan | Status |
-|-------------|-------|------|--------|
-| TTS-01 | Phase 41 | 41-01 | Complete |
-| TTS-02 | Phase 41 | 41-01 | Complete |
-| TTS-03 | Phase 41 | 41-01 | Complete |
-| TTS-04 | Phase 41 | 41-01 | Complete |
-| TTS-05 | Phase 41 | 41-02 | Complete |
-
-## Phase 42 Requirements -- LanguageData Fix + WOW Showcase
-
-### LDM-FIX -- LDM Grid Regression Fix
-
-- [x] **LDM-FIX-01**: API endpoint debugging -- identify and fix 422 validation errors on file list/open endpoints via curl testing
-- [x] **LDM-FIX-02**: Frontend file selection flow restored -- double-clicking a file in FilesPage opens GridPage with VirtualGrid showing rows
-- [x] **LDM-FIX-03**: Full CRUD cycle verified -- upload file, open file, edit cell, save works end-to-end
-
-### LDM-MOCK -- Multi-Format Mock Data
-
-- [x] **LDM-MOCK-01**: Excel mock file (.xlsx) with 25+ game-themed strings including StringID, Source (ENG), Translation (KR), Status, Translator, ReviewState columns
-- [x] **LDM-MOCK-02**: TXT tabulated mock file (.txt) with 25+ strings tab-separated: StringID, Source, Translation, metadata
-- [x] **LDM-MOCK-03**: XML mock file (.loc.xml) with 25+ strings in LocStr format with StringID, Str, translation attributes, including <br/> tags
-- [x] **LDM-MOCK-04**: Mock TM entries pre-loaded (30+ entries) with varying similarity scores matching the mock file strings
-
-### LDM-WOW -- Right Panel WOW Showcase
-
-- [x] **LDM-WOW-01**: TM tab shows 6-tier cascade results (split-line exact/fuzzy/semantic + whole-string exact/fuzzy/semantic) when a row is selected
-- [x] **LDM-WOW-02**: Image tab shows character/item portrait when editing a string that cross-references a Codex entity
-- [x] **LDM-WOW-03**: Audio tab plays character voice (from TTS) when editing a character-related string
-- [x] **LDM-WOW-04**: AI Context tab shows Korean AI summary for the selected string's entity context
-
-**Phase 42 Coverage:**
-- Phase 42 requirements: 11 total
-- Mapped to plans: 11/11 (LDM-FIX-01..03 -> Plan 01, LDM-MOCK-01..04 -> Plan 02, LDM-WOW-01..04 -> Plan 03)
-- Unmapped: 0
-
-| Requirement | Phase | Plan | Status |
-|-------------|-------|------|--------|
-| LDM-FIX-01 | Phase 42 | 42-01 | Complete |
-| LDM-FIX-02 | Phase 42 | 42-01 | Complete |
-| LDM-FIX-03 | Phase 42 | 42-01 | Complete |
-| LDM-MOCK-01 | Phase 42 | 42-02 | Complete |
-| LDM-MOCK-02 | Phase 42 | 42-02 | Complete |
-| LDM-MOCK-03 | Phase 42 | 42-02 | Complete |
-| LDM-MOCK-04 | Phase 42 | 42-02 | Complete |
-| LDM-WOW-01 | Phase 42 | 42-03 | Complete |
-| LDM-WOW-02 | Phase 42 | 42-03 | Complete |
-| LDM-WOW-03 | Phase 42 | 42-03 | Complete |
-| LDM-WOW-04 | Phase 42 | 42-03 | Complete |
-
-## v4.0 Requirements -- Mockdata Excellence + Next Level
-
-### MOCK-AUDIT -- Mockdata Quality Audit (Phase 43)
-
-- [x] **MOCK-AUDIT-01**: 3 new XML entity types (Skill, Region, Quest) with cross-references to existing characters/items/factions
-- [x] **MOCK-AUDIT-02**: KnowledgeInfo expanded from 10 to 59 entries with 13 region PNG textures
-- [x] **MOCK-AUDIT-03**: TM expanded from 35 to 50 entries with game-themed translations
-- [x] **MOCK-AUDIT-04**: 14 FactionNodes standardized to PascalCase StrKeys, 4 new map waypoints
-
-### WOW-WIRE -- WOW Data Wiring (Phase 44)
-
-- [x] **WOW-WIRE-01**: Codex relationship graph shows 28 typed links (owns, located_in, knows, member_of, enemy_of)
-- [x] **WOW-WIRE-02**: TM list endpoint returns 200 (not 500), status=None fix
-- [x] **WOW-WIRE-03**: DEV auto-init for MapDataService (31 images) and GlossaryService (33 entities)
-- [x] **WOW-WIRE-04**: All 5 codex characters show Korean descriptions (CharacterDesc fallback)
-
-| Requirement | Phase | Plan | Status |
-|-------------|-------|------|--------|
-| MOCK-AUDIT-01 | Phase 43 | 43-01 | Complete |
-| MOCK-AUDIT-02 | Phase 43 | 43-03 | Complete |
-| MOCK-AUDIT-03 | Phase 43 | 43-02 | Complete |
-| MOCK-AUDIT-04 | Phase 43 | 43-01 | Complete |
-| WOW-WIRE-01 | Phase 44 | 44-01 | Complete |
-| WOW-WIRE-02 | Phase 44 | 44-02 | Complete |
-| WOW-WIRE-03 | Phase 44 | 44-02 | Complete |
-| WOW-WIRE-04 | Phase 44 | 44-01 | Complete |
-
-**v4.0 Coverage:**
-- v4.0 requirements: 8 total
-- Mapped to phases: 8/8
-- Unmapped: 0
+- v5.0 requirements: 26 total
+- Mapped to phases: 0
+- Unmapped: 26 ⚠️
 
 ---
-*Requirements defined: 2026-03-17*
-*v3.5 WOW Showcase requirements added: 2026-03-17*
-*Phase 41 TTS requirements added: 2026-03-18*
-*Phase 42 LanguageData requirements added: 2026-03-18*
+*Requirements defined: 2026-03-21*
