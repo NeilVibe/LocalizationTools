@@ -66,6 +66,7 @@ from .routes.ai_capabilities import router as ai_capabilities_router  # Phase 45
 from .routes.mega_index import router as mega_index_router  # Phase 45: MegaIndex Status/Build
 from .routes.codex_items import router as codex_items_router  # Phase 46: Item Codex
 from .routes.codex_characters import router as codex_characters_router  # Phase 47: Character Codex
+from .routes.codex_audio import router as codex_audio_router  # Phase 48: Audio Codex
 
 # =============================================================================
 # Include all routers
@@ -108,6 +109,7 @@ router.include_router(ai_capabilities_router)  # Phase 45: AI Engine Detection
 router.include_router(mega_index_router)  # Phase 45: MegaIndex Status/Build
 router.include_router(codex_items_router)  # Phase 46: Item Codex
 router.include_router(codex_characters_router)  # Phase 47: Character Codex
+router.include_router(codex_audio_router)  # Phase 48: Audio Codex
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
