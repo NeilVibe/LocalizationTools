@@ -291,7 +291,7 @@ Plans:
   3. Screenshots saved as artifacts for visual review
 **Plans**: 1 plan
 Plans:
-- [ ] 55-01-PLAN.md -- Playwright smoke test: visit all 11 pages, screenshot, verify no errors (Wave 1)
+- [x] 55-01-PLAN.md -- Playwright smoke test: visit all 11 pages, screenshot, verify no errors (Wave 1)
 
 ## Progress
 
@@ -356,7 +356,7 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete    | 2026-03-21 |
 | 53. Codex + Right Panel Verification | v5.1 | 2/2 | Complete    | 2026-03-21 |
 | 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 2/2 | Complete    | 2026-03-21 |
-| 55. End-to-End Smoke Test | v5.1 | 0/1 | Not started | - |
+| 55. End-to-End Smoke Test | v5.1 | 1/1 | Complete   | 2026-03-21 |
 
 ---
 *Roadmap created: 2026-03-14*

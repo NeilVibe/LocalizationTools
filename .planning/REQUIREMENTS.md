@@ -36,7 +36,7 @@
 
 ### SMOKE -- End-to-End Smoke Test
 
-- [ ] **SMOKE-01**: Playwright smoke test visits all pages (Files, LanguageData, GameData, Codex, Item Codex, Character Codex, Audio Codex, Region Codex, Map, TM, Settings) and takes screenshots
+- [x] **SMOKE-01**: Playwright smoke test visits all pages (Files, LanguageData, GameData, Codex, Item Codex, Character Codex, Audio Codex, Region Codex, Map, TM, Settings) and takes screenshots
 
 ## Out of Scope
 
@@ -65,7 +65,7 @@
 | COLOR-01 | Phase 54 | Complete |
 | COLOR-02 | Phase 54 | Complete |
 | COLOR-03 | Phase 54 | Complete |
-| SMOKE-01 | Phase 55 | Pending |
+| SMOKE-01 | Phase 55 | Complete |
 
 **Coverage:**
 - v5.1 requirements: 15 total
