@@ -221,6 +221,7 @@ adminDashboard/node_modules/
 .playwright-mcp/
 .qwen/
 models/Model2Vec/
+bin/vgmstream/
 
 # -------------------- Screenshots (dev captures) --------------------
 screenshots/
