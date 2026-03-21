@@ -62,6 +62,7 @@ from .routes.gamedata import router as gamedata_router  # Phase 18: Game Dev Gri
 from .routes.codex import router as codex_router  # Phase 19: Game World Codex
 from .routes.worldmap import router as worldmap_router  # Phase 20: Interactive World Map
 from .routes.naming import router as naming_router  # Phase 21: AI Naming Coherence
+from .routes.ai_capabilities import router as ai_capabilities_router  # Phase 45: AI Engine Detection
 
 # =============================================================================
 # Include all routers
@@ -100,6 +101,7 @@ router.include_router(gamedata_router)  # Phase 18: Game Dev Grid
 router.include_router(codex_router)  # Phase 19: Game World Codex
 router.include_router(worldmap_router)  # Phase 20: Interactive World Map
 router.include_router(naming_router)  # Phase 21: AI Naming Coherence
+router.include_router(ai_capabilities_router)  # Phase 45: AI Engine Detection
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)

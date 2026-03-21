@@ -23,6 +23,7 @@ from .semantic_search import router as semantic_search_router
 from .merge import router as merge_router
 from .ai_suggestions import router as ai_suggestions_router
 from .gamedata import router as gamedata_router
+from .ai_capabilities import router as ai_capabilities_router
 
 __all__ = [
     "health_router",
@@ -44,4 +45,5 @@ __all__ = [
     "merge_router",
     "ai_suggestions_router",
     "gamedata_router",
+    "ai_capabilities_router",
 ]
