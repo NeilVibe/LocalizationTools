@@ -2,10 +2,12 @@
 MapData Context Service - StrKey-to-image/audio index lookups.
 
 Provides image and audio context for translation grid rows using
-MapDataGenerator's StrKey-to-media linkage pattern. Indexes entries
-under multiple keys (StrKey, StringID, KnowledgeKey) for robust lookup.
+MegaIndex's unified data lookups. Indexes entries under multiple keys
+(StrKey, StringID, KnowledgeKey) for robust lookup.
 
 Phase 5: Visual Polish and Integration (Plan 01)
+Phase 45: MegaIndex migration -- delegates all data to MegaIndex instead
+of independent XML parsing. One parse to rule them all.
 """
 
 from __future__ import annotations
@@ -59,89 +61,6 @@ class KnowledgeLookup:
 
 
 # =============================================================================
-# Knowledge Table & DDS Index Builders
-# =============================================================================
-
-
-def build_knowledge_table(knowledge_folder: Path, parser: "XMLParsingEngine") -> Dict[str, KnowledgeLookup]:
-    """Build StrKey -> KnowledgeLookup mapping from KnowledgeInfo XML files.
-
-    Parses all .xml files in knowledge_folder, extracts KnowledgeInfo elements,
-    and builds a lookup dict keyed by StrKey.
-
-    Args:
-        knowledge_folder: Path to folder containing knowledgeinfo XML files.
-        parser: XMLParsingEngine instance for parsing.
-
-    Returns:
-        Dict mapping StrKey -> KnowledgeLookup.
-    """
-    from server.tools.ldm.services.xml_parsing import get_xml_parsing_engine
-
-    table: Dict[str, KnowledgeLookup] = {}
-
-    if not knowledge_folder.is_dir():
-        logger.warning(f"[MAPDATA] Knowledge folder does not exist: {knowledge_folder}")
-        return table
-
-    xml_files = sorted(knowledge_folder.rglob("*.xml"))
-    if not xml_files:
-        logger.debug(f"[MAPDATA] No XML files found in {knowledge_folder}")
-        return table
-
-    for xml_path in xml_files:
-        root = parser.parse_file(xml_path)
-        if root is None:
-            continue
-
-        count = 0
-        for elem in root.iter("KnowledgeInfo"):
-            strkey = elem.get("StrKey") or ""
-            if not strkey:
-                continue
-
-            entry = KnowledgeLookup(
-                strkey=strkey,
-                name=elem.get("Name") or "",
-                desc=elem.get("Desc") or "",
-                ui_texture_name=elem.get("UITextureName") or "",
-                group_key=elem.get("GroupKey") or "",
-                source_file=xml_path.name,
-            )
-            table[strkey] = entry
-            count += 1
-
-        if count > 0:
-            logger.debug(f"[MAPDATA] Extracted {count} KnowledgeInfo entries from {xml_path.name}")
-
-    logger.info(f"[MAPDATA] Knowledge table built: {len(table)} entries from {len(xml_files)} files")
-    return table
-
-
-def build_dds_index(texture_folder: Path) -> Dict[str, Path]:
-    """Build lowercase-stem -> Path mapping for DDS texture files.
-
-    Args:
-        texture_folder: Path to folder containing DDS files.
-
-    Returns:
-        Dict mapping lowercase stem (no extension) to file Path.
-    """
-    index: Dict[str, Path] = {}
-
-    if not texture_folder.is_dir():
-        logger.warning(f"[MAPDATA] Texture folder does not exist: {texture_folder}")
-        return index
-
-    for dds_path in texture_folder.rglob("*.dds"):
-        stem_lower = dds_path.stem.lower()
-        index[stem_lower] = dds_path
-
-    logger.info(f"[MAPDATA] DDS index built: {len(index)} textures")
-    return index
-
-
-# =============================================================================
 # MapDataService
 # =============================================================================
 
@@ -149,7 +68,8 @@ class MapDataService:
     """Service for StrKey-to-image/audio context lookups.
 
     Maintains pre-indexed maps for fast O(1) lookups by StrKey, StringID,
-    or KnowledgeKey. Gracefully degrades: returns None when unloaded.
+    or KnowledgeKey. Delegates data population to MegaIndex.
+    Gracefully degrades: returns None when unloaded.
     """
 
     def __init__(self):
@@ -163,14 +83,14 @@ class MapDataService:
         self._path_service = get_perforce_path_service()
 
     def initialize(self, branch: str = "mainline", drive: str = "F") -> bool:
-        """Initialize the service by building indexes from real XML data.
+        """Initialize the service by populating indexes from MegaIndex.
 
-        Parses KnowledgeInfo XMLs via XMLParsingEngine and builds:
-        1. Knowledge table (StrKey -> KnowledgeLookup)
-        2. DDS index (lowercase stem -> Path)
-        3. Image chains (StrKey -> UITextureName -> DDS -> ImageContext)
+        Triggers MegaIndex build if needed, then populates:
+        1. Knowledge table from MegaIndex knowledge_by_strkey
+        2. DDS index from MegaIndex dds_by_stem
+        3. Image chains from MegaIndex strkey_to_image_path (C1)
 
-        Gracefully degrades: if paths don't exist, logs warnings and still
+        Gracefully degrades: if MegaIndex has no data, logs warnings and
         marks as loaded with empty indexes.
 
         Args:
@@ -180,76 +100,53 @@ class MapDataService:
         Returns:
             True if initialization succeeded.
         """
-        from server.tools.ldm.services.xml_parsing import get_xml_parsing_engine
+        from server.tools.ldm.services.mega_index import get_mega_index
 
         self._branch = branch
         self._drive = drive
 
+        # Configure path service (still needed for thumbnail URL generation etc.)
         self._path_service.configure(drive, branch)
-        knowledge_folder = self._path_service.resolve("knowledge_folder")
-        texture_folder = self._path_service.resolve("texture_folder")
 
-        logger.info(
-            f"[MAPDATA] Initializing MapDataService: branch={branch}, drive={drive}, "
-            f"texture_folder={texture_folder}"
-        )
+        # Trigger MegaIndex build if not already built
+        mega = get_mega_index()
+        if not mega._built:
+            mega.build()
 
-        parser = get_xml_parsing_engine()
+        # Populate knowledge table from MegaIndex D1
+        self._knowledge_table = {}
+        for strkey, e in mega.knowledge_by_strkey.items():
+            self._knowledge_table[strkey] = KnowledgeLookup(
+                strkey=e.strkey,
+                name=e.name,
+                desc=e.desc,
+                ui_texture_name=e.ui_texture_name,
+                group_key=e.group_key,
+                source_file=e.source_file,
+            )
 
-        # Build knowledge table from KnowledgeInfo XMLs
-        self._knowledge_table = build_knowledge_table(knowledge_folder, parser)
+        # DDS index from MegaIndex D9 (direct reference, same type Dict[str, Path])
+        self._dds_index = mega.dds_by_stem
 
-        # Build DDS texture index
-        self._dds_index = build_dds_index(texture_folder)
-
-        # Resolve image chains: StrKey -> Knowledge -> UITextureName -> DDS
-        self._resolve_image_chains()
+        # Image chains from MegaIndex C1 (strkey_to_image_path)
+        self._strkey_to_image = {}
+        for strkey, dds_path in mega.strkey_to_image_path.items():
+            knowledge = mega.knowledge_by_strkey.get(strkey)
+            texture_name = knowledge.ui_texture_name if knowledge else ""
+            self._strkey_to_image[strkey] = ImageContext(
+                texture_name=texture_name,
+                dds_path=str(dds_path),
+                thumbnail_url=f"/api/ldm/mapdata/thumbnail/{texture_name}" if texture_name else "",
+                has_image=True,
+            )
 
         self._loaded = True
         logger.info(
-            f"[MAPDATA] Initialized: {len(self._knowledge_table)} knowledge entries, "
+            f"[MAPDATA] Initialized from MegaIndex: {len(self._knowledge_table)} knowledge entries, "
             f"{len(self._dds_index)} DDS textures, "
             f"{len(self._strkey_to_image)} image chains resolved"
         )
         return True
-
-    def _resolve_image_chains(self) -> None:
-        """Resolve StrKey -> KnowledgeLookup -> UITextureName -> DDS -> ImageContext.
-
-        For each knowledge table entry, looks up UITextureName in DDS index.
-        If found, creates ImageContext and indexes under StrKey.
-        """
-        resolved = 0
-        missing_texture = 0
-
-        for strkey, knowledge in self._knowledge_table.items():
-            texture_name = knowledge.ui_texture_name
-            if not texture_name:
-                continue
-
-            texture_lower = texture_name.lower()
-            dds_path = self._dds_index.get(texture_lower)
-
-            if dds_path is not None:
-                img = ImageContext(
-                    texture_name=texture_name,
-                    dds_path=str(dds_path),
-                    thumbnail_url=f"/api/ldm/mapdata/thumbnail/{texture_name}",
-                    has_image=True,
-                )
-                self._strkey_to_image[strkey] = img
-                resolved += 1
-            else:
-                logger.debug(
-                    f"[MAPDATA] Missing DDS for StrKey={strkey}, "
-                    f"UITextureName={texture_name}"
-                )
-                missing_texture += 1
-
-        logger.info(
-            f"[MAPDATA] Image chains: {resolved} resolved, "
-            f"{missing_texture} missing textures"
-        )
 
     def get_image_context(self, string_id: str) -> Optional[ImageContext]:
         """Look up image context by StrKey, StringID, or KnowledgeKey.
@@ -292,17 +189,66 @@ class MapDataService:
     def get_audio_context(self, string_id: str) -> Optional[AudioContext]:
         """Look up audio context by StrKey, StringID, or KnowledgeKey.
 
+        Uses MegaIndex C3 (stringid_to_audio_path) for direct StringId->WEM
+        lookup, with C4/C5 (event_to_script) for Korean/English script text.
+        Falls back to lazy-loaded TTS WAV files.
+
         Returns None if service is not loaded or key is unknown.
-        Lazily populates audio index from audio/ directory on first call.
         """
         if not self._loaded:
             return None
-        # Lazy-populate audio index from TTS WAV files
-        if not self._strkey_to_audio:
-            self._lazy_load_audio()
+
+        # Check cached audio first
         result = self._strkey_to_audio.get(string_id)
         if result:
             return result
+
+        # Try MegaIndex C3: StringId -> audio WEM path
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+
+        wem_path = mega.stringid_to_audio_path.get(string_id)
+        if wem_path:
+            # Get event name for script lookup via R3
+            event_name = mega.stringid_to_event.get(string_id, "")
+            script_kr = ""
+            script_eng = ""
+            if event_name:
+                script_kr = mega.event_to_script_kr.get(event_name.lower(), "")
+                script_eng = mega.event_to_script_eng.get(event_name.lower(), "")
+
+            audio_ctx = AudioContext(
+                event_name=event_name or f"Voice: {string_id}",
+                wem_path=str(wem_path),
+                script_kr=script_kr,
+                script_eng=script_eng,
+                duration_seconds=None,
+            )
+            # Cache for future lookups
+            self._strkey_to_audio[string_id] = audio_ctx
+            return audio_ctx
+
+        # Also try StrKey-based audio path from C2
+        audio_path_c2 = mega.strkey_to_audio_path.get(string_id)
+        if audio_path_c2:
+            audio_ctx = AudioContext(
+                event_name=f"Voice: {string_id}",
+                wem_path=str(audio_path_c2),
+                script_kr="",
+                script_eng="",
+                duration_seconds=None,
+            )
+            self._strkey_to_audio[string_id] = audio_ctx
+            return audio_ctx
+
+        # Lazy-populate audio index from TTS WAV files as final fallback
+        if not self._strkey_to_audio:
+            self._lazy_load_audio()
+
+        result = self._strkey_to_audio.get(string_id)
+        if result:
+            return result
+
         # Fuzzy match for audio (same partial strategy as images)
         sid_lower = string_id.lower().replace("_", "")
         for key, ctx in self._strkey_to_audio.items():
@@ -335,14 +281,21 @@ class MapDataService:
 
     def get_status(self) -> dict:
         """Return service status info."""
-        return {
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+
+        status = {
             "loaded": self._loaded,
             "branch": self._branch,
             "drive": self._drive,
             "image_count": len(self._strkey_to_image),
             "audio_count": len(self._strkey_to_audio),
             "path_service": self._path_service.get_status(),
+            "mega_index_built": mega._built,
         }
+        if mega._built:
+            status["mega_index_entity_counts"] = mega.entity_counts()
+        return status
 
 
 # =============================================================================
