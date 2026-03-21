@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -101,6 +101,14 @@
     currentApp.set('ldm');
     currentView.set('app');
     goToWorldMap();
+  }
+
+  // Phase 46: Item Codex navigation
+  function navigateToItemCodex() {
+    logger.userAction("Navigate to Item Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToItemCodex();
   }
 
   function showTasks() {
@@ -343,6 +351,14 @@
         >
           <Book size={16} />
           <span>Codex</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && $currentPage === 'item-codex'}
+          onclick={navigateToItemCodex}
+        >
+          <Catalog size={16} />
+          <span>Items</span>
         </button>
         <button
           class="ldm-nav-tab"

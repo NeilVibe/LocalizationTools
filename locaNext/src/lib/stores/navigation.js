@@ -137,6 +137,14 @@ export function goToWorldMap() {
 }
 
 /**
+ * Phase 46: Navigate to Item Codex page
+ */
+export function goToItemCodex() {
+  currentPage.set('item-codex');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
