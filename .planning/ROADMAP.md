@@ -10,7 +10,8 @@
 - v3.3 UI/UX Polish + Performance (Phases 32-36) -- SHIPPED 2026-03-17
 - v3.5 WOW Showcase + LanguageData (Phases 37-42) -- SHIPPED 2026-03-18
 - v4.0 Mockdata Excellence + Next Level (Phases 43-44) -- SHIPPED 2026-03-18
-- v5.0 Offline Production Bundle + Full Codex (Phases 45-51) -- IN PROGRESS
+- v5.0 Offline Production Bundle + Full Codex (Phases 45-51) -- SHIPPED 2026-03-21
+- v5.1 Testing + Polish (Phases 52-55) -- IN PROGRESS
 
 ## Phases
 
@@ -107,22 +108,35 @@
 
 </details>
 
-### v5.0 Offline Production Bundle + Full Codex (Phases 45-51)
+<details>
+<summary>v5.0 Offline Production Bundle + Full Codex (Phases 45-51) -- SHIPPED 2026-03-21</summary>
 
-**Milestone Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines -- graceful degradation when Qwen/FAISS/TTS unavailable.
+- [x] Phase 45: MegaIndex + Foundation Infrastructure (4/4 plans) -- completed 2026-03-21
+- [x] Phase 46: Item Codex UI (2/2 plans) -- completed 2026-03-21
+- [x] Phase 47: Character Codex UI (2/2 plans) -- completed 2026-03-21
+- [x] Phase 48: Audio Codex UI (2/2 plans) -- completed 2026-03-21
+- [x] Phase 49: Region Codex UI + Interactive Map (2/2 plans) -- completed 2026-03-21
+- [x] Phase 50: StringID-to-Audio/Image Integration (1/1 plan) -- completed 2026-03-21
+- [x] Phase 51: Offline Production Bundle (2/2 plans) -- completed 2026-03-21
 
-- [x] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing. (completed 2026-03-21)
-- [x] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel (completed 2026-03-21)
-- [x] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail (completed 2026-03-21)
-- [x] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation (completed 2026-03-21)
-- [x] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map (completed 2026-03-21)
-- [x] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID (completed 2026-03-21)
-- [x] **Phase 51: Offline Production Bundle** - SQLite-only mode, Model2Vec light build, vgmstream bundling, factory audit, fresh-machine smoke test (completed 2026-03-21)
+</details>
+
+### v5.1 Testing + Polish (Phases 52-55)
+
+**Milestone Goal:** Verify all v5.0 features work end-to-end in DEV mode with mock data. Fix MegaIndex DEV init, TM flow, FAISS auto-build, LanguageData grid colors, and right panel wiring. Every page, every tab, every interaction tested with Playwright screenshots.
+
+- [ ] **Phase 52: DEV Init + MegaIndex Wiring** - MegaIndex auto-builds on DEV server start, PerforcePathService auto-configures to mock_gamedata
+- [ ] **Phase 53: Codex + Right Panel Verification** - All 4 Codex UIs render with mock data, right panel Image/Audio tabs work for linked StringIDs
+- [ ] **Phase 54: TM Flow + FAISS Auto-Build + Grid Colors** - TM auto-register on reviewed status, FAISS auto-build on TM changes, grey/yellow/blue-green color scheme
+- [ ] **Phase 55: End-to-End Smoke Test** - Playwright visits all pages, takes screenshots, everything passes
 
 ## Phase Details
 
+<details>
+<summary>v5.0 Phase Details (Phases 45-51) -- SHIPPED 2026-03-21</summary>
+
 ### Phase 45: MegaIndex + Foundation Infrastructure
-**Goal**: Build a unified MegaIndex (35 dicts, ~190MB, ~25s build) that parses ALL game data once and provides O(1) lookups in every direction (StringId→audio, StrKey→image, entity→translations). Also: PerforcePathService for path resolution, AICapabilityService for runtime engine detection, and graceful degradation UI. This phase replaces CodexService's XML scanning and MapDataService's parsing with one unified build.
+**Goal**: Build a unified MegaIndex (35 dicts, ~190MB, ~25s build) that parses ALL game data once and provides O(1) lookups in every direction (StringId->audio, StrKey->image, entity->translations). Also: PerforcePathService for path resolution, AICapabilityService for runtime engine detection, and graceful degradation UI. This phase replaces CodexService's XML scanning and MapDataService's parsing with one unified build.
 **Depends on**: v4.0 complete
 **Requirements**: INFRA-01, INFRA-02, INFRA-03
 **Success Criteria** (what must be TRUE):
@@ -130,17 +144,17 @@
   2. MegaIndex provides O(1) lookups: get_image_path(strkey), get_audio_path_by_stringid(string_id), stringid_to_entity(string_id), resolve_translation(korean_text, lang)
   3. User can configure data source paths (drive letter, branch name) in settings; PerforcePathService resolves all Perforce path templates
   4. Settings page shows live AI capability badges (Model2Vec, FAISS, Ollama, TTS) with green/red status
-  5. AI-dependent UI sections hide gracefully when engines unavailable — informational message instead of errors
+  5. AI-dependent UI sections hide gracefully when engines unavailable -- informational message instead of errors
   6. CodexService and MapDataService consume MegaIndex instead of doing independent parsing
 **Plans**: 4 plans
 Plans:
-- [x] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas (Wave 1)
-- [x] 45-02-PLAN.md — AICapabilityService + capability badges UI (Wave 1)
-- [x] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts) (Wave 2)
-- [x] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex (Wave 3)
+- [x] 45-01-PLAN.md -- PerforcePathService extraction + MegaIndex data schemas (Wave 1)
+- [x] 45-02-PLAN.md -- AICapabilityService + capability badges UI (Wave 1)
+- [x] 45-03-PLAN.md -- MegaIndex core build pipeline (35 dicts) (Wave 2)
+- [x] 45-04-PLAN.md -- Wire CodexService + MapDataService to MegaIndex (Wave 3)
 
 ### Phase 46: Item Codex UI
-**Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution. All data comes from MegaIndex — no parsing in this phase.
+**Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution. All data comes from MegaIndex -- no parsing in this phase.
 **Depends on**: Phase 45 (MegaIndex provides item_by_strkey, item_group_hierarchy, strkey_to_image_path)
 **Requirements**: ITEM-01, ITEM-02, ITEM-03, ITEM-04
 **Success Criteria** (what must be TRUE):
@@ -150,8 +164,8 @@ Plans:
   4. User can search across Korean name, translated name, StrKey, and description fields with results updating as they type
 **Plans**: 2 plans
 Plans:
-- [x] 46-01-PLAN.md — Item Codex backend API endpoints + Pydantic schemas (Wave 1)
-- [x] 46-02-PLAN.md — Item Codex Svelte 5 UI + navigation wiring (Wave 2)
+- [x] 46-01-PLAN.md -- Item Codex backend API endpoints + Pydantic schemas (Wave 1)
+- [x] 46-02-PLAN.md -- Item Codex Svelte 5 UI + navigation wiring (Wave 2)
 
 ### Phase 47: Character Codex UI
 **Goal**: Users can browse, search, and inspect game characters with portraits, filename-based grouping, and structured detail fields. All data from MegaIndex.
@@ -164,8 +178,8 @@ Plans:
   4. User can search across character names, StrKey, and attribute fields with results updating as they type
 **Plans**: 2 plans
 Plans:
-- [x] 47-01-PLAN.md — Character Codex backend API (schemas + routes) (Wave 1)
-- [x] 47-02-PLAN.md — Character Codex Svelte 5 UI + navigation wiring (Wave 2)
+- [x] 47-01-PLAN.md -- Character Codex backend API (schemas + routes) (Wave 1)
+- [x] 47-02-PLAN.md -- Character Codex Svelte 5 UI + navigation wiring (Wave 2)
 
 ### Phase 48: Audio Codex UI
 **Goal**: Users can browse, search, and play back game audio files with script text overlay, navigating by export folder category tree. All data from MegaIndex.
@@ -178,8 +192,8 @@ Plans:
   4. User can navigate audio entries by category tree derived from export folder hierarchy (Dialog, QuestDialog, etc.)
 **Plans**: 2 plans
 Plans:
-- [x] 48-01-PLAN.md — Audio Codex backend API (schemas + routes + WEM streaming)
-- [x] 48-02-PLAN.md — Audio Codex Svelte 5 UI + navigation wiring
+- [x] 48-01-PLAN.md -- Audio Codex backend API (schemas + routes + WEM streaming)
+- [x] 48-02-PLAN.md -- Audio Codex Svelte 5 UI + navigation wiring
 
 ### Phase 49: Region Codex UI + Interactive Map
 **Goal**: Users can browse regions by faction hierarchy and see real WorldPosition coordinates on an interactive map. All data from MegaIndex.
@@ -192,19 +206,19 @@ Plans:
   4. User can filter regions by FactionGroup using tabs at the top of the page
 **Plans**: 2 plans
 Plans:
-- [x] 49-01-PLAN.md — Region Codex backend API (schemas + routes + faction tree) (Wave 1)
-- [x] 49-02-PLAN.md — Region Codex Svelte 5 UI + d3-zoom map + navigation wiring (Wave 2)
+- [x] 49-01-PLAN.md -- Region Codex backend API (schemas + routes + faction tree) (Wave 1)
+- [x] 49-02-PLAN.md -- Region Codex Svelte 5 UI + d3-zoom map + navigation wiring (Wave 2)
 
 ### Phase 50: StringID-to-Audio/Image Integration
-**Goal**: Wire MegaIndex reverse lookups to the existing LDM grid RightPanel so translators get audio + image + entity context for any StringID. Most UI already exists (AudioTab, ImageTab) — this phase wires the real data.
+**Goal**: Wire MegaIndex reverse lookups to the existing LDM grid RightPanel so translators get audio + image + entity context for any StringID. Most UI already exists (AudioTab, ImageTab) -- this phase wires the real data.
 **Depends on**: Phase 45 (MegaIndex provides stringid_to_audio_path C3, stringid_to_entity C7, strkey_to_image_path C1)
 **Requirements**: STRID-01, STRID-02
 **Success Criteria** (what must be TRUE):
-  1. Selecting a row in LDM grid with available audio shows inline player with play/stop, script text (KOR+ENG), and WEM path — via MegaIndex C3 lookup
-  2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab — via MegaIndex C7→C1 chain
+  1. Selecting a row in LDM grid with available audio shows inline player with play/stop, script text (KOR+ENG), and WEM path -- via MegaIndex C3 lookup
+  2. Selecting a row with a StringID linked to an entity shows the entity's DDS image in ImageTab -- via MegaIndex C7->C1 chain
 **Plans**: 1 plan
 Plans:
-- [x] 50-01-PLAN.md — C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
+- [x] 50-01-PLAN.md -- C7 bridge for image lookup + AudioTab reactivity fix + end-to-end verification
 
 ### Phase 51: Offline Production Bundle
 **Goal**: The application runs as a self-contained bundle on disconnected machines with no PostgreSQL, no heavy AI, and all core features functional
@@ -218,14 +232,62 @@ Plans:
   5. Fresh-machine smoke test passes -- PyInstaller bundle starts, all 5 main pages load, Codex browsing and translation editing work without AI engines
 **Plans**: 2 plans
 Plans:
-- [x] 51-01-PLAN.md — Model2Vec download, vgmstream bundling, electron-builder config, SQLite WAL hardening (Wave 1)
-- [x] 51-02-PLAN.md — Factory/Repo audit (all 9 repos) + offline smoke test (Wave 2)
+- [x] 51-01-PLAN.md -- Model2Vec download, vgmstream bundling, electron-builder config, SQLite WAL hardening (Wave 1)
+- [x] 51-02-PLAN.md -- Factory/Repo audit (all 9 repos) + offline smoke test (Wave 2)
+
+</details>
+
+### Phase 52: DEV Init + MegaIndex Wiring
+**Goal**: DEV server auto-starts with MegaIndex fully populated from mock_gamedata fixtures, requiring zero manual configuration
+**Depends on**: v5.0 complete (Phase 51)
+**Requirements**: INIT-01, INIT-02
+**Success Criteria** (what must be TRUE):
+  1. Starting the DEV server (`DEV_MODE=true python3 server/main.py`) triggers MegaIndex.build() automatically, populating all 35 dicts from mock_gamedata fixtures
+  2. PerforcePathService auto-detects mock_gamedata path in DEV mode without any user configuration in Settings
+  3. All Codex API endpoints return populated data immediately after DEV server starts (no manual build step needed)
+**Plans**: TBD
+
+### Phase 53: Codex + Right Panel Verification
+**Goal**: All 4 new Codex UIs render correctly with mock data and right panel Image/Audio tabs light up for StringIDs with linked entities
+**Depends on**: Phase 52 (MegaIndex must be auto-populated in DEV)
+**Requirements**: VERIFY-01, VERIFY-02, VERIFY-03, VERIFY-04, RPANEL-01, RPANEL-02
+**Success Criteria** (what must be TRUE):
+  1. Item Codex page renders card grid with DDS images, group hierarchy tabs, and search -- verified with Playwright screenshot
+  2. Character Codex page renders card grid with portraits, category tabs, and Race/Gender/Age/Job detail -- verified with screenshot
+  3. Audio Codex page renders list with category tree sidebar, inline play buttons, and script text -- verified with screenshot
+  4. Region Codex page renders split layout with faction tree and d3-zoom map with WorldPosition nodes -- verified with screenshot
+  5. Selecting a LanguageData row with a linked entity shows its DDS portrait in the Image tab (via MegaIndex C7->C1)
+  6. Selecting a LanguageData row with available audio plays WEM audio with script text in the Audio tab (via MegaIndex C3)
+**Plans**: TBD
+
+### Phase 54: TM Flow + FAISS Auto-Build + Grid Colors
+**Goal**: Translation memory workflow is end-to-end functional (edit -> reviewed -> TM auto-register -> FAISS rebuild -> cascade search returns results) and LanguageData grid uses the correct color scheme
+**Depends on**: Phase 52 (DEV server running with MegaIndex)
+**Requirements**: TM-01, TM-02, TM-03, COLOR-01, COLOR-02, COLOR-03
+**Success Criteria** (what must be TRUE):
+  1. Editing a row and setting status to "reviewed" automatically registers the source+target pair to the linked TM
+  2. FAISS index auto-rebuilds after TM entries are added or modified without any manual trigger
+  3. TM 5-tier cascade search returns matching results in the right panel TM tab when selecting a LanguageData row
+  4. Default row color in LanguageData grid is grey (neutral), not yellow
+  5. Yellow color only appears when user explicitly sets "needs confirmation" via hotkey or button
+  6. Confirmed/approved rows display blue-green color
+**Plans**: TBD
+
+### Phase 55: End-to-End Smoke Test
+**Goal**: Automated Playwright test visits every page and tab, takes screenshots, and all pass without errors
+**Depends on**: Phases 52-54 (all fixes applied)
+**Requirements**: SMOKE-01
+**Success Criteria** (what must be TRUE):
+  1. Playwright smoke test navigates to all 11 pages (Files, LanguageData, GameData, Codex, Item Codex, Character Codex, Audio Codex, Region Codex, Map, TM, Settings)
+  2. Each page renders without console errors or blank screens -- verified by screenshot comparison
+  3. Screenshots saved as artifacts for visual review
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 51
-(Phases 46-49 are independent and could parallelize, but 50 depends on 48, and 51 depends on all.)
+Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
+(Phase 53 and 54 are independent after 52, but 55 depends on all.)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -274,13 +336,17 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
 | 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 3/3 | Complete | 2026-03-18 |
 | 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
-| 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
-| 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete    | 2026-03-21 |
-| 51. Offline Production Bundle | v5.0 | 2/2 | Complete    | 2026-03-21 |
+| 45. Foundation Infrastructure | v5.0 | 4/4 | Complete | 2026-03-21 |
+| 46. Item Codex | v5.0 | 2/2 | Complete | 2026-03-21 |
+| 47. Character Codex | v5.0 | 2/2 | Complete | 2026-03-21 |
+| 48. Audio Codex | v5.0 | 2/2 | Complete | 2026-03-21 |
+| 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete | 2026-03-21 |
+| 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete | 2026-03-21 |
+| 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
+| 52. DEV Init + MegaIndex Wiring | v5.1 | 0/? | Not started | - |
+| 53. Codex + Right Panel Verification | v5.1 | 0/? | Not started | - |
+| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/? | Not started | - |
+| 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-14*
@@ -289,6 +355,4 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 *Phase 41 planned: 2026-03-18*
 *Phase 42 planned: 2026-03-18*
 *v5.0 Offline Production Bundle + Full Codex added: 2026-03-21*
-*Phase 46 planned: 2026-03-21*
-*Phase 48 planned: 2026-03-21*
-*Phase 49 planned: 2026-03-21*
+*v5.0 shipped, v5.1 Testing + Polish added: 2026-03-22*

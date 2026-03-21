@@ -45,32 +45,33 @@
 | New features or Codex types | v5.1 is testing + polish only |
 | Production build/packaging | Tested in v5.0 Phase 51, not re-tested |
 | Performance optimization | Polish pass, not perf pass |
-| Full E2E test suite | Smoke test only — comprehensive testing later |
+| Full E2E test suite | Smoke test only -- comprehensive testing later |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | — | Pending |
-| INIT-02 | — | Pending |
-| VERIFY-01 | — | Pending |
-| VERIFY-02 | — | Pending |
-| VERIFY-03 | — | Pending |
-| VERIFY-04 | — | Pending |
-| RPANEL-01 | — | Pending |
-| RPANEL-02 | — | Pending |
-| TM-01 | — | Pending |
-| TM-02 | — | Pending |
-| TM-03 | — | Pending |
-| COLOR-01 | — | Pending |
-| COLOR-02 | — | Pending |
-| COLOR-03 | — | Pending |
-| SMOKE-01 | — | Pending |
+| INIT-01 | Phase 52 | Pending |
+| INIT-02 | Phase 52 | Pending |
+| VERIFY-01 | Phase 53 | Pending |
+| VERIFY-02 | Phase 53 | Pending |
+| VERIFY-03 | Phase 53 | Pending |
+| VERIFY-04 | Phase 53 | Pending |
+| RPANEL-01 | Phase 53 | Pending |
+| RPANEL-02 | Phase 53 | Pending |
+| TM-01 | Phase 54 | Pending |
+| TM-02 | Phase 54 | Pending |
+| TM-03 | Phase 54 | Pending |
+| COLOR-01 | Phase 54 | Pending |
+| COLOR-02 | Phase 54 | Pending |
+| COLOR-03 | Phase 54 | Pending |
+| SMOKE-01 | Phase 55 | Pending |
 
 **Coverage:**
 - v5.1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
+*Traceability updated: 2026-03-22*

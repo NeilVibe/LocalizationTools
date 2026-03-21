@@ -1,5 +1,20 @@
 # Milestones
 
+## v5.1 Testing + Polish (IN PROGRESS)
+
+**Phases:** 52-55 (4 phases)
+**Requirements:** 0/15 complete (6 categories: INIT, VERIFY, RPANEL, TM, COLOR, SMOKE)
+**Goal:** Verify all v5.0 features work end-to-end in DEV mode with mock data. Fix MegaIndex DEV init, TM flow, FAISS auto-build, LanguageData grid colors, and right panel wiring. Every page tested with Playwright screenshots.
+
+**Phase structure:**
+
+1. Phase 52: DEV Init + MegaIndex Wiring (auto-build on DEV start, PerforcePathService auto-config)
+2. Phase 53: Codex + Right Panel Verification (4 Codex UIs + Image/Audio tabs with Playwright screenshots)
+3. Phase 54: TM Flow + FAISS Auto-Build + Grid Colors (auto-register, auto-rebuild, grey/yellow/blue-green)
+4. Phase 55: End-to-End Smoke Test (Playwright visits all 11 pages, screenshots)
+
+---
+
 ## v5.0 Offline Production Bundle + Full Codex (Shipped: 2026-03-21)
 
 **Phases completed:** 7 phases, 15 plans, 30 tasks
@@ -21,24 +36,6 @@
 - C7-bridged image lookup wiring StringID to entity portraits via MegaIndex, plus AudioTab src= reactivity fix with {#key} cache-bust
 - Model2Vec + vgmstream bundling scripts, electron-builder extraResources config, and SQLite WAL hardening for offline-only reliability
 - 31 pytest tests auditing all 9 factory/repository paths for SQLite correctness in OFFLINE and SERVER-LOCAL modes, plus smoke tests confirming no PostgreSQL hard-dependencies in the service layer
-
----
-
-## v5.0 Offline Production Bundle + Full Codex (IN PROGRESS)
-
-**Phases:** 45-51 (7 phases)
-**Requirements:** 0/26 complete (7 categories: INFRA, AUDIO, ITEM, CHAR, REGION, STRID, OFFLINE)
-**Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines.
-
-**Phase structure:**
-
-1. Phase 45: Foundation Infrastructure (PerforcePathService, AICapabilityService, graceful degradation)
-2. Phase 46: Item Codex (card grid, DDS images, ItemGroupInfo hierarchy, knowledge tabs)
-3. Phase 47: Character Codex (portraits, filename-based grouping, Race/Gender/Age/Job detail)
-4. Phase 48: Audio Codex (WEM playback, AudioIndex chain, category tree)
-5. Phase 49: Region Codex + Interactive Map (FactionNode tree, WorldPosition d3-zoom map)
-6. Phase 50: StringID-to-Audio Integration (reverse lookup, inline LDM grid player)
-7. Phase 51: Offline Production Bundle (SQLite-only, Model2Vec light build, fresh-machine smoke test)
 
 ---
 

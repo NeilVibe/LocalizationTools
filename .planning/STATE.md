@@ -1,36 +1,40 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Offline Production Bundle + Full Codex
-status: unknown
-stopped_at: Completed 51-02-PLAN.md (Factory/Repo Audit + Offline Smoke Tests)
-last_updated: "2026-03-21T13:32:33.320Z"
+milestone: v5.1
+milestone_name: Testing + Polish
+status: ready_to_plan
+stopped_at: Roadmap created for v5.1 (Phases 52-55)
+last_updated: "2026-03-22T00:00:00.000Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-21)
+See: .planning/PROJECT.md (updated 2026-03-22)
 
-**Core value:** Self-sufficient offline bundle with full Codex (Audio/Item/Character/Region) powered by proven NewScripts logic.
-**Current focus:** Phase 51 — Offline Production Bundle
+**Core value:** Every v5.0 feature verified working end-to-end with mock data. Polish rough edges. Production-ready demo.
+**Current focus:** Phase 52 -- DEV Init + MegaIndex Wiring
 
 ## Current Position
 
-Phase: 51
+Phase: 52 of 55 (DEV Init + MegaIndex Wiring)
 Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-22 -- v5.1 roadmap created
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0 (v5.0)
+- Total plans completed: 0 (v5.1)
 - Average duration: --
 - Total execution time: --
 
@@ -38,59 +42,27 @@ Plan: Not started
 
 ### Decisions
 
-- v1.0-v4.0 shipped (44 phases, all complete)
-- GameData is file-based, bypasses Repository/DB layer -- new Codex services follow same pattern
-- PerforcePathService extracted from MapDataService before any new Codex service
-- AICapabilityService built in Phase 45 to prevent AI hard-crashes in offline bundle
-- Item/Character/Audio/Region Codex types are independent (phases 46-49 could parallelize)
-- StringID-to-Audio depends on Audio Codex (Phase 48) being complete
-- Offline bundle must be last phase -- packaging after all features built
-- [Phase 45]: Merged KNOWN_BRANCHES from QACompiler and MapDataGenerator into unified 5-branch list
-- [Phase 45]: Added SCHEMA_REGISTRY dict for dynamic type access in MegaIndex schemas
-- [Phase 45]: Named AI capabilities route ai_capabilities.py to avoid conflict with existing admin capabilities.py
-- [Phase 45]: Used Svelte 5 module-level $state in .ts for aiCapabilityStore (new pattern vs existing Svelte 4 writable stores)
-- [Phase 45]: StaticInfo folder derived from knowledge_folder.parent instead of new PATH_TEMPLATE key
-- [Phase 45]: C2 strkey_to_audio_path uses direct matching; full chain deferred to Audio Codex phase
-- [Phase 45]: CodexService and MapDataService now delegate all XML parsing to MegaIndex singleton -- single parse replaces 3 independent scans
-- [Phase 46]: Knowledge 3-pass resolution: Pass 0 (shared key siblings), Pass 1 (direct key), Pass 2 (name match)
-- [Phase 46]: Item Codex routes at /codex/items sub-prefix, coexisting with generic /codex routes
-- [Phase 46]: Reused CodexCard with entity shape transform for Item Codex cards
-- [Phase 46]: Knowledge tabs: Pass 0+1 combined as Knowledge, Pass 2 as Related, separate InspectData and Info
-- [Phase 47]: Reused KnowledgePassEntry from codex_items; filename-based category extraction; race/gender parsed from use_macro tokens
-- [Phase 47]: Flat category tabs (not tree) for character filtering matching backend filename-based extraction
-- [Phase 47]: Attributes tab replaces InspectData for characters (use_macro instead of InspectData)
-- [Phase 48]: D20 export_path directory tree for audio categories (nested, roll-up counts)
-- [Phase 48]: D11 event_to_stringid as master list for audio entries; stream endpoint unauthenticated for <audio> compatibility
-- [Phase 48]: Two-column sidebar tree layout for audio (unique among Codex pages) because export_path hierarchy is nested
-- [Phase 48]: List layout (not card grid) for audio entries because text-heavy with script lines
-- [Phase 48]: Custom lightweight tree with 3 depth levels (not Carbon TreeView) for category sidebar
-- [Phase 49]: Faction parent lookup iterates faction_by_strkey checking node_strkeys (O(F) per region)
-- [Phase 49]: Region name prefers display_name over name field; /tree before /{strkey} for FastAPI path matching
-- [Phase 49]: Reused parchment aesthetic from MapCanvas with prefixed SVG filter IDs (rcm-*) to avoid conflicts
-- [Phase 49]: Region tree uses client-side filtering; Map icon for Regions tab (Earth used by World Map)
-- [Phase 50]: C7 bridge lookup order: direct entity strkey in C1, then containment scan
-- [Phase 51]: WAL mode set at connection time for all SQLite paths; 4-location vgmstream search with Electron support
-- [Phase 51]: Used AST parsing for PostgreSQL import scanning in service layer audit
+- v1.0-v5.0 shipped (51 phases, all complete)
+- v5.1 is testing + polish only -- no new features, no new Codex types
+- MegaIndex must auto-build in DEV mode (currently requires manual trigger or Settings config)
+- PerforcePathService must auto-detect mock_gamedata in DEV mode
+- FAISS index must auto-rebuild on TM changes (currently manual)
+- LanguageData grid default color must be grey, not yellow
+- Phase 53 and 54 are independent after Phase 52 (could parallelize)
+- Phase 55 depends on all prior phases (final smoke test)
 
 ### Pending Todos
 
 None yet.
 
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260321-w79 | MegaIndex mock data generator — all 35 dicts populated | 2026-03-21 | 09d27d01 | [260321-w79-megaindex-mock-data-generator](./quick/260321-w79-megaindex-mock-data-generator/) |
-
 ### Blockers/Concerns
 
-- Research flag: SQLite WAL mode compatibility with existing aiosqlite usage (verify in Phase 45 planning)
-- Research flag: StringID-to-Audio reverse lookup chain not explicitly implemented in MapDataGenerator (validate in Phase 50 planning)
-- Research flag: WorldPosition coordinate normalization to SVG viewport (validate in Phase 49 planning)
-- Research flag: Electron + Python packaging mechanism clarification (validate in Phase 51 planning)
+- Verify MegaIndex.build() works with mock_gamedata fixture paths (may need path adjustment)
+- Verify FAISS auto-rebuild trigger exists or needs to be added
+- Verify current default row color in LanguageData grid (may be yellow from v3.5 changes)
 
 ## Session Continuity
 
-Last session: 2026-03-21T13:31:06.128Z
-Stopped at: Completed 51-02-PLAN.md (Factory/Repo Audit + Offline Smoke Tests)
+Last session: 2026-03-22
+Stopped at: v5.1 roadmap created (Phases 52-55)
 Resume file: None
