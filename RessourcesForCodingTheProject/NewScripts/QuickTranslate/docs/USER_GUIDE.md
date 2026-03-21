@@ -1,17 +1,18 @@
 # QuickTranslate User Guide
 
-**Version 6.0** | March 2026
+**Version 7.0** | March 2026
 
 ---
 
 ## What Does QuickTranslate Do?
 
-Writes translated corrections from Excel/XML into `languagedata_*.xml` files. One tool, two tabs:
+Writes translated corrections from Excel/XML into `languagedata_*.xml` files. One tool, three tabs:
 
 | Tab | What's There |
 |-----|-------------|
 | **Transfer** | Match type, source/target paths, TRANSFER button, pre-submission checks, settings |
 | **Other Tools** | Find Missing Translations, exclude rules |
+| **TMX Tools** | MemoQ-TMX conversion, TMX Cleaner → Excel export |
 
 ---
 
@@ -95,7 +96,7 @@ Header names are **case-insensitive** and accept these variants:
 - **Empty Correction** → row silently skipped
 - **"no translation" in Correction** → row blocked (not a real translation)
 - **Excel formulas/errors** → row blocked with CRITICAL warning
-- **Text integrity issues** → row blocked (broken `<br/>`, replacement chars, control chars)
+- **Text integrity issues** → row blocked (broken `<br/>`, lone `<` or `>`, replacement chars, control chars)
 
 ### Organize by Language
 
@@ -195,7 +196,7 @@ When you select a source or target folder, QuickTranslate automatically validate
 
 **Source file checks:**
 - Formula detection (Excel formulas/errors → CRITICAL warning, rows skipped)
-- Text integrity (broken `<br/>`, U+FFFD replacement chars, control chars → rows skipped)
+- Text integrity (broken `<br/>`, lone `<` or `>`, U+FFFD replacement chars, control chars → rows skipped)
 - "no translation" detection (flagged as warning)
 - Broken XML detection (malformed `<LocStr>` elements)
 
@@ -317,7 +318,56 @@ Output: Excel report + Close folder (reusable as TRANSFER source).
 
 ---
 
-## 6. Installation & Settings
+## 6. TMX Tools (TMX Tools Tab)
+
+### MemoQ-TMX Conversion
+
+Converts your languagedata XML/Excel files into MemoQ-compatible TMX files. Auto-detects languages from folder/file suffixes.
+
+**How to use:**
+
+1. Select **Folder** or **Single File** mode
+2. Browse to your corrections folder or file
+3. Status label shows detected languages (e.g. "Detected: FRE (3 files), GER (2 files)")
+4. Click **Convert to MemoQ-TMX**
+
+**What it does:**
+
+- Scans for language-suffixed files/folders (same detection as Transfer tab)
+- Creates one `.tmx` file per language (e.g. `MyFolder_FRE.tmx`)
+- Skips KOR (source language — would produce empty TMX)
+- Deduplicates by (StrOrigin, StringID), keeping the newest file version
+- Adds MemoQ `bpt/ept/ph` markup (StaticInfo codes, `{code}` patterns, `<br/>`)
+- Includes Desc TUs (voice direction descriptions) when present
+
+**Log output shows:** language detection, per-file progress, TU counts, dedup stats, Korean skip counts, postprocessing status, and a final summary.
+
+### TMX Cleaner → Excel
+
+Cleans all CAT tool markup from a TMX file and exports to a merge-ready Excel.
+
+**How to use:**
+
+1. Click **Select TMX → Clean & Export to Excel**
+2. Pick a `.tmx` file
+3. Output: `filename_clean.xlsx` in the same folder
+
+**What it cleans:**
+
+- MemoQ `bpt/ept` StaticInfo pairs → `{StaticInfo:Category:ID#text}`
+- Generic `bpt/ept` formatting tags (Trados bold/italic) → keep inner text
+- `ph` placeholders → smart 5-priority extraction (val → formatting → displaytext → structural → raw)
+- `it`, `x`, `g` tags → removed or inner text kept
+- Zero-width characters stripped
+- All `<br>` variants normalized to `<br/>`
+
+**Excel output:** 3 columns (StrOrigin, Correction, StringID) — ready to use as Transfer source.
+
+**Log output shows:** `[1/3]` parsing + cleaning, `[2/3]` deduplication stats, `[3/3]` Excel writing, with TU counts and target language detection.
+
+---
+
+## 7. Installation & Settings
 
 ### Install
 
@@ -346,13 +396,15 @@ Configure in Settings section or edit `settings.json`:
 
 ---
 
-## 7. Quick Reference
+## 8. Quick Reference
 
 ### Buttons
 
 **Transfer tab:** TRANSFER, Check Korean, Check Patterns, Check Quality, Check ALL, Open Results, Save Settings, Clear Log, Clear All
 
 **Other Tools tab:** Find Missing Translations, Exclude...
+
+**TMX Tools tab:** Convert to MemoQ-TMX, Select TMX → Clean & Export to Excel
 
 ### Output Folders
 
@@ -364,7 +416,7 @@ Configure in Settings section or edit `settings.json`:
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
@@ -378,7 +430,7 @@ Configure in Settings section or edit `settings.json`:
 
 ---
 
-## 9. Glossary
+## 10. Glossary
 
 | Term | Meaning |
 |------|---------|
@@ -396,5 +448,9 @@ Configure in Settings section or edit `settings.json`:
 | **Model2Vec** | Static embedding model for fuzzy matching (256-dim, no torch needed) |
 | **Post-processing** | 6 automatic cleanup steps after every transfer |
 | **XML Load Test** | Pre-validation that checks if XML files can be parsed |
+| **TMX** | Translation Memory eXchange — standard format for translation memories |
+| **MemoQ-TMX** | TMX with MemoQ-specific `bpt/ept/ph` markup for StaticInfo codes and placeholders |
+| **TU** | Translation Unit — one source-target pair in a TMX file |
+| **CAT tool** | Computer-Assisted Translation tool (MemoQ, Trados, etc.) |
 
 *Last updated: March 2026*

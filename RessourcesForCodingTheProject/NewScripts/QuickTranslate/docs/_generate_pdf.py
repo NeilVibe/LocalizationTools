@@ -14,7 +14,7 @@ CSS = """
     margin: 20mm 18mm 22mm 18mm;
 
     @top-right {
-        content: "QuickTranslate v5.0";
+        content: "QuickTranslate v7.0";
         font-family: 'NanumSquare', 'Segoe UI', sans-serif;
         font-size: 8pt;
         color: #8899aa;
