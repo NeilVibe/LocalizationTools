@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import shutil
 import subprocess
 import tempfile
@@ -173,7 +174,23 @@ class MediaConverter:
             logger.info("Found vgmstream-cli in PATH: {}", self._vgmstream_path)
             return self._vgmstream_path
 
-        # Check bundled location
+        # Check Electron extraResources path (packaged app)
+        electron_resources = os.environ.get("LOCANEXT_RESOURCES_PATH", "")
+        if electron_resources:
+            electron_vgm = Path(electron_resources) / "bin" / "vgmstream" / "vgmstream-cli.exe"
+            if electron_vgm.exists():
+                self._vgmstream_path = electron_vgm
+                logger.info("Found vgmstream-cli in Electron resources: {}", self._vgmstream_path)
+                return self._vgmstream_path
+
+        # Check project root bin/vgmstream/ (dev mode after running bundle_vgmstream.py)
+        project_bin = Path(__file__).resolve().parents[4] / "bin" / "vgmstream" / "vgmstream-cli.exe"
+        if project_bin.exists():
+            self._vgmstream_path = project_bin
+            logger.info("Found vgmstream-cli in project bin: {}", self._vgmstream_path)
+            return self._vgmstream_path
+
+        # Check bundled location (legacy server/bin/)
         bundled = Path(__file__).resolve().parents[2] / "bin" / "vgmstream-cli"
         if bundled.exists():
             self._vgmstream_path = bundled

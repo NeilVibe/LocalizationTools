@@ -81,7 +81,12 @@ class OfflineDatabase:
         try:
             conn.executescript(schema_sql)
             conn.commit()
-            logger.debug(f"Offline database initialized: {self.db_path}")
+
+            # OFFLINE-01: WAL mode + busy_timeout for reliable offline writes
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=10000;")
+
+            logger.debug(f"Offline database initialized (WAL mode): {self.db_path}")
 
             # Run migrations for existing databases
             self._run_migrations_sync(conn)

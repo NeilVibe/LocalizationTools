@@ -53,6 +53,9 @@ class ServerSQLiteDatabase:
         """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
+        # OFFLINE-01: WAL mode + busy_timeout for reliable writes
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=10000;")
         return conn
 
     @asynccontextmanager
@@ -70,6 +73,9 @@ class ServerSQLiteDatabase:
         """
         conn = await aiosqlite.connect(self.db_path)
         conn.row_factory = aiosqlite.Row
+        # OFFLINE-01: WAL mode + busy_timeout for reliable writes
+        await conn.execute("PRAGMA journal_mode=WAL;")
+        await conn.execute("PRAGMA busy_timeout=10000;")
         try:
             yield conn
         finally:
