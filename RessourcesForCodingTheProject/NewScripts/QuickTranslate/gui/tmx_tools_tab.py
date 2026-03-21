@@ -1,8 +1,8 @@
 """
 TMX Tools Tab — Tab 3 in QuickTranslate.
 
-Section 1: MemoQ-TMX Conversion (single + batch)
-Section 2: TMX Cleaner → Excel export
+Section 1: MemoQ-TMX Conversion (auto language detection)
+Section 2: TMX Cleaner -> Excel export
 """
 from __future__ import annotations
 
@@ -10,28 +10,11 @@ import logging
 import os
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
 
-from core.tmx_tools import combine_xmls_to_tmx, batch_tmx_from_folders, clean_and_convert_to_excel
+from core.tmx_tools import convert_to_memoq_tmx, clean_and_convert_to_excel
 
 logger = logging.getLogger(__name__)
-
-# TMX BCP-47 language codes (intentionally separate from config.LANGUAGE_NAMES)
-TMX_LANGUAGE_OPTIONS = {
-    "English (US)": "en-US",
-    "French (FR)": "fr-FR",
-    "German (DE)": "de-DE",
-    "Traditional Chinese (TW)": "zh-TW",
-    "Simplified Chinese (CN)": "zh-CN",
-    "Japanese (JP)": "ja-JP",
-    "Italian (IT)": "it-IT",
-    "Portuguese (Brazil)": "pt-BR",
-    "Russian (RU)": "ru-RU",
-    "European Spanish (ES)": "es-ES",
-    "Latin American Spanish (MX)": "es-MX",
-    "Polish (PL)": "pl-PL",
-    "Turkish (TR)": "tr-TR",
-}
 
 
 class TMXToolsTab(tk.Frame):
@@ -39,9 +22,9 @@ class TMXToolsTab(tk.Frame):
 
     def __init__(self, parent: tk.Widget):
         super().__init__(parent, bg='#f0f0f0')
-        self._source_folder = tk.StringVar()
-        self._target_lang = tk.StringVar(value="English (US)")
-
+        self._mode = tk.StringVar(value="folder")
+        self._path_var = tk.StringVar()
+        self._status_var = tk.StringVar(value="No path selected")
         self._build_ui()
 
     def _build_ui(self):
@@ -55,42 +38,45 @@ class TMXToolsTab(tk.Frame):
         )
         conv_frame.pack(fill=tk.X, pady=(0, 12), padx=5)
 
-        # Source folder
-        src_row = tk.Frame(conv_frame, bg='#f0f0f0')
-        src_row.pack(fill=tk.X, pady=(0, 6))
-        tk.Label(src_row, text="Source Folder:", font=('Segoe UI', 9),
-                 bg='#f0f0f0').pack(side=tk.LEFT)
-        tk.Button(src_row, text="Browse...", command=self._browse_source,
-                  font=('Segoe UI', 9), cursor='hand2').pack(side=tk.LEFT, padx=(8, 0))
-        self._src_label = tk.Label(src_row, textvariable=self._source_folder,
-                                   font=('Segoe UI', 9), bg='#f0f0f0', fg='#333',
-                                   anchor='w', wraplength=400)
-        self._src_label.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+        # Mode toggle (ExtractAnything pattern)
+        mode_row = tk.Frame(conv_frame, bg='#f0f0f0')
+        mode_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Radiobutton(mode_row, text="Folder", variable=self._mode,
+                        value="folder", bg='#f0f0f0',
+                        font=('Segoe UI', 9)).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Radiobutton(mode_row, text="Single File", variable=self._mode,
+                        value="file", bg='#f0f0f0',
+                        font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
-        # Target language
-        lang_row = tk.Frame(conv_frame, bg='#f0f0f0')
-        lang_row.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(lang_row, text="Target Language:", font=('Segoe UI', 9),
+        # Path row
+        path_row = tk.Frame(conv_frame, bg='#f0f0f0')
+        path_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(path_row, text="Path:", font=('Segoe UI', 9),
                  bg='#f0f0f0').pack(side=tk.LEFT)
-        lang_combo = ttk.Combobox(lang_row, textvariable=self._target_lang,
-                                  values=list(TMX_LANGUAGE_OPTIONS.keys()),
-                                  state='readonly', width=30)
-        lang_combo.pack(side=tk.LEFT, padx=(8, 0))
+        tk.Entry(path_row, textvariable=self._path_var,
+                 font=('Segoe UI', 9),
+                 width=50).pack(side=tk.LEFT, padx=(6, 6),
+                                fill=tk.X, expand=True)
+        tk.Button(path_row, text="Browse...", command=self._browse_path,
+                  font=('Segoe UI', 9), cursor='hand2').pack(side=tk.LEFT)
 
-        # Buttons
-        btn_row = tk.Frame(conv_frame, bg='#f0f0f0')
-        btn_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Button(btn_row, text="Convert Single Folder",
-                  command=self._on_convert_single,
+        # Status label (detected languages)
+        self._status_label = tk.Label(
+            conv_frame, textvariable=self._status_var,
+            font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+            anchor='w', wraplength=500,
+        )
+        self._status_label.pack(fill=tk.X, pady=(0, 8))
+
+        # Convert button
+        tk.Button(conv_frame, text="Convert to MemoQ-TMX",
+                  command=self._on_convert,
                   font=('Segoe UI', 9, 'bold'), bg='#4472C4', fg='white',
-                  relief='flat', padx=14, pady=4, cursor='hand2').pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(btn_row, text="Batch Convert (Multi-Folder)",
-                  command=self._on_batch_convert,
-                  font=('Segoe UI', 9, 'bold'), bg='#4472C4', fg='white',
-                  relief='flat', padx=14, pady=4, cursor='hand2').pack(side=tk.LEFT)
+                  relief='flat', padx=14, pady=4,
+                  cursor='hand2').pack(anchor='w')
 
         # ============================================================
-        # Section 2: TMX Cleaner → Excel
+        # Section 2: TMX Cleaner -> Excel
         # ============================================================
         clean_frame = tk.LabelFrame(
             self, text="TMX Cleaner -> Excel",
@@ -101,7 +87,8 @@ class TMXToolsTab(tk.Frame):
 
         desc = tk.Label(
             clean_frame,
-            text="Select a TMX file to clean all CAT tool markup and export to Excel (3 columns: StrOrigin, Correction, StringID).",
+            text="Select a TMX file to clean all CAT tool markup and export "
+                 "to Excel (3 columns: StrOrigin, Correction, StringID).",
             font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
             wraplength=500, justify='left',
         )
@@ -110,115 +97,93 @@ class TMXToolsTab(tk.Frame):
         tk.Button(clean_frame, text="Select TMX -> Clean & Export to Excel",
                   command=self._on_clean_to_excel,
                   font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
-                  relief='flat', padx=14, pady=4, cursor='hand2').pack(anchor='w')
+                  relief='flat', padx=14, pady=4,
+                  cursor='hand2').pack(anchor='w')
 
     # ------------------------------------------------------------------
-    # Browse
+    # Section 1: Browse + Convert
     # ------------------------------------------------------------------
-    def _browse_source(self):
-        folder = filedialog.askdirectory(title="Select source folder with XML files")
-        if folder:
-            self._source_folder.set(folder)
+    def _browse_path(self):
+        if self._mode.get() == "folder":
+            path = filedialog.askdirectory(
+                title="Select folder with XML/Excel files")
+        else:
+            path = filedialog.askopenfilename(
+                title="Select XML or Excel file",
+                filetypes=[("XML files", "*.xml"),
+                           ("Excel files", "*.xlsx;*.xls"),
+                           ("All files", "*.*")])
+        if path:
+            self._path_var.set(path)
+            self._scan_and_update_status(path)
 
-    def _get_target_lang_code(self) -> str:
-        name = self._target_lang.get()
-        return TMX_LANGUAGE_OPTIONS.get(name, "en-US")
+    def _scan_and_update_status(self, path: str):
+        """Scan path for languages and update status label."""
+        try:
+            from pathlib import Path as P
+            from core.source_scanner import scan_source_for_languages
+            scan = scan_source_for_languages(P(path))
+            if scan.lang_files:
+                parts = [
+                    f"{k.upper()} ({len(v)} files)"
+                    for k, v in sorted(scan.lang_files.items())
+                ]
+                self._status_var.set(f"Detected: {', '.join(parts)}")
+                self._status_label.config(fg='#2d7d2d')
+            else:
+                msg = "No languages detected"
+                if scan.unrecognized:
+                    msg += f" ({len(scan.unrecognized)} unrecognized items)"
+                self._status_var.set(msg)
+                self._status_label.config(fg='#cc3333')
+        except Exception as exc:
+            self._status_var.set(f"Scan error: {exc}")
+            self._status_label.config(fg='#cc3333')
 
-    # ------------------------------------------------------------------
-    # Convert Single
-    # ------------------------------------------------------------------
-    def _on_convert_single(self):
-        folder = self._source_folder.get()
-        if not folder or not os.path.isdir(folder):
-            messagebox.showwarning("No Folder", "Please select a source folder first.")
+    def _on_convert(self):
+        path = self._path_var.get()
+        if not path:
+            messagebox.showwarning("No Path",
+                                   "Please select a file or folder first.")
             return
 
-        out_file = filedialog.asksaveasfilename(
-            title="Save TMX as...",
-            defaultextension=".tmx",
-            filetypes=[("TMX files", "*.tmx")],
-            initialfile=os.path.basename(folder) + ".tmx",
-        )
-        if not out_file:
-            return
-
-        lang_code = self._get_target_lang_code()
-        logger.info(f"[TMX Convert] Single: {folder} -> {out_file} ({lang_code})")
+        logger.info("[TMX] Starting MemoQ-TMX conversion: %s", path)
 
         def _run():
-            ok = combine_xmls_to_tmx(folder, out_file, lang_code, postprocess=True)
-            msg = f"TMX created: {out_file}" if ok else "TMX conversion failed — check logs."
-            self.after(0, lambda: messagebox.showinfo("TMX Conversion", msg))
+            try:
+                results = convert_to_memoq_tmx(path)
+                if not results:
+                    msg = (
+                        "No languages detected -- nothing to convert.\n"
+                        "Make sure files/folders have language suffixes "
+                        "(e.g. FRE/, corrections_GER.xml)"
+                    )
+                    self.after(0, lambda: messagebox.showwarning(
+                        "No Languages", msg))
+                    return
+                summary = []
+                for lang, out, ok in results:
+                    status = "OK" if ok else "FAILED"
+                    summary.append(f"{lang}: {status}")
+                msg = ("MemoQ-TMX conversion complete:\n\n"
+                       + "\n".join(summary))
+                created = [out for _, out, ok in results if ok]
+                if created:
+                    msg += (f"\n\nFiles created in:\n"
+                            f"{os.path.dirname(created[0])}")
+                self.after(0, lambda: messagebox.showinfo(
+                    "MemoQ-TMX Complete", msg))
+            except Exception as exc:
+                err_msg = str(exc)
+                logger.error("[TMX] Conversion failed: %s", err_msg,
+                             exc_info=True)
+                self.after(0, lambda em=err_msg: messagebox.showerror(
+                    "TMX Error", f"Failed: {em}"))
 
         threading.Thread(target=_run, daemon=True).start()
 
     # ------------------------------------------------------------------
-    # Batch Convert
-    # ------------------------------------------------------------------
-    def _on_batch_convert(self):
-        base_folder = filedialog.askdirectory(title="Select parent folder containing subfolders")
-        if not base_folder:
-            return
-
-        # List subfolders
-        subfolders = sorted([
-            os.path.join(base_folder, d) for d in os.listdir(base_folder)
-            if os.path.isdir(os.path.join(base_folder, d))
-        ])
-        if not subfolders:
-            messagebox.showwarning("No Subfolders", "No subfolders found in selected directory.")
-            return
-
-        # Subfolder picker dialog
-        picker = tk.Toplevel(self)
-        picker.title("Select subfolders to convert")
-        picker.geometry("500x400")
-        picker.transient(self.winfo_toplevel())
-        picker.grab_set()
-
-        tk.Label(picker, text="Select subfolders (Ctrl+Click for multiple):",
-                 font=('Segoe UI', 10)).pack(padx=10, pady=(10, 5), anchor='w')
-
-        listbox = tk.Listbox(picker, selectmode=tk.EXTENDED, font=('Segoe UI', 9))
-        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        for sf in subfolders:
-            listbox.insert(tk.END, os.path.basename(sf))
-
-        # MemoQ postprocess toggle
-        pp_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(picker, text="MemoQ postprocess (bpt/ept/ph wrapping)",
-                       variable=pp_var, font=('Segoe UI', 9)).pack(padx=10, anchor='w')
-
-        def _do_batch():
-            selection = listbox.curselection()
-            if not selection:
-                messagebox.showwarning("No Selection", "Select at least one subfolder.")
-                return
-            selected = [subfolders[i] for i in selection]
-            picker.destroy()
-
-            out_dir = filedialog.askdirectory(title="Select output directory for TMX files")
-            if not out_dir:
-                return
-
-            lang_code = self._get_target_lang_code()
-            postprocess = pp_var.get()
-            logger.info(f"[TMX Batch] {len(selected)} folders -> {out_dir} ({lang_code}, pp={postprocess})")
-
-            def _run():
-                results = batch_tmx_from_folders(selected, out_dir, lang_code, postprocess=postprocess)
-                ok_count = sum(1 for _, _, ok in results if ok)
-                msg = f"Batch complete: {ok_count}/{len(results)} succeeded.\nOutput: {out_dir}"
-                self.after(0, lambda: messagebox.showinfo("Batch TMX", msg))
-
-            threading.Thread(target=_run, daemon=True).start()
-
-        tk.Button(picker, text="Convert Selected", command=_do_batch,
-                  font=('Segoe UI', 10, 'bold'), bg='#4472C4', fg='white',
-                  relief='flat', padx=14, pady=4).pack(pady=10)
-
-    # ------------------------------------------------------------------
-    # TMX Cleaner → Excel
+    # Section 2: TMX Cleaner -> Excel
     # ------------------------------------------------------------------
     def _on_clean_to_excel(self):
         fpath = filedialog.askopenfilename(
@@ -228,7 +193,7 @@ class TMXToolsTab(tk.Frame):
         if not fpath:
             return
 
-        logger.info(f"[TMX Cleaner] Processing: {fpath}")
+        logger.info("[TMX Cleaner] Processing: %s", fpath)
 
         def _run():
             try:
@@ -236,9 +201,10 @@ class TMXToolsTab(tk.Frame):
                 self.after(0, lambda: messagebox.showinfo(
                     "TMX Cleaner", f"Excel exported:\n{out}"))
             except Exception as exc:
-                logger.error(f"TMX Cleaner failed: {exc}", exc_info=True)
                 err_msg = str(exc)
-                self.after(0, lambda: messagebox.showerror(
-                    "TMX Cleaner Error", f"Failed: {err_msg}"))
+                logger.error("TMX Cleaner failed: %s", err_msg,
+                             exc_info=True)
+                self.after(0, lambda em=err_msg: messagebox.showerror(
+                    "TMX Cleaner Error", f"Failed: {em}"))
 
         threading.Thread(target=_run, daemon=True).start()
