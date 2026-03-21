@@ -197,3 +197,4 @@ Build 071: add StrOrigin+FileName 2-pass match mode with fuzzy variant
 Build 072: preprocess Excel linebreaks in StrOrigin/DescOrigin for matching
 Build 073: add TMX Tools tab (MemoQ-TMX conversion + TMX Cleaner to Excel)
 Build 074: fix flake8 F821 in tmx_tools_tab except closure
+Build 075: redesign MemoQ-TMX with auto language detection from suffixes
