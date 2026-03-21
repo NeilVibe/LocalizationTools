@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 51-01-PLAN.md (Offline Production Bundle Packaging)
-last_updated: "2026-03-21T13:26:51.393Z"
+stopped_at: Completed 51-02-PLAN.md (Factory/Repo Audit + Offline Smoke Tests)
+last_updated: "2026-03-21T13:31:06.132Z"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -70,6 +70,7 @@ Plan: 2 of 2
 - [Phase 49]: Region tree uses client-side filtering; Map icon for Regions tab (Earth used by World Map)
 - [Phase 50]: C7 bridge lookup order: direct entity strkey in C1, then containment scan
 - [Phase 51]: WAL mode set at connection time for all SQLite paths; 4-location vgmstream search with Electron support
+- [Phase 51]: Used AST parsing for PostgreSQL import scanning in service layer audit
 
 ### Pending Todos
 
@@ -84,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T13:26:51.390Z
-Stopped at: Completed 51-01-PLAN.md (Offline Production Bundle Packaging)
+Last session: 2026-03-21T13:31:06.128Z
+Stopped at: Completed 51-02-PLAN.md (Factory/Repo Audit + Offline Smoke Tests)
 Resume file: None

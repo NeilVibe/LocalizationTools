@@ -49,8 +49,8 @@
 - [x] **OFFLINE-01**: SQLite-only mode with no PostgreSQL dependency for disconnected machines
 - [x] **OFFLINE-02**: Model2Vec bundled in light build (no Qwen 0.6B, no heavy AI engines)
 - [x] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM->WAV conversion
-- [ ] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit -- verify all gamedata paths work offline with SQLite
-- [ ] **OFFLINE-05**: Fresh-machine smoke test passing (PyInstaller bundle, all core features functional without AI)
+- [x] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit -- verify all gamedata paths work offline with SQLite
+- [x] **OFFLINE-05**: Fresh-machine smoke test passing (PyInstaller bundle, all core features functional without AI)
 
 ## v6.0 Requirements (Deferred)
 
@@ -104,8 +104,8 @@
 | OFFLINE-01 | Phase 51 | Complete |
 | OFFLINE-02 | Phase 51 | Complete |
 | OFFLINE-03 | Phase 51 | Complete |
-| OFFLINE-04 | Phase 51 | Pending |
-| OFFLINE-05 | Phase 51 | Pending |
+| OFFLINE-04 | Phase 51 | Complete |
+| OFFLINE-05 | Phase 51 | Complete |
 
 **Coverage:**
 - v5.0 requirements: 26 total
