@@ -255,6 +255,8 @@ async def update_row(
                     )
                     tm_updated = True
                     logger.info(f"FEAT-001: Auto-added to TM {linked_tm_id}: row_id={row_id}")
+            else:
+                logger.debug(f"FEAT-001: No linked TM for project {project_id}, skipping auto-register")
         except Exception as e:
             # Don't fail the row update, just log warning
             logger.warning(f"[ROWS] FEAT-001: Auto-add to TM failed: {e}")
