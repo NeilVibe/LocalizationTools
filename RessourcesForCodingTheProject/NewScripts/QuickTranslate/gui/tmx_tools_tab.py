@@ -235,9 +235,10 @@ class TMXToolsTab(tk.Frame):
                 out = clean_and_convert_to_excel(fpath)
                 self.after(0, lambda: messagebox.showinfo(
                     "TMX Cleaner", f"Excel exported:\n{out}"))
-            except Exception as e:
-                logger.error(f"TMX Cleaner failed: {e}", exc_info=True)
+            except Exception as exc:
+                logger.error(f"TMX Cleaner failed: {exc}", exc_info=True)
+                err_msg = str(exc)
                 self.after(0, lambda: messagebox.showerror(
-                    "TMX Cleaner Error", f"Failed: {e}"))
+                    "TMX Cleaner Error", f"Failed: {err_msg}"))
 
         threading.Thread(target=_run, daemon=True).start()
