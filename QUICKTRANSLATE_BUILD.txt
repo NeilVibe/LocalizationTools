@@ -196,3 +196,4 @@ Build 070: add AppUserModelID for taskbar icon
 Build 071: add StrOrigin+FileName 2-pass match mode with fuzzy variant
 Build 072: preprocess Excel linebreaks in StrOrigin/DescOrigin for matching
 Build 073: add TMX Tools tab (MemoQ-TMX conversion + TMX Cleaner to Excel)
+Build 074: fix flake8 F821 in tmx_tools_tab except closure
