@@ -63,16 +63,21 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v3.3 UI/UX Polish + Performance
+## Current Milestone: v5.0 Offline Production Bundle + Full Codex
 
-**Goal:** Audit, critique, and polish ALL 5 pages (GameData Tree, Language Data Grid, Codex, World Map, TM) for visual consistency, performance, and production-readiness. Codex gets a full revamp with lazy loading. Cross-page consistency enforced (spacing, dark mode, states, typography).
+**Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines — graceful degradation when Qwen/FAISS/TTS unavailable.
 
 **Target features:**
-- GameData Tree UI — full design audit + polish (built but never reviewed)
-- Language Data Grid — UX audit, edge cases, loading/empty/error states
-- Codex — REVAMP: virtualized/paginated loading, search-first UX, skeleton states
-- World Map — quick verification pass
-- Cross-page consistency — all pages feel like ONE app (sidebar, nav, dark mode, spacing)
+- Offline-first bundle — SQLite backend, no PostgreSQL dependency, light build (Model2Vec only, no Qwen)
+- Perforce data parsing — real paths from QACompiler + MapDataGenerator mapping rules
+- Audio Codex UI — exact MapDataGenerator logic (branch/drive/language selection, playback), new Svelte 5 UI
+- Item Codex UI — browse/search items with images, QACompiler Item generator data
+- Character Codex UI — browse/search characters with images, QACompiler Character generator data
+- Region Codex UI + Interactive Map — WorldPosition from QACompiler Region generator, images, node map
+- StringID → Audio mapping — audio player for StringIDs with available audio
+- Graceful AI degradation — core features work without Qwen/FAISS/TTS
+- Verify gamedata offline/online parity — Factory/Abstraction/Repo pattern audit
+- Bundling: Model2Vec (light), WEM decoder, no heavy Qwen 0.6B in light build
 
 ### Out of Scope
 
