@@ -151,16 +151,10 @@
   }
 
   /**
-   * Load TM matches for a row - USES HIERARCHY TMs
+   * Load TM matches for a row - USES HIERARCHY TMs, falls back to project-row search
    */
   async function loadTMMatchesForRow(row) {
     if (!row?.source || !fileId) return;
-
-    // Only search TM if there are active TMs from hierarchy
-    if (activeTMs.length === 0) {
-      sidePanelTMMatches = [];
-      return;
-    }
 
     sidePanelTMLoading = true;
     try {
@@ -168,13 +162,21 @@
         source: row.source,
         threshold: $preferences.tmThreshold.toString(),
         max_results: '10',
-        file_id: fileId.toString()  // Search ALL active TMs for this file, not just the first
+        file_id: fileId.toString()
       });
 
-      // Note: exclude_row_id removed — file_id search across all active TMs
-      // naturally handles dedup via different TM sources
+      // If active TMs exist, search via TM entries; otherwise fall back to project-row search
+      if (activeTMs.length > 0) {
+        // TM hierarchy search — use first active TM
+        params.append('tm_id', activeTMs[0].tm_id.toString());
+      } else {
+        // Fallback: search project rows for similar texts (no tm_id = project-row mode)
+        const projectId = $openFile?.project_id;
+        if (projectId) params.append('project_id', projectId.toString());
+        if (row.id) params.append('exclude_row_id', row.id.toString());
+      }
 
-      logger.apiCall('/api/ldm/tm/suggest', 'GET', { file_id: fileId });
+      logger.apiCall('/api/ldm/tm/suggest', 'GET', { file_id: fileId, hasTM: activeTMs.length > 0 });
       const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
         headers: getAuthHeaders()
       });

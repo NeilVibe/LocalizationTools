@@ -969,15 +969,9 @@
 
   // Go to specific row - REMOVED (BUG-001 - not useful)
 
-  // Fetch TM suggestions for a source text - USES HIERARCHY TMs
+  // Fetch TM suggestions for a source text - USES HIERARCHY TMs, falls back to project-row search
   async function fetchTMSuggestions(sourceText, rowId) {
     if (!sourceText || !sourceText.trim()) {
-      tmSuggestions = [];
-      return;
-    }
-
-    // Only search if we have active TMs from hierarchy
-    if (!activeTMs || activeTMs.length === 0) {
       tmSuggestions = [];
       return;
     }
@@ -989,9 +983,13 @@
       const params = new URLSearchParams({
         source: sourceText,
         threshold: $preferences.tmThreshold.toString(),
-        max_results: '5',
-        tm_id: activeTMs[0].tm_id.toString()  // Use hierarchy TM, not preferences
+        max_results: '5'
       });
+
+      // If active TMs from hierarchy, search TM entries; otherwise fall back to file-based row search
+      if (activeTMs && activeTMs.length > 0) {
+        params.append('tm_id', activeTMs[0].tm_id.toString());
+      }
       if (fileId) params.append('file_id', fileId.toString());
       if (rowId) params.append('exclude_row_id', rowId.toString());
 
@@ -1002,7 +1000,8 @@
       if (response.ok) {
         const data = await response.json();
         tmSuggestions = data.suggestions || [];
-        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId: activeTMs[0].tm_id });
+        const tmId = activeTMs?.[0]?.tm_id || 'project-rows';
+        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId });
       }
     } catch (err) {
       logger.error("Failed to fetch TM suggestions", { error: err.message });
