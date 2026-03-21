@@ -2166,11 +2166,11 @@
     logger.info("Real-time updates applied", { count: updates.length });
   }
 
-  // Get status tag type (3-state: green=confirmed, yellow=draft, gray=empty)
+  // Get status tag type (3-state: teal=confirmed, yellow=draft, gray=empty)
   function getStatusKind(status) {
     switch (status) {
-      case 'approved': return 'green';
-      case 'reviewed': return 'green';
+      case 'approved': return 'teal';
+      case 'reviewed': return 'teal';
       case 'translated': return 'warm-gray';
       default: return 'gray';
     }
@@ -2858,7 +2858,7 @@
 
                 <!-- Target (always visible, EDITABLE) -->
                 <!-- Phase 2: Inline editing on double-click -->
-                <!-- Cell color indicates status: gray=pending, yellow=translated(draft), green=reviewed/approved(confirmed) -->
+                <!-- Cell color indicates status: gray=pending, yellow=translated(needs confirmation), teal=reviewed/approved(confirmed) -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
@@ -3920,26 +3920,26 @@
   /* Status-based cell colors (replaces Status column)
    * 3-state scheme:
    * - Empty (pending, untranslated) = Gray (default, no styling)
-   * - Draft (translated) = Yellow/amber highlight
-   * - Confirmed (reviewed, approved) = Green highlight
+   * - Needs Confirmation (translated) = Yellow/amber highlight
+   * - Confirmed (reviewed, approved) = Blue-green/teal highlight
    */
 
-  /* Draft: Yellow/amber highlight for translated rows */
+  /* Needs Confirmation: Yellow/amber highlight for translated rows */
   .cell.target.status-translated {
-    background: rgba(198, 163, 0, 0.12); /* amber - draft */
+    background: rgba(198, 163, 0, 0.12); /* amber - needs confirmation */
     border-left: 3px solid #c6a300;
   }
 
-  /* Confirmed: Green highlight for reviewed rows */
+  /* Confirmed: Blue-green/teal highlight for reviewed rows */
   .cell.target.status-reviewed {
-    background: rgba(36, 161, 72, 0.15); /* green - confirmed */
-    border-left: 3px solid #24a148;
+    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
+    border-left: 3px solid #009d9a;
   }
 
-  /* Confirmed: Green highlight for approved rows (same as reviewed) */
+  /* Confirmed: Blue-green/teal highlight for approved rows (same as reviewed) */
   .cell.target.status-approved {
-    background: rgba(36, 161, 72, 0.15); /* green - confirmed */
-    border-left: 3px solid #24a148;
+    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
+    border-left: 3px solid #009d9a;
   }
 
   /* Status hover overrides for styled cells */
