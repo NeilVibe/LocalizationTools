@@ -76,6 +76,12 @@ Plan: Not started
 
 None yet.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260321-w79 | MegaIndex mock data generator — all 35 dicts populated | 2026-03-21 | 09d27d01 | [260321-w79-megaindex-mock-data-generator](./quick/260321-w79-megaindex-mock-data-generator/) |
+
 ### Blockers/Concerns
 
 - Research flag: SQLite WAL mode compatibility with existing aiosqlite usage (verify in Phase 45 planning)
