@@ -137,6 +137,29 @@ class PerforcePathService:
         self._regenerate_paths()
         logger.info(f"[PERFORCE] Configured: drive={drive}, branch={branch}")
 
+    def configure_for_mock_gamedata(self, mock_gamedata_dir: Path) -> None:
+        """Override all resolved paths to point at mock_gamedata fixtures (DEV mode).
+
+        Bypasses drive/branch substitution. MegaIndex.build() will find real
+        XML fixtures at these paths.
+        """
+        self._resolved_paths = {
+            "knowledge_folder": mock_gamedata_dir / "StaticInfo" / "knowledgeinfo",
+            "character_folder": mock_gamedata_dir / "StaticInfo" / "characterinfo",
+            "faction_folder": mock_gamedata_dir / "StaticInfo" / "factioninfo",
+            "texture_folder": mock_gamedata_dir / "texture" / "image",
+            "audio_folder": mock_gamedata_dir / "sound" / "windows" / "English(US)",
+            "audio_folder_kr": mock_gamedata_dir / "sound" / "windows" / "Korean",
+            "audio_folder_zh": mock_gamedata_dir / "sound" / "windows" / "Chinese(PRC)",
+            "export_folder": mock_gamedata_dir / "export__",
+            "loc_folder": mock_gamedata_dir / "loc",
+            "waypoint_folder": mock_gamedata_dir / "StaticInfo" / "factioninfo" / "NodeWaypointInfo",
+            "vrs_folder": mock_gamedata_dir / "localization",
+        }
+        self._drive = "MOCK"
+        self._branch = "mock_gamedata"
+        logger.info(f"[PERFORCE] Configured for mock_gamedata: {mock_gamedata_dir}")
+
     def resolve(self, key: str) -> Path:
         """Return resolved WSL Path for a template key.
 
