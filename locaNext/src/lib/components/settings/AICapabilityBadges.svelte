@@ -8,7 +8,7 @@
   import {
     aiCapabilities,
     refreshCapabilities,
-  } from "$lib/stores/aiCapabilityStore.ts";
+  } from "$lib/stores/aiCapabilityStore.svelte.ts";
 
   // Engine display configuration
   const engines = [
