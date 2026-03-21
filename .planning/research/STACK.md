@@ -1,115 +1,89 @@
-# Technology Stack
+# Technology Stack — v5.0 Offline Bundle + Full Codex
 
-**Project:** LocaNext v3.3 -- UI/UX Polish + Performance
-**Researched:** 2026-03-17
-**Scope:** NEW additions only for polish/performance. Existing validated stack is unchanged.
-
-## Existing Stack (DO NOT RE-RESEARCH)
-
-Already validated and shipping through v3.2:
-- Electron 39 + Svelte 5.46 (Runes) + FastAPI + SQLite/PostgreSQL
-- FAISS + Model2Vec for semantic search
-- Qwen3-4B via Ollama (httpx async) for AI summaries
-- lxml for XML parsing (XMLParsingEngine)
-- Aho-Corasick for entity detection
-- Pillow for DDS->PNG, vgmstream-cli for WEM->WAV
-- Carbon Components Svelte 0.95.2 for UI (includes SkeletonText, SkeletonPlaceholder, InlineLoading)
-- d3-selection + d3-zoom for World Map
-- socket.io-client for WebSocket sync
-- VirtualGrid.svelte (custom implementation for Language Data grid)
+**Project:** LocaNext v5.0
+**Researched:** 2026-03-21
+**Scope:** NEW capabilities only. Existing stack (Electron, Svelte 5, FastAPI, SQLite/PG, FAISS, Model2Vec, Qwen3, lxml, Carbon) validated and NOT re-researched.
 
 ---
 
-## Stack Additions for v3.3
+## Recommended Stack Additions
 
-### Zero New Dependencies Needed
-
-The key finding of this research: **v3.3 requires ZERO new npm packages.** Every capability needed for UI/UX polish and performance optimization is achievable with existing dependencies plus native browser APIs.
-
-**Rationale:** Adding dependencies to an Electron desktop app increases bundle size, introduces version conflicts, and creates maintenance burden. The existing stack already covers every need when used correctly.
-
----
-
-### Skeleton Loading States: Use Carbon's Built-In Components
+### Offline Bundle / Build System
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `SkeletonText` | (in carbon-components-svelte 0.95.2) | Text placeholder during loading | Already used in GameDataContextPanel, FileExplorerTree, GameDataTree. Extend same pattern to CodexPage and TMPage. |
-| `SkeletonPlaceholder` | (in carbon-components-svelte 0.95.2) | Image/card placeholder during loading | Available but unused. Use for Codex entity cards and image thumbnails during load. Supports custom sizing. |
-| `InlineLoading` | (in carbon-components-svelte 0.95.2) | Spinner with status text | Already used everywhere. Keep for action feedback (saving, searching). |
+| Model2Vec (bundled weights) | 0.7.0 | Offline embeddings | Already installed. `potion-multilingual-128M` is ~128MB. Bundle `embeddings.safetensors` + `config.json` + `tokenizer.json` into `resources/models/Model2Vec/`. No HuggingFace download needed at runtime. |
+| model2vec (pip package) | 0.7.0 | StaticModel loader | Already a dependency. Pure Python + numpy + tokenizers. NO torch dependency. Light build safe. |
+| faiss-cpu | 1.8.0 | Vector search offline | Already installed. Numpy-only, no CUDA. Light build safe. |
+| vgmstream-cli | r1999+ | WEM-to-WAV decoder | Already bundled in MapDataGenerator (`tools/` folder, 15 DLLs + exe). Bundle into `resources/bin/vgmstream/` for Electron. Windows-only binary, ~8MB total. |
+| pillow | 12.1.0 | DDS-to-PNG conversion | Already installed. Supports DDS natively since Pillow 9.x (no `pillow-dds` plugin needed). Verified working in `media_converter.py`. |
 
-**Pattern:** Replace bare `InlineLoading` spinners on CodexPage with proper skeleton layouts that match the final card grid shape. This gives much better perceived performance than a centered spinner.
+**NO new Python packages needed for the light build.** The existing `install_deps.py --light` already skips torch/transformers/sentence-transformers. Model2Vec's dependencies (safetensors, tokenizers, numpy, joblib, jinja2) are all lightweight.
 
-**What NOT to add:**
-- `svelte-skeleton-loader` -- unnecessary, Carbon covers this
-- `@skeleton-elements/svelte` -- different design system, would clash with Carbon
-- `skeleton.dev` (Skeleton UI) -- completely different UI framework, requires Tailwind
+### Light Build vs Full Build
 
----
+| Component | Light Build | Full Build | Size Impact |
+|-----------|-------------|------------|-------------|
+| Model2Vec | YES (128MB model) | YES | +128MB |
+| FAISS | YES | YES | +15MB |
+| Qwen3-Embedding-0.6B | NO | YES | +1.2GB |
+| torch | NO | YES | +2.0GB |
+| sentence-transformers | NO | YES | +50MB |
+| transformers | NO | YES | +100MB |
+| vgmstream-cli + DLLs | YES | YES | +8MB |
+| **Total additional** | **~151MB** | **~3.5GB** | |
 
-### Codex Virtualization: Custom Implementation, Not a Library
+The light/full split is **already implemented** in `tools/install_deps.py` (line 58-68) and `server/tools/shared/embedding_engine.py` (line 38-54 `is_light_mode()`). No new mechanism needed.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Native `IntersectionObserver` | (browser API) | Viewport detection for lazy rendering | Zero dependencies. Svelte 5 actions make this trivial. Already in every Electron 39 Chromium. |
-| Svelte 5 action: `use:lazyload` | (custom, ~30 lines) | Lazy-load entity cards as they scroll into view | A reusable Svelte action wrapping IntersectionObserver. Simpler and more controllable than any library. |
+**Action:** Pre-download Model2Vec weights at build time, bundle into installer. Create `tools/download_model2vec.py` (similar to existing `download_model.py` but for Model2Vec).
 
-**Why NOT use a virtual list library:**
-1. CodexPage uses a CSS Grid layout (not a flat list) -- virtual list libraries expect single-column or fixed-row lists
-2. Entity cards have variable heights (description length varies)
-3. The existing VirtualGrid.svelte already solves this for the data grid -- Codex needs a different approach (paginated loading with intersection observer, not row virtualization)
-4. `@humanspeak/svelte-virtual-list` requires Svelte 5 snippets syntax which would require restructuring the card rendering
-5. `@sveltejs/svelte-virtual-list` is unmaintained and Svelte 4 only
-
-**Recommended approach for Codex:** Paginated API loading (fetch 50 entities per page) + IntersectionObserver sentinel at bottom of grid to trigger next page load. This is simpler, more robust, and works perfectly with CSS Grid.
-
----
-
-### Lazy Image Loading: Native Browser API
+### Audio Pipeline (WEM Playback)
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `loading="lazy"` attribute | (HTML native) | Defer offscreen image loading | Built into every modern browser. Electron 39's Chromium fully supports it. Zero JS needed. |
-| `IntersectionObserver` action | (browser API) | Advanced lazy loading with placeholder swap | For cases where `loading="lazy"` isn't sufficient (e.g., PlaceholderImage -> real image transition). |
+| vgmstream-cli | r1999+ | WEM-to-WAV conversion | Battle-tested in MapDataGenerator. Subprocess call, 60s timeout, MD5-based cache. Pattern already in `server/tools/ldm/services/media_converter.py`. |
+| HTML5 `<audio>` | Browser native | WAV playback in Svelte | WAV from vgmstream plays directly. Use `{#key url}` + `?v=${Date.now()}` per project rules. |
 
-**Implementation:** Add `loading="lazy"` to all `<img>` tags in entity cards. For the PlaceholderImage-to-real-image swap pattern already in CodexPage, wrap with an IntersectionObserver action that only starts fetching when the card enters the viewport.
+**Do NOT use:** pyvgmstream (Python bindings) -- adds complexity, subprocess is simpler and proven. wasm-vgmstream -- experimental, not production ready.
 
-**What NOT to add:**
-- `svelte-lazy-image` -- overkill for an Electron app where there's a single known viewport
-- `svelte-lazy-loader` -- same reasoning, native API is better controlled
+**vgmstream bundling for Electron:** Copy from `RessourcesForCodingTheProject/NewScripts/MapDataGenerator/tools/` into Electron `extraResources`. Required files (all must be co-located):
+- `vgmstream-cli.exe`
+- 11 DLLs: `libvorbis.dll`, `libmpg123-0.dll`, `libg719_decode.dll`, `avcodec-vgmstream-59.dll`, `avformat-vgmstream-59.dll`, `avutil-vgmstream-57.dll`, `swresample-vgmstream-4.dll`, `libatrac9.dll`, `libcelt-0061.dll`, `libcelt-0110.dll`, `libspeex-1.dll`
 
----
-
-### CSS Consistency: Carbon Design Tokens + Stylelint
+### Perforce Path Resolution
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Carbon CSS custom properties | (in carbon-components-svelte 0.95.2) | Design tokens for spacing, colors, typography | Already available via `--cds-*` variables. Many components use them inconsistently -- audit needed, not new tooling. |
-| `stylelint` | ^16.0.0 | CSS linting and consistency enforcement | Dev dependency only. Catches hardcoded colors/spacing that should use Carbon tokens. |
-| `stylelint-value-no-unknown-custom-properties` | ^6.0.0 | Catch typos in `--cds-*` variable names | Prevents referencing non-existent Carbon tokens (silent failures in CSS). |
+| `pathlib` (stdlib) | Python 3.10+ | Path manipulation | Already used everywhere. Template-based drive/branch substitution pattern from MapDataGenerator `config.py`. |
+| settings.json | -- | Drive/branch config | Same pattern as MapDataGenerator and QACompiler. User sets drive letter (F/D/C) and branch (mainline/cd_beta/cd_alpha/cd_lambda). |
 
-**Key insight:** The consistency problem is not missing tooling -- it's inconsistent use of existing Carbon tokens. The codebase mixes hardcoded values (`#0f62fe`, `12px`, `0.875rem`) with Carbon variables (`var(--cds-interactive-01)`, `var(--cds-spacing-05)`). A stylelint rule can enforce token usage going forward, but the main work is an audit pass replacing hardcoded values.
+**Pattern already proven** in both QACompiler (`config.py` lines 68-80) and MapDataGenerator (`config.py` lines 87-97):
+1. Path templates with `F:` as base drive
+2. `_apply_drive_letter()` swaps drive letter
+3. `_apply_branch()` swaps branch name
+4. Settings loaded from `settings.json` at module init
 
-**What NOT to add:**
-- `postcss` / `postcss-custom-properties` -- not needed, Carbon tokens work natively
-- Token CSS -- different design system, conflicts with Carbon
-- Style Dictionary -- enterprise-grade token management, overkill for this project
+**For LocaNext:** The `server/tools/ldm/services/mapdata_service.py` already has `PATH_TEMPLATES` and `KNOWN_BRANCHES` (line 24-38). Extend these with QACompiler paths and add drive/branch selection UI.
 
----
-
-### Performance Auditing: Lighthouse CI (Dev Only)
+### Map Rendering (Region Codex)
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Chrome DevTools (built into Electron) | (available) | Performance profiling, memory leaks, layout shifts | Already available. Open with Ctrl+Shift+I in dev mode. No installation needed. |
-| Playwright performance assertions | (in @playwright/test 1.57.0) | Automated performance regression checks | Already installed. Use `page.evaluate(() => performance.getEntriesByType('navigation'))` for load timing. |
+| d3-zoom | 3.0.0 | Pan/zoom for SVG map | Already installed and used for World Map. |
+| d3-force | 3.0.0 | Node layout | Already installed. Force-directed graph for region nodes. |
+| d3-selection | 3.0.0 | SVG manipulation | Already installed. |
+| d3-drag | 3.0.0 | Node dragging | Already installed. |
 
-**Why NOT Lighthouse CI:**
-Lighthouse is designed for web pages served over HTTP, not Electron apps. It measures First Contentful Paint, Largest Contentful Paint, etc. against web standards that don't apply to a desktop app loaded from `file://` or `localhost`. The meaningful performance metrics for LocaNext are:
-- Time to interactive after page switch (measured via Playwright)
-- Virtual grid scroll FPS (measured via DevTools Performance panel)
-- Memory usage after loading 5000+ entities (measured via `process.memoryUsage()` or DevTools Memory tab)
-- API response times (already logged by FastAPI)
+**No new frontend packages needed.** The entire d3 stack for interactive maps is already in `locaNext/package.json`.
+
+### Offline Gamedata Storage
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| SQLite (via aiosqlite) | Already installed | Offline entity cache | Store parsed XML entity data (items, characters, regions) in SQLite for instant offline access. Same DB used for TM, auth, settings. |
+| JSON files | -- | Entity metadata cache | For pre-parsed entity indexes. Faster cold start than re-parsing XML every time. |
+
+**Pattern:** On first load with Perforce access, parse XML and cache into SQLite/JSON. On subsequent loads (or offline), serve from cache. Invalidation: compare file mtimes or Perforce changelist numbers.
 
 ---
 
@@ -117,96 +91,143 @@ Lighthouse is designed for web pages served over HTTP, not Electron apps. It mea
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Skeleton loading | Carbon SkeletonText/SkeletonPlaceholder | svelte-skeleton-loader | Different design language, Carbon already has this |
-| Virtual list (Codex) | Pagination + IntersectionObserver | @humanspeak/svelte-virtual-list | Codex uses CSS Grid, not flat list; variable card heights |
-| Lazy images | Native `loading="lazy"` + custom action | svelte-lazy-image | Overkill for Electron; native API is simpler and more reliable |
-| CSS audit | stylelint + custom rules | Token CSS / Style Dictionary | Enterprise tools for design systems, not single-app polish |
-| Perf testing | Playwright + DevTools | Lighthouse CI | Lighthouse targets web, not Electron desktop apps |
-| Animation | CSS transitions (already used) | GSAP / svelte-motion | Transitions are subtle polish, not complex animations |
+| WEM decoding | vgmstream-cli (subprocess) | pyvgmstream (Python bindings) | Subprocess is simpler, already proven in MapDataGenerator, no build complexity |
+| WEM decoding | vgmstream-cli | ffmpeg | ffmpeg doesn't support WEM/Wwise natively |
+| Offline embeddings | Model2Vec bundled weights | ONNX Runtime export | Model2Vec StaticModel is already tiny (128MB), ONNX adds complexity for no gain |
+| Map rendering | d3-zoom + SVG | Leaflet.js | d3-zoom already works for 14 nodes, Leaflet is overkill (tile-based) |
+| Map rendering | d3-zoom + SVG | Canvas/WebGL | SVG is simpler for <100 nodes, supports DOM events natively |
+| Entity cache | SQLite | IndexedDB (frontend) | Backend SQLite enables API-based access, consistent with existing patterns |
+| Light build packaging | pip install --light | PyInstaller frozen exe | Electron already bundles Python via `extraResources`, PyInstaller would double-package |
+| DDS support | Pillow 12.1 native | pillow-dds plugin | Pillow has built-in DDS since 9.x, already working in media_converter.py |
 
 ---
 
-## Installation
+## What NOT to Add
+
+| Do Not Add | Reason |
+|------------|--------|
+| **Leaflet.js** | d3-zoom is sufficient for the node map. Leaflet needs tile servers. |
+| **PyInstaller for LocaNext** | Electron handles Python bundling via `extraResources`. PyInstaller is for standalone NewScripts only. |
+| **pillow-dds** | Pillow 12.1 handles DDS natively. MapDataGenerator spec still lists it as hiddenimport but it's not needed for LocaNext. |
+| **p4python (Perforce API)** | LocaNext reads files from Perforce workspace on disk. No P4 commands needed. Path resolution is pure string manipulation. |
+| **pydub / soundfile** | Not needed. vgmstream outputs standard WAV that plays in browser `<audio>`. |
+| **electron-forge** | Already using electron-builder. No reason to switch. |
+| **Any new MCP server** | v5.0 is about bundling and Codex UIs, not new dev tooling. |
+| **torch for light build** | Explicitly excluded. Model2Vec works without torch. |
+
+---
+
+## Installation Changes
+
+### Light Build (v5.0 default for offline)
 
 ```bash
-# Dev dependencies only -- zero new production dependencies
-cd locaNext
-npm install -D stylelint stylelint-value-no-unknown-custom-properties
+# No new packages needed! Existing install_deps.py --light covers it.
+# Only addition: pre-download Model2Vec weights
+
+python3 tools/download_model2vec.py  # New script, downloads ~128MB model
+# Saves to: models/Model2Vec/
+#   - config.json
+#   - embeddings.safetensors  (~128MB)
+#   - tokenizer.json
 ```
 
-That's it. Two dev dependencies for CSS linting. Everything else is already available.
+### Electron Builder Changes (package.json)
 
----
+```json
+{
+  "extraResources": [
+    {
+      "from": "../models/Model2Vec",
+      "to": "models/Model2Vec",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "../bin/vgmstream",
+      "to": "bin/vgmstream",
+      "filter": ["**/*"]
+    }
+  ]
+}
+```
 
-## Carbon Token Reference (For Polish Audit)
+### vgmstream Setup
 
-These are the Carbon Design System tokens that MUST be used consistently across all 5 pages:
-
-### Spacing
-| Token | Value | Use For |
-|-------|-------|---------|
-| `--cds-spacing-03` | 8px | Tight gaps (icon-to-text, inline elements) |
-| `--cds-spacing-05` | 16px | Standard padding (cards, panels, sections) |
-| `--cds-spacing-07` | 32px | Large gaps (section separators) |
-
-### Colors
-| Token | Use For |
-|-------|---------|
-| `--cds-text-01` | Primary text |
-| `--cds-text-02` | Secondary/muted text |
-| `--cds-layer-01` | Card/panel backgrounds |
-| `--cds-layer-02` | Nested backgrounds |
-| `--cds-layer-hover-01` | Hover states |
-| `--cds-border-subtle-01` | Light borders |
-| `--cds-border-strong-01` | Emphasis borders |
-| `--cds-interactive-01` | Primary actions, active indicators |
-| `--cds-focus` | Focus rings (accessibility) |
-
-### Typography
-| Token | Use For |
-|-------|---------|
-| `--cds-heading-03` | Page titles |
-| `--cds-body-short-01` | Body text (0.875rem/20px) |
-| `--cds-label-01` | Small labels (0.75rem) |
-
-**Known inconsistencies to fix:**
-- CodexPage uses hardcoded `font-size: 1.125rem` for h1 instead of Carbon heading tokens
-- Multiple components use `font-size: 0.875rem` / `0.75rem` directly instead of type tokens
-- Some borders use `1px solid` with hardcoded colors instead of `--cds-border-subtle-01`
-- Several hover backgrounds use `var(--cds-layer-hover-01)` correctly but others don't
+```bash
+# Copy from MapDataGenerator (already in repo)
+mkdir -p bin/vgmstream
+cp RessourcesForCodingTheProject/NewScripts/MapDataGenerator/tools/vgmstream-cli.exe bin/vgmstream/
+cp RessourcesForCodingTheProject/NewScripts/MapDataGenerator/tools/*.dll bin/vgmstream/
+```
 
 ---
 
 ## Integration Points
 
-### Where New Patterns Connect to Existing Code
+### Embedding Engine (already handles light mode)
 
-1. **Skeleton loading in CodexPage** -- Replace the `{#if loadingList}` block (line 425-428) that shows a centered InlineLoading with a skeleton card grid matching the `entity-grid` layout
-2. **Pagination for Codex** -- Backend already has `/api/ldm/codex/list/{type}` returning all entities. Add `?offset=0&limit=50` pagination support server-side, consume with IntersectionObserver sentinel client-side
-3. **Lazy images** -- Add `loading="lazy"` to existing `<img>` elements in CodexPage entity cards (lines 437, 449) and CodexEntityDetail
-4. **CSS token audit** -- Systematic pass through all 70+ `.svelte` files replacing hardcoded values with Carbon tokens
-5. **Stylelint config** -- Add `.stylelintrc.json` at `locaNext/` root, integrate with existing dev workflow
+`server/tools/shared/embedding_engine.py` has:
+- `is_light_mode()` -- returns True when torch unavailable (line 38-54)
+- `Model2VecEngine._find_local_model_path()` -- checks `LOCANEXT_MODELS_PATH` env var and `models/Model2Vec/` relative to server (line 140-151)
+- Automatic fallback from Qwen to Model2Vec when light mode detected (line 427-431)
 
-### Files Most Affected
+**No changes needed** to the embedding engine for light build support.
 
-| File | Changes |
-|------|---------|
-| `CodexPage.svelte` | Skeleton grid, pagination, lazy images, token cleanup |
-| `CodexEntityDetail.svelte` | Skeleton loading for detail view, lazy images |
-| `GridPage.svelte` | Loading/empty/error state consistency |
-| `GameDevPage.svelte` | Loading state audit, token cleanup |
-| `TMPage.svelte` | Loading state audit, token cleanup |
-| `WorldMapPage.svelte` | Quick verification pass only |
-| All 70+ components | CSS token consistency pass |
+### Media Converter (already handles vgmstream)
+
+`server/tools/ldm/services/media_converter.py` has:
+- `_find_vgmstream()` -- checks PATH then `bin/vgmstream-cli` relative to server (line 162-184)
+- MD5-based WAV cache in temp dir (line 107-108)
+- 60s subprocess timeout (line 126-131)
+
+**Change needed:** Update `_find_vgmstream()` to also check `resources/bin/vgmstream/` for packaged Electron app. One line addition.
+
+### MapData Service (path templates ready)
+
+`server/tools/ldm/services/mapdata_service.py` already has:
+- `PATH_TEMPLATES` dict with all Perforce paths (line 26-38)
+- `KNOWN_BRANCHES` list (line 24)
+
+**Changes needed:**
+1. Add drive letter substitution (port from MapDataGenerator `config.py`)
+2. Add settings API for drive/branch selection
+3. Extend path templates with QACompiler paths (characterinfo, iteminfo, etc.)
+
+---
+
+## Version Pinning Summary
+
+| Package | Pinned Version | Source |
+|---------|---------------|--------|
+| model2vec | 0.7.0 | `pip show model2vec` (currently installed) |
+| faiss-cpu | 1.8.0 | `pip show faiss-cpu` (currently installed) |
+| pillow | 12.1.0 | `pip show pillow` (currently installed) |
+| vgmstream-cli | r1999+ | `MapDataGenerator/tools/` (already in repo, avcodec v59 DLLs) |
+| d3-zoom | ^3.0.0 | `locaNext/package.json` (already installed) |
+| d3-force | ^3.0.0 | `locaNext/package.json` (already installed) |
+| d3-selection | ^3.0.0 | `locaNext/package.json` (already installed) |
+| d3-drag | ^3.0.0 | `locaNext/package.json` (already installed) |
+| electron-builder | ^26.0.0 | `locaNext/package.json` (already installed) |
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Light build mechanism | HIGH | Verified in source: `install_deps.py`, `embedding_engine.py` already implement it |
+| Model2Vec bundling | HIGH | `_find_local_model_path()` already checks for bundled model, just need to pre-download |
+| vgmstream integration | HIGH | Already working in MapDataGenerator and `media_converter.py`, just need to bundle binaries |
+| Perforce path resolution | HIGH | Same pattern verified in both QACompiler and MapDataGenerator config.py |
+| d3 map rendering | HIGH | Already installed and working for World Map page |
+| Offline entity caching | MEDIUM | Pattern is standard (SQLite cache), but schema design needs phase-specific work |
+| Electron extraResources | HIGH | Already used for server/, tools/, verified in package.json |
 
 ---
 
 ## Sources
 
-- [Carbon Components Svelte - SkeletonPlaceholder](https://svelte.carbondesignsystem.com/components/SkeletonPlaceholder) -- MEDIUM confidence (official docs)
-- [Carbon Components Svelte - SkeletonText](https://svelte.carbondesignsystem.com/components/SkeletonText) -- MEDIUM confidence (official docs)
-- [@humanspeak/svelte-virtual-list](https://github.com/humanspeak/svelte-virtual-list) -- HIGH confidence (evaluated and rejected for good reasons)
-- [stylelint-value-no-unknown-custom-properties](https://github.com/csstools/stylelint-value-no-unknown-custom-properties) -- HIGH confidence (established tool)
-- [MDN IntersectionObserver API](https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API) -- HIGH confidence (web standard)
-- [HTML loading="lazy"](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading) -- HIGH confidence (web standard)
-- Codebase analysis of existing Carbon token usage -- HIGH confidence (direct observation)
+- Model2Vec: [GitHub - MinishLab/model2vec](https://github.com/MinishLab/model2vec), [PyPI](https://pypi.org/project/model2vec/)
+- vgmstream: [GitHub - vgmstream/vgmstream](https://github.com/vgmstream/vgmstream), [vgmstream.org](https://vgmstream.org/)
+- electron-builder extraResources: [electron.build/contents](https://www.electron.build/contents.html)
+- Existing source code: `server/tools/shared/embedding_engine.py`, `server/tools/ldm/services/media_converter.py`, `server/tools/ldm/services/mapdata_service.py`, `tools/install_deps.py`, `locaNext/package.json`, `RessourcesForCodingTheProject/NewScripts/MapDataGenerator/config.py`, `RessourcesForCodingTheProject/NewScripts/QACompilerNEW/config.py`
