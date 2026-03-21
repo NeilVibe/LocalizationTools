@@ -210,11 +210,11 @@ def is_broken_linebreak(text: str) -> Optional[str]:
 
 
 def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[str]:
-    """Check if text contains entity contamination.
+    """Check if text contains markup contamination or lone angle brackets.
 
-    Checks for double/triple-escaped entities that indicate encoding issues.
-    Angle brackets (< >) are NOT checked — for XML they're legitimate
-    escaped content, for Excel lxml auto-escapes them when writing to XML.
+    Checks for:
+      - Lone < or > (after stripping valid <br/> tags) — flags for human review
+      - Double/triple-escaped entities that indicate encoding issues
 
     Args:
         text: Text to check.
@@ -226,10 +226,20 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
     if not text:
         return None
 
-    # NOTE: Group A (angle bracket checks) was removed. Raw < and > in Excel
-    # are safe — lxml auto-escapes them to &lt;/&gt; when writing to XML
-    # attributes. For XML-parsed text, < and > in memory came from properly
-    # escaped entities on disk — also legitimate.
+    # --- Group A: Lone angle brackets (QA warning) ---
+    # Escaping handles these technically, but a lone < or > in a translation
+    # is suspicious — likely a broken tag or translator error. Flag for review.
+    # Strip valid <br/> variants first to avoid false positives.
+    stripped_br = _VALID_BR_RE.sub('', text)
+    if '<' in stripped_br or '>' in stripped_br:
+        # Find the first lone bracket for the error message
+        for ch, name in (('<', '&lt;'), ('>', '&gt;')):
+            idx = stripped_br.find(ch)
+            if idx >= 0:
+                start = max(0, idx - 10)
+                end = min(len(stripped_br), idx + 15)
+                context = stripped_br[start:end]
+                return f'Lone {name} needs human review: ...{context}...'
 
     # --- Entity contamination checks ---
 
