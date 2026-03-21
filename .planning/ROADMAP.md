@@ -245,7 +245,9 @@ Plans:
   1. Starting the DEV server (`DEV_MODE=true python3 server/main.py`) triggers MegaIndex.build() automatically, populating all 35 dicts from mock_gamedata fixtures
   2. PerforcePathService auto-detects mock_gamedata path in DEV mode without any user configuration in Settings
   3. All Codex API endpoints return populated data immediately after DEV server starts (no manual build step needed)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 52-01-PLAN.md -- PerforcePathService mock_gamedata auto-detect + MegaIndex lifespan wiring (Wave 1)
 
 ### Phase 53: Codex + Right Panel Verification
 **Goal**: All 4 new Codex UIs render correctly with mock data and right panel Image/Audio tabs light up for StringIDs with linked entities
@@ -343,7 +345,7 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 50. StringID-to-Audio Integration | v5.0 | 1/1 | Complete | 2026-03-21 |
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
-| 52. DEV Init + MegaIndex Wiring | v5.1 | 0/? | Not started | - |
+| 52. DEV Init + MegaIndex Wiring | v5.1 | 0/1 | Not started | - |
 | 53. Codex + Right Panel Verification | v5.1 | 0/? | Not started | - |
 | 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 0/? | Not started | - |
 | 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
@@ -356,3 +358,4 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 *Phase 42 planned: 2026-03-18*
 *v5.0 Offline Production Bundle + Full Codex added: 2026-03-21*
 *v5.0 shipped, v5.1 Testing + Polish added: 2026-03-22*
+*Phase 52 planned: 2026-03-22*
