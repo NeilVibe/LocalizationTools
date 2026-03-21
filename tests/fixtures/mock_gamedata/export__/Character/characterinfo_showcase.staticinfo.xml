@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ExportData>
+  <Entry StringId="CHAR_ELDERVARON_NAME"/>
+  <Entry StringId="CHAR_ELDERVARON_DESC"/>
+  <Entry StringId="CHAR_SHADOWKIRA_NAME"/>
+  <Entry StringId="CHAR_SHADOWKIRA_DESC"/>
+  <Entry StringId="CHAR_GRIMJAW_NAME"/>
+  <Entry StringId="CHAR_GRIMJAW_DESC"/>
+  <Entry StringId="CHAR_LUNE_NAME"/>
+  <Entry StringId="CHAR_LUNE_DESC"/>
+  <Entry StringId="CHAR_DRAKMAR_NAME"/>
+  <Entry StringId="CHAR_DRAKMAR_DESC"/>
+</ExportData>

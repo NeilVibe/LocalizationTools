@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<DialogList>
+  <Dialog SoundEventName="play_varon_greeting_01" StringId="DLG_VARON_01"/>
+  <Dialog SoundEventName="play_varon_farewell_01" StringId="DLG_VARON_02"/>
+  <Dialog SoundEventName="play_kira_taunt_01" StringId="DLG_KIRA_01"/>
+  <Dialog SoundEventName="play_kira_threat_01" StringId="DLG_KIRA_02"/>
+  <Dialog SoundEventName="play_grimjaw_forge_01" StringId="DLG_GRIMJAW_01"/>
+  <Dialog SoundEventName="play_grimjaw_quest_01" StringId="DLG_GRIMJAW_02"/>
+  <Dialog SoundEventName="play_lune_whisper_01" StringId="DLG_LUNE_01"/>
+  <Dialog SoundEventName="play_lune_scout_01" StringId="DLG_LUNE_02"/>
+  <Dialog SoundEventName="play_drakmar_chant_01" StringId="DLG_DRAKMAR_01"/>
+  <Dialog SoundEventName="play_drakmar_warning_01" StringId="DLG_DRAKMAR_02"/>
+</DialogList>

@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="CHAR_ELDERVARON_NAME" StrOrigin="장로 바론"/>
+  <LocStr StringId="CHAR_ELDERVARON_DESC" StrOrigin="봉인된 도서관의 수호자인 장로 바론은 300년이 넘는 세월 동안 고대의 지식을 지켜왔다.&lt;br/&gt;그는 현자의 결사를 이끌며, 성스러운 불꽃의 비밀을 후대에 전수하고 있다.&lt;br/&gt;최근 어둠의 교단이 봉인된 도서관을 노리고 있다는 소문이 돌고 있어, 바론은 경계를 늦추지 않고 있다."/>
+  <LocStr StringId="CHAR_SHADOWKIRA_NAME" StrOrigin="그림자 암살자 키라"/>
+  <LocStr StringId="CHAR_SHADOWKIRA_DESC" StrOrigin="어둠의 교단의 최정예 암살자인 키라는 봉인된 도서관의 비밀을 노린다.&lt;br/&gt;그녀의 그림자 일격은 한 번의 공격으로 적을 제압할 수 있는 치명적인 기술이다.&lt;br/&gt;장로 바론과는 오랜 숙적 관계이며, 두 사람의 대결은 게임의 핵심 스토리라인을 이끈다."/>
+  <LocStr StringId="CHAR_GRIMJAW_NAME" StrOrigin="대장장이 그림죠"/>
+  <LocStr StringId="CHAR_GRIMJAW_DESC" StrOrigin="전설의 검은별 금속을 다룰 수 있는 유일한 대장장이.&lt;br/&gt;현자의 결사에 소속되어 있으며, 장로 바론의 현자의 지팡이도 그가 제작한 것이다.&lt;br/&gt;최근 어둠의 교단이 검은별 금속을 노리고 있어 경계를 늦추지 않고 있다."/>
+  <LocStr StringId="CHAR_LUNE_NAME" StrOrigin="정찰병 루네"/>
+  <LocStr StringId="CHAR_LUNE_DESC" StrOrigin="봉인된 도서관으로 가는 위험한 길을 안내하는 엘프 정찰병.&lt;br/&gt;숲의 모든 길을 꿰뚫고 있으며, 어둠의 교단의 움직임을 감시하고 있다.&lt;br/&gt;장로 바론을 깊이 존경하며, 그의 명령이라면 어떤 위험도 감수한다."/>
+  <LocStr StringId="CHAR_DRAKMAR_NAME" StrOrigin="마법사 드라크마르"/>
+  <LocStr StringId="CHAR_DRAKMAR_DESC" StrOrigin="봉인된 도서관의 고대 문서를 해독하는 학자 마법사.&lt;br/&gt;성스러운 방패 마법으로 도서관의 방어를 담당하며, 장로 바론의 오른팔 역할을 한다.&lt;br/&gt;최근 금지된 지식에 대한 연구를 시작하여 현자의 결사 내에서 논란이 되고 있다."/>
+</LanguageData>

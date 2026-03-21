@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ExportData>
+  <Entry StringId="GIMMICK_SEAL01_ACTIVE_NAME"/>
+  <Entry StringId="GIMMICK_SEAL01_ACTIVE_DESC"/>
+  <Entry StringId="GIMMICK_TRAP01_POISON_NAME"/>
+  <Entry StringId="GIMMICK_TRAP01_POISON_DESC"/>
+  <Entry StringId="GIMMICK_DOOR01_NAME"/>
+</ExportData>

@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="ITEM_SAGESTAFF_NAME" StrOrigin="현자의 지팡이"/>
+  <LocStr StringId="ITEM_SAGESTAFF_DESC" StrOrigin="장로 바론이 수백 년간 사용해온 고대의 지팡이.&lt;br/&gt;성스러운 불꽃을 증폭시키는 힘이 깃들어 있으며, 대장장이 그림죠가 제작한 명작이다."/>
+  <LocStr StringId="ITEM_SHADOWDAGGER_NAME" StrOrigin="어둠의 단검"/>
+  <LocStr StringId="ITEM_SHADOWDAGGER_DESC" StrOrigin="그림자 암살자 키라의 상징적인 무기.&lt;br/&gt;어둠의 교단에서 제작한 이 단검은 그림자 일격의 위력을 극대화시킨다."/>
+  <LocStr StringId="ITEM_BLACKSTARSWORD_NAME" StrOrigin="검은별 대검"/>
+  <LocStr StringId="ITEM_BLACKSTARSWORD_DESC" StrOrigin="대장장이 그림죠의 필생의 역작.&lt;br/&gt;전설의 검은별 금속으로 제작되었으며, 이 검을 들 자격이 있는 모험가는 아직 나타나지 않았다."/>
+  <LocStr StringId="ITEM_PLAGUECURE_NAME" StrOrigin="역병 치료제"/>
+  <LocStr StringId="ITEM_PLAGUECURE_DESC" StrOrigin="봉인된 도서관 주변에 퍼진 역병을 치료하는 약.&lt;br/&gt;현자의 결사의 연금술사가 제조한 것으로, 어둠의 교단의 저주를 정화하는 효과가 있다."/>
+  <LocStr StringId="ITEM_SEALSCROLL_NAME" StrOrigin="봉인의 두루마리"/>
+  <LocStr StringId="ITEM_SEALSCROLL_DESC" StrOrigin="봉인된 도서관의 봉인을 유지하기 위한 고대 두루마리.&lt;br/&gt;장로 바론이 직접 작성한 것으로, 어둠의 힘을 차단하는 마법이 새겨져 있다."/>
+</LanguageData>

@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="DLG_VARON_01" StrOrigin="봉인된 도서관에 오신 것을 환영합니다."/>
+  <LocStr StringId="DLG_VARON_02" StrOrigin="성스러운 불꽃이 그대를 인도하리라."/>
+  <LocStr StringId="DLG_KIRA_01" StrOrigin="네 화살은 빗나갔어."/>
+  <LocStr StringId="DLG_KIRA_02" StrOrigin="어둠의 힘 앞에 무릎을 꿇어라."/>
+  <LocStr StringId="DLG_GRIMJAW_01" StrOrigin="검은별 대검은 내 필생의 역작이야."/>
+  <LocStr StringId="DLG_GRIMJAW_02" StrOrigin="좋은 금속이 필요하다면 화산 지대로 가거라."/>
+  <LocStr StringId="DLG_LUNE_01" StrOrigin="숲의 목소리를 들어봐."/>
+  <LocStr StringId="DLG_LUNE_02" StrOrigin="어둠의 교단이 움직이고 있어."/>
+  <LocStr StringId="DLG_DRAKMAR_01" StrOrigin="고대의 문자가 진실을 말하고 있다."/>
+  <LocStr StringId="DLG_DRAKMAR_02" StrOrigin="금지된 지식에는 대가가 따른다."/>
+</LanguageData>

@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="CHAR_ELDERVARON_NAME" Str="Elder Varon"/>
+  <LocStr StringId="CHAR_ELDERVARON_DESC" Str="Elder Varon has guarded ancient knowledge in the Sealed Library for over 300 years."/>
+  <LocStr StringId="CHAR_SHADOWKIRA_NAME" Str="Shadow Assassin Kira"/>
+  <LocStr StringId="CHAR_SHADOWKIRA_DESC" Str="Kira is the Dark Cult's elite assassin who targets the secrets of the Sealed Library."/>
+  <LocStr StringId="CHAR_GRIMJAW_NAME" Str="Blacksmith Grimjaw"/>
+  <LocStr StringId="CHAR_GRIMJAW_DESC" Str="The only blacksmith capable of working legendary Blackstar metal."/>
+  <LocStr StringId="CHAR_LUNE_NAME" Str="Scout Lune"/>
+  <LocStr StringId="CHAR_LUNE_DESC" Str="An elf scout who guides travelers through the dangerous path to the Sealed Library."/>
+  <LocStr StringId="CHAR_DRAKMAR_NAME" Str="Sorcerer Drakmar"/>
+  <LocStr StringId="CHAR_DRAKMAR_DESC" Str="A scholar sorcerer who deciphers ancient documents in the Sealed Library."/>
+  <LocStr StringId="ITEM_SAGESTAFF_NAME" Str="Sage Staff"/>
+  <LocStr StringId="ITEM_SAGESTAFF_DESC" Str="An ancient staff wielded by Elder Varon for centuries."/>
+  <LocStr StringId="ITEM_SHADOWDAGGER_NAME" Str="Shadow Dagger"/>
+  <LocStr StringId="ITEM_SHADOWDAGGER_DESC" Str="The signature weapon of Shadow Assassin Kira."/>
+  <LocStr StringId="ITEM_BLACKSTARSWORD_NAME" Str="Blackstar Sword"/>
+  <LocStr StringId="ITEM_BLACKSTARSWORD_DESC" Str="The masterwork of Blacksmith Grimjaw, forged from legendary Blackstar metal."/>
+  <LocStr StringId="ITEM_PLAGUECURE_NAME" Str="Plague Cure"/>
+  <LocStr StringId="ITEM_PLAGUECURE_DESC" Str="A medicine that cures the plague around the Sealed Library."/>
+  <LocStr StringId="ITEM_SEALSCROLL_NAME" Str="Seal Scroll"/>
+  <LocStr StringId="ITEM_SEALSCROLL_DESC" Str="An ancient scroll that maintains the seal of the Sealed Library."/>
+  <LocStr StringId="SKILL_SACREDFLAME_NAME" Str="Sacred Flame"/>
+  <LocStr StringId="SKILL_SACREDFLAME_DESC" Str="A sacred flame spell passed down by the Sage Order."/>
+  <LocStr StringId="SKILL_SHADOWSTRIKE_NAME" Str="Shadow Strike"/>
+  <LocStr StringId="SKILL_SHADOWSTRIKE_DESC" Str="A lethal shadow strike technique exclusive to shadow assassins."/>
+  <LocStr StringId="SKILL_HOLYSHIELD_NAME" Str="Holy Shield"/>
+  <LocStr StringId="SKILL_HOLYSHIELD_DESC" Str="A divine shield that protects allies from dark attacks."/>
+  <LocStr StringId="GIMMICK_SEAL01_ACTIVE_NAME" Str="Seal Device 1"/>
+  <LocStr StringId="GIMMICK_SEAL01_ACTIVE_DESC" Str="Active seal device"/>
+  <LocStr StringId="GIMMICK_SEAL01_ACTIVE_SEAL" Str="This seal can only be broken with the Sacred Flame."/>
+  <LocStr StringId="GIMMICK_TRAP01_POISON_NAME" Str="Poison Trap"/>
+  <LocStr StringId="GIMMICK_TRAP01_POISON_DESC" Str="A trap that sprays poison"/>
+  <LocStr StringId="GIMMICK_DOOR01_NAME" Str="Sealed Door"/>
+  <LocStr StringId="KNOW_ELDERVARON_NAME" Str="장로 바론"/>
+  <LocStr StringId="KNOW_ELDERVARON_DESC" Str="고대 봉인의 수호자이자 현자의 결사 창립 멤버.&lt;br/&gt;수천 년간 봉인된 도서관을 지켜온 현자.&lt;br/&gt;그의 지혜는 세계의 균형을 유지하는 열쇠이다."/>
+  <LocStr StringId="KNOW_SHADOWKIRA_NAME" Str="그림자 암살자 키라"/>
+  <LocStr StringId="KNOW_SHADOWKIRA_DESC" Str="어둠의 교단에서 훈련받은 전설적인 암살자.&lt;br/&gt;그림자 속에서 움직이며 흔적을 남기지 않는다."/>
+  <LocStr StringId="KNOW_GRIMJAW_NAME" Str="대장장이 그림죠"/>
+  <LocStr StringId="KNOW_GRIMJAW_DESC" Str="드워프 종족 최고의 대장장이.&lt;br/&gt;검은별 대검을 비롯한 전설적인 무기들을 단조했다.&lt;br/&gt;현재 봉인된 도서관 근처에서 은둔 중이다."/>
+  <LocStr StringId="KNOW_LUNE_NAME" Str="정찰병 루네"/>
+  <LocStr StringId="KNOW_LUNE_DESC" Str="봉인된 도서관으로 가는 길을 안내하는 엘프 정찰병.&lt;br/&gt;숲의 모든 비밀을 꿰뚫고 있으며&lt;br/&gt;장로 바론의 가장 신뢰하는 동료이다."/>
+  <LocStr StringId="KNOW_DRAKMAR_NAME" Str="마법사 드라크마르"/>
+  <LocStr StringId="KNOW_DRAKMAR_DESC" Str="봉인된 도서관의 고대 문서를 해독하는 학자 마법사.&lt;br/&gt;성스러운 방패 마법의 전문가이며&lt;br/&gt;장로 바론의 오른팔 역할을 한다."/>
+  <LocStr StringId="KNOW_SACREDFLAME_NAME" Str="성스러운 불꽃"/>
+  <LocStr StringId="KNOW_SACREDFLAME_DESC" Str="현자의 결사에서 전승되는 신성한 화염 마법.&lt;br/&gt;어둠의 존재를 정화하는 힘을 지닌다."/>
+  <LocStr StringId="KNOW_SHADOWSTRIKE_NAME" Str="그림자 일격"/>
+  <LocStr StringId="KNOW_SHADOWSTRIKE_DESC" Str="어둠의 힘을 응축하여 적에게 치명적인 일격을 가한다.&lt;br/&gt;그림자 암살자만이 사용할 수 있는 비전 기술."/>
+  <LocStr StringId="KNOW_HOLYSHIELD_NAME" Str="성스러운 방패"/>
+  <LocStr StringId="KNOW_HOLYSHIELD_DESC" Str="신성한 빛으로 아군을 보호하는 방어 마법.&lt;br/&gt;모든 어둠의 공격을 일정 시간 무효화한다."/>
+  <LocStr StringId="KNOW_MISTFOREST_NAME" Str="안개의 숲"/>
+  <LocStr StringId="KNOW_MISTFOREST_DESC" Str="고대의 안개가 끊이지 않는 신비로운 숲.&lt;br/&gt;숲 속에는 정체를 알 수 없는 생물들이 서식하며&lt;br/&gt;길을 잃기 쉬워 정찰병 루네의 안내가 필수적이다."/>
+  <LocStr StringId="KNOW_SEALEDLIBRARY_NAME" Str="봉인된 도서관"/>
+  <LocStr StringId="KNOW_SEALEDLIBRARY_DESC" Str="고대 현자들이 금지된 지식을 봉인한 장소.&lt;br/&gt;강력한 마법 결계로 보호되어 있으며&lt;br/&gt;오직 현자의 결사만이 출입할 수 있다."/>
+  <LocStr StringId="KNOW_BLACKSTARVILLAGE_NAME" Str="흑성 마을"/>
+  <LocStr StringId="KNOW_BLACKSTARVILLAGE_DESC" Str="모험가들의 거점이 되는 평화로운 마을.&lt;br/&gt;검은별 광석이 처음 발견된 곳이며&lt;br/&gt;대장장이 그림죠의 대장간이 있다."/>
+  <LocStr StringId="KNOW_DRAGONTOMB_NAME" Str="용의 무덤"/>
+  <LocStr StringId="KNOW_DRAGONTOMB_DESC" Str="태고의 용이 잠든 위험한 무덤.&lt;br/&gt;고대의 보물이 잠들어 있지만&lt;br/&gt;강력한 수호 마법이 침입자를 막고 있다."/>
+  <LocStr StringId="KNOW_SAGETOWER_NAME" Str="현자의 탑"/>
+  <LocStr StringId="KNOW_SAGETOWER_DESC" Str="세계의 균형을 지키는 현자들의 탑.&lt;br/&gt;현자의 결사 본부이자&lt;br/&gt;장로 바론이 수련하던 신성한 장소이다."/>
+  <LocStr StringId="KNOW_DARKCULTHQ_NAME" Str="어둠의 교단 본부"/>
+  <LocStr StringId="KNOW_DARKCULTHQ_DESC" Str="어둠의 세력이 모이는 비밀 요새.&lt;br/&gt;그림자 암살자 키라가 훈련받은 곳이며&lt;br/&gt;봉인된 도서관을 향한 음모가 꾸며지는 곳이다."/>
+  <LocStr StringId="KNOW_WINDCANYON_NAME" Str="바람의 협곡"/>
+  <LocStr StringId="KNOW_WINDCANYON_DESC" Str="거센 바람이 몰아치는 깊은 협곡.&lt;br/&gt;고대의 바람 정령들이 서식하며&lt;br/&gt;숙련된 모험가만이 통과할 수 있다."/>
+  <LocStr StringId="KNOW_FORGOTTENFORTRESS_NAME" Str="잊힌 요새"/>
+  <LocStr StringId="KNOW_FORGOTTENFORTRESS_DESC" Str="세월 속에 잊힌 고대의 요새.&lt;br/&gt;한때 현자의 결사의 전초기지였으나&lt;br/&gt;지금은 어둠의 세력이 점령하고 있다."/>
+  <LocStr StringId="KNOW_MOONLIGHTLAKE_NAME" Str="달빛 호수"/>
+  <LocStr StringId="KNOW_MOONLIGHTLAKE_DESC" Str="달빛에 비추어 빛나는 신성한 호수.&lt;br/&gt;치유의 힘을 지닌 물이 솟아나며&lt;br/&gt;역병 치료제의 핵심 재료를 채취할 수 있다."/>
+  <LocStr StringId="KNOW_VOLCANICZONE_NAME" Str="화산 지대"/>
+  <LocStr StringId="KNOW_VOLCANICZONE_DESC" Str="용암이 흐르는 위험한 화산 지대.&lt;br/&gt;검은별 광석의 또 다른 산지이며&lt;br/&gt;극한의 환경 속에서만 발견되는 희귀 광물이 있다."/>
+  <LocStr StringId="KNOW_SAGEORDER_NAME" Str="현자의 결사"/>
+  <LocStr StringId="KNOW_SAGEORDER_DESC" Str="세계의 균형을 수호하기 위해 설립된 비밀 조직.&lt;br/&gt;장로 바론이 이끄는 현자들의 연합체이다."/>
+  <LocStr StringId="KNOW_DARKCULT_NAME" Str="어둠의 교단"/>
+  <LocStr StringId="KNOW_DARKCULT_DESC" Str="금지된 어둠의 힘을 숭배하는 비밀 교단.&lt;br/&gt;봉인된 도서관의 지식을 탈취하려 한다."/>
+  <LocStr StringId="KNOW_BLACKSTARSWORD_NAME" Str="검은별 대검"/>
+  <LocStr StringId="KNOW_BLACKSTARSWORD_DESC" Str="전설의 대장장이 그림죠가 검은별 광석으로 단조한 대검.&lt;br/&gt;어둠을 베는 힘과 빛을 담는 힘을 동시에 지닌다."/>
+  <LocStr StringId="KNOW_SAGESTAFF_NAME" Str="현자의 지팡이"/>
+  <LocStr StringId="KNOW_SAGESTAFF_DESC" Str="장로 바론이 소유한 고대 마법 지팡이.&lt;br/&gt;대장장이 그림죠가 제작한 것으로&lt;br/&gt;성스러운 불꽃의 힘을 증폭시킨다."/>
+  <LocStr StringId="KNOW_SHADOWDAGGER_NAME" Str="그림자 단검"/>
+  <LocStr StringId="KNOW_SHADOWDAGGER_DESC" Str="어둠의 교단에서 제작된 저주받은 단검.&lt;br/&gt;그림자 속에서 빛나며&lt;br/&gt;일격에 치명적인 독을 주입한다."/>
+  <LocStr StringId="KNOW_PLAGUECURE_NAME" Str="역병 치료제"/>
+  <LocStr StringId="KNOW_PLAGUECURE_DESC" Str="그림자 역병을 치료하는 희귀한 물약.&lt;br/&gt;다섯 지역 모두의 재료가 필요하며&lt;br/&gt;드라크마르만이 유일한 제조법을 알고 있다."/>
+  <LocStr StringId="KNOW_SEALSCROLL_NAME" Str="봉인의 두루마리"/>
+  <LocStr StringId="KNOW_SEALSCROLL_DESC" Str="봉인된 도서관의 출입 권한을 부여하는 고대 두루마리.&lt;br/&gt;현자의 결사의 문장이 새겨져 있으며&lt;br/&gt;정찰병 루네가 보관하고 있다."/>
+  <LocStr StringId="KNOW_TRADINGPOST_NAME" Str="교역소"/>
+  <LocStr StringId="KNOW_TRADINGPOST_DESC" Str="여러 지역의 상인들이 모여드는 교역 중심지.&lt;br/&gt;봉인된 도서관과 흑성 마을 사이에 위치하여&lt;br/&gt;모험가들의 보급 거점으로 활용되고 있다."/>
+  <LocStr StringId="KNOW_ANCIENTTEMPLE_NAME" Str="고대 신전"/>
+  <LocStr StringId="KNOW_ANCIENTTEMPLE_DESC" Str="잊힌 신들에게 바쳐진 고대 신전.&lt;br/&gt;현자의 결사가 비밀리에 관리하고 있으며&lt;br/&gt;성스러운 불꽃의 원천이 이곳에 잠들어 있다고 전해진다."/>
+  <LocStr StringId="KNOW_WATCHTOWER_NAME" Str="감시탑"/>
+  <LocStr StringId="KNOW_WATCHTOWER_DESC" Str="어둠의 교단의 움직임을 감시하기 위한 전초 기지.&lt;br/&gt;정찰병 루네가 자주 방문하는 곳으로&lt;br/&gt;안개의 숲과 화산 지대를 한눈에 조망할 수 있다."/>
+  <LocStr StringId="KNOW_MININGCAMP_NAME" Str="광산 캠프"/>
+  <LocStr StringId="KNOW_MININGCAMP_DESC" Str="검은별 금속을 채굴하는 광산 캠프.&lt;br/&gt;대장장이 그림죠가 이곳에서 채굴된 광석으로&lt;br/&gt;전설적인 무기를 제작한다."/>
+  <LocStr StringId="DLG_VARON_01" Str="Welcome to the Sealed Library."/>
+  <LocStr StringId="DLG_VARON_02" Str="May the Sacred Flame guide you."/>
+  <LocStr StringId="DLG_KIRA_01" Str="Your arrow missed."/>
+  <LocStr StringId="DLG_KIRA_02" Str="Kneel before the power of darkness."/>
+  <LocStr StringId="DLG_GRIMJAW_01" Str="The Blackstar Sword is my life's masterwork."/>
+  <LocStr StringId="DLG_GRIMJAW_02" Str="If you need fine metal, head to the Volcanic Zone."/>
+  <LocStr StringId="DLG_LUNE_01" Str="Listen to the voice of the forest."/>
+  <LocStr StringId="DLG_LUNE_02" Str="The Dark Cult is on the move."/>
+  <LocStr StringId="DLG_DRAKMAR_01" Str="The ancient script speaks the truth."/>
+  <LocStr StringId="DLG_DRAKMAR_02" Str="Forbidden knowledge comes at a price."/>
+</LanguageData>

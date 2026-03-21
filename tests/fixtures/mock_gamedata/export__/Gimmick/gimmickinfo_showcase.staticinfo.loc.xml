@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="GIMMICK_SEAL01_ACTIVE_NAME" StrOrigin="봉인 장치 1"/>
+  <LocStr StringId="GIMMICK_SEAL01_ACTIVE_DESC" StrOrigin="활성화된 봉인 장치"/>
+  <LocStr StringId="GIMMICK_TRAP01_POISON_NAME" StrOrigin="독 함정"/>
+  <LocStr StringId="GIMMICK_TRAP01_POISON_DESC" StrOrigin="독을 뿌리는 함정"/>
+  <LocStr StringId="GIMMICK_DOOR01_NAME" StrOrigin="봉인된 문"/>
+</LanguageData>

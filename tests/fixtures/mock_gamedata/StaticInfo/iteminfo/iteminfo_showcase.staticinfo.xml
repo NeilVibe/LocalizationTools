@@ -1,13 +1,14 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <ItemInfoList>
-  <ItemInfo Key="Item_SageStaff" StrKey="Item_SageStaff" ItemName="현자의 지팡이" Grade="5" RequireLevel="80" AttackPower="450" CharacterKey="CHAR_001" KnowledgeKey="Knowledge_SacredFlame" UITextureName="item_sage_staff" ItemDesc="장로 바론이 수백 년간 사용해온 고대의 지팡이.&lt;br/&gt;성스러운 불꽃을 증폭시키는 힘이 깃들어 있으며, 대장장이 그림죠가 제작한 명작이다.">
-  </ItemInfo>
-  <ItemInfo Key="Item_ShadowDagger" StrKey="Item_ShadowDagger" ItemName="어둠의 단검" Grade="5" RequireLevel="85" AttackPower="380" CharacterKey="CHAR_002" KnowledgeKey="Knowledge_ShadowStrike" UITextureName="item_dark_dagger" ItemDesc="그림자 암살자 키라의 상징적인 무기.&lt;br/&gt;어둠의 교단에서 제작한 이 단검은 그림자 일격의 위력을 극대화시킨다.">
-  </ItemInfo>
-  <ItemInfo Key="Item_BlackstarSword" StrKey="Item_BlackstarSword" ItemName="검은별 대검" Grade="6" RequireLevel="90" AttackPower="620" CharacterKey="CHAR_003" KnowledgeKey="Knowledge_BlackstarSword" UITextureName="item_blackstar_sword_v2" ItemDesc="대장장이 그림죠의 필생의 역작.&lt;br/&gt;전설의 검은별 금속으로 제작되었으며, 이 검을 들 자격이 있는 모험가는 아직 나타나지 않았다.">
-  </ItemInfo>
-  <ItemInfo Key="Item_PlagueCure" StrKey="Item_PlagueCure" ItemName="역병 치료제" Grade="3" RequireLevel="30" ItemType="Consumable" RegionKey="Region_SealedLibrary" UITextureName="item_plague_cure_v2" ItemDesc="봉인된 도서관 주변에 퍼진 역병을 치료하는 약.&lt;br/&gt;현자의 결사의 연금술사가 제조한 것으로, 어둠의 교단의 저주를 정화하는 효과가 있다.">
-  </ItemInfo>
-  <ItemInfo Key="Item_SealScroll" StrKey="Item_SealScroll" ItemName="봉인의 두루마리" Grade="4" ItemType="Quest" KnowledgeKey="Knowledge_SealedLibrary" FactionKey="Faction_SageOrder" UITextureName="item_seal_scroll" ItemDesc="봉인된 도서관의 봉인을 유지하기 위한 고대 두루마리.&lt;br/&gt;장로 바론이 직접 작성한 것으로, 어둠의 힘을 차단하는 마법이 새겨져 있다.">
-  </ItemInfo>
+  <ItemGroupInfo StrKey="ItemGroup_Weapon" GroupName="무기" ParentStrKey="">
+    <ItemInfo StrKey="Item_SageStaff" ItemName="현자의 지팡이" ItemDesc="장로 바론이 수백 년간 사용해온 고대의 지팡이.&lt;br/&gt;성스러운 불꽃을 증폭시키는 힘이 깃들어 있으며, 대장장이 그림죠가 제작한 명작이다." KnowledgeKey="Knowledge_SacredFlame" Key="Item_SageStaff" Grade="5" RequireLevel="80" AttackPower="450" CharacterKey="CHAR_001" UITextureName="item_sage_staff"/>
+    <ItemInfo StrKey="Item_ShadowDagger" ItemName="어둠의 단검" ItemDesc="그림자 암살자 키라의 상징적인 무기.&lt;br/&gt;어둠의 교단에서 제작한 이 단검은 그림자 일격의 위력을 극대화시킨다." KnowledgeKey="Knowledge_ShadowStrike" Key="Item_ShadowDagger" Grade="5" RequireLevel="85" AttackPower="380" CharacterKey="CHAR_002" UITextureName="item_dark_dagger"/>
+    <ItemInfo StrKey="Item_BlackstarSword" ItemName="검은별 대검" ItemDesc="대장장이 그림죠의 필생의 역작.&lt;br/&gt;전설의 검은별 금속으로 제작되었으며, 이 검을 들 자격이 있는 모험가는 아직 나타나지 않았다." KnowledgeKey="Knowledge_BlackstarSword" Key="Item_BlackstarSword" Grade="6" RequireLevel="90" AttackPower="620" CharacterKey="CHAR_003" UITextureName="item_blackstar_sword_v2"/>
+  </ItemGroupInfo>
+  <ItemGroupInfo StrKey="ItemGroup_Consumable" GroupName="소모품" ParentStrKey="">
+    <ItemInfo StrKey="Item_PlagueCure" ItemName="역병 치료제" ItemDesc="봉인된 도서관 주변에 퍼진 역병을 치료하는 약.&lt;br/&gt;현자의 결사의 연금술사가 제조한 것으로, 어둠의 교단의 저주를 정화하는 효과가 있다." Key="Item_PlagueCure" Grade="3" RequireLevel="30" ItemType="Consumable" RegionKey="Region_SealedLibrary" UITextureName="item_plague_cure_v2"/>
+  </ItemGroupInfo>
+  <ItemGroupInfo StrKey="ItemGroup_Quest" GroupName="퀘스트" ParentStrKey="">
+    <ItemInfo StrKey="Item_SealScroll" ItemName="봉인의 두루마리" ItemDesc="봉인된 도서관의 봉인을 유지하기 위한 고대 두루마리.&lt;br/&gt;장로 바론이 직접 작성한 것으로, 어둠의 힘을 차단하는 마법이 새겨져 있다." KnowledgeKey="Knowledge_SealedLibrary" Key="Item_SealScroll" Grade="4" ItemType="Quest" FactionKey="Faction_SageOrder" UITextureName="item_seal_scroll"/>
+  </ItemGroupInfo>
 </ItemInfoList>

@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LanguageData>
+  <LocStr StringId="SKILL_SACREDFLAME_NAME" StrOrigin="성스러운 불꽃"/>
+  <LocStr StringId="SKILL_SACREDFLAME_DESC" StrOrigin="현자의 결사에서 전승되는 신성한 화염 마법.&lt;br/&gt;어둠의 존재를 정화하는 힘을 지닌다.&lt;br/&gt;사용 시 주변의 그림자를 소멸시킨다."/>
+  <LocStr StringId="SKILL_SHADOWSTRIKE_NAME" StrOrigin="그림자 일격"/>
+  <LocStr StringId="SKILL_SHADOWSTRIKE_DESC" StrOrigin="어둠의 힘을 응축하여 적에게 치명적인 일격을 가한다.&lt;br/&gt;그림자 암살자만이 사용할 수 있는 비전 기술.&lt;br/&gt;대상의 방어력을 무시하고 급소를 공격한다."/>
+  <LocStr StringId="SKILL_HOLYSHIELD_NAME" StrOrigin="성스러운 방패"/>
+  <LocStr StringId="SKILL_HOLYSHIELD_DESC" StrOrigin="신성한 빛으로 아군을 보호하는 방어 마법.&lt;br/&gt;모든 어둠의 공격을 일정 시간 무효화한다.&lt;br/&gt;봉인된 도서관의 고대 방어 마법에서 유래했다."/>
+</LanguageData>

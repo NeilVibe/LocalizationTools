@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<GimmickInfoList>
+  <GimmickGroupInfo StrKey="GimmickGroup_Seal01" GimmickName="봉인 장치 1">
+    <GimmickInfo StrKey="Gimmick_Seal01_Active" GimmickName="봉인 장치 1" Desc="활성화된 봉인 장치">
+      <SealData Desc="이 봉인은 현자의 불꽃으로만 해제할 수 있습니다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GimmickGroup_Trap01" GimmickName="함정 장치 1">
+    <GimmickInfo StrKey="Gimmick_Trap01_Poison" GimmickName="독 함정" Desc="독을 뿌리는 함정"/>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GimmickGroup_Door01" GimmickName="봉인된 문"/>
+</GimmickInfoList>

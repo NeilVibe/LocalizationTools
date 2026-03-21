@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ExportData>
+  <Entry StringId="SKILL_SACREDFLAME_NAME"/>
+  <Entry StringId="SKILL_SACREDFLAME_DESC"/>
+  <Entry StringId="SKILL_SHADOWSTRIKE_NAME"/>
+  <Entry StringId="SKILL_SHADOWSTRIKE_DESC"/>
+  <Entry StringId="SKILL_HOLYSHIELD_NAME"/>
+  <Entry StringId="SKILL_HOLYSHIELD_DESC"/>
+</ExportData>
