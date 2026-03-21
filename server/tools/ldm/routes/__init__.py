@@ -27,6 +27,7 @@ from .ai_capabilities import router as ai_capabilities_router
 from .mega_index import router as mega_index_router
 from .codex_items import router as codex_items_router  # Phase 46: Item Codex
 from .codex_audio import router as codex_audio_router  # Phase 48: Audio Codex
+from .codex_regions import router as codex_regions_router  # Phase 49: Region Codex
 
 __all__ = [
     "health_router",
@@ -52,4 +53,5 @@ __all__ = [
     "mega_index_router",
     "codex_items_router",
     "codex_audio_router",
+    "codex_regions_router",
 ]
