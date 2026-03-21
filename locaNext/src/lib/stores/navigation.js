@@ -145,6 +145,14 @@ export function goToItemCodex() {
 }
 
 /**
+ * Phase 47: Navigate to Character Codex page
+ */
+export function goToCharacterCodex() {
+  currentPage.set('character-codex');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
