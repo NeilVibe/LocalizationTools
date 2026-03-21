@@ -115,7 +115,7 @@
 - [x] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel (completed 2026-03-21)
 - [x] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail (completed 2026-03-21)
 - [x] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation (completed 2026-03-21)
-- [ ] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map
+- [x] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map (completed 2026-03-21)
 - [ ] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID
 - [ ] **Phase 51: Offline Production Bundle** - SQLite-only mode, Model2Vec light build, vgmstream bundling, factory audit, fresh-machine smoke test
 
@@ -193,7 +193,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 49-01-PLAN.md — Region Codex backend API (schemas + routes + faction tree) (Wave 1)
-- [ ] 49-02-PLAN.md — Region Codex Svelte 5 UI + d3-zoom map + navigation wiring (Wave 2)
+- [x] 49-02-PLAN.md — Region Codex Svelte 5 UI + d3-zoom map + navigation wiring (Wave 2)
 
 ### Phase 50: StringID-to-Audio/Image Integration
 **Goal**: Wire MegaIndex reverse lookups to the existing LDM grid RightPanel so translators get audio + image + entity context for any StringID. Most UI already exists (AudioTab, ImageTab) — this phase wires the real data.
@@ -273,7 +273,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 48. Audio Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 49. Region Codex + Interactive Map | v5.0 | 1/2 | In Progress|  |
+| 49. Region Codex + Interactive Map | v5.0 | 2/2 | Complete   | 2026-03-21 |
 | 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
 
