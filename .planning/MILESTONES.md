@@ -1,5 +1,22 @@
 # Milestones
 
+## v5.0 Offline Production Bundle + Full Codex (IN PROGRESS)
+
+**Phases:** 45-51 (7 phases)
+**Requirements:** 0/26 complete (7 categories: INFRA, AUDIO, ITEM, CHAR, REGION, STRID, OFFLINE)
+**Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines.
+
+**Phase structure:**
+1. Phase 45: Foundation Infrastructure (PerforcePathService, AICapabilityService, graceful degradation)
+2. Phase 46: Item Codex (card grid, DDS images, ItemGroupInfo hierarchy, knowledge tabs)
+3. Phase 47: Character Codex (portraits, filename-based grouping, Race/Gender/Age/Job detail)
+4. Phase 48: Audio Codex (WEM playback, AudioIndex chain, category tree)
+5. Phase 49: Region Codex + Interactive Map (FactionNode tree, WorldPosition d3-zoom map)
+6. Phase 50: StringID-to-Audio Integration (reverse lookup, inline LDM grid player)
+7. Phase 51: Offline Production Bundle (SQLite-only, Model2Vec light build, fresh-machine smoke test)
+
+---
+
 ## v4.0 Mockdata Excellence + Next Level (SHIPPED 2026-03-18)
 
 **Phases:** 43-44 (2 phases, 5 plans)
@@ -7,8 +24,8 @@
 **Goal:** Audit and elevate all mock data for maximum WOW effect, then wire backend code to leverage it.
 
 **Key accomplishments:**
-1. **Mockdata Audit** -- 3 new XML entity types (Skill/Region/Quest), KnowledgeInfo 10→59, map 10→14 nodes, TM 35→50
-2. **WOW Wiring** -- 28 typed relationship graph links, GlossaryService 33 entities, MapData 31 images, TM 500→200
+1. **Mockdata Audit** -- 3 new XML entity types (Skill/Region/Quest), KnowledgeInfo 10->59, map 10->14 nodes, TM 35->50
+2. **WOW Wiring** -- 28 typed relationship graph links, GlossaryService 33 entities, MapData 31 images, TM 500->200
 
 ---
 
@@ -22,7 +39,7 @@
 1. **XML Viewer WOW** -- Smart semantic attribute colors, hover preview tooltips, panel animations
 2. **Fantasy World Map** -- Parchment aesthetic, region polygons, terrain icons, route animations, mini-map
 3. **Codex Cards + Graph** -- Glassmorphism entity cards, D3 force-directed relationship graph, parallax hover
-4. **Cross-cutting Polish** -- Page transitions, shimmer loading, Ctrl+K command palette
+4. **Cross-cutting Polish** -- Page transitions, shimmer loading choreography, Ctrl+K command palette
 5. **Qwen3-TTS** -- Korean voice generation backend, 5 character voice profiles
 6. **LanguageData Fix** -- Grid regression fix, 3-format showcase data, TM cascade wiring
 

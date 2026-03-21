@@ -5,51 +5,51 @@
 
 ## v5.0 Requirements
 
-### INFRA — Shared Infrastructure
+### INFRA -- Shared Infrastructure
 
 - [ ] **INFRA-01**: PerforcePathService with drive/branch config resolves data paths for all Codex types (ported from MapDataGenerator config.py)
 - [ ] **INFRA-02**: AICapabilityService detects Model2Vec/FAISS/Ollama/TTS availability at startup and exposes runtime status
 - [ ] **INFRA-03**: AI capability badges shown in settings page; AI-dependent UI sections hide gracefully when engines unavailable
 
-### AUDIO — Audio Codex
+### AUDIO -- Audio Codex
 
 - [ ] **AUDIO-01**: Audio Codex page with card grid, search, and category tree navigation
-- [ ] **AUDIO-02**: AudioIndex chain resolves WEM→EventName→StringId→StrOrigin/KOR/ENG script lines (ported from MapDataGenerator linkage.py)
-- [ ] **AUDIO-03**: Inline WEM→WAV streaming playback with play/stop/duration and script text overlay
+- [ ] **AUDIO-02**: AudioIndex chain resolves WEM->EventName->StringId->StrOrigin/KOR/ENG script lines (ported from MapDataGenerator linkage.py)
+- [ ] **AUDIO-03**: Inline WEM->WAV streaming playback with play/stop/duration and script text overlay
 - [ ] **AUDIO-04**: Category tree from export folder hierarchy (Dialog/QuestDialog, etc.) for audio browsing
 
-### ITEM — Item Codex
+### ITEM -- Item Codex
 
 - [ ] **ITEM-01**: Item Codex page with card grid showing DDS images, Korean/translated names, and category badges
 - [ ] **ITEM-02**: ItemGroupInfo hierarchy for category/group navigation tabs (ported from QACompiler item.py)
 - [ ] **ITEM-03**: Item detail panel with knowledge resolution (3 passes + InspectData) displayed as tabs
 - [ ] **ITEM-04**: Text search across Korean name, translated name, StrKey, and description fields
 
-### CHAR — Character Codex
+### CHAR -- Character Codex
 
 - [ ] **CHAR-01**: Character Codex page with card grid showing portraits, names, and category tabs
 - [ ] **CHAR-02**: Filename-based grouping (NPC, MONSTER, etc.) for category navigation (ported from QACompiler character.py)
 - [ ] **CHAR-03**: Character detail panel with Race/Gender/Age/Job fields and knowledge panel
 - [ ] **CHAR-04**: Text search across character names, StrKey, and attribute fields
 
-### REGION — Region Codex + Interactive Map
+### REGION -- Region Codex + Interactive Map
 
-- [ ] **REGION-01**: Region Codex page with FactionGroup→Faction→FactionNode tree navigation
+- [ ] **REGION-01**: Region Codex page with FactionGroup->Faction->FactionNode tree navigation
 - [ ] **REGION-02**: Region detail panel with WorldPosition, DisplayName, and knowledge cross-references
 - [ ] **REGION-03**: Interactive map with real WorldPosition coordinates via d3-zoom (extends existing WorldMap page)
 - [ ] **REGION-04**: FactionGroup tabs for filtering regions by faction hierarchy
 
-### STRID — StringID→Audio Integration
+### STRID -- StringID->Audio Integration
 
-- [ ] **STRID-01**: Reverse lookup from StringID→AudioIndex→WEM file path for any string with available audio
+- [ ] **STRID-01**: Reverse lookup from StringID->AudioIndex->WEM file path for any string with available audio
 - [ ] **STRID-02**: Inline audio player in LDM translation grid when selecting a row with available audio
 
-### OFFLINE — Offline Production Bundle
+### OFFLINE -- Offline Production Bundle
 
 - [ ] **OFFLINE-01**: SQLite-only mode with no PostgreSQL dependency for disconnected machines
 - [ ] **OFFLINE-02**: Model2Vec bundled in light build (no Qwen 0.6B, no heavy AI engines)
-- [ ] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM→WAV conversion
-- [ ] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit — verify all gamedata paths work offline with SQLite
+- [ ] **OFFLINE-03**: vgmstream-cli bundled in Electron extraResources for WEM->WAV conversion
+- [ ] **OFFLINE-04**: Factory/Abstraction/Repo pattern audit -- verify all gamedata paths work offline with SQLite
 - [ ] **OFFLINE-05**: Fresh-machine smoke test passing (PyInstaller bundle, all core features functional without AI)
 
 ## v6.0 Requirements (Deferred)
@@ -62,13 +62,13 @@
 ### Region Enhancement
 
 - **REGION-SHOP-01**: Shop + SceneObjectData positions on region map overlay
-- **REGION-POS-01**: 3-hop Knowledge_Contents position chain (KnowledgeInfo→UIMapTextureInfo→LevelGimmickSceneObjectInfo)
+- **REGION-POS-01**: 3-hop Knowledge_Contents position chain (KnowledgeInfo->UIMapTextureInfo->LevelGimmickSceneObjectInfo)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Audio editing/waveform UI | CAT tool, not audio editor — simple play/stop/duration only |
+| Audio editing/waveform UI | CAT tool, not audio editor -- simple play/stop/duration only |
 | CRUD operations on Codex entities | Read-only encyclopedia; Game Dev Grid handles editing (built in v3.0) |
 | Perforce VCS integration (sync/checkout) | Just parse path patterns for file resolution, no VCS coupling |
 | Full Qwen AI in offline bundle | 2.3GB defeats light bundle purpose; Model2Vec only |
@@ -80,37 +80,38 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| AUDIO-01 | — | Pending |
-| AUDIO-02 | — | Pending |
-| AUDIO-03 | — | Pending |
-| AUDIO-04 | — | Pending |
-| ITEM-01 | — | Pending |
-| ITEM-02 | — | Pending |
-| ITEM-03 | — | Pending |
-| ITEM-04 | — | Pending |
-| CHAR-01 | — | Pending |
-| CHAR-02 | — | Pending |
-| CHAR-03 | — | Pending |
-| CHAR-04 | — | Pending |
-| REGION-01 | — | Pending |
-| REGION-02 | — | Pending |
-| REGION-03 | — | Pending |
-| REGION-04 | — | Pending |
-| STRID-01 | — | Pending |
-| STRID-02 | — | Pending |
-| OFFLINE-01 | — | Pending |
-| OFFLINE-02 | — | Pending |
-| OFFLINE-03 | — | Pending |
-| OFFLINE-04 | — | Pending |
-| OFFLINE-05 | — | Pending |
+| INFRA-01 | Phase 45 | Pending |
+| INFRA-02 | Phase 45 | Pending |
+| INFRA-03 | Phase 45 | Pending |
+| AUDIO-01 | Phase 48 | Pending |
+| AUDIO-02 | Phase 48 | Pending |
+| AUDIO-03 | Phase 48 | Pending |
+| AUDIO-04 | Phase 48 | Pending |
+| ITEM-01 | Phase 46 | Pending |
+| ITEM-02 | Phase 46 | Pending |
+| ITEM-03 | Phase 46 | Pending |
+| ITEM-04 | Phase 46 | Pending |
+| CHAR-01 | Phase 47 | Pending |
+| CHAR-02 | Phase 47 | Pending |
+| CHAR-03 | Phase 47 | Pending |
+| CHAR-04 | Phase 47 | Pending |
+| REGION-01 | Phase 49 | Pending |
+| REGION-02 | Phase 49 | Pending |
+| REGION-03 | Phase 49 | Pending |
+| REGION-04 | Phase 49 | Pending |
+| STRID-01 | Phase 50 | Pending |
+| STRID-02 | Phase 50 | Pending |
+| OFFLINE-01 | Phase 51 | Pending |
+| OFFLINE-02 | Phase 51 | Pending |
+| OFFLINE-03 | Phase 51 | Pending |
+| OFFLINE-04 | Phase 51 | Pending |
+| OFFLINE-05 | Phase 51 | Pending |
 
 **Coverage:**
 - v5.0 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-21*
+*Traceability updated: 2026-03-21*
