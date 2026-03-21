@@ -26,6 +26,7 @@ class FactionNodeItem(BaseModel):
     name: str
     node_type: Optional[str] = None
     has_position: bool = False
+    world_position: Optional[Tuple[float, float, float]] = None
 
 
 class FactionNode(BaseModel):

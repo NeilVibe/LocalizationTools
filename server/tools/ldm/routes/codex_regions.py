@@ -143,6 +143,7 @@ async def get_faction_tree(
                             name=region.display_name or region.name,
                             node_type=region.node_type or None,
                             has_position=region.world_position is not None,
+                            world_position=tuple(region.world_position) if region.world_position else None,
                         ))
 
                 faction_nodes.append(FactionNode(
