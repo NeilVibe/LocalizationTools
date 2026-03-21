@@ -333,6 +333,31 @@ class QuickTranslateApp:
         self._tab2_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self._tab2_canvas.configure(yscrollcommand=tab2_scrollbar.set)
 
+        # --- Tab 3: TMX Tools ---
+        tab3_frame = tk.Frame(self._notebook, bg='#f0f0f0')
+        self._notebook.add(tab3_frame, text="TMX Tools")
+
+        self._tab3_canvas = tk.Canvas(tab3_frame, bg='#f0f0f0', highlightthickness=0)
+        tab3_scrollbar = ttk.Scrollbar(tab3_frame, orient='vertical',
+                                        command=self._tab3_canvas.yview)
+        self._tab3_inner = tk.Frame(self._tab3_canvas, bg='#f0f0f0', padx=10)
+
+        tab3_cw = self._tab3_canvas.create_window((0, 0), window=self._tab3_inner,
+                                                    anchor='nw')
+        self._tab3_inner.bind('<Configure>', lambda e: self._tab3_canvas.configure(
+            scrollregion=self._tab3_canvas.bbox('all')))
+        self._tab3_canvas.bind('<Configure>', lambda e: self._tab3_canvas.itemconfigure(
+            tab3_cw, width=e.width))
+
+        tab3_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._tab3_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._tab3_canvas.configure(yscrollcommand=tab3_scrollbar.set)
+
+        # Instantiate TMX Tools tab content
+        from gui.tmx_tools_tab import TMXToolsTab
+        self._tmx_tools_tab = TMXToolsTab(self._tab3_inner)
+        self._tmx_tools_tab.pack(fill=tk.BOTH, expand=True)
+
         # --- Right pane: log + progress ---
         self._right_pane = tk.Frame(self._paned, bg='#f0f0f0', padx=10)
 
@@ -714,6 +739,8 @@ class QuickTranslateApp:
         self._bind_mousewheel_to_canvas(self._tab1_inner, self._tab1_canvas)
         self._bind_mousewheel_to_canvas(self._tab2_canvas, self._tab2_canvas)
         self._bind_mousewheel_to_canvas(self._tab2_inner, self._tab2_canvas)
+        self._bind_mousewheel_to_canvas(self._tab3_canvas, self._tab3_canvas)
+        self._bind_mousewheel_to_canvas(self._tab3_inner, self._tab3_canvas)
 
     def _set_initial_sash(self):
         """Set PanedWindow sash to ~65% left / 35% right split."""

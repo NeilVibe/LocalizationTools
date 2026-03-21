@@ -83,6 +83,14 @@ from .checker import (
     iter_source_xml_files,
 )
 from .quality_checker import run_quality_check
+from .tmx_tools import (
+    clean_segment,
+    clean_tmx_string,
+    postprocess_tmx_string,
+    combine_xmls_to_tmx,
+    batch_tmx_from_folders,
+    clean_and_convert_to_excel,
+)
 from .eventname_resolver import (
     get_eventname_mapping,
     resolve_eventnames_in_corrections,
@@ -173,4 +181,11 @@ __all__ = [
     "get_eventname_mapping",
     "resolve_eventnames_in_corrections",
     "generate_missing_eventname_report",
+    # tmx_tools
+    "clean_segment",
+    "clean_tmx_string",
+    "postprocess_tmx_string",
+    "combine_xmls_to_tmx",
+    "batch_tmx_from_folders",
+    "clean_and_convert_to_excel",
 ]
