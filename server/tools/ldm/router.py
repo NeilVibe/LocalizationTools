@@ -63,6 +63,7 @@ from .routes.codex import router as codex_router  # Phase 19: Game World Codex
 from .routes.worldmap import router as worldmap_router  # Phase 20: Interactive World Map
 from .routes.naming import router as naming_router  # Phase 21: AI Naming Coherence
 from .routes.ai_capabilities import router as ai_capabilities_router  # Phase 45: AI Engine Detection
+from .routes.mega_index import router as mega_index_router  # Phase 45: MegaIndex Status/Build
 
 # =============================================================================
 # Include all routers
@@ -102,6 +103,7 @@ router.include_router(codex_router)  # Phase 19: Game World Codex
 router.include_router(worldmap_router)  # Phase 20: Interactive World Map
 router.include_router(naming_router)  # Phase 21: AI Naming Coherence
 router.include_router(ai_capabilities_router)  # Phase 45: AI Engine Detection
+router.include_router(mega_index_router)  # Phase 45: MegaIndex Status/Build
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
