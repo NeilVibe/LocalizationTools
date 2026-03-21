@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -125,6 +125,14 @@
     currentApp.set('ldm');
     currentView.set('app');
     goToAudioCodex();
+  }
+
+  // Phase 49: Region Codex navigation
+  function navigateToRegionCodex() {
+    logger.userAction("Navigate to Region Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToRegionCodex();
   }
 
   function showTasks() {
@@ -391,6 +399,14 @@
         >
           <Music size={16} />
           <span>Audio</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && $currentPage === 'region-codex'}
+          onclick={navigateToRegionCodex}
+        >
+          <Map size={16} />
+          <span>Regions</span>
         </button>
         <button
           class="ldm-nav-tab"

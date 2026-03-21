@@ -161,6 +161,14 @@ export function goToAudioCodex() {
 }
 
 /**
+ * Phase 49: Navigate to Region Codex page
+ */
+export function goToRegionCodex() {
+  currentPage.set('region-codex');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
