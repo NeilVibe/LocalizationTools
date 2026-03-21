@@ -176,7 +176,10 @@ Plans:
   2. AudioIndex chain resolves WEM files through EventName to StringId to StrOrigin/KOR/ENG script lines, displayed as text overlay during playback
   3. User can play/stop WEM audio with duration display via server-side WEM-to-WAV streaming conversion
   4. User can navigate audio entries by category tree derived from export folder hierarchy (Dialog, QuestDialog, etc.)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 48-01-PLAN.md — Audio Codex backend API (schemas + routes + WEM streaming)
+- [ ] 48-02-PLAN.md — Audio Codex Svelte 5 UI + navigation wiring
 
 ### Phase 49: Region Codex UI + Interactive Map
 **Goal**: Users can browse regions by faction hierarchy and see real WorldPosition coordinates on an interactive map. All data from MegaIndex.
@@ -266,7 +269,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
 | 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
 | 47. Character Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 48. Audio Codex | v5.0 | 0/? | Not started | - |
+| 48. Audio Codex | v5.0 | 0/2 | In Progress | - |
 | 49. Region Codex + Interactive Map | v5.0 | 0/? | Not started | - |
 | 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |
 | 51. Offline Production Bundle | v5.0 | 0/? | Not started | - |
@@ -279,3 +282,4 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 *Phase 42 planned: 2026-03-18*
 *v5.0 Offline Production Bundle + Full Codex added: 2026-03-21*
 *Phase 46 planned: 2026-03-21*
+*Phase 48 planned: 2026-03-21*
