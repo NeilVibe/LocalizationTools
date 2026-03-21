@@ -279,7 +279,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
-- [ ] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
+- [x] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
 
 ### Phase 55: End-to-End Smoke Test
 **Goal**: Automated Playwright test visits every page and tab, takes screenshots, and all pass without errors
@@ -291,7 +291,7 @@ Plans:
   3. Screenshots saved as artifacts for visual review
 **Plans**: 2 plans
 Plans:
-- [ ] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
+- [x] 54-01-PLAN.md -- Grid color scheme fix (grey/yellow/blue-green)
 - [ ] 54-02-PLAN.md -- TM auto-register + FAISS auto-build + cascade search verification
 
 ## Progress
@@ -356,7 +356,7 @@ Phases 01-51 complete. v5.1 phases execute: 52 -> 53 -> 54 -> 55
 | 51. Offline Production Bundle | v5.0 | 2/2 | Complete | 2026-03-21 |
 | 52. DEV Init + MegaIndex Wiring | v5.1 | 1/1 | Complete    | 2026-03-21 |
 | 53. Codex + Right Panel Verification | v5.1 | 2/2 | Complete    | 2026-03-21 |
-| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 1/2 | In Progress|  |
+| 54. TM Flow + FAISS Auto-Build + Grid Colors | v5.1 | 2/2 | Complete   | 2026-03-21 |
 | 55. End-to-End Smoke Test | v5.1 | 0/? | Not started | - |
 
 ---

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Testing + Polish
 status: unknown
-stopped_at: Completed 54-01-PLAN.md
-last_updated: "2026-03-21T19:14:41.189Z"
+stopped_at: Completed 54-02-PLAN.md
+last_updated: "2026-03-21T19:17:22.080Z"
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -51,6 +51,7 @@ Plan: 2 of 2
 - [Phase 53]: Rename .ts to .svelte.ts for Svelte 5 runes; add world_position to tree API for map rendering
 - [Phase 53]: RightPanel Image+Audio tabs verified working end-to-end via MegaIndex C7->C1 and C3 chains
 - [Phase 54]: Used Carbon Design teal-50 (#009d9a) for confirmed status color in grid
+- [Phase 54]: TM suggest falls back to project-row search when no activeTMs
 
 ### Pending Todos
 
@@ -64,6 +65,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T19:14:41.186Z
-Stopped at: Completed 54-01-PLAN.md
+Last session: 2026-03-21T19:17:22.077Z
+Stopped at: Completed 54-02-PLAN.md
 Resume file: None

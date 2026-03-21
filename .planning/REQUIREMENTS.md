@@ -24,9 +24,9 @@
 
 ### TM -- Translation Memory Flow
 
-- [ ] **TM-01**: Editing a row and setting status to "reviewed" auto-registers source+target pair to linked TM
-- [ ] **TM-02**: FAISS index auto-builds after TM entries are added or modified (no manual trigger needed)
-- [ ] **TM-03**: TM 5-tier cascade search returns results in right panel TM tab when selecting a row
+- [x] **TM-01**: Editing a row and setting status to "reviewed" auto-registers source+target pair to linked TM
+- [x] **TM-02**: FAISS index auto-builds after TM entries are added or modified (no manual trigger needed)
+- [x] **TM-03**: TM 5-tier cascade search returns results in right panel TM tab when selecting a row
 
 ### COLOR -- LanguageData Grid Colors
 
@@ -59,9 +59,9 @@
 | VERIFY-04 | Phase 53 | Complete |
 | RPANEL-01 | Phase 53 | Complete |
 | RPANEL-02 | Phase 53 | Complete |
-| TM-01 | Phase 54 | Pending |
-| TM-02 | Phase 54 | Pending |
-| TM-03 | Phase 54 | Pending |
+| TM-01 | Phase 54 | Complete |
+| TM-02 | Phase 54 | Complete |
+| TM-03 | Phase 54 | Complete |
 | COLOR-01 | Phase 54 | Complete |
 | COLOR-02 | Phase 54 | Complete |
 | COLOR-03 | Phase 54 | Complete |
