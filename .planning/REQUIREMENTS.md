@@ -7,7 +7,7 @@
 
 ### INFRA -- Shared Infrastructure
 
-- [ ] **INFRA-01**: PerforcePathService with drive/branch config resolves data paths for all Codex types (ported from MapDataGenerator config.py)
+- [x] **INFRA-01**: PerforcePathService with drive/branch config resolves data paths for all Codex types (ported from MapDataGenerator config.py)
 - [ ] **INFRA-02**: AICapabilityService detects Model2Vec/FAISS/Ollama/TTS availability at startup and exposes runtime status
 - [ ] **INFRA-03**: AI capability badges shown in settings page; AI-dependent UI sections hide gracefully when engines unavailable
 
@@ -80,7 +80,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 45 | Pending |
+| INFRA-01 | Phase 45 | Complete |
 | INFRA-02 | Phase 45 | Pending |
 | INFRA-03 | Phase 45 | Pending |
 | AUDIO-01 | Phase 48 | Pending |
