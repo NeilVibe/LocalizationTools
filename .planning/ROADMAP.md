@@ -113,7 +113,7 @@
 
 - [x] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing. (completed 2026-03-21)
 - [x] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel (completed 2026-03-21)
-- [ ] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail
+- [x] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail (completed 2026-03-21)
 - [ ] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation
 - [ ] **Phase 49: Region Codex UI + Interactive Map** - Svelte 5 region encyclopedia consuming MegaIndex — FactionGroup tree, WorldPosition d3-zoom map
 - [ ] **Phase 50: StringID-to-Audio/Image Integration** - Wire MegaIndex reverse lookups (C3, C7) to LDM grid RightPanel — inline audio + image for any StringID
@@ -165,7 +165,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 47-01-PLAN.md — Character Codex backend API (schemas + routes) (Wave 1)
-- [ ] 47-02-PLAN.md — Character Codex Svelte 5 UI + navigation wiring (Wave 2)
+- [x] 47-02-PLAN.md — Character Codex Svelte 5 UI + navigation wiring (Wave 2)
 
 ### Phase 48: Audio Codex UI
 **Goal**: Users can browse, search, and play back game audio files with script text overlay, navigating by export folder category tree. All data from MegaIndex.
@@ -265,7 +265,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 45. Foundation Infrastructure | v5.0 | 4/4 | Complete    | 2026-03-21 |
 | 46. Item Codex | v5.0 | 2/2 | Complete    | 2026-03-21 |
-| 47. Character Codex | v5.0 | 1/2 | In Progress|  |
+| 47. Character Codex | v5.0 | 2/2 | Complete   | 2026-03-21 |
 | 48. Audio Codex | v5.0 | 0/? | Not started | - |
 | 49. Region Codex + Interactive Map | v5.0 | 0/? | Not started | - |
 | 50. StringID-to-Audio Integration | v5.0 | 0/? | Not started | - |

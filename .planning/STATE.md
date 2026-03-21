@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 47-01-PLAN.md (Character Codex Backend)
-last_updated: "2026-03-21T12:26:56.669Z"
+stopped_at: Completed 47-02-PLAN.md (Character Codex UI)
+last_updated: "2026-03-21T12:34:22.981Z"
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -57,6 +57,8 @@ Plan: 2 of 2
 - [Phase 46]: Reused CodexCard with entity shape transform for Item Codex cards
 - [Phase 46]: Knowledge tabs: Pass 0+1 combined as Knowledge, Pass 2 as Related, separate InspectData and Info
 - [Phase 47]: Reused KnowledgePassEntry from codex_items; filename-based category extraction; race/gender parsed from use_macro tokens
+- [Phase 47]: Flat category tabs (not tree) for character filtering matching backend filename-based extraction
+- [Phase 47]: Attributes tab replaces InspectData for characters (use_macro instead of InspectData)
 
 ### Pending Todos
 
@@ -71,6 +73,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:26:56.666Z
-Stopped at: Completed 47-01-PLAN.md (Character Codex Backend)
+Last session: 2026-03-21T12:34:22.978Z
+Stopped at: Completed 47-02-PLAN.md (Character Codex UI)
 Resume file: None
