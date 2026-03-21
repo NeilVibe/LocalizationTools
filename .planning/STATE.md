@@ -4,7 +4,7 @@ milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
 stopped_at: Completed 51-02-PLAN.md (Factory/Repo Audit + Offline Smoke Tests)
-last_updated: "2026-03-21T13:31:36.847Z"
+last_updated: "2026-03-21T13:32:33.320Z"
 progress:
   total_phases: 7
   completed_phases: 7
