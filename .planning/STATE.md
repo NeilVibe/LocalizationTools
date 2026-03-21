@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 45-03-PLAN.md (MegaIndex Core)
-last_updated: "2026-03-21T11:44:19.517Z"
+stopped_at: Completed 45-04-PLAN.md (Service Migration) -- Phase 45 COMPLETE
+last_updated: "2026-03-21T11:50:01.139Z"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -51,6 +51,7 @@ Plan: 4 of 4
 - [Phase 45]: Used Svelte 5 module-level $state in .ts for aiCapabilityStore (new pattern vs existing Svelte 4 writable stores)
 - [Phase 45]: StaticInfo folder derived from knowledge_folder.parent instead of new PATH_TEMPLATE key
 - [Phase 45]: C2 strkey_to_audio_path uses direct matching; full chain deferred to Audio Codex phase
+- [Phase 45]: CodexService and MapDataService now delegate all XML parsing to MegaIndex singleton -- single parse replaces 3 independent scans
 
 ### Pending Todos
 
@@ -65,6 +66,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T11:44:19.514Z
-Stopped at: Completed 45-03-PLAN.md (MegaIndex Core)
+Last session: 2026-03-21T11:50:01.137Z
+Stopped at: Completed 45-04-PLAN.md (Service Migration) -- Phase 45 COMPLETE
 Resume file: None

@@ -111,7 +111,7 @@
 
 **Milestone Goal:** Ship a self-sufficient offline bundle that works on disconnected machines (SQLite only, no server). Expand Codex with Audio/Item/Character/Region UIs powered by QACompiler + MapDataGenerator logic. All core features work without AI engines -- graceful degradation when Qwen/FAISS/TTS unavailable.
 
-- [ ] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing.
+- [x] **Phase 45: MegaIndex + Foundation Infrastructure** - Unified game data index (35 dicts, O(1) everything), PerforcePathService, AICapabilityService, graceful degradation UI. Replaces CodexService parsing + MapDataService parsing. (completed 2026-03-21)
 - [ ] **Phase 46: Item Codex UI** - Svelte 5 item encyclopedia consuming MegaIndex — DDS images, ItemGroupInfo hierarchy tabs, knowledge resolution detail panel
 - [ ] **Phase 47: Character Codex UI** - Svelte 5 character encyclopedia consuming MegaIndex — portraits, filename grouping tabs, Race/Gender/Age/Job detail
 - [ ] **Phase 48: Audio Codex UI** - Svelte 5 audio encyclopedia consuming MegaIndex — WEM playback, script text overlay, category tree navigation
@@ -137,7 +137,7 @@ Plans:
 - [x] 45-01-PLAN.md — PerforcePathService extraction + MegaIndex data schemas (Wave 1)
 - [x] 45-02-PLAN.md — AICapabilityService + capability badges UI (Wave 1)
 - [x] 45-03-PLAN.md — MegaIndex core build pipeline (35 dicts) (Wave 2)
-- [ ] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex (Wave 3)
+- [x] 45-04-PLAN.md — Wire CodexService + MapDataService to MegaIndex (Wave 3)
 
 ### Phase 46: Item Codex UI
 **Goal**: Users can browse, search, and inspect game items as a visual encyclopedia with DDS images, category hierarchy, and multi-pass knowledge resolution. All data comes from MegaIndex — no parsing in this phase.
@@ -257,7 +257,7 @@ Phases 01-44 complete. v5.0 phases execute: 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 
 | 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
 | 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 3/3 | Complete | 2026-03-18 |
 | 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
-| 45. Foundation Infrastructure | v5.0 | 3/4 | In Progress|  |
+| 45. Foundation Infrastructure | v5.0 | 4/4 | Complete   | 2026-03-21 |
 | 46. Item Codex | v5.0 | 0/? | Not started | - |
 | 47. Character Codex | v5.0 | 0/? | Not started | - |
 | 48. Audio Codex | v5.0 | 0/? | Not started | - |
