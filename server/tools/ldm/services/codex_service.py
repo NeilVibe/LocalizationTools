@@ -3,6 +3,9 @@
 Phase 19: Game World Codex -- scans StaticInfo XML files, builds an entity
 registry with 6 entity types, resolves KnowledgeKey cross-references, and
 provides semantic search via FAISS + Model2Vec.
+
+Phase 45: MegaIndex migration -- _registry now populated from MegaIndex
+instead of independent XML scanning. One parse to rule them all.
 """
 
 from __future__ import annotations
@@ -13,7 +16,6 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 from loguru import logger
-from lxml import etree
 
 from server.tools.ldm.schemas.codex import (
     CodexEntity,
@@ -62,14 +64,20 @@ class CodexService:
     # =========================================================================
 
     def initialize(self) -> None:
-        """Full initialization: scan, cross-ref, index. Lazy-called on first request."""
+        """Full initialization: populate from MegaIndex, cross-ref, index."""
         if self._initialized:
             return
 
-        logger.info("[Codex] Initializing entity registry...")
+        logger.info("[Codex] Initializing entity registry from MegaIndex...")
         t0 = time.time()
 
-        self._scan_entities()
+        # Trigger MegaIndex build if not already built
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+        if not mega._built:
+            mega.build()
+
+        self._populate_from_mega_index()
         self._resolve_cross_refs()
         self._find_related_entities()
 
@@ -80,15 +88,18 @@ class CodexService:
 
         elapsed = time.time() - t0
         total = sum(len(v) for v in self._registry.values())
-        logger.info(f"[Codex] Initialized: {total} entities in {elapsed:.2f}s")
+        logger.info(f"[Codex] Initialized: {total} entities in {elapsed:.2f}s (via MegaIndex)")
         self._initialized = True
 
     # =========================================================================
-    # Entity scanning
+    # MegaIndex population (replaces _scan_entities)
     # =========================================================================
 
-    def _scan_entities(self) -> None:
-        """Scan all StaticInfo XML files and build entity registry."""
+    def _populate_from_mega_index(self) -> None:
+        """Convert MegaIndex frozen dataclasses to CodexEntity Pydantic models."""
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+
         self._registry = {
             "character": {},
             "item": {},
@@ -98,114 +109,125 @@ class CodexService:
             "region": {},
         }
 
-        xml_files = list(self.base_dir.rglob("*.xml"))
-        if not xml_files:
-            xml_files = list(self.base_dir.rglob("*.staticinfo.xml"))
+        # Knowledge entries
+        for strkey, e in mega.knowledge_by_strkey.items():
+            attrs: Dict[str, str] = {}
+            if e.group_key:
+                attrs["GroupKey"] = e.group_key
+            self._registry["knowledge"][strkey] = CodexEntity(
+                entity_type="knowledge",
+                strkey=e.strkey,
+                name=e.name,
+                description=e.desc or None,
+                knowledge_key=None,
+                image_texture=e.ui_texture_name or None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes=attrs,
+                related_entities=[],
+            )
 
-        for xml_path in xml_files:
-            try:
-                self._parse_xml_file(xml_path)
-            except Exception as e:
-                logger.warning(f"[Codex] Failed to parse {xml_path}: {e}")
+        # Character entries
+        for strkey, e in mega.character_by_strkey.items():
+            attrs = {}
+            if e.use_macro:
+                attrs["UseMacro"] = e.use_macro
+            if e.age:
+                attrs["Age"] = e.age
+            if e.job:
+                attrs["Job"] = e.job
+            if e.ui_icon_path:
+                attrs["UIIconPath"] = e.ui_icon_path
+            self._registry["character"][strkey] = CodexEntity(
+                entity_type="character",
+                strkey=e.strkey,
+                name=e.name,
+                description=e.desc or None,
+                knowledge_key=e.knowledge_key or None,
+                image_texture=None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes=attrs,
+                related_entities=[],
+            )
+
+        # Item entries
+        for strkey, e in mega.item_by_strkey.items():
+            attrs = {}
+            if e.group_key:
+                attrs["GroupKey"] = e.group_key
+            self._registry["item"][strkey] = CodexEntity(
+                entity_type="item",
+                strkey=e.strkey,
+                name=e.name,
+                description=e.desc or None,
+                knowledge_key=e.knowledge_key or None,
+                image_texture=None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes=attrs,
+                related_entities=[],
+            )
+
+        # Region entries
+        for strkey, e in mega.region_by_strkey.items():
+            attrs = {}
+            if e.world_position is not None:
+                attrs["WorldPosition"] = f"{e.world_position[0]},{e.world_position[1]},{e.world_position[2]}"
+            if e.node_type:
+                attrs["NodeType"] = e.node_type
+            if e.parent_strkey:
+                attrs["ParentStrKey"] = e.parent_strkey
+            self._registry["region"][strkey] = CodexEntity(
+                entity_type="region",
+                strkey=e.strkey,
+                name=e.display_name or e.name,
+                description=e.desc or None,
+                knowledge_key=e.knowledge_key or None,
+                image_texture=None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes=attrs,
+                related_entities=[],
+            )
+
+        # Skill entries
+        for strkey, e in mega.skill_by_strkey.items():
+            self._registry["skill"][strkey] = CodexEntity(
+                entity_type="skill",
+                strkey=e.strkey,
+                name=e.name,
+                description=e.desc or None,
+                knowledge_key=e.learn_knowledge_key or None,
+                image_texture=None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes={},
+                related_entities=[],
+            )
+
+        # Gimmick entries
+        for strkey, e in mega.gimmick_by_strkey.items():
+            desc = e.desc or None
+            if e.seal_desc and desc:
+                desc = f"{desc} | {e.seal_desc}"
+            elif e.seal_desc:
+                desc = e.seal_desc
+            self._registry["gimmick"][strkey] = CodexEntity(
+                entity_type="gimmick",
+                strkey=e.strkey,
+                name=e.name,
+                description=desc,
+                knowledge_key=None,
+                image_texture=None,
+                audio_key=e.strkey,
+                source_file=e.source_file,
+                attributes={},
+                related_entities=[],
+            )
 
         for etype, entities in self._registry.items():
-            logger.debug(f"[Codex] Scanned {len(entities)} {etype} entities")
-
-    def _parse_xml_file(self, xml_path: Path) -> None:
-        """Parse a single XML file and add entities to registry."""
-        tree = etree.parse(str(xml_path))
-        root = tree.getroot()
-        source_file = str(xml_path)
-
-        for child in root:
-            tag = child.tag
-
-            if tag in ENTITY_TAG_MAP:
-                self._extract_entity(child, tag, source_file)
-            else:
-                # Check nested structures (e.g., FactionGroup -> Faction -> FactionNode)
-                self._scan_nested(child, source_file)
-
-    def _scan_nested(self, element, source_file: str) -> None:
-        """Recursively scan nested XML elements for entity tags."""
-        for child in element:
-            tag = child.tag
-            if tag in ENTITY_TAG_MAP:
-                self._extract_entity(child, tag, source_file)
-            else:
-                self._scan_nested(child, source_file)
-
-    def _extract_entity(self, element, tag: str, source_file: str) -> None:
-        """Extract a single entity from an XML element."""
-        entity_type, name_attr, knowledge_key_attr = ENTITY_TAG_MAP[tag]
-
-        strkey = element.get("StrKey")
-        if not strkey:
-            return
-
-        # Get entity name
-        name = ""
-        if name_attr:
-            name = element.get(name_attr, "")
-        elif tag == "FactionNode":
-            # Region entities get name from AliasName or KnowledgeKey lookup later
-            name = element.get("AliasName", strkey)
-
-        # Get knowledge key
-        knowledge_key = None
-        if knowledge_key_attr:
-            knowledge_key = element.get(knowledge_key_attr)
-
-        # Build Key -> StrKey mapping for cross-ref resolution
-        key_attr = element.get("Key")
-        if key_attr:
-            self._key_to_strkey[key_attr] = strkey
-
-        # Build attributes dict (all other XML attributes)
-        attributes: Dict[str, str] = {}
-        for attr_name, attr_val in element.attrib.items():
-            if attr_name not in _SKIP_ATTRS:
-                attributes[attr_name] = attr_val
-
-        # Handle gimmick: extract SealData Desc from nested element
-        description = None
-        if tag == "KnowledgeInfo":
-            description = element.get("Desc")
-            # Knowledge entities: name is from Name attr, image from UITextureName
-            # These are self-contained, no further cross-ref needed
-        elif tag == "GimmickGroupInfo":
-            # Gimmick: parse nested GimmickInfo/SealData
-            for gimmick_info in element.iter("GimmickInfo"):
-                # Update strkey to inner GimmickInfo if available
-                inner_strkey = gimmick_info.get("StrKey")
-                if inner_strkey:
-                    strkey = inner_strkey
-                for seal in gimmick_info.iter("SealData"):
-                    description = seal.get("Desc")
-
-        image_texture = element.get("UITextureName")
-
-        # Prefer Korean name/description from attributes for display
-        display_name = attributes.get("NameKR") or name or strkey
-        if not description:
-            description = attributes.get("DescriptionKR")
-        if not description and tag == "CharacterInfo":
-            description = element.get("CharacterDesc")
-
-        entity = CodexEntity(
-            entity_type=entity_type,
-            strkey=strkey,
-            name=display_name,
-            description=description,
-            knowledge_key=knowledge_key,
-            image_texture=image_texture,
-            audio_key=strkey,  # audio is keyed by StrKey
-            source_file=source_file,
-            attributes=attributes,
-            related_entities=[],
-        )
-
-        self._registry[entity_type][strkey] = entity
+            logger.debug(f"[Codex] Populated {len(entities)} {etype} entities from MegaIndex")
 
     # =========================================================================
     # Cross-reference resolution
