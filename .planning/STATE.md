@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Offline Production Bundle + Full Codex
 status: unknown
-stopped_at: Completed 48-01-PLAN.md (Audio Codex Backend API)
-last_updated: "2026-03-21T12:43:40.283Z"
+stopped_at: Completed 48-02-PLAN.md (Audio Codex Frontend UI)
+last_updated: "2026-03-21T12:49:45.423Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -61,6 +61,9 @@ Plan: 2 of 2
 - [Phase 47]: Attributes tab replaces InspectData for characters (use_macro instead of InspectData)
 - [Phase 48]: D20 export_path directory tree for audio categories (nested, roll-up counts)
 - [Phase 48]: D11 event_to_stringid as master list for audio entries; stream endpoint unauthenticated for <audio> compatibility
+- [Phase 48]: Two-column sidebar tree layout for audio (unique among Codex pages) because export_path hierarchy is nested
+- [Phase 48]: List layout (not card grid) for audio entries because text-heavy with script lines
+- [Phase 48]: Custom lightweight tree with 3 depth levels (not Carbon TreeView) for category sidebar
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T12:43:40.280Z
-Stopped at: Completed 48-01-PLAN.md (Audio Codex Backend API)
+Last session: 2026-03-21T12:49:45.421Z
+Stopped at: Completed 48-02-PLAN.md (Audio Codex Frontend UI)
 Resume file: None
