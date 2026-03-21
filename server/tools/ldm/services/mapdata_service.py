@@ -151,18 +151,55 @@ class MapDataService:
     def get_image_context(self, string_id: str) -> Optional[ImageContext]:
         """Look up image context by StrKey, StringID, or KnowledgeKey.
 
-        Tries exact match first, then fuzzy matching against indexed StrKeys
-        to handle mismatches between different key formats.
+        Lookup order:
+        1. Exact match in pre-indexed _strkey_to_image (from initialize/C1)
+        2. C7 bridge: StringID -> entity StrKey -> C1 image path
+        3. Fuzzy partial match against indexed StrKeys
 
         Returns None if service is not loaded or key is unknown.
         """
         if not self._loaded:
             return None
-        # Exact match
+        # 1. Exact match (pre-indexed from initialize or cached)
         result = self._strkey_to_image.get(string_id)
         if result:
             return result
-        # Fuzzy: try partial match (e.g., key contains or is contained in indexed keys)
+
+        # 2. C7 bridge: StringID -> entity -> knowledge -> C1 image path
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+        entity_info = mega.stringid_to_entity.get(string_id)
+        if entity_info:
+            entity_type, entity_strkey = entity_info
+            # Try direct C1 lookup with entity strkey
+            img_path = mega.strkey_to_image_path.get(entity_strkey)
+            if img_path:
+                knowledge = mega.knowledge_by_strkey.get(entity_strkey)
+                texture_name = knowledge.ui_texture_name if knowledge else ""
+                ctx = ImageContext(
+                    texture_name=texture_name,
+                    dds_path=str(img_path),
+                    thumbnail_url=f"/api/ldm/mapdata/thumbnail/{texture_name}" if texture_name else "",
+                    has_image=True,
+                )
+                self._strkey_to_image[string_id] = ctx  # cache
+                return ctx
+            # Scan knowledge entries whose strkey matches the entity name
+            entity_name_lower = entity_strkey.lower()
+            for k_strkey, k_entry in mega.knowledge_by_strkey.items():
+                if entity_name_lower in k_strkey.lower() or k_strkey.lower() in entity_name_lower:
+                    img_path = mega.strkey_to_image_path.get(k_strkey)
+                    if img_path:
+                        ctx = ImageContext(
+                            texture_name=k_entry.ui_texture_name,
+                            dds_path=str(img_path),
+                            thumbnail_url=f"/api/ldm/mapdata/thumbnail/{k_entry.ui_texture_name}" if k_entry.ui_texture_name else "",
+                            has_image=True,
+                        )
+                        self._strkey_to_image[string_id] = ctx
+                        return ctx
+
+        # 3. Fuzzy: try partial match against indexed StrKeys
         sid_lower = string_id.lower().replace("_", "")
         for key, ctx in self._strkey_to_image.items():
             key_lower = key.lower().replace("_", "")

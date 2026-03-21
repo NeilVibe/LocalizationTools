@@ -166,7 +166,7 @@ class TestGetImageContextC7Bridge:
         svc._loaded = True
 
         with patch(
-            "server.tools.ldm.services.mapdata_service.get_mega_index",
+            "server.tools.ldm.services.mega_index.get_mega_index",
             return_value=mock_mega_index,
         ):
             result = svc.get_image_context("CHAR_VARON_NAME")
@@ -182,7 +182,7 @@ class TestGetImageContextC7Bridge:
         svc._loaded = True
 
         with patch(
-            "server.tools.ldm.services.mapdata_service.get_mega_index",
+            "server.tools.ldm.services.mega_index.get_mega_index",
             return_value=mock_mega_index,
         ):
             result = svc.get_image_context("UNKNOWN_SID")
@@ -212,7 +212,7 @@ class TestGetImageContextC7Bridge:
         svc._loaded = True
 
         with patch(
-            "server.tools.ldm.services.mapdata_service.get_mega_index",
+            "server.tools.ldm.services.mega_index.get_mega_index",
             return_value=mock_mega_index,
         ):
             result1 = svc.get_image_context("CHAR_VARON_NAME")
@@ -255,7 +255,7 @@ class TestGetAudioContext:
         svc._loaded = True
 
         with patch(
-            "server.tools.ldm.services.mapdata_service.get_mega_index",
+            "server.tools.ldm.services.mega_index.get_mega_index",
             return_value=mock_mega_index,
         ):
             result = svc.get_audio_context("NPC_GREETING_01_NAME")

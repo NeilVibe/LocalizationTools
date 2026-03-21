@@ -96,13 +96,15 @@
 
       <!-- Audio player -->
       <div class="player-wrapper">
-        <audio controls preload="none" class="audio-player">
-          <source
-            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}"
-            type="audio/wav"
+        {#key selectedRow?.string_id}
+          <audio
+            controls
+            preload="none"
+            crossorigin="anonymous"
+            class="audio-player"
+            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?v={Date.now()}"
           />
-          Your browser does not support the audio element.
-        </audio>
+        {/key}
       </div>
 
       <!-- Script text -->
