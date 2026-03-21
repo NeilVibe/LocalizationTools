@@ -12,6 +12,8 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
+from core.tmx_tools import combine_xmls_to_tmx, batch_tmx_from_folders, clean_and_convert_to_excel
+
 logger = logging.getLogger(__name__)
 
 # TMX BCP-47 language codes (intentionally separate from config.LANGUAGE_NAMES)
@@ -35,9 +37,8 @@ TMX_LANGUAGE_OPTIONS = {
 class TMXToolsTab(tk.Frame):
     """TMX Tools tab with conversion and cleaning sections."""
 
-    def __init__(self, parent: tk.Widget, log_callback=None):
+    def __init__(self, parent: tk.Widget):
         super().__init__(parent, bg='#f0f0f0')
-        self._log_callback = log_callback
         self._source_folder = tk.StringVar()
         self._target_lang = tk.StringVar(value="English (US)")
 
@@ -145,7 +146,6 @@ class TMXToolsTab(tk.Frame):
         logger.info(f"[TMX Convert] Single: {folder} -> {out_file} ({lang_code})")
 
         def _run():
-            from core.tmx_tools import combine_xmls_to_tmx
             ok = combine_xmls_to_tmx(folder, out_file, lang_code, postprocess=True)
             msg = f"TMX created: {out_file}" if ok else "TMX conversion failed — check logs."
             self.after(0, lambda: messagebox.showinfo("TMX Conversion", msg))
@@ -206,7 +206,6 @@ class TMXToolsTab(tk.Frame):
             logger.info(f"[TMX Batch] {len(selected)} folders -> {out_dir} ({lang_code}, pp={postprocess})")
 
             def _run():
-                from core.tmx_tools import batch_tmx_from_folders
                 results = batch_tmx_from_folders(selected, out_dir, lang_code, postprocess=postprocess)
                 ok_count = sum(1 for _, _, ok in results if ok)
                 msg = f"Batch complete: {ok_count}/{len(results)} succeeded.\nOutput: {out_dir}"
@@ -232,7 +231,6 @@ class TMXToolsTab(tk.Frame):
         logger.info(f"[TMX Cleaner] Processing: {fpath}")
 
         def _run():
-            from core.tmx_tools import clean_and_convert_to_excel
             try:
                 out = clean_and_convert_to_excel(fpath)
                 self.after(0, lambda: messagebox.showinfo(
