@@ -701,21 +701,10 @@ class QuickTranslateApp:
         lone_bracket_frame.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(lone_bracket_frame,
-                 text=("Replace lone < and > (not part of <br/> tags) with hyphens (-). "
+                 text=("Replace lone < and > (not part of <br/> tags) with hyphens (-) in Source. "
                        "Fixes brackets where count differs from StrOrigin."),
                  font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
                  justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
-
-        # Folder selector: Source or Target
-        self._lone_bracket_folder = tk.StringVar(value="source")
-        folder_row = tk.Frame(lone_bracket_frame, bg='#f0f0f0')
-        folder_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(folder_row, text="Source", variable=self._lone_bracket_folder,
-                        value="source", font=('Segoe UI', 9), bg='#f0f0f0',
-                        activebackground='#f0f0f0').pack(side=tk.LEFT)
-        tk.Radiobutton(folder_row, text="Target", variable=self._lone_bracket_folder,
-                        value="target", font=('Segoe UI', 9), bg='#f0f0f0',
-                        activebackground='#f0f0f0').pack(side=tk.LEFT, padx=(8, 0))
 
         lone_bracket_btn_row = tk.Frame(lone_bracket_frame, bg='#f0f0f0')
         lone_bracket_btn_row.pack(fill=tk.X)
@@ -726,6 +715,42 @@ class QuickTranslateApp:
             font=('Segoe UI', 9, 'bold'), bg='#2980b9', fg='white',
             relief='flat', padx=10, cursor='hand2')
         self.fix_lone_brackets_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        # --- Extract Translation by StringID section ---
+        extract_trans_frame = tk.LabelFrame(
+            self._tab2_inner, text="Extract Translation by StringID",
+            font=('Segoe UI', 10, 'bold'),
+            bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        extract_trans_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(extract_trans_frame,
+                 text=("Load a text file with one StringID per line. "
+                       "Extracts StrOrigin, Str, StringID for each language into an Excel file (one tab per language)."),
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+                 justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
+
+        self._stringid_list_path = tk.StringVar()
+        stringid_row = tk.Frame(extract_trans_frame, bg='#f0f0f0')
+        stringid_row.pack(fill=tk.X, pady=(0, 4))
+
+        tk.Label(stringid_row, text="StringID List:", font=('Segoe UI', 9),
+                 bg='#f0f0f0').pack(side=tk.LEFT)
+        tk.Entry(stringid_row, textvariable=self._stringid_list_path,
+                 font=('Segoe UI', 9), width=40).pack(side=tk.LEFT, padx=(4, 4), fill=tk.X, expand=True)
+        tk.Button(stringid_row, text="Browse...",
+                  command=self._browse_stringid_list,
+                  font=('Segoe UI', 8), relief='flat', bg='#bdc3c7',
+                  cursor='hand2').pack(side=tk.LEFT)
+
+        extract_btn_row = tk.Frame(extract_trans_frame, bg='#f0f0f0')
+        extract_btn_row.pack(fill=tk.X)
+
+        self.extract_trans_btn = tk.Button(
+            extract_btn_row, text="Extract Translations",
+            command=self._extract_translations_by_stringid,
+            font=('Segoe UI', 9, 'bold'), bg='#27ae60', fg='white',
+            relief='flat', padx=10, cursor='hand2')
+        self.extract_trans_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         # === Log Section (right pane) ===
         log_frame = tk.LabelFrame(self._right_pane, text="Log", font=('Segoe UI', 10, 'bold'),
@@ -2367,6 +2392,8 @@ class QuickTranslateApp:
         self.check_quality_btn.config(state='disabled')
         self.check_all_btn.config(state='disabled')
         self.open_results_btn.config(state='disabled')
+        self.fix_lone_brackets_btn.config(state='disabled')
+        self.extract_trans_btn.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
@@ -2379,6 +2406,8 @@ class QuickTranslateApp:
         self.check_patterns_btn.config(state='normal')
         self.check_quality_btn.config(state='normal')
         self.check_all_btn.config(state='normal')
+        self.fix_lone_brackets_btn.config(state='normal')
+        self.extract_trans_btn.config(state='normal')
         self.cancel_btn.pack_forget()
         self._worker_thread = None
 
@@ -2549,10 +2578,9 @@ class QuickTranslateApp:
         )
 
     def _fix_lone_brackets(self):
-        """Replace lone < and > with hyphens in XML files under selected folder."""
-        use_source = self._lone_bracket_folder.get() == "source"
-        folder_label = "Source" if use_source else "Target"
-        path_str = (self.source_path if use_source else self.target_path).get().strip()
+        """Replace lone < and > with hyphens in XML files under Source folder."""
+        folder_label = "Source"
+        path_str = self.source_path.get().strip()
 
         if not path_str:
             messagebox.showwarning("Warning", f"Please set a {folder_label} folder on the Transfer tab.")
@@ -2639,6 +2667,162 @@ class QuickTranslateApp:
                 self._log(f"Done! Fixed {total_fixed} lone angle brackets in {files_modified} files.", 'success')
             else:
                 self._log("No critical lone angle brackets found. All clean!", 'success')
+            self.root.after(0, self._enable_buttons)
+
+        self._run_in_thread(work)
+
+    def _browse_stringid_list(self):
+        """Browse for a text file containing StringIDs."""
+        path = filedialog.askopenfilename(
+            title="Select StringID List",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+        if path:
+            self._stringid_list_path.set(path)
+
+    def _extract_translations_by_stringid(self):
+        """Extract translations for all languages for a list of StringIDs into Excel."""
+        list_path_str = self._stringid_list_path.get().strip()
+        if not list_path_str:
+            # If no path set, prompt for file
+            list_path_str = filedialog.askopenfilename(
+                title="Select StringID List",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+            if not list_path_str:
+                return
+            self._stringid_list_path.set(list_path_str)
+
+        list_path = Path(list_path_str)
+        if not list_path.exists():
+            messagebox.showerror("Error", f"File not found:\n{list_path}")
+            return
+
+        # Read StringIDs from file
+        try:
+            string_ids = [line.strip() for line in list_path.read_text(encoding='utf-8').splitlines()
+                          if line.strip()]
+        except Exception as e:
+            messagebox.showerror("Error", f"Cannot read file:\n{e}")
+            return
+
+        if not string_ids:
+            messagebox.showwarning("Warning", "No StringIDs found in the file.")
+            return
+
+        # Check LOC folder
+        if not config.LOC_FOLDER.exists():
+            messagebox.showerror("Error", f"LOC folder not found:\n{config.LOC_FOLDER}\n\nPlease configure it in Settings.")
+            return
+
+        # Ask for output file
+        output_path = filedialog.asksaveasfilename(
+            title="Save Excel Output",
+            defaultextension=".xlsx",
+            initialfile=f"extracted_translations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            filetypes=[("Excel files", "*.xlsx")])
+        if not output_path:
+            return
+
+        self._disable_buttons()
+        self.progress_value.set(0)
+        self._clear_log()
+        self._log("=== Extract Translations by StringID ===", 'header')
+        self._log(f"StringIDs to find: {len(string_ids)}")
+        self._log(f"LOC folder: {config.LOC_FOLDER}")
+
+        def work():
+            from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr
+            from core.xml_parser import STRINGID_ATTRS, STR_ATTRS, STRORIGIN_ATTRS
+            from core.language_loader import discover_language_files
+
+            lang_files = discover_language_files(config.LOC_FOLDER)
+            if not lang_files:
+                self._log("No language files found in LOC folder!", 'error')
+                self.root.after(0, self._enable_buttons)
+                return
+
+            self._log(f"Languages found: {len(lang_files)} ({', '.join(c.upper() for c in sorted(lang_files.keys()))})")
+
+            # Build a set for fast lookup
+            string_id_set = set(string_ids)
+            # Preserve order from the input file
+            string_id_order = list(dict.fromkeys(string_ids))
+
+            # {lang_code: {string_id: (str_origin, str_val)}}
+            lang_data = {}
+            total_langs = len(lang_files)
+
+            for idx, (lang_code, xml_path) in enumerate(sorted(lang_files.items())):
+                self.root.after(0, lambda v=(idx + 1) / total_langs * 90: self.progress_value.set(v))
+                self._log(f"  Reading {lang_code.upper()}... ({xml_path.name})")
+                lang_data[lang_code] = {}
+
+                try:
+                    root = parse_xml_file(xml_path)
+                    for elem in iter_locstr_elements(root):
+                        sid = get_attr(elem, STRINGID_ATTRS)
+                        if sid and sid.strip() in string_id_set:
+                            str_origin = get_attr(elem, STRORIGIN_ATTRS) or ''
+                            str_val = get_attr(elem, STR_ATTRS) or ''
+                            lang_data[lang_code][sid.strip()] = (str_origin, str_val)
+                except Exception as e:
+                    self._log(f"  Error reading {xml_path.name}: {e}", 'warning')
+
+            # Write Excel with xlsxwriter
+            import xlsxwriter
+            wb = xlsxwriter.Workbook(output_path)
+
+            header_fmt = wb.add_format({
+                'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+                'border': 1, 'text_wrap': True, 'valign': 'vcenter'
+            })
+            cell_fmt = wb.add_format({'border': 1, 'text_wrap': True, 'valign': 'top'})
+            missing_fmt = wb.add_format({
+                'border': 1, 'text_wrap': True, 'valign': 'top',
+                'bg_color': '#FFF2CC', 'font_color': '#999'
+            })
+
+            for lang_code in sorted(lang_data.keys()):
+                # Sheet name max 31 chars
+                sheet_name = lang_code.upper()[:31]
+                ws = wb.add_worksheet(sheet_name)
+                ws.set_column(0, 0, 30)   # StringID
+                ws.set_column(1, 1, 50)   # StrOrigin
+                ws.set_column(2, 2, 50)   # Str
+
+                ws.write(0, 0, "StringID", header_fmt)
+                ws.write(0, 1, "StrOrigin", header_fmt)
+                ws.write(0, 2, "Str", header_fmt)
+
+                found_count = 0
+                for row_idx, sid in enumerate(string_id_order, start=1):
+                    if sid in lang_data[lang_code]:
+                        str_origin, str_val = lang_data[lang_code][sid]
+                        ws.write(row_idx, 0, sid, cell_fmt)
+                        ws.write(row_idx, 1, str_origin, cell_fmt)
+                        ws.write(row_idx, 2, str_val, cell_fmt)
+                        found_count += 1
+                    else:
+                        ws.write(row_idx, 0, sid, missing_fmt)
+                        ws.write(row_idx, 1, "(not found)", missing_fmt)
+                        ws.write(row_idx, 2, "(not found)", missing_fmt)
+
+                self._log(f"  {sheet_name}: {found_count}/{len(string_id_order)} StringIDs found")
+
+            wb.close()
+            self.root.after(0, lambda: self.progress_value.set(100))
+            self._log("")
+            self._log(f"Done! Saved to: {output_path}", 'success')
+            self._log(f"  {len(lang_data)} language tabs, {len(string_id_order)} StringIDs per tab")
+
+            # Open the file
+            try:
+                if sys.platform == 'win32':
+                    os.startfile(output_path)
+                else:
+                    subprocess.Popen(['xdg-open', output_path])
+            except Exception:
+                pass
+
             self.root.after(0, self._enable_buttons)
 
         self._run_in_thread(work)
