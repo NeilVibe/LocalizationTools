@@ -45,7 +45,7 @@
 - [x] **UI-06**: Progress display during merge execution (file-by-file updates)
 - [x] **UI-07**: Summary report shown on completion with matched/skipped/overwritten counts
 - [x] **UI-08**: Language auto-detected from project and shown as badge in modal header
-- [ ] **UI-09**: Multi-language mode shows detected languages with file counts before merge
+- [x] **UI-09**: Multi-language mode shows detected languages with file counts before merge
 
 ## v2 Requirements
 
@@ -96,7 +96,7 @@
 | UI-06 | Phase 59 | Complete |
 | UI-07 | Phase 59 | Complete |
 | UI-08 | Phase 59 | Complete |
-| UI-09 | Phase 59 | Pending |
+| UI-09 | Phase 59 | Complete |
 
 **Coverage:**
 - v1 requirements: 26 total

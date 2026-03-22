@@ -76,7 +76,7 @@ Plans:
 Plans:
 - [x] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
 - [ ] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
-- [ ] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
+- [x] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
 
 ### Phase 60: Integration Testing
 **Goal**: The full merge pipeline is verified end-to-end with mock data and real test files, confirming all phases work together
@@ -103,5 +103,5 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
 | 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 59. Merge UI | v6.0 | 1/3 | In Progress|  |
+| 59. Merge UI | v6.0 | 2/3 | In Progress|  |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |
