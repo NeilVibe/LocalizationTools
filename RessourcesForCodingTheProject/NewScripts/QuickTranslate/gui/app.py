@@ -1161,13 +1161,33 @@ class QuickTranslateApp:
 
                 integrity = check_text_integrity_in_file(xf)
                 if integrity:
-                    total_integrity += len(integrity)
-                    self._log(f"WARNING: {xf.name} has {len(integrity)} text integrity issue(s)!", 'warning')
-                    for elem in integrity[:10]:
-                        sid = elem.attrib.get('StringId', elem.attrib.get('stringid', '(unknown)'))
-                        self._log(f"  Integrity issue: StringID={sid}", 'error')
-                    if len(integrity) > 10:
-                        self._log(f"  ...and {len(integrity) - 10} more.", 'error')
+                    # Split into critical vs low-impact (lone brackets matching source)
+                    from core.text_utils import is_text_integrity_issue as _iti
+                    from core.xml_parser import get_attr as _ga, STR_ATTRS as _SA, DESC_ATTRS as _DA
+                    from core.xml_parser import STRORIGIN_ATTRS as _SOA, DESCORIGIN_ATTRS as _DOA
+                    crit_elems = []
+                    warn_count = 0
+                    for elem in integrity:
+                        s = _ga(elem, _SA).strip()
+                        d = _ga(elem, _DA).strip()
+                        so = _ga(elem, _SOA).strip()
+                        do = _ga(elem, _DOA).strip()
+                        reason = (_iti(s, from_xml=True, source_text=so)
+                                  or _iti(d, from_xml=True, source_text=do) or '')
+                        if reason.startswith('Warning:'):
+                            warn_count += 1
+                        else:
+                            crit_elems.append(elem)
+                    total_integrity += len(crit_elems)
+                    if crit_elems:
+                        self._log(f"WARNING: {xf.name} has {len(crit_elems)} text integrity issue(s)!", 'warning')
+                        for elem in crit_elems[:10]:
+                            sid = elem.attrib.get('StringId', elem.attrib.get('stringid', '(unknown)'))
+                            self._log(f"  Integrity issue: StringID={sid}", 'error')
+                        if len(crit_elems) > 10:
+                            self._log(f"  ...and {len(crit_elems) - 10} more.", 'error')
+                    if warn_count:
+                        self._log(f"  {xf.name}: {warn_count} lone bracket(s) match source — OK.", 'warning')
 
             # XML Load Test summary
             if total_load_fail == 0 and total_load_recovered == 0:
