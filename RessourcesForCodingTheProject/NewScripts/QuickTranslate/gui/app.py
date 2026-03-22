@@ -1565,7 +1565,7 @@ class QuickTranslateApp:
             # Low-impact: lone angle brackets matching source — one-liner, not cluttering
             if low_impact:
                 self._log("", 'info')
-                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match StrOrigin — transferred as-is (use Fix Lone Angle Brackets in Other Tools to clean).", 'warning')
+                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match StrOrigin — transferred as-is, no action needed.", 'warning')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             other_total = len(all_no_translation_warnings)
