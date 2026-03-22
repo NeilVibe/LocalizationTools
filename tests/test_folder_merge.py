@@ -7,6 +7,7 @@ the transfer adapter -- Phase 57 Plan 03 (XFER-07).
 from __future__ import annotations
 
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -18,19 +19,33 @@ MULTI_TARGET = FIXTURES / "multi_target"
 EXPORT_DIR = FIXTURES / "export"
 
 
-@pytest.fixture(autouse=True)
-def _clear_qt_caches():
-    """Clear QT module-level caches between tests to avoid stale state."""
-    yield
-    # Reset cached language codes after each test
-    try:
-        from core.source_scanner import clear_language_code_cache
-        clear_language_code_cache()
-    except ImportError:
-        pass
-    # Reset adapter module cache so reconfigure_paths runs fresh
+def _reset_all_qt_state():
+    """Reset all QuickTranslate module-level state for clean test isolation.
+
+    Critical: simply replacing sys.modules["config"] does NOT update the
+    already-bound ``config`` reference inside source_scanner.py (Python
+    caches module-level imports).  We must remove the QT core modules from
+    sys.modules entirely so they are re-imported fresh with the new config.
+    """
+    # 1. Reset adapter module cache
     import server.services.transfer_adapter as _mod
     _mod._qt_modules = None
+    # 2. Remove config shim
+    sys.modules.pop("config", None)
+    # 3. Remove ALL QT core modules so they re-import fresh next time
+    #    (this fixes the stale config reference inside source_scanner)
+    stale = [k for k in sys.modules if k.startswith("core.")]
+    for k in stale:
+        del sys.modules[k]
+    sys.modules.pop("core", None)
+
+
+@pytest.fixture(autouse=True)
+def _clear_qt_caches():
+    """Clear QT module-level caches before AND after each test."""
+    _reset_all_qt_state()  # BEFORE — cleans contamination from prior test modules
+    yield
+    _reset_all_qt_state()  # AFTER — cleans up for next test
 
 
 @pytest.fixture()
