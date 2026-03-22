@@ -26,7 +26,7 @@
 - [x] **XFER-04**: StrOrigin+FileName 2PASS match type works (3-tuple then 2-tuple fallback)
 - [x] **XFER-05**: 8-step postprocess pipeline runs after merge (newlines, apostrophes, entities, etc.)
 - [x] **XFER-06**: Transfer scope works: "Transfer All" vs "Only Untranslated"
-- [ ] **XFER-07**: Multi-language folder merge: scans source folder, auto-detects language suffixes per file/subfolder, merges each language into correct languagedata target
+- [x] **XFER-07**: Multi-language folder merge: scans source folder, auto-detects language suffixes per file/subfolder, merges each language into correct languagedata target
 
 ### Merge API
 
@@ -83,7 +83,7 @@
 | XFER-04 | Phase 57 | Complete |
 | XFER-05 | Phase 57 | Complete |
 | XFER-06 | Phase 57 | Complete |
-| XFER-07 | Phase 57 | Pending |
+| XFER-07 | Phase 57 | Complete |
 | API-01 | Phase 58 | Pending |
 | API-02 | Phase 58 | Pending |
 | API-03 | Phase 58 | Pending |
