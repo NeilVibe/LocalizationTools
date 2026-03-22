@@ -290,7 +290,9 @@ def build_manager_section(
         day_checking = sum(daily_delta.get(date, {}).get(u, default_data.copy())["checking"] for u in users)
         day_nonissue = sum(daily_delta.get(date, {}).get(u, default_data.copy())["nonissue"] for u in users)
         day_issues = sum(daily_delta.get(date, {}).get(u, default_data.copy())["issues"] for u in users)
-        day_pending = max(0, day_issues - day_fixed - day_reported - day_checking - day_nonissue)
+        # Pending = Issues not yet resolved. CHECKING is still pending (being investigated).
+        # Only FIXED, REPORTED, and NON-ISSUE resolve an issue.
+        day_pending = max(0, day_issues - day_fixed - day_reported - day_nonissue)
 
         row_values = [display_date, day_fixed, day_reported, day_nonissue, day_checking, day_pending]
         for i, val in enumerate(row_values, 1):

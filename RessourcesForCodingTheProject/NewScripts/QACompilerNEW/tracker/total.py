@@ -301,7 +301,7 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["korean"] += data.get("korean", 0)
 
         # GRANULAR: Track ALL categories for each user
-        pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
+        pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["nonissue"])
         user_category_breakdown[user].append({
             "category": category,
             "date": data["date"],
@@ -334,7 +334,7 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
     # Show users with PENDING=0 but issues > 0 (potential problems)
     problem_users = []
     for user, data in user_data.items():
-        agg_pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
+        agg_pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["nonissue"])
         if data["issues"] > 0 and agg_pending == 0:
             problem_users.append((user, data["issues"], agg_pending))
 
@@ -460,8 +460,8 @@ def build_tester_section(
         reported = data["reported"]
         checking = data["checking"]
         nonissue = data["nonissue"]
-        # Pending = Issues - Fixed - Reported - Checking - NonIssue
-        pending = max(0, issues - fixed - reported - checking - nonissue)
+        # Pending = Issues not yet resolved. CHECKING is still pending.
+        pending = max(0, issues - fixed - reported - nonissue)
 
         # GRANULAR: Log every row being written to TOTAL sheet
         print(f"  [{user}] issues={issues}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue} => PENDING={pending}")

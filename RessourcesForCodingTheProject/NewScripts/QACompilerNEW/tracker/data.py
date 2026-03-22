@@ -170,7 +170,7 @@ def update_daily_data_sheet(
                 log_lines.append(f"  manager_stats['{lookup_category}'] users: {list(manager_stats[lookup_category].keys())[:10]}")
             log_lines.append(f"  '{user}' in category_stats? {user in category_stats}")
             log_lines.append(f"  user_manager_stats: {user_manager_stats}")
-            log_lines.append(f"  --> PENDING will be: {entry['issues']} - {user_manager_stats['fixed']} - {user_manager_stats['reported']} - {user_manager_stats['checking']} - {user_manager_stats['nonissue']} = {max(0, entry['issues'] - user_manager_stats['fixed'] - user_manager_stats['reported'] - user_manager_stats['checking'] - user_manager_stats['nonissue'])}")
+            log_lines.append(f"  --> PENDING will be: {entry['issues']} - {user_manager_stats['fixed']} - {user_manager_stats['reported']} - {user_manager_stats['nonissue']} = {max(0, entry['issues'] - user_manager_stats['fixed'] - user_manager_stats['reported'] - user_manager_stats['nonissue'])} (CHECKING={user_manager_stats['checking']} stays pending)")
 
         has_stats = any(user_manager_stats[k] > 0 for k in ["fixed", "reported", "checking", "nonissue"])
         if has_stats:
@@ -197,7 +197,7 @@ def update_daily_data_sheet(
 
         # GRANULAR: Log what was written for Script-type categories
         if category in ("Sequencer", "Dialog"):
-            pending = max(0, entry["issues"] - user_manager_stats["fixed"] - user_manager_stats["reported"] - user_manager_stats["checking"] - user_manager_stats["nonissue"])
+            pending = max(0, entry["issues"] - user_manager_stats["fixed"] - user_manager_stats["reported"] - user_manager_stats["nonissue"])
             log_lines.append(f"  [WRITTEN] row {row}: Issues={entry['issues']}, Fixed={user_manager_stats['fixed']}, Reported={user_manager_stats['reported']}, Checking={user_manager_stats['checking']}, NonIssue={user_manager_stats['nonissue']} => PENDING={pending}")
 
     # Write lookup summary to log
@@ -224,8 +224,8 @@ def update_daily_data_sheet(
         total_checking = sum(s.get("checking", 0) for s in script_stats.values())
         total_nonissue = sum(s.get("nonissue", 0) for s in script_stats.values())
         log_lines.append(f"Total Script manager_stats: Fixed={total_fixed}, Reported={total_reported}, Checking={total_checking}, NonIssue={total_nonissue}")
-        expected_pending = total_script_issues - total_fixed - total_reported - total_checking - total_nonissue
-        log_lines.append(f"Expected PENDING for Script: {total_script_issues} - {total_fixed} - {total_reported} - {total_checking} - {total_nonissue} = {max(0, expected_pending)}")
+        expected_pending = total_script_issues - total_fixed - total_reported - total_nonissue
+        log_lines.append(f"Expected PENDING for Script: {total_script_issues} - {total_fixed} - {total_reported} - {total_nonissue} = {max(0, expected_pending)} (CHECKING={total_checking} stays pending)")
     log_lines.append("")
     log_lines.append("="*60)
 
