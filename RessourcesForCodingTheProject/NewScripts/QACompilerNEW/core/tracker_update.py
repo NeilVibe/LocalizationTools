@@ -179,47 +179,49 @@ def discover_tracker_qa_folders() -> List[Dict]:
 # FLAT DUMP DISCOVERY (New — folder names ignored, recursive walk)
 # =============================================================================
 
-def _parse_qa_filename(filename: str) -> Tuple:
+def _parse_folder_name(folder_name: str) -> Tuple:
     """
-    Parse a QA xlsx filename into (username, category).
+    Parse a folder name into (username, category).
 
-    Expected format: {Username}_{Category}.xlsx
+    Expected format: {Username}_{Category}
     Uses rsplit on last underscore so usernames can contain underscores.
 
     Returns:
         (username, category) or (None, None) if not parseable.
     """
-    stem = Path(filename).stem
-    if "_" not in stem:
+    if "_" not in folder_name:
         return None, None
-    parts = stem.rsplit("_", 1)
+    parts = folder_name.rsplit("_", 1)
     if len(parts) != 2:
         return None, None
     username, category = parts[0].strip(), parts[1].strip()
-    if category not in CATEGORIES:
+    if not username or category not in CATEGORIES:
         return None, None
     return username, category
 
 
 def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict], List[Path]]:
     """
-    Recursively walk base_folder (infinite depth), ignore folder names.
+    Hybrid flat dump discovery: recursively walk base_folder at any depth,
+    looking for correctly-named directories.
 
-    For each xlsx file found:
-    - If filename matches {Username}_{Category}.xlsx → QA file
-    - If filename matches Master_{Category}.xlsx → Master file
-    - Otherwise → skip
+    Detection rules:
+    - Directory named {Username}_{Category} → QA folder. Any xlsx inside = QA file.
+    - Directory named Masterfolder_EN → any Master_*.xlsx inside = EN master file.
+    - Directory named Masterfolder_CN → any Master_*.xlsx inside = CN master file.
+    - All other directory names are just wrappers — walk through them.
 
     For QA files: group by (username, category, date). Keep only the
     LATEST mtime file per (username, category, date) combination.
 
     Args:
         base_folder: Root folder to scan recursively.
+        log_callback: Optional callback(message, tag) for GUI logging.
 
     Returns:
         Tuple of (qa_folders, master_files) where:
         - qa_folders: List of dicts with {username, category, xlsx_path, folder_path, file_date, images}
-        - master_files: List of Paths to Master_*.xlsx files (deduplicated by latest mtime per category)
+        - master_files: List of Paths to Master_*.xlsx files (with EN/CN lang tag)
     """
     _tracker_log(f"FLAT DUMP DISCOVER: Recursively scanning {base_folder}")
 
@@ -228,92 +230,101 @@ def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict]
         _tracker_log_flush("FLAT DUMP DISCOVER")
         return [], []
 
-    # Phase 1: Walk and classify all xlsx files
-    # Key: (username, category, date) → list of (mtime, xlsx_path)
+    # Key: (username, category, date) → list of (mtime, xlsx_path, folder_path)
     qa_candidates = defaultdict(list)
-    # Key: category → list of (mtime, master_path)
+    # Key: (category, lang) → list of (mtime, master_path)
     master_candidates = defaultdict(list)
-    total_scanned = 0
-    total_skipped = 0
+    total_qa_dirs = 0
+    total_master_dirs = 0
 
-    for xlsx_path in base_folder.rglob("*.xlsx"):
-        # Skip temp files
-        if xlsx_path.name.startswith("~"):
-            continue
-        total_scanned += 1
-
-        filename = xlsx_path.name
-
-        # Check if it's a Master file (Master_{Category}.xlsx)
-        if filename.startswith("Master_"):
-            category = xlsx_path.stem.replace("Master_", "", 1)
-            if not category or category not in _VALID_MASTER_CATEGORIES:
-                _tracker_log(f"  SKIP: {filename} (invalid master category '{category}')")
-                total_skipped += 1
-                continue
-            mtime = xlsx_path.stat().st_mtime
-            master_candidates[category].append((mtime, xlsx_path))
-            _tracker_log(f"  MASTER: {filename} category={category} mtime={datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')}")
+    # Walk all directories recursively
+    for dirpath in base_folder.rglob("*"):
+        if not dirpath.is_dir():
             continue
 
-        # Try parsing as QA file: {Username}_{Category}.xlsx
-        username, category = _parse_qa_filename(filename)
+        dir_name = dirpath.name
+
+        # Skip hidden/temp directories
+        if dir_name.startswith('.') or dir_name.startswith('~'):
+            continue
+
+        # Check if this is a Master folder (Masterfolder_EN or Masterfolder_CN)
+        if dir_name in ("Masterfolder_EN", "Masterfolder_CN"):
+            lang = "EN" if "EN" in dir_name else "CN"
+            master_xlsx = [f for f in dirpath.glob("Master_*.xlsx")
+                           if not f.name.startswith("~")]
+            if master_xlsx:
+                total_master_dirs += 1
+                _tracker_log(f"  MASTER DIR: {dirpath} [{lang}] ({len(master_xlsx)} files)")
+            for mpath in master_xlsx:
+                category = mpath.stem.replace("Master_", "", 1)
+                if not category or category not in _VALID_MASTER_CATEGORIES:
+                    _tracker_log(f"    SKIP: {mpath.name} (invalid category '{category}')")
+                    continue
+                mtime = mpath.stat().st_mtime
+                master_candidates[(category, lang)].append((mtime, mpath))
+                _tracker_log(f"    MASTER: {mpath.name} cat={category} date={datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')}")
+            continue
+
+        # Check if this is a QA folder ({Username}_{Category})
+        username, category = _parse_folder_name(dir_name)
         if username is None:
-            total_skipped += 1
-            # Warn if file looks like it should match (has underscore) but category is invalid
-            stem = xlsx_path.stem
-            if "_" in stem:
-                parts = stem.rsplit("_", 1)
-                bad_cat = parts[1] if len(parts) == 2 else ""
-                msg = f"  SKIP: {filename} (unknown category '{bad_cat}', valid: {', '.join(sorted(CATEGORIES))})"
-                _tracker_log(msg, "WARN")
-                if log_callback:
-                    log_callback(msg, 'warning')
-            else:
-                _tracker_log(f"  SKIP: {filename} (no underscore, not a QA file)")
+            continue  # Just a wrapper folder, keep walking
+
+        # Found a QA folder — grab all xlsx files inside (NOT recursive, just this folder)
+        xlsx_files = [f for f in dirpath.glob("*.xlsx") if not f.name.startswith("~")]
+        if not xlsx_files:
+            _tracker_log(f"  QA DIR: {dir_name} — no xlsx files inside", "WARN")
             continue
 
-        stat = xlsx_path.stat()
-        mtime = stat.st_mtime
-        file_date = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        total_qa_dirs += 1
+
+        # Use the largest xlsx file (same logic as original discover_tracker_qa_folders)
+        xlsx_path = max(xlsx_files, key=lambda x: x.stat().st_size)
+
+        # Get file date from mtime
+        file_mtime = xlsx_path.stat().st_mtime
+        file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
+
+        # Collect images
+        images = [f for f in dirpath.iterdir()
+                  if f.suffix.lower() in IMAGE_EXTENSIONS]
 
         key = (username, category, file_date)
-        qa_candidates[key].append((mtime, xlsx_path))
-        _tracker_log(f"  QA: {filename} user={username} cat={category} date={file_date} mtime={datetime.fromtimestamp(mtime).strftime('%H:%M:%S')}")
+        qa_candidates[key].append((file_mtime, xlsx_path, dirpath, images))
+        _tracker_log(f"  QA DIR: {dir_name} → user={username} cat={category} date={file_date} xlsx={xlsx_path.name}")
 
-    _tracker_log(f"FLAT DUMP: Scanned {total_scanned} xlsx files, skipped {total_skipped}")
+    _tracker_log(f"FLAT DUMP: Found {total_qa_dirs} QA dirs, {total_master_dirs} master dirs")
 
     # Phase 2: For each (username, category, date), keep LATEST mtime only
     qa_folders = []
     for (username, category, file_date), candidates in sorted(qa_candidates.items()):
         # Sort by mtime descending, pick first (latest)
         candidates.sort(key=lambda x: x[0], reverse=True)
-        best_mtime, best_path = candidates[0]
+        best_mtime, best_path, best_folder, best_images = candidates[0]
 
         if len(candidates) > 1:
-            _tracker_log(f"  DEDUP: {username}_{category} on {file_date}: {len(candidates)} files, kept {best_path.name} (mtime={datetime.fromtimestamp(best_mtime).strftime('%H:%M:%S')})")
-
-        # Collect images from same folder as the winning file
-        images = [f for f in best_path.parent.iterdir()
-                  if f.suffix.lower() in IMAGE_EXTENSIONS]
+            _tracker_log(f"  DEDUP: {username}_{category} on {file_date}: {len(candidates)} folders, kept {best_path.name} (mtime={datetime.fromtimestamp(best_mtime).strftime('%H:%M:%S')})")
+            if log_callback:
+                log_callback(f"  Dedup: {username}_{category} ({file_date}): {len(candidates)} folders, kept latest", 'info')
 
         qa_folders.append({
             "username": username,
             "category": category,
             "xlsx_path": best_path,
-            "folder_path": best_path.parent,
+            "folder_path": best_folder,
             "file_date": file_date,
-            "images": images,
+            "images": best_images,
         })
 
-    # Phase 3: For master files, keep latest per category
+    # Phase 3: For master files, keep latest per (category, lang)
     master_files = []
-    for category, candidates in sorted(master_candidates.items()):
+    for (category, lang), candidates in sorted(master_candidates.items()):
         candidates.sort(key=lambda x: x[0], reverse=True)
         best_mtime, best_path = candidates[0]
         master_files.append(best_path)
         if len(candidates) > 1:
-            _tracker_log(f"  MASTER DEDUP: {category}: {len(candidates)} files, kept {best_path.name}")
+            _tracker_log(f"  MASTER DEDUP: {category} [{lang}]: {len(candidates)} files, kept {best_path.name}")
 
     _tracker_log(f"FLAT DUMP: Result: {len(qa_folders)} QA entries, {len(master_files)} master files")
     _tracker_log_flush("FLAT DUMP DISCOVER")
@@ -407,12 +418,15 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
 
 def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tuple[bool, str, List[Dict]]:
     """
-    Update progress tracker from a flat dump folder.
+    Update progress tracker via hybrid flat dump discovery.
 
-    Recursively walks base_folder (any depth, folder names ignored).
-    Detects QA files by {Username}_{Category}.xlsx naming.
-    Detects Master files by Master_{Category}.xlsx naming.
-    Groups by (username, category, date), keeps latest mtime per day.
+    Recursively walks base_folder at any depth looking for:
+    - Directories named {Username}_{Category} → QA folders (any xlsx inside)
+    - Directories named Masterfolder_EN / Masterfolder_CN → Master folders
+
+    Wrapper folder names (001, 002, etc.) are ignored. Only correctly-named
+    directories trigger detection. Groups by (username, category, date),
+    keeps latest mtime per day.
 
     Args:
         base_folder: Root folder to scan. Defaults to TRACKER_UPDATE_FOLDER.
