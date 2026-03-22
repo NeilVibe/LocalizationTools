@@ -905,7 +905,7 @@ Creates `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` with:
 
 ## 🔄 6. Update Tracker (Retroactive)
 
-**Purpose:** Add missing days to the Progress Tracker WITHOUT rebuilding master files.
+**Purpose:** Rebuild the Progress Tracker from a dump of QA files and Master files.
 
 ### When to Use
 
@@ -913,69 +913,75 @@ Creates `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` with:
 |----------|-------------------|
 | Forgot to run Build Master on a specific day | ✅ Yes |
 | Need to backfill tracker data for missed days | ✅ Yes |
+| Full tracker rebuild from historical data | ✅ Yes |
 | Normal daily workflow | ❌ No - use Build Master Files |
 
-### Folder Structure
+### Folder Structure (Hybrid Flat Dump)
+
+Dump everything into `TrackerUpdateFolder/`. Wrapper folder names don't matter — only `{Username}_{Category}` and `Masterfolder_EN/CN` folders are detected.
 
 ```
 TrackerUpdateFolder/
-├── QAfolder/              ← Tester QA files (for tester stats)
-│   └── 김민영_Quest/
-│       └── file.xlsx
-├── Masterfolder_EN/       ← English master files (for manager stats)
-│   └── Master_Quest.xlsx
-└── Masterfolder_CN/       ← Chinese master files (for manager stats)
-    └── Master_Quest.xlsx
+├── 001/                           ← any name, ignored
+│   ├── 김민영_Quest/               ← detected by folder name
+│   │   └── file.xlsx              ← filename doesn't matter
+│   └── Masterfolder_EN/           ← detected by folder name
+│       └── Master_Quest.xlsx
+├── 002/
+│   └── 김민영_Quest/               ← same user, different day (by file mtime)
+│       └── another_file.xlsx
+├── backup/deep/folder/
+│   └── 황하연_Character/           ← any depth works
+│       └── v2.xlsx
+└── anything/
+    └── Masterfolder_CN/
+        └── Master_Script.xlsx
 ```
+
+### How It Works
+
+| Rule | Details |
+|------|---------|
+| **QA folders** | Folder named `{Username}_{Category}` → any xlsx inside is a QA file |
+| **Master folders** | Folder named `Masterfolder_EN` or `Masterfolder_CN` → `Master_*.xlsx` inside |
+| **Date** | From file's Last Modified date (mtime), NOT folder name |
+| **Same user+category+day** | Multiple files → only the latest mtime file is used (data is cumulative) |
+| **Master dedup** | Content-based: each unique row (stringid+translation+comment) counted once, latest file wins |
 
 ### Step-by-Step Process
 
 | Step | Action | Details |
 |------|--------|---------|
-| 1 | **Copy files** | Copy QA files and/or Master files to `TrackerUpdateFolder/` |
-| 2 | **Set date** | Enter target date (YYYY-MM-DD) in the date field |
-| 3 | **Click "Set File Dates"** | Select the folder containing your files |
-| 4 | **Click "Update Tracker"** | Updates tracker with the file date, not today |
+| 1 | **Dump folders** | Copy all QA and Master folders into `TrackerUpdateFolder/` (any nesting) |
+| 2 | **Optional: Set dates** | Use "Set File Dates" if you need to override file dates |
+| 3 | **Click "Update Tracker"** | Recursively scans, finds all valid folders, builds tracker |
 
-### Critical: File Date = Tracker Date
+### Pending Calculation
 
-The tracker uses the **file's Last Modified date** to determine which day to record:
+```
+Pending = Issues - Fixed - Reported - NonIssue
+```
 
-| File Modified Date | Tracker Entry Date |
-|-------------------|-------------------|
-| 2025-01-16 | 2025-01-16 |
-| 2025-01-18 | 2025-01-18 |
-
-**The "Set File Dates" button changes BOTH:**
-- ✅ xlsx files
-- ✅ Parent folders
-- ✅ Root selected folder
+| Manager Status | Reduces Pending? |
+|---------------|-----------------|
+| FIXED | ✅ Yes |
+| REPORTED | ✅ Yes |
+| NON-ISSUE / NON ISSUE | ✅ Yes |
+| CHECKING | ❌ No (still being investigated) |
 
 ### What Gets Updated
 
 | Source | Updates |
 |--------|---------|
-| **QAfolder/** files | Tester stats (Done, Issues, No Issue, Blocked, Korean) |
-| **Masterfolder_EN/** files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
-| **Masterfolder_CN/** files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
+| `{Username}_{Category}/` folders | Tester stats (Done, Issues, No Issue, Blocked, Korean, Words/Chars) |
+| `Masterfolder_EN/` Master files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
+| `Masterfolder_CN/` Master files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
 
-### Example: Backfill January 16th
+### CLI Usage
 
-```
-1. Copy your QA files from Jan 16th backup to:
-   TrackerUpdateFolder/QAfolder/
-
-2. Copy your Master files from Jan 16th backup to:
-   TrackerUpdateFolder/Masterfolder_EN/
-   TrackerUpdateFolder/Masterfolder_CN/
-
-3. Enter date: 2025-01-16
-
-4. Click "Set File Dates" → Select TrackerUpdateFolder
-
-5. Click "Update Tracker"
-
-Result: Tracker now has data for 2025-01-16!
+```bash
+python main.py --update-tracker                    # uses TrackerUpdateFolder/
+python main.py --flat-dump /path/to/custom/folder  # custom folder
 ```
 
 ---
@@ -1191,9 +1197,10 @@ QACompiler/
 ├── Masterfolder_CN/         ← Chinese master output
 │
 └── TrackerUpdateFolder/     ← For retroactive tracker updates (Section 6)
-    ├── QAfolder/            ← Tester files for backfill
-    ├── Masterfolder_EN/     ← Master files for manager stats
-    └── Masterfolder_CN/     ← Master files for manager stats
+    └── (any folder structure)
+        ├── {User}_{Category}/  ← QA folders (detected by name, any depth)
+        ├── Masterfolder_EN/    ← EN master files (detected by name, any depth)
+        └── Masterfolder_CN/    ← CN master files (detected by name, any depth)
 ```
 
 ### Folder Naming Convention
