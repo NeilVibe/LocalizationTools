@@ -26,7 +26,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
 **Plans**: 2 plans (Wave 1, parallel)
 
 Plans:
-- [ ] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
+- [x] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
 - [ ] 56-02-PLAN.md -- Settings UI for LOC PATH + EXPORT PATH with validation and persistence
 
 ### Phase 57: Transfer Service Adapter
@@ -100,7 +100,7 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Mock Data + Settings | v6.0 | 0/2 | Not started | - |
+| 56. Mock Data + Settings | v6.0 | 1/2 | In Progress|  |
 | 57. Transfer Service Adapter | v6.0 | 0/3 | Not started | - |
 | 58. Merge API | v6.0 | 0/2 | Not started | - |
 | 59. Merge UI | v6.0 | 0/3 | Not started | - |

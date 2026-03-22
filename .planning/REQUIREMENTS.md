@@ -7,10 +7,10 @@
 
 ### Mock Data
 
-- [ ] **MOCK-01**: CLI script wipes DB and creates mock platform with project_FRE, project_ENG, and project_MULTI
-- [ ] **MOCK-02**: Mock projects auto-detect language from project name (project_FRE → French, project_ENG → English)
-- [ ] **MOCK-03**: project_MULTI contains subfolders with language-suffixed files (e.g., corrections_FRE/, corrections_ENG/) for multi-language merge testing
-- [ ] **MOCK-04**: Test languagedata files from C:\Users\MYCOM\Desktop\oldoldVold\test123 are loadable as mock LOC data
+- [x] **MOCK-01**: CLI script wipes DB and creates mock platform with project_FRE, project_ENG, and project_MULTI
+- [x] **MOCK-02**: Mock projects auto-detect language from project name (project_FRE → French, project_ENG → English)
+- [x] **MOCK-03**: project_MULTI contains subfolders with language-suffixed files (e.g., corrections_FRE/, corrections_ENG/) for multi-language merge testing
+- [x] **MOCK-04**: Test languagedata files from C:\Users\MYCOM\Desktop\oldoldVold\test123 are loadable as mock LOC data
 
 ### Settings
 
@@ -70,10 +70,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MOCK-01 | Phase 56 | Pending |
-| MOCK-02 | Phase 56 | Pending |
-| MOCK-03 | Phase 56 | Pending |
-| MOCK-04 | Phase 56 | Pending |
+| MOCK-01 | Phase 56 | Complete |
+| MOCK-02 | Phase 56 | Complete |
+| MOCK-03 | Phase 56 | Complete |
+| MOCK-04 | Phase 56 | Complete |
 | SET-01 | Phase 56 | Pending |
 | SET-02 | Phase 56 | Pending |
 | SET-03 | Phase 56 | Pending |
