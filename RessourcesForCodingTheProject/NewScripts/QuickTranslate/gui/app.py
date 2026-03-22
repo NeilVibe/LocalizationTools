@@ -701,19 +701,21 @@ class QuickTranslateApp:
         lone_bracket_frame.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(lone_bracket_frame,
-                 text=("Replace lone < and > (not part of <br/> tags) with hyphens (-) "
-                       "in Target XML files. Fixes brackets that differ from StrOrigin."),
+                 text=("Replace lone < and > (not part of <br/> tags) with hyphens (-). "
+                       "Fixes brackets where count differs from StrOrigin."),
                  font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
                  justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
 
-        tgt_info2 = tk.Frame(lone_bracket_frame, bg='#e8e8e8', padx=8, pady=6,
-                             relief='groove', bd=1)
-        tgt_info2.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(tgt_info2, text="Target:", font=('Segoe UI', 9, 'bold'),
-                 bg='#e8e8e8', width=8, anchor='w').pack(side=tk.LEFT)
-        tk.Label(tgt_info2, textvariable=self.target_path,
-                 font=('Segoe UI', 9), bg='#e8e8e8', fg='#333',
-                 anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Folder selector: Source or Target
+        self._lone_bracket_folder = tk.StringVar(value="source")
+        folder_row = tk.Frame(lone_bracket_frame, bg='#f0f0f0')
+        folder_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Radiobutton(folder_row, text="Source", variable=self._lone_bracket_folder,
+                        value="source", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0').pack(side=tk.LEFT)
+        tk.Radiobutton(folder_row, text="Target", variable=self._lone_bracket_folder,
+                        value="target", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0').pack(side=tk.LEFT, padx=(8, 0))
 
         lone_bracket_btn_row = tk.Frame(lone_bracket_frame, bg='#f0f0f0')
         lone_bracket_btn_row.pack(fill=tk.X)
@@ -2527,27 +2529,30 @@ class QuickTranslateApp:
         )
 
     def _fix_lone_brackets(self):
-        """Replace lone < and > with hyphens in all XML files under Target."""
-        target_path_str = self.target_path.get().strip()
-        if not target_path_str:
-            messagebox.showwarning("Warning", "Please set a Target folder on the Transfer tab.")
+        """Replace lone < and > with hyphens in XML files under selected folder."""
+        use_source = self._lone_bracket_folder.get() == "source"
+        folder_label = "Source" if use_source else "Target"
+        path_str = (self.source_path if use_source else self.target_path).get().strip()
+
+        if not path_str:
+            messagebox.showwarning("Warning", f"Please set a {folder_label} folder on the Transfer tab.")
             return
 
-        target = Path(target_path_str)
-        if not target.exists() or not target.is_dir():
-            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+        folder = Path(path_str)
+        if not folder.exists() or not folder.is_dir():
+            messagebox.showerror("Error", f"{folder_label} folder not found:\n{folder}")
             return
 
-        xml_files = list(target.rglob("*.xml"))
+        xml_files = list(folder.rglob("*.xml"))
         if not xml_files:
-            messagebox.showwarning("Warning", f"No XML files found in:\n{target}")
+            messagebox.showwarning("Warning", f"No XML files found in:\n{folder}")
             return
 
         self._disable_buttons()
         self.progress_value.set(0)
         self._clear_log()
-        self._log("=== Fix Lone Brackets ===", 'header')
-        self._log(f"Scanning {len(xml_files)} XML files in: {target}")
+        self._log(f"=== Fix Lone Brackets ({folder_label}) ===", 'header')
+        self._log(f"Scanning {len(xml_files)} XML files in: {folder}")
 
         def work():
             from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr

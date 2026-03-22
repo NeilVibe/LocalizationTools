@@ -203,3 +203,4 @@ Build 077: add rich progress logging to TMX tools
 Build 078: update user guide v7.0 with TMX Tools and lone bracket warning
 Build 079: lone bracket source comparison + fix tool in Other Tools
 Build 080: fix tool targets critical brackets + concise log warnings
+Build 081: fix lone brackets supports Source/Target folder selection
