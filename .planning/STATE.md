@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 57-03-PLAN.md
-last_updated: "2026-03-22T15:43:56.717Z"
+stopped_at: Completed 58-01-PLAN.md
+last_updated: "2026-03-22T17:07:50.450Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Real, working localization workflows with zero cloud dependency, dual-mode for translators and game developers.
-**Current focus:** Phase 57 — transfer-service-adapter
+**Current focus:** Phase 58 — merge-api
 
 ## Current Position
 
-Phase: 58
-Plan: Not started
+Phase: 58 (merge-api) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: Not started
 | Phase 57 P01 | 3min | 1 tasks | 7 files |
 | Phase 57 P02 | 3min | 1 tasks | 2 files |
 | Phase 57 P03 | 5min | 1 tasks | 6 files |
+| Phase 58 P01 | 2min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - [Phase 57]: Config shim uses types.ModuleType injected into sys.modules['config'] before any QT import
 - [Phase 57]: Graceful degradation: build_stringid_to_category failure passes None to QT
 - [Phase 57]: scan_source_languages needs target_path param for LOC folder language code discovery
+- [Phase 58]: Single /preview endpoint with multi_language bool flag instead of separate endpoints
 
 ### Pending Todos
 
@@ -82,6 +84,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-22T15:30:48.206Z
-Stopped at: Completed 57-03-PLAN.md
+Last session: 2026-03-22T17:07:50.447Z
+Stopped at: Completed 58-01-PLAN.md
 Resume file: None

@@ -58,7 +58,7 @@ Plans:
 **Plans**: 2 plans (Wave 1 → Wave 2, sequential)
 
 Plans:
-- [ ] 58-01-PLAN.md -- Preview endpoint (dry-run summary) + multi-language preview
+- [x] 58-01-PLAN.md -- Preview endpoint (dry-run summary) + multi-language preview
 - [ ] 58-02-PLAN.md -- Execute endpoint with SSE streaming + completion summary
 
 ### Phase 59: Merge UI
@@ -102,6 +102,6 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 |-------|-----------|----------------|--------|-----------|
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
-| 58. Merge API | v6.0 | 0/2 | Not started | - |
+| 58. Merge API | v6.0 | 1/2 | In Progress|  |
 | 59. Merge UI | v6.0 | 0/3 | Not started | - |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |
