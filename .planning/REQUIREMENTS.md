@@ -20,7 +20,7 @@
 
 ### Transfer Service
 
-- [ ] **XFER-01**: Adapter imports QuickTranslate core modules via sys.path (xml_transfer, postprocess, source_scanner, language_loader)
+- [x] **XFER-01**: Adapter imports QuickTranslate core modules via sys.path (xml_transfer, postprocess, source_scanner, language_loader)
 - [ ] **XFER-02**: StringID Only match type works (case-insensitive, SCRIPT/ALL category filter)
 - [ ] **XFER-03**: StringID+StrOrigin match type works (strict 2-key with nospace fallback)
 - [ ] **XFER-04**: StrOrigin+FileName 2PASS match type works (3-tuple then 2-tuple fallback)
@@ -77,7 +77,7 @@
 | SET-01 | Phase 56 | Complete |
 | SET-02 | Phase 56 | Complete |
 | SET-03 | Phase 56 | Complete |
-| XFER-01 | Phase 57 | Pending |
+| XFER-01 | Phase 57 | Complete |
 | XFER-02 | Phase 57 | Pending |
 | XFER-03 | Phase 57 | Pending |
 | XFER-04 | Phase 57 | Pending |
