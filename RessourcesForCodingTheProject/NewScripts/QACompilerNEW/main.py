@@ -412,12 +412,17 @@ Output folders:
         run_gui()
         return
 
-    # Update tracker only (no rebuild)
+    # Update tracker (recursive scan, filename-based detection)
     if args.update_tracker:
         print_banner()
         try:
-            from core.tracker_update import update_tracker_only
-            success, message, entries = update_tracker_only()
+            from core.tracker_update import update_tracker_flat_dump
+            # --flat-dump overrides the default folder
+            folder = None
+            if args.flat_dump is not None and args.flat_dump:
+                from pathlib import Path
+                folder = Path(args.flat_dump)
+            success, message, entries = update_tracker_flat_dump(base_folder=folder)
             sys.exit(0 if success else 1)
         except ImportError as e:
             print_error(f"Tracker update module not available: {e}")
@@ -426,8 +431,8 @@ Output folders:
             print_error(f"Tracker update failed: {e}")
             sys.exit(1)
 
-    # Flat dump tracker update (recursive scan, folder names ignored)
-    if args.flat_dump is not None:
+    # --flat-dump alone (without -u) also triggers tracker update with custom folder
+    if not args.update_tracker and args.flat_dump is not None:
         print_banner()
         try:
             from core.tracker_update import update_tracker_flat_dump
