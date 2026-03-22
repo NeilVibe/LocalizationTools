@@ -1,82 +1,81 @@
-# Requirements: LocaNext
+# Requirements: LocaNext v6.0 Showcase Offline Transfer
 
 **Defined:** 2026-03-22
-**Core Value:** Real, working localization workflows with zero cloud dependency, dual-mode for translators and game developers.
+**Core Value:** Real, working localization workflows with zero cloud dependency
 
-## v6.0 Requirements
+## v1 Requirements
 
-Requirements for Architecture & Code Quality milestone. Each maps to roadmap phases.
+### Mock Data
 
-### Component Decomposition
+- [ ] **MOCK-01**: CLI script wipes DB and creates mock platform with project_FRE, project_ENG, and project_MULTI
+- [ ] **MOCK-02**: Mock projects auto-detect language from project name (project_FRE → French, project_ENG → English)
+- [ ] **MOCK-03**: project_MULTI contains subfolders with language-suffixed files (e.g., corrections_FRE/, corrections_ENG/) for multi-language merge testing
+- [ ] **MOCK-04**: Test languagedata files from C:\Users\MYCOM\Desktop\oldoldVold\test123 are loadable as mock LOC data
 
-- [ ] **COMP-01**: VirtualGrid.svelte split into focused modules — virtual scroll, search/filter, cell editing, TM leverage, QA layer (each under 800 lines)
-- [ ] **COMP-02**: FilesPage.svelte split into explorer navigation, context menu operations, and upload manager
-- [ ] **COMP-03**: All split components maintain identical end-user behavior (no regression)
+### Settings
 
-### Service Decomposition
+- [ ] **SET-01**: User can configure LOC PATH in Settings page (persistent, per-project)
+- [ ] **SET-02**: User can configure EXPORT PATH in Settings page (persistent, per-project)
+- [ ] **SET-03**: Settings validate paths exist and contain expected files (languagedata_*.xml)
 
-- [ ] **SVC-01**: mega_index.py split into builder (XML parsing), indexes (35 dict construction), and lookup (O(1) retrieval API)
-- [ ] **SVC-02**: codex_service.py split into entity registry and search modules
-- [ ] **SVC-03**: gamedata_context_service.py split into reverse index and cross-ref resolver
+### Transfer Service
 
-### Route Thinning
+- [ ] **XFER-01**: Adapter imports QuickTranslate core modules via sys.path (xml_transfer, postprocess, source_scanner, language_loader)
+- [ ] **XFER-02**: StringID Only match type works (case-insensitive, SCRIPT/ALL category filter)
+- [ ] **XFER-03**: StringID+StrOrigin match type works (strict 2-key with nospace fallback)
+- [ ] **XFER-04**: StrOrigin+FileName 2PASS match type works (3-tuple then 2-tuple fallback)
+- [ ] **XFER-05**: 8-step postprocess pipeline runs after merge (newlines, apostrophes, entities, etc.)
+- [ ] **XFER-06**: Transfer scope works: "Transfer All" vs "Only Untranslated"
+- [ ] **XFER-07**: Multi-language folder merge: scans source folder, auto-detects language suffixes per file/subfolder, merges each language into correct languagedata target
 
-- [ ] **ROUTE-01**: files.py business logic extracted to dedicated services (file validation, TM registration, merge coordination) — route file under 400 lines
-- [ ] **ROUTE-02**: sync.py business logic extracted to services — route file under 400 lines
+### Merge API
 
-### Test Infrastructure
+- [ ] **API-01**: POST /api/merge/preview returns dry-run summary (files, entries, matches, overwrites)
+- [ ] **API-02**: POST /api/merge/execute streams progress via SSE (file-by-file + postprocess steps)
+- [ ] **API-03**: Merge summary report returned on completion (matched, skipped, overwritten counts)
+- [ ] **API-04**: POST /api/merge/preview supports multi-language mode (scans folder, returns per-language breakdown)
 
-- [ ] **TEST-01**: Unit test structure created for backend services with conftest.py fixtures and mock DB layer
-- [ ] **TEST-02**: Unit tests for mega_index (builder, lookup), codex_service, and gamedata_context_service — minimum 30 test cases
-- [ ] **TEST-03**: Component test structure created for split Svelte components
+### Merge UI
 
-### UI Bug Fixes
+- [ ] **UI-01**: "Merge to LOCDEV" button in main toolbar near Export actions (single-file/project merge)
+- [ ] **UI-02**: Right-click folder context menu "Merge Folder to LOCDEV" (multi-language folder merge)
+- [ ] **UI-03**: Single-page merge modal with target LOCDEV folder picker, match type radios, scope toggle
+- [ ] **UI-04**: Category filter toggle visible only for StringID mode
+- [ ] **UI-05**: Dry-run preview panel shows file/entry counts and overwrite warnings (per-language for multi)
+- [ ] **UI-06**: Progress display during merge execution (file-by-file updates)
+- [ ] **UI-07**: Summary report shown on completion with matched/skipped/overwritten counts
+- [ ] **UI-08**: Language auto-detected from project and shown as badge in modal header
+- [ ] **UI-09**: Multi-language mode shows detected languages with file counts before merge
 
-- [ ] **UIFIX-01**: Right-click context menu works on file explorer panel
-- [ ] **UIFIX-02**: All known non-blocking issues from v5.1 audit addressed (audioContext residue, AI capabilities 404 handling)
+## v2 Requirements
 
-## Future Requirements
+### Deferred Architecture
 
-### Performance Optimization
-- **PERF-01**: VirtualGrid scroll performance benchmarked and optimized after split
-- **PERF-02**: MegaIndex build time profiled and optimized
-
-### Deep Refactoring
-- **DEEP-01**: Service layer organized by domain (codex/, gamedata/, merge/, ai/, shared/)
-- **DEEP-02**: Full route layer thinning (all 38 route files under 400 lines)
+- **ARCH-01**: Split VirtualGrid.svelte (4299 lines → 5 focused components)
+- **ARCH-02**: Split mega_index.py (1310 lines → 3 modules)
+- **ARCH-03**: Extract business logic from thick route handlers into services
+- **ARCH-04**: Add unit test infrastructure with mocks
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| New user-facing features | Architecture milestone — no feature additions |
-| Database schema changes | Refactoring code structure, not data model |
-| UI redesign | Split components maintain same visual appearance |
-| Full test coverage (80%+) | Foundation only — 30+ tests for critical services |
+| Backup/rollback on merge | User decided not needed — trust QuickTranslate logic |
+| StrOrigin-Only match type | Rarely used, not in top 3 |
+| StrOrigin+DescOrigin match type | Voice direction specific, defer |
+| Fuzzy matching | Not in QuickTranslate core transfer |
+| Game Dev Grid (CRUD) | Separate milestone, tribunal decisions captured |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | Phase 58 | Pending |
-| COMP-02 | Phase 59 | Pending |
-| COMP-03 | Phase 60 | Pending |
-| SVC-01 | Phase 56 | Pending |
-| SVC-02 | Phase 56 | Pending |
-| SVC-03 | Phase 56 | Pending |
-| ROUTE-01 | Phase 57 | Pending |
-| ROUTE-02 | Phase 57 | Pending |
-| TEST-01 | Phase 60 | Pending |
-| TEST-02 | Phase 60 | Pending |
-| TEST-03 | Phase 60 | Pending |
-| UIFIX-01 | Phase 59 | Pending |
-| UIFIX-02 | Phase 59 | Pending |
+| (Populated during roadmap creation) | | |
 
 **Coverage:**
-- v6.0 requirements: 13 total
-- Mapped to phases: 13
-- Unmapped: 0
+- v1 requirements: 26 total
+- Mapped to phases: 0
+- Unmapped: 26
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after roadmap creation*
