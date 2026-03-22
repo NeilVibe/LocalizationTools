@@ -6,7 +6,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
 
 ## Phases
 
-- [ ] **Phase 56: Mock Data + Settings** - CLI mock DB setup with 3 projects + LOC/EXPORT path configuration in Settings
+- [x] **Phase 56: Mock Data + Settings** - CLI mock DB setup with 3 projects + LOC/EXPORT path configuration in Settings (completed 2026-03-22)
 - [ ] **Phase 57: Transfer Service Adapter** - Import QuickTranslate core modules via sys.path for 3 match types, postprocess, and multi-language merge
 - [ ] **Phase 58: Merge API** - REST endpoints for dry-run preview and SSE-streamed merge execution
 - [ ] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points
@@ -27,7 +27,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
 
 Plans:
 - [x] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
-- [ ] 56-02-PLAN.md -- Settings UI for LOC PATH + EXPORT PATH with validation and persistence
+- [x] 56-02-PLAN.md -- Settings UI for LOC PATH + EXPORT PATH with validation and persistence
 
 ### Phase 57: Transfer Service Adapter
 **Goal**: QuickTranslate's proven transfer logic is available as a LocaNext service via adapter import, supporting all 3 match types and the full postprocess pipeline
@@ -100,7 +100,7 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Mock Data + Settings | v6.0 | 1/2 | In Progress|  |
+| 56. Mock Data + Settings | v6.0 | 2/2 | Complete   | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 0/3 | Not started | - |
 | 58. Merge API | v6.0 | 0/2 | Not started | - |
 | 59. Merge UI | v6.0 | 0/3 | Not started | - |

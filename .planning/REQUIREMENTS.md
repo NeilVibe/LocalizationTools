@@ -14,9 +14,9 @@
 
 ### Settings
 
-- [ ] **SET-01**: User can configure LOC PATH in Settings page (persistent, per-project)
-- [ ] **SET-02**: User can configure EXPORT PATH in Settings page (persistent, per-project)
-- [ ] **SET-03**: Settings validate paths exist and contain expected files (languagedata_*.xml)
+- [x] **SET-01**: User can configure LOC PATH in Settings page (persistent, per-project)
+- [x] **SET-02**: User can configure EXPORT PATH in Settings page (persistent, per-project)
+- [x] **SET-03**: Settings validate paths exist and contain expected files (languagedata_*.xml)
 
 ### Transfer Service
 
@@ -74,9 +74,9 @@
 | MOCK-02 | Phase 56 | Complete |
 | MOCK-03 | Phase 56 | Complete |
 | MOCK-04 | Phase 56 | Complete |
-| SET-01 | Phase 56 | Pending |
-| SET-02 | Phase 56 | Pending |
-| SET-03 | Phase 56 | Pending |
+| SET-01 | Phase 56 | Complete |
+| SET-02 | Phase 56 | Complete |
+| SET-03 | Phase 56 | Complete |
 | XFER-01 | Phase 57 | Pending |
 | XFER-02 | Phase 57 | Pending |
 | XFER-03 | Phase 57 | Pending |
