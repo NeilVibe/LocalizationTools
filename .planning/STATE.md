@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 58-02-PLAN.md
-last_updated: "2026-03-22T17:17:20.410Z"
+stopped_at: Completed 59-01-PLAN.md
+last_updated: "2026-03-22T17:42:00.365Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Real, working localization workflows with zero cloud dependency, dual-mode for translators and game developers.
-**Current focus:** Phase 58 — merge-api
+**Current focus:** Phase 59 — merge-ui
 
 ## Current Position
 
-Phase: 59
-Plan: Not started
+Phase: 59 (merge-ui) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: Not started
 | Phase 57 P03 | 5min | 1 tasks | 6 files |
 | Phase 58 P01 | 2min | 2 tasks | 3 files |
 | Phase 58 P02 | 4min | 2 tasks | 2 files |
+| Phase 59 P01 | 3min | 1 tasks | 1 files |
 
 ### Decisions
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 58]: Single /preview endpoint with multi_language bool flag instead of separate endpoints
 - [Phase 58]: put_nowait() for thread-safe queue writes from sync QT callbacks to async SSE generator
 - [Phase 58]: json.dumps(default=str) for Path objects in QT merge results
+- [Phase 59]: fetch+ReadableStream for SSE instead of EventSource (execute is POST)
+- [Phase 59]: passiveModal during execute phase prevents accidental close
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:14:25.514Z
-Stopped at: Completed 58-02-PLAN.md
+Last session: 2026-03-22T17:42:00.362Z
+Stopped at: Completed 59-01-PLAN.md
 Resume file: None

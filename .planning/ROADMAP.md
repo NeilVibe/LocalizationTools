@@ -74,7 +74,7 @@ Plans:
 **Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
 
 Plans:
-- [ ] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
+- [x] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
 - [ ] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
 - [ ] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
 
@@ -103,5 +103,5 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
 | 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 59. Merge UI | v6.0 | 0/3 | Planned     | - |
+| 59. Merge UI | v6.0 | 1/3 | In Progress|  |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |

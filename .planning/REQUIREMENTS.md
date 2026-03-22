@@ -39,12 +39,12 @@
 
 - [ ] **UI-01**: "Merge to LOCDEV" button in main toolbar near Export actions (single-file/project merge)
 - [ ] **UI-02**: Right-click folder context menu "Merge Folder to LOCDEV" (multi-language folder merge)
-- [ ] **UI-03**: Single-page merge modal with target LOCDEV folder picker, match type radios, scope toggle
-- [ ] **UI-04**: Category filter toggle visible only for StringID mode
-- [ ] **UI-05**: Dry-run preview panel shows file/entry counts and overwrite warnings (per-language for multi)
-- [ ] **UI-06**: Progress display during merge execution (file-by-file updates)
-- [ ] **UI-07**: Summary report shown on completion with matched/skipped/overwritten counts
-- [ ] **UI-08**: Language auto-detected from project and shown as badge in modal header
+- [x] **UI-03**: Single-page merge modal with target LOCDEV folder picker, match type radios, scope toggle
+- [x] **UI-04**: Category filter toggle visible only for StringID mode
+- [x] **UI-05**: Dry-run preview panel shows file/entry counts and overwrite warnings (per-language for multi)
+- [x] **UI-06**: Progress display during merge execution (file-by-file updates)
+- [x] **UI-07**: Summary report shown on completion with matched/skipped/overwritten counts
+- [x] **UI-08**: Language auto-detected from project and shown as badge in modal header
 - [ ] **UI-09**: Multi-language mode shows detected languages with file counts before merge
 
 ## v2 Requirements
@@ -90,12 +90,12 @@
 | API-04 | Phase 58 | Complete |
 | UI-01 | Phase 59 | Pending |
 | UI-02 | Phase 59 | Pending |
-| UI-03 | Phase 59 | Pending |
-| UI-04 | Phase 59 | Pending |
-| UI-05 | Phase 59 | Pending |
-| UI-06 | Phase 59 | Pending |
-| UI-07 | Phase 59 | Pending |
-| UI-08 | Phase 59 | Pending |
+| UI-03 | Phase 59 | Complete |
+| UI-04 | Phase 59 | Complete |
+| UI-05 | Phase 59 | Complete |
+| UI-06 | Phase 59 | Complete |
+| UI-07 | Phase 59 | Complete |
+| UI-08 | Phase 59 | Complete |
 | UI-09 | Phase 59 | Pending |
 
 **Coverage:**
