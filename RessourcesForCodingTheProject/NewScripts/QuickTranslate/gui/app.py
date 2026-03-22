@@ -2628,12 +2628,10 @@ class QuickTranslateApp:
                                     file_fixes += 1
 
                 if file_fixes > 0:
-                    # Write back — match project's XML write pattern (no xml_declaration, pretty_print)
-                    tree = root.getroottree() if hasattr(root, 'getroottree') else root
-                    try:
-                        tree.write(str(xml_path), encoding='utf-8', xml_declaration=False, pretty_print=True)
-                    except TypeError:
-                        tree.write(str(xml_path), encoding='utf-8', xml_declaration=False)
+                    # Write back using etree.tostring (root is detached, no tree.write)
+                    from lxml import etree
+                    xml_bytes = etree.tostring(root, encoding='utf-8', xml_declaration=False, pretty_print=True)
+                    xml_path.write_bytes(xml_bytes)
                     files_modified += 1
                     total_fixed += file_fixes
                     self._log(f"  {xml_path.name}: {file_fixes} brackets fixed", 'success')

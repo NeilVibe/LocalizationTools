@@ -205,3 +205,4 @@ Build 079: lone bracket source comparison + fix tool in Other Tools
 Build 080: fix tool targets critical brackets + concise log warnings
 Build 081: fix lone brackets supports Source/Target folder selection
 Build 082: target validation splits critical vs low-impact lone brackets
+Build 083: fix XML write error in Fix Lone Brackets (detached root)
