@@ -297,15 +297,20 @@ def read_corrections_from_excel(
                     continue
 
                 # Text integrity check on Correction (broken linebreaks, encoding, bad chars)
-                bad_integrity = is_text_integrity_issue(corrected_str)
+                _src_text = str(str_origin).strip() if str_origin else None
+                bad_integrity = is_text_integrity_issue(corrected_str, source_text=_src_text)
                 if bad_integrity:
-                    logger.debug("Row %s Correction skipped (integrity): %s", row[0].row, bad_integrity)
+                    logger.debug("Row %s Correction %s (integrity): %s", row[0].row,
+                                 'warned' if bad_integrity.startswith('Warning:') else 'skipped',
+                                 bad_integrity)
                     if integrity_report is not None:
                         integrity_report.append({
                             'row': row[0].row, 'column': 'Correction',
                             'string_id': _report_id, 'reason': bad_integrity,
                         })
-                    continue
+                    # Warnings (lone brackets matching source) still transfer
+                    if not bad_integrity.startswith('Warning:'):
+                        continue
 
                 # Skip entries where the "correction" is still Korean (untranslated)
                 if is_korean_text(corrected_str):
@@ -352,15 +357,20 @@ def read_corrections_from_excel(
                         d_val = _convert_linebreaks_for_excel(d_val)
                     # Text integrity check on Desc (broken linebreaks, encoding, bad chars)
                     if d_val is not None and isinstance(d_val, str):
-                        bad_desc_integrity = is_text_integrity_issue(d_val.strip())
+                        _desc_src = entry.get("desc_origin")
+                        bad_desc_integrity = is_text_integrity_issue(d_val.strip(), source_text=_desc_src)
                         if bad_desc_integrity:
-                            logger.debug("Row %s Desc skipped (integrity): %s", row[0].row, bad_desc_integrity)
+                            logger.debug("Row %s Desc %s (integrity): %s", row[0].row,
+                                         'warned' if bad_desc_integrity.startswith('Warning:') else 'skipped',
+                                         bad_desc_integrity)
                             if integrity_report is not None:
                                 integrity_report.append({
                                     'row': row[0].row, 'column': 'Desc',
                                     'string_id': _report_id, 'reason': bad_desc_integrity,
                                 })
-                            d_val = None  # Neutralize
+                            # Warnings (lone brackets matching source) keep Desc value
+                            if not bad_desc_integrity.startswith('Warning:'):
+                                d_val = None  # Neutralize
                     if d_val is not None and str(d_val).strip():
                         desc_str = str(d_val).strip()
                         if not is_korean_text(desc_str) and ' '.join(desc_str.split()).lower() != 'no translation':

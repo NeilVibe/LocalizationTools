@@ -209,16 +209,21 @@ def is_broken_linebreak(text: str) -> Optional[str]:
     return None
 
 
-def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[str]:
+def is_markup_contamination(text: str, *, from_xml: bool = False,
+                            source_text: Optional[str] = None) -> Optional[str]:
     """Check if text contains markup contamination or lone angle brackets.
 
     Checks for:
       - Lone < or > (after stripping valid <br/> tags) — flags for human review
       - Double/triple-escaped entities that indicate encoding issues
 
+    If source_text is provided and has the same lone bracket counts as text,
+    the issue is downgraded to a low-impact warning (prefix 'Warning: ').
+
     Args:
         text: Text to check.
         from_xml: True if text came from lxml-parsed XML.
+        source_text: Original source text (StrOrigin) for comparison.
 
     Returns:
         Reason string if contamination found, None if clean.
@@ -232,6 +237,14 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
     # Strip valid <br/> variants first to avoid false positives.
     stripped_br = _VALID_BR_RE.sub('', text)
     if '<' in stripped_br or '>' in stripped_br:
+        # Check if source has the same lone bracket counts — if so, downgrade
+        is_source_match = False
+        if source_text:
+            src_stripped = _VALID_BR_RE.sub('', source_text)
+            if (src_stripped.count('<') == stripped_br.count('<')
+                    and src_stripped.count('>') == stripped_br.count('>')):
+                is_source_match = True
+
         # Find the first lone bracket for the error message
         for ch, name in (('<', '&lt;'), ('>', '&gt;')):
             idx = stripped_br.find(ch)
@@ -239,6 +252,8 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
                 start = max(0, idx - 10)
                 end = min(len(stripped_br), idx + 15)
                 context = stripped_br[start:end]
+                if is_source_match:
+                    return f'Warning: Lone {name} (matches source): ...{context}...'
                 return f'Lone {name} needs human review: ...{context}...'
 
     # --- Entity contamination checks ---
@@ -278,7 +293,39 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
     return None
 
 
-def is_text_integrity_issue(text: str, *, from_xml: bool = False) -> Optional[str]:
+def fix_lone_brackets(text: str) -> str:
+    """Replace lone < and > (not part of <br/> tags) with hyphens.
+
+    Strips valid <br/> variants first, replaces remaining < and > with -,
+    then restores the <br/> tags.
+
+    Args:
+        text: Text that may contain lone angle brackets.
+
+    Returns:
+        Text with lone brackets replaced by hyphens.
+    """
+    if not text:
+        return text
+    # Find all <br/> positions to preserve them
+    parts = []
+    last_end = 0
+    for m in _VALID_BR_RE.finditer(text):
+        # Process text before this <br/>
+        segment = text[last_end:m.start()]
+        segment = segment.replace('<', '-').replace('>', '-')
+        parts.append(segment)
+        parts.append(m.group())  # preserve <br/> as-is
+        last_end = m.end()
+    # Process remaining text after last <br/>
+    segment = text[last_end:]
+    segment = segment.replace('<', '-').replace('>', '-')
+    parts.append(segment)
+    return ''.join(parts)
+
+
+def is_text_integrity_issue(text: str, *, from_xml: bool = False,
+                            source_text: Optional[str] = None) -> Optional[str]:
     """Check if text has integrity issues (encoding artifacts, bad chars).
 
     Catches corrupted text that should BLOCK transfer:
@@ -295,6 +342,7 @@ def is_text_integrity_issue(text: str, *, from_xml: bool = False) -> Optional[st
         text: Text to check.
         from_xml: True if text came from lxml-parsed XML (skip angle bracket
                   checks — those are legitimate escaped content).
+        source_text: Original source text (StrOrigin) for lone bracket comparison.
 
     Returns:
         Reason string if issue found, None if clean.
@@ -317,7 +365,8 @@ def is_text_integrity_issue(text: str, *, from_xml: bool = False) -> Optional[st
         return f'Control character U+{ord(m.group()):04X}'
 
     # 4. Markup contamination
-    markup_issue = is_markup_contamination(text, from_xml=from_xml)
+    markup_issue = is_markup_contamination(text, from_xml=from_xml,
+                                           source_text=source_text)
     if markup_issue:
         return markup_issue
 

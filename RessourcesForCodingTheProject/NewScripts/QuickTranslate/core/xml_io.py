@@ -85,7 +85,7 @@ def parse_corrections_from_xml(
                     continue
 
                 # Text integrity check on Str (broken linebreaks, encoding, bad chars)
-                bad_integrity = is_text_integrity_issue(str_value, from_xml=True)
+                bad_integrity = is_text_integrity_issue(str_value, from_xml=True, source_text=str_origin)
                 if bad_integrity:
                     if integrity_report is not None:
                         integrity_report.append({
@@ -94,8 +94,10 @@ def parse_corrections_from_xml(
                             'reason': bad_integrity,
                             'value': str_value[:60],
                         })
-                    logger.debug("Skipping integrity-issue Str in XML: StringID=%s reason=%s", string_id, bad_integrity)
-                    continue
+                    # Warnings (lone brackets matching source) still transfer — only skip blocking issues
+                    if not bad_integrity.startswith('Warning:'):
+                        logger.debug("Skipping integrity-issue Str in XML: StringID=%s reason=%s", string_id, bad_integrity)
+                        continue
 
                 # Store ALL original attributes for exact preservation in failure reports
                 raw_attribs = dict(elem.attrib)
@@ -127,7 +129,7 @@ def parse_corrections_from_xml(
                         logger.debug("Neutralizing formula-like Desc in XML: StringID=%s reason=%s", string_id, bad_desc)
                     else:
                         # Text integrity check on Desc
-                        bad_desc_integrity = is_text_integrity_issue(desc_value, from_xml=True)
+                        bad_desc_integrity = is_text_integrity_issue(desc_value, from_xml=True, source_text=desc_origin)
                         if bad_desc_integrity:
                             if integrity_report is not None:
                                 integrity_report.append({
@@ -136,7 +138,11 @@ def parse_corrections_from_xml(
                                     'reason': bad_desc_integrity,
                                     'value': desc_value[:60],
                                 })
-                            logger.debug("Neutralizing integrity-issue Desc in XML: StringID=%s reason=%s", string_id, bad_desc_integrity)
+                            # Warnings (lone brackets matching source) still transfer
+                            if bad_desc_integrity.startswith('Warning:'):
+                                entry["desc_corrected"] = desc_value
+                            else:
+                                logger.debug("Neutralizing integrity-issue Desc in XML: StringID=%s reason=%s", string_id, bad_desc_integrity)
                         else:
                             entry["desc_corrected"] = desc_value
 

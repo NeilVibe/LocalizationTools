@@ -201,3 +201,4 @@ Build 075: redesign MemoQ-TMX with auto language detection from suffixes
 Build 076: flag lone angle brackets for human review in integrity check
 Build 077: add rich progress logging to TMX tools
 Build 078: update user guide v7.0 with TMX Tools and lone bracket warning
+Build 079: lone bracket source comparison + fix tool in Other Tools

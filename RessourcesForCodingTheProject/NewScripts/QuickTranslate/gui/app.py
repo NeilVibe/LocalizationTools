@@ -693,6 +693,39 @@ class QuickTranslateApp:
 
         self._update_exclude_count_label()
 
+        # --- Fix Lone Brackets section ---
+        lone_bracket_frame = tk.LabelFrame(
+            self._tab2_inner, text="Fix Lone Brackets",
+            font=('Segoe UI', 10, 'bold'),
+            bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        lone_bracket_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(lone_bracket_frame,
+                 text=("Replace lone < and > (not part of <br/> tags) with hyphens (-) "
+                       "in all XML files under Target folder. Only fixes brackets that "
+                       "also exist in StrOrigin (low-impact warnings)."),
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+                 justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
+
+        tgt_info2 = tk.Frame(lone_bracket_frame, bg='#e8e8e8', padx=8, pady=6,
+                             relief='groove', bd=1)
+        tgt_info2.pack(fill=tk.X, pady=(0, 8))
+        tk.Label(tgt_info2, text="Target:", font=('Segoe UI', 9, 'bold'),
+                 bg='#e8e8e8', width=8, anchor='w').pack(side=tk.LEFT)
+        tk.Label(tgt_info2, textvariable=self.target_path,
+                 font=('Segoe UI', 9), bg='#e8e8e8', fg='#333',
+                 anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        lone_bracket_btn_row = tk.Frame(lone_bracket_frame, bg='#f0f0f0')
+        lone_bracket_btn_row.pack(fill=tk.X)
+
+        self.fix_lone_brackets_btn = tk.Button(
+            lone_bracket_btn_row, text="Fix Lone Brackets",
+            command=self._fix_lone_brackets,
+            font=('Segoe UI', 9, 'bold'), bg='#2980b9', fg='white',
+            relief='flat', padx=10, cursor='hand2')
+        self.fix_lone_brackets_btn.pack(side=tk.LEFT, padx=(0, 8))
+
         # === Log Section (right pane) ===
         log_frame = tk.LabelFrame(self._right_pane, text="Log", font=('Segoe UI', 10, 'bold'),
                                   bg='#f0f0f0', fg='#555', padx=10, pady=8)
@@ -2465,6 +2498,103 @@ class QuickTranslateApp:
             match_mode=params["match_mode"],
             threshold=params["threshold"],
         )
+
+    def _fix_lone_brackets(self):
+        """Replace lone < and > with hyphens in all XML files under Target."""
+        target_path_str = self.target_path.get().strip()
+        if not target_path_str:
+            messagebox.showwarning("Warning", "Please set a Target folder on the Transfer tab.")
+            return
+
+        target = Path(target_path_str)
+        if not target.exists() or not target.is_dir():
+            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+            return
+
+        xml_files = list(target.rglob("*.xml"))
+        if not xml_files:
+            messagebox.showwarning("Warning", f"No XML files found in:\n{target}")
+            return
+
+        self._disable_buttons()
+        self.progress_value.set(0)
+        self._clear_log()
+        self._log("=== Fix Lone Brackets ===", 'header')
+        self._log(f"Scanning {len(xml_files)} XML files in: {target}")
+
+        def work():
+            from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr
+            from core.xml_parser import STR_ATTRS, DESC_ATTRS, STRORIGIN_ATTRS, DESCORIGIN_ATTRS, STRINGID_ATTRS
+            from core.text_utils import fix_lone_brackets, _VALID_BR_RE
+
+            total_fixed = 0
+            files_modified = 0
+
+            for i, xml_path in enumerate(xml_files):
+                self.root.after(0, lambda v=(i + 1) / len(xml_files) * 100: self.progress_value.set(v))
+                try:
+                    root = parse_xml_file(xml_path)
+                except Exception as e:
+                    self._log(f"  Skip {xml_path.name}: {e}", 'warning')
+                    continue
+
+                file_fixes = 0
+                for elem in iter_locstr_elements(root):
+                    str_origin = get_attr(elem, STRORIGIN_ATTRS)
+                    str_val = get_attr(elem, STR_ATTRS)
+                    desc_origin = get_attr(elem, DESCORIGIN_ATTRS)
+                    desc_val = get_attr(elem, DESC_ATTRS)
+
+                    # Fix Str if it has lone brackets AND source also has them
+                    if str_val:
+                        str_stripped = _VALID_BR_RE.sub('', str_val)
+                        src_stripped = _VALID_BR_RE.sub('', str_origin) if str_origin else ''
+                        if ('<' in str_stripped or '>' in str_stripped):
+                            if (src_stripped.count('<') == str_stripped.count('<')
+                                    and src_stripped.count('>') == str_stripped.count('>')):
+                                fixed = fix_lone_brackets(str_val)
+                                if fixed != str_val:
+                                    # Write back to element — find the actual attr name
+                                    for attr_name in STR_ATTRS:
+                                        if attr_name in elem.attrib:
+                                            elem.set(attr_name, fixed)
+                                            break
+                                    file_fixes += 1
+
+                    # Fix Desc similarly
+                    if desc_val:
+                        desc_stripped = _VALID_BR_RE.sub('', desc_val)
+                        dsrc_stripped = _VALID_BR_RE.sub('', desc_origin) if desc_origin else ''
+                        if ('<' in desc_stripped or '>' in desc_stripped):
+                            if (dsrc_stripped.count('<') == desc_stripped.count('<')
+                                    and dsrc_stripped.count('>') == desc_stripped.count('>')):
+                                fixed = fix_lone_brackets(desc_val)
+                                if fixed != desc_val:
+                                    for attr_name in DESC_ATTRS:
+                                        if attr_name in elem.attrib:
+                                            elem.set(attr_name, fixed)
+                                            break
+                                    file_fixes += 1
+
+                if file_fixes > 0:
+                    # Write back — match project's XML write pattern (no xml_declaration, pretty_print)
+                    tree = root.getroottree() if hasattr(root, 'getroottree') else root
+                    try:
+                        tree.write(str(xml_path), encoding='utf-8', xml_declaration=False, pretty_print=True)
+                    except TypeError:
+                        tree.write(str(xml_path), encoding='utf-8', xml_declaration=False)
+                    files_modified += 1
+                    total_fixed += file_fixes
+                    self._log(f"  {xml_path.name}: {file_fixes} brackets fixed", 'success')
+
+            self._log("")
+            if total_fixed > 0:
+                self._log(f"Done! Fixed {total_fixed} lone brackets in {files_modified} files.", 'success')
+            else:
+                self._log("No lone brackets found that match source. All clean!", 'success')
+            self.root.after(0, self._enable_buttons)
+
+        self._run_in_thread(work)
 
     def _run_missing_translations(self, source, target, lang_files, output_dir, match_mode, threshold):
         """Run Find Missing Translations with the given parameters."""

@@ -24,6 +24,7 @@ from .xml_parser import (
     STRORIGIN_ATTRS as _STRORIGIN_ATTRS,
     STR_ATTRS as _STR_ATTRS,
     DESC_ATTRS as _DESC_ATTRS,
+    DESCORIGIN_ATTRS as _DESCORIGIN_ATTRS,
 )
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
@@ -282,11 +283,13 @@ def check_text_integrity_in_file(xml_path: Path) -> list:
         for elem in iter_locstr_elements(root):
             str_text = _get_attr(elem, _STR_ATTRS).strip()
             desc_text = _get_attr(elem, _DESC_ATTRS).strip()
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS).strip()
+            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS).strip()
 
-            if str_text and is_text_integrity_issue(str_text, from_xml=True):
+            if str_text and is_text_integrity_issue(str_text, from_xml=True, source_text=str_origin):
                 findings.append(elem)
                 continue
-            if desc_text and is_text_integrity_issue(desc_text, from_xml=True):
+            if desc_text and is_text_integrity_issue(desc_text, from_xml=True, source_text=desc_origin):
                 findings.append(elem)
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
@@ -540,8 +543,10 @@ def check_patterns_in_excel(
             # No normalization needed — is_text_integrity_issue does NOT
             # flag bare \n or \r (excluded from _CONTROL_CHARS_RE).
             # Broken linebreaks and unfixable entities are still caught.
+            # Pass str_origin so lone bracket check can compare source vs translation.
+            # Note: Desc uses None (no DescOrigin column in QA check path).
             integrity_reason = (
-                is_text_integrity_issue(str_val, from_xml=False)
+                is_text_integrity_issue(str_val, from_xml=False, source_text=str_origin)
                 or (desc_val and is_text_integrity_issue(desc_val, from_xml=False))
             )
             if integrity_reason:
@@ -896,10 +901,13 @@ def run_pattern_check(
         for elem in all_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
-            reason = is_text_integrity_issue(str_val, from_xml=True) or is_text_integrity_issue(desc_val, from_xml=True) or "Unknown"
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS)
+            reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
+                      or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
+                      or "Unknown")
             if reason.startswith('Broken') or reason.startswith('Truncated'):
                 sid = _get_attr(elem, _STRINGID_ATTRS)
-                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
                 critical_rows.append((sid, str_origin, str_val, reason))
         if critical_rows:
             sheets.append(("Critical", elem_headers, critical_rows))
@@ -909,10 +917,13 @@ def run_pattern_check(
         for elem in all_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
-            reason = is_text_integrity_issue(str_val, from_xml=True) or is_text_integrity_issue(desc_val, from_xml=True) or "Unknown"
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS)
+            reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
+                      or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
+                      or "Unknown")
             if not (reason.startswith('Broken') or reason.startswith('Truncated')):
                 sid = _get_attr(elem, _STRINGID_ATTRS)
-                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
                 secondary_rows.append((sid, str_origin, str_val, reason))
         if secondary_rows:
             sheets.append(("Secondary", elem_headers, secondary_rows))
