@@ -12,7 +12,7 @@
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, selectedProject } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -20,6 +20,7 @@
   import ChangePassword from "$lib/components/ChangePassword.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  import ProjectSettingsModal from "$lib/components/ProjectSettingsModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
   import ToastContainer from "$lib/components/common/ToastContainer.svelte";
@@ -43,6 +44,7 @@
   let showChangePassword = $state(false);
   let showAbout = $state(false);
   let showPreferences = $state(false);
+  let showProjectSettings = $state(false);
   let checkingAuth = $state(true);
 
   // Available apps
@@ -155,6 +157,16 @@
   function openPreferences() {
     logger.userAction("Preferences modal opened");
     showPreferences = true;
+    isSettingsMenuOpen = false;
+  }
+
+  function openProjectSettings() {
+    if (!$selectedProject) {
+      logger.warn("No project selected — cannot open project settings");
+      return;
+    }
+    logger.userAction("Project settings modal opened", { projectId: $selectedProject.id });
+    showProjectSettings = true;
     isSettingsMenuOpen = false;
   }
 
@@ -466,6 +478,9 @@
             <button class="compact-dropdown-item" onclick={openPreferences}>
               Preferences
             </button>
+            <button class="compact-dropdown-item" onclick={openProjectSettings} disabled={!$selectedProject}>
+              Project Settings
+            </button>
             <button class="compact-dropdown-item" onclick={openAbout}>
               About LocaNext
             </button>
@@ -490,6 +505,9 @@
 
     <!-- Preferences Modal -->
     <PreferencesModal bind:open={showPreferences} />
+
+    <!-- Phase 56: Project Settings Modal -->
+    <ProjectSettingsModal bind:open={showProjectSettings} projectId={$selectedProject?.id} projectName={$selectedProject?.name || ''} />
 
     <!-- UI-038: User Profile Modal -->
     <UserProfileModal bind:open={isUserProfileOpen} />
