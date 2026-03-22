@@ -87,10 +87,10 @@ Plans:
   2. Multi-language merge via right-click on project_MULTI folder correctly processes FRE and ENG subfolders with separate merge results
   3. All 3 match types produce correct merge output when tested against the test123 real data files
   4. SSE progress events stream correctly to the UI during merge execution (no dropped events, progress reaches 100%)
-**Plans**: 2 plans (Wave 1: both plans parallel)
+**Plans**: 2 plans (Wave 1: pipeline tests, Wave 2: match type tests)
 
 Plans:
-- [ ] 60-01-PLAN.md -- E2E pipeline tests (mock setup, single-project preview/execute/SSE, multi-language preview)
+- [ ] 60-01-PLAN.md -- E2E pipeline tests (mock setup, settings validation, single-project preview/execute/SSE, multi-language preview)
 - [ ] 60-02-PLAN.md -- Match type verification with synthetic XML fixtures (all 3 modes + scope filter)
 
 ## Progress
