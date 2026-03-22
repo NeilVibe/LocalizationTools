@@ -21,11 +21,11 @@
 ### Transfer Service
 
 - [x] **XFER-01**: Adapter imports QuickTranslate core modules via sys.path (xml_transfer, postprocess, source_scanner, language_loader)
-- [ ] **XFER-02**: StringID Only match type works (case-insensitive, SCRIPT/ALL category filter)
-- [ ] **XFER-03**: StringID+StrOrigin match type works (strict 2-key with nospace fallback)
-- [ ] **XFER-04**: StrOrigin+FileName 2PASS match type works (3-tuple then 2-tuple fallback)
-- [ ] **XFER-05**: 8-step postprocess pipeline runs after merge (newlines, apostrophes, entities, etc.)
-- [ ] **XFER-06**: Transfer scope works: "Transfer All" vs "Only Untranslated"
+- [x] **XFER-02**: StringID Only match type works (case-insensitive, SCRIPT/ALL category filter)
+- [x] **XFER-03**: StringID+StrOrigin match type works (strict 2-key with nospace fallback)
+- [x] **XFER-04**: StrOrigin+FileName 2PASS match type works (3-tuple then 2-tuple fallback)
+- [x] **XFER-05**: 8-step postprocess pipeline runs after merge (newlines, apostrophes, entities, etc.)
+- [x] **XFER-06**: Transfer scope works: "Transfer All" vs "Only Untranslated"
 - [ ] **XFER-07**: Multi-language folder merge: scans source folder, auto-detects language suffixes per file/subfolder, merges each language into correct languagedata target
 
 ### Merge API
@@ -78,11 +78,11 @@
 | SET-02 | Phase 56 | Complete |
 | SET-03 | Phase 56 | Complete |
 | XFER-01 | Phase 57 | Complete |
-| XFER-02 | Phase 57 | Pending |
-| XFER-03 | Phase 57 | Pending |
-| XFER-04 | Phase 57 | Pending |
-| XFER-05 | Phase 57 | Pending |
-| XFER-06 | Phase 57 | Pending |
+| XFER-02 | Phase 57 | Complete |
+| XFER-03 | Phase 57 | Complete |
+| XFER-04 | Phase 57 | Complete |
+| XFER-05 | Phase 57 | Complete |
+| XFER-06 | Phase 57 | Complete |
 | XFER-07 | Phase 57 | Pending |
 | API-01 | Phase 58 | Pending |
 | API-02 | Phase 58 | Pending |
