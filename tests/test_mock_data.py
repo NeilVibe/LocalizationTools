@@ -7,6 +7,7 @@ CLI flags (--confirm-wipe, --dry-run), and LOC PATH validation.
 from __future__ import annotations
 
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
@@ -177,7 +178,7 @@ class TestCLIFlags:
         """Running without --confirm-wipe should exit with error."""
         import subprocess
         result = subprocess.run(
-            ["python", "scripts/setup_mock_data.py"],
+            [sys.executable, "scripts/setup_mock_data.py"],
             capture_output=True, text=True,
             cwd="/home/neil1988/LocalizationTools",
         )
