@@ -716,24 +716,38 @@ class QuickTranslateApp:
             relief='flat', padx=10, cursor='hand2')
         self.fix_lone_brackets_btn.pack(side=tk.LEFT, padx=(0, 8))
 
-        # --- Extract Translation by StringID section ---
+        # --- Extract Translations section ---
         extract_trans_frame = tk.LabelFrame(
-            self._tab2_inner, text="Extract Translation by StringID",
+            self._tab2_inner, text="Extract Translations",
             font=('Segoe UI', 10, 'bold'),
             bg='#f0f0f0', fg='#555', padx=15, pady=8)
         extract_trans_frame.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(extract_trans_frame,
-                 text=("Load a text file with one StringID per line. "
-                       "Extracts StrOrigin, Str, StringID for each language into an Excel file (one tab per language)."),
+                 text=("Load a text file with one entry per line. "
+                       "Match by StringID or StrOrigin (exact). "
+                       "Outputs an Excel file with one tab per language (StringID, StrOrigin, Str)."),
                  font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
                  justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
+
+        # Match mode: StringID or StrOrigin
+        self._extract_match_mode = tk.StringVar(value="stringid")
+        match_row = tk.Frame(extract_trans_frame, bg='#f0f0f0')
+        match_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(match_row, text="Match by:", font=('Segoe UI', 9),
+                 bg='#f0f0f0').pack(side=tk.LEFT)
+        tk.Radiobutton(match_row, text="StringID", variable=self._extract_match_mode,
+                        value="stringid", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0').pack(side=tk.LEFT, padx=(4, 0))
+        tk.Radiobutton(match_row, text="StrOrigin (exact)", variable=self._extract_match_mode,
+                        value="strorigin", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0').pack(side=tk.LEFT, padx=(8, 0))
 
         self._stringid_list_path = tk.StringVar()
         stringid_row = tk.Frame(extract_trans_frame, bg='#f0f0f0')
         stringid_row.pack(fill=tk.X, pady=(0, 4))
 
-        tk.Label(stringid_row, text="StringID List:", font=('Segoe UI', 9),
+        tk.Label(stringid_row, text="Input List:", font=('Segoe UI', 9),
                  bg='#f0f0f0').pack(side=tk.LEFT)
         tk.Entry(stringid_row, textvariable=self._stringid_list_path,
                  font=('Segoe UI', 9), width=40).pack(side=tk.LEFT, padx=(4, 4), fill=tk.X, expand=True)
@@ -2680,12 +2694,14 @@ class QuickTranslateApp:
             self._stringid_list_path.set(path)
 
     def _extract_translations_by_stringid(self):
-        """Extract translations for all languages for a list of StringIDs into Excel."""
+        """Extract translations for all languages by StringID or StrOrigin match into Excel."""
+        match_mode = self._extract_match_mode.get()  # "stringid" or "strorigin"
+        match_label = "StringID" if match_mode == "stringid" else "StrOrigin"
+
         list_path_str = self._stringid_list_path.get().strip()
         if not list_path_str:
-            # If no path set, prompt for file
             list_path_str = filedialog.askopenfilename(
-                title="Select StringID List",
+                title=f"Select {match_label} List",
                 filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
             if not list_path_str:
                 return
@@ -2696,24 +2712,21 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"File not found:\n{list_path}")
             return
 
-        # Read StringIDs from file
         try:
-            string_ids = [line.strip() for line in list_path.read_text(encoding='utf-8').splitlines()
-                          if line.strip()]
+            entries = [line.strip() for line in list_path.read_text(encoding='utf-8').splitlines()
+                       if line.strip()]
         except Exception as e:
             messagebox.showerror("Error", f"Cannot read file:\n{e}")
             return
 
-        if not string_ids:
-            messagebox.showwarning("Warning", "No StringIDs found in the file.")
+        if not entries:
+            messagebox.showwarning("Warning", f"No {match_label} entries found in the file.")
             return
 
-        # Check LOC folder
         if not config.LOC_FOLDER.exists():
             messagebox.showerror("Error", f"LOC folder not found:\n{config.LOC_FOLDER}\n\nPlease configure it in Settings.")
             return
 
-        # Ask for output file
         output_path = filedialog.asksaveasfilename(
             title="Save Excel Output",
             defaultextension=".xlsx",
@@ -2725,8 +2738,8 @@ class QuickTranslateApp:
         self._disable_buttons()
         self.progress_value.set(0)
         self._clear_log()
-        self._log("=== Extract Translations by StringID ===", 'header')
-        self._log(f"StringIDs to find: {len(string_ids)}")
+        self._log(f"=== Extract Translations by {match_label} ===", 'header')
+        self._log(f"Entries to find: {len(entries)} (match by {match_label})")
         self._log(f"LOC folder: {config.LOC_FOLDER}")
 
         def work():
@@ -2742,12 +2755,10 @@ class QuickTranslateApp:
 
             self._log(f"Languages found: {len(lang_files)} ({', '.join(c.upper() for c in sorted(lang_files.keys()))})")
 
-            # Build a set for fast lookup
-            string_id_set = set(string_ids)
-            # Preserve order from the input file
-            string_id_order = list(dict.fromkeys(string_ids))
+            entry_set = set(entries)
+            entry_order = list(dict.fromkeys(entries))
 
-            # {lang_code: {string_id: (str_origin, str_val)}}
+            # {lang_code: {entry_key: (string_id, str_origin, str_val)}}
             lang_data = {}
             total_langs = len(lang_files)
 
@@ -2758,16 +2769,41 @@ class QuickTranslateApp:
 
                 try:
                     root = parse_xml_file(xml_path)
-                    for elem in iter_locstr_elements(root):
-                        sid = get_attr(elem, STRINGID_ATTRS)
-                        if sid and sid.strip() in string_id_set:
+                    if match_mode == "strorigin":
+                        # Collect all candidates per key, pick most frequent Str value
+                        from collections import Counter
+                        candidates = {}  # {key: [(string_id, str_origin, str_val), ...]}
+                        for elem in iter_locstr_elements(root):
                             str_origin = get_attr(elem, STRORIGIN_ATTRS) or ''
-                            str_val = get_attr(elem, STR_ATTRS) or ''
-                            lang_data[lang_code][sid.strip()] = (str_origin, str_val)
+                            key = str_origin.strip()
+                            if key and key in entry_set:
+                                string_id = get_attr(elem, STRINGID_ATTRS) or ''
+                                str_val = get_attr(elem, STR_ATTRS) or ''
+                                candidates.setdefault(key, []).append(
+                                    (string_id.strip(), str_origin, str_val))
+                        # Pick the most frequent Str value for each key
+                        for key, hits in candidates.items():
+                            if len(hits) == 1:
+                                lang_data[lang_code][key] = hits[0]
+                            else:
+                                freq = Counter(h[2] for h in hits)
+                                best_str = freq.most_common(1)[0][0]
+                                # Pick first hit with that Str value
+                                for h in hits:
+                                    if h[2] == best_str:
+                                        lang_data[lang_code][key] = h
+                                        break
+                    else:
+                        for elem in iter_locstr_elements(root):
+                            string_id = get_attr(elem, STRINGID_ATTRS) or ''
+                            key = string_id.strip()
+                            if key and key in entry_set:
+                                str_origin = get_attr(elem, STRORIGIN_ATTRS) or ''
+                                str_val = get_attr(elem, STR_ATTRS) or ''
+                                lang_data[lang_code][key] = (key, str_origin, str_val)
                 except Exception as e:
                     self._log(f"  Error reading {xml_path.name}: {e}", 'warning')
 
-            # Write Excel with xlsxwriter
             import xlsxwriter
             wb = xlsxwriter.Workbook(output_path)
 
@@ -2782,7 +2818,6 @@ class QuickTranslateApp:
             })
 
             for lang_code in sorted(lang_data.keys()):
-                # Sheet name max 31 chars
                 sheet_name = lang_code.upper()[:31]
                 ws = wb.add_worksheet(sheet_name)
                 ws.set_column(0, 0, 30)   # StringID
@@ -2794,19 +2829,19 @@ class QuickTranslateApp:
                 ws.write(0, 2, "Str", header_fmt)
 
                 found_count = 0
-                for row_idx, sid in enumerate(string_id_order, start=1):
-                    if sid in lang_data[lang_code]:
-                        str_origin, str_val = lang_data[lang_code][sid]
+                for row_idx, entry in enumerate(entry_order, start=1):
+                    if entry in lang_data[lang_code]:
+                        sid, str_origin, str_val = lang_data[lang_code][entry]
                         ws.write(row_idx, 0, sid, cell_fmt)
                         ws.write(row_idx, 1, str_origin, cell_fmt)
                         ws.write(row_idx, 2, str_val, cell_fmt)
                         found_count += 1
                     else:
-                        ws.write(row_idx, 0, sid, missing_fmt)
-                        ws.write(row_idx, 1, "(not found)", missing_fmt)
+                        ws.write(row_idx, 0, entry if match_mode == "stringid" else "", missing_fmt)
+                        ws.write(row_idx, 1, entry if match_mode == "strorigin" else "(not found)", missing_fmt)
                         ws.write(row_idx, 2, "(not found)", missing_fmt)
 
-                self._log(f"  {sheet_name}: {found_count}/{len(string_id_order)} StringIDs found")
+                self._log(f"  {sheet_name}: {found_count}/{len(entry_order)} entries found")
 
             wb.close()
             self.root.after(0, lambda: self.progress_value.set(100))
