@@ -31,8 +31,8 @@
 ### Merge API
 
 - [x] **API-01**: POST /api/merge/preview returns dry-run summary (files, entries, matches, overwrites)
-- [ ] **API-02**: POST /api/merge/execute streams progress via SSE (file-by-file + postprocess steps)
-- [ ] **API-03**: Merge summary report returned on completion (matched, skipped, overwritten counts)
+- [x] **API-02**: POST /api/merge/execute streams progress via SSE (file-by-file + postprocess steps)
+- [x] **API-03**: Merge summary report returned on completion (matched, skipped, overwritten counts)
 - [x] **API-04**: POST /api/merge/preview supports multi-language mode (scans folder, returns per-language breakdown)
 
 ### Merge UI
@@ -85,8 +85,8 @@
 | XFER-06 | Phase 57 | Complete |
 | XFER-07 | Phase 57 | Complete |
 | API-01 | Phase 58 | Complete |
-| API-02 | Phase 58 | Pending |
-| API-03 | Phase 58 | Pending |
+| API-02 | Phase 58 | Complete |
+| API-03 | Phase 58 | Complete |
 | API-04 | Phase 58 | Complete |
 | UI-01 | Phase 59 | Pending |
 | UI-02 | Phase 59 | Pending |
