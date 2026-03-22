@@ -7,7 +7,7 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map, Merge } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
@@ -21,6 +21,7 @@
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import ProjectSettingsModal from "$lib/components/ProjectSettingsModal.svelte";
+  import MergeModal from "$lib/components/ldm/MergeModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
   import ToastContainer from "$lib/components/common/ToastContainer.svelte";
@@ -45,6 +46,10 @@
   let showAbout = $state(false);
   let showPreferences = $state(false);
   let showProjectSettings = $state(false);
+  // Phase 59: Merge modal state
+  let showMergeModal = $state(false);
+  let mergeMultiLanguage = $state(false);
+  let mergeFolderPath = $state('');
   let checkingAuth = $state(true);
 
   // Available apps
@@ -168,6 +173,27 @@
     logger.userAction("Project settings modal opened", { projectId: $selectedProject.id });
     showProjectSettings = true;
     isSettingsMenuOpen = false;
+  }
+
+  // Phase 59: Open merge modal (single-project mode)
+  function openMerge() {
+    if (!$selectedProject) {
+      logger.warn("No project selected — cannot open merge modal");
+      return;
+    }
+    logger.userAction("Merge modal opened", { projectId: $selectedProject.id });
+    mergeMultiLanguage = false;
+    mergeFolderPath = '';
+    showMergeModal = true;
+  }
+
+  // Phase 59: Open merge modal (multi-language folder mode, triggered by FilesPage context menu)
+  function openMergeFolder(folderPath) {
+    if (!$selectedProject) return;
+    logger.userAction("Merge folder modal opened", { projectId: $selectedProject.id, folderPath });
+    mergeMultiLanguage = true;
+    mergeFolderPath = folderPath;
+    showMergeModal = true;
   }
 
   // Close dropdown when clicking outside
@@ -324,6 +350,16 @@
       }
     };
     logger.info("Test navigation helper exposed on window.navTest");
+
+    // Phase 59: Listen for merge folder events from FilesPage context menu
+    function handleMergeFolderEvent(e) {
+      openMergeFolder(e.detail.folderPath);
+    }
+    window.addEventListener('merge-folder-to-locdev', handleMergeFolderEvent);
+
+    return () => {
+      window.removeEventListener('merge-folder-to-locdev', handleMergeFolderEvent);
+    };
   });
 </script>
 
@@ -454,6 +490,12 @@
         <span>Tasks</span>
       </button>
 
+      <!-- Phase 59: Merge to LOCDEV button -->
+      <button class="tasks-button" onclick={openMerge} disabled={!$selectedProject}>
+        <Merge size={20} />
+        <span>Merge</span>
+      </button>
+
       <!-- P3: Sync Status Indicator -->
       <SyncStatusPanel />
 
@@ -508,6 +550,9 @@
 
     <!-- Phase 56: Project Settings Modal -->
     <ProjectSettingsModal bind:open={showProjectSettings} projectId={$selectedProject?.id} projectName={$selectedProject?.name || ''} />
+
+    <!-- Phase 59: Merge Modal -->
+    <MergeModal bind:open={showMergeModal} projectId={$selectedProject?.id} projectName={$selectedProject?.name || ''} multiLanguage={mergeMultiLanguage} folderPath={mergeFolderPath} />
 
     <!-- UI-038: User Profile Modal -->
     <UserProfileModal bind:open={isUserProfileOpen} />
