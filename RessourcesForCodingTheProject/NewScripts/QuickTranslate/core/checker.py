@@ -913,7 +913,9 @@ def run_pattern_check(
             sheets.append(("Critical", elem_headers, critical_rows))
 
         # Tab 2: Secondary — encoding artifacts, invisible chars, control chars
+        # Tab 2b: LoneBracketWarnings — lone brackets matching source (low-impact)
         secondary_rows = []
+        lone_bracket_rows = []
         for elem in all_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
@@ -922,11 +924,17 @@ def run_pattern_check(
             reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
                       or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
                       or "Unknown")
-            if not (reason.startswith('Broken') or reason.startswith('Truncated')):
-                sid = _get_attr(elem, _STRINGID_ATTRS)
+            if reason.startswith('Broken') or reason.startswith('Truncated'):
+                continue  # already in Critical tab
+            sid = _get_attr(elem, _STRINGID_ATTRS)
+            if reason.startswith('Warning:'):
+                lone_bracket_rows.append((sid, str_origin, str_val, reason))
+            else:
                 secondary_rows.append((sid, str_origin, str_val, reason))
         if secondary_rows:
             sheets.append(("Secondary", elem_headers, secondary_rows))
+        if lone_bracket_rows:
+            sheets.append(("LoneBracketWarnings", elem_headers, lone_bracket_rows))
 
         # Tab 3: PatternErrors
         if all_pattern_errors:

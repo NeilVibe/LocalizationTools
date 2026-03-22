@@ -207,3 +207,4 @@ Build 081: fix lone brackets supports Source/Target folder selection
 Build 082: target validation splits critical vs low-impact lone brackets
 Build 083: fix XML write error in Fix Lone Brackets (detached root)
 Build 084: use battle-tested _parse_target_xml/_write_target_xml for XML write
+Build 085: add LoneBracketWarnings tab to Check Patterns Excel report
