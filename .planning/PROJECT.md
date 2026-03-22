@@ -63,17 +63,19 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v6.0 Architecture & Code Quality
+## Current Milestone: v6.0 Showcase Offline Transfer
 
-**Goal:** Refactor the codebase for long-term maintainability — split God components and services, thin route handlers, add unit test infrastructure, and fix known UI issues.
+**Goal:** Enable translators to open languagedata files, translate offline, and merge changes back into LOC/LOCDEV using QuickTranslate's proven transfer logic — with mock projects, settings UI, and a polished merge modal.
 
 **Target features:**
-- Split VirtualGrid.svelte (4299 lines → 5 focused components)
-- Split mega_index.py (1310 lines → 3 modules: builder, indexes, lookup)
-- Extract business logic from thick route handlers (files.py, sync.py) into services
-- Add unit test infrastructure with mocks for backend services
-- Fix right-click context menu on file explorer panel
-- Fix remaining UI issues from architecture audit
+- Wipe DB + create mock platform with project_FRE / project_ENG
+- Settings UI for LOC PATH + EXPORT PATH (persistent, per-project)
+- Transfer service adapter importing QuickTranslate core modules directly
+- Merge to LOCDEV modal (3 match types, scope, category, dry-run preview)
+- SSE progress streaming during merge execution
+- 8-step postprocess pipeline (from QuickTranslate)
+- Language auto-detection from project name
+- Test with real data from C:\Users\MYCOM\Desktop\oldoldVold\test123
 
 ### Out of Scope
 
@@ -131,4 +133,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-22 after v6.0 milestone start*
+*Last updated: 2026-03-22 after v6.0 Showcase Offline Transfer milestone start*
