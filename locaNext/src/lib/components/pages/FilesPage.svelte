@@ -1010,6 +1010,16 @@
     contextMenuItem = null;
   }
 
+  // Phase 59: Merge folder to LOCDEV via custom event to +layout.svelte
+  function openMergeFolderToLocdev() {
+    if (!contextMenuItem) return;
+    const folderPath = contextMenuItem.name || contextMenuItem.path || '';
+    window.dispatchEvent(new CustomEvent('merge-folder-to-locdev', {
+      detail: { folderPath }
+    }));
+    closeMenus();
+  }
+
   // DESIGN-001: Open access control modal
   function openAccessControl() {
     if (!contextMenuItem) return;
@@ -2588,6 +2598,11 @@
         <div class="context-menu-divider"></div>
         <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
       {/if}
+      <!-- Phase 59: Merge folder to LOCDEV (outside canModifyStructure — merge writes to external LOCDEV path) -->
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={openMergeFolderToLocdev}>
+        <Merge size={16} /> Merge Folder to LOCDEV
+      </button>
     {:else if contextMenuItem.type === 'project'}
       {#if !$offlineMode}
         <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
