@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringID="STR_HELLO" Str="Bonjour" StrOrigin="Hello" DescOrigin="Greeting"/>
+  <LocStr StringID="STR_GOODBYE" Str="" StrOrigin="Goodbye" DescOrigin="Farewell"/>
+  <LocStr StringID="STR_YES" Str="" StrOrigin="Yes" DescOrigin="Confirmation"/>
+  <LocStr StringID="STR_SCRIPT_01" Str="" StrOrigin="Attack" DescOrigin="Combat action"/>
+  <LocStr StringID="STR_DIALOG_01" Str="" StrOrigin="Welcome hero" DescOrigin="NPC dialog"/>
+</LanguageData>
