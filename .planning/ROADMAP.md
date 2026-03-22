@@ -39,12 +39,12 @@ Plans:
   3. StringID+StrOrigin and StrOrigin+FileName 2PASS match types produce identical results to QuickTranslate standalone execution on the same test data
   4. The 8-step postprocess pipeline (newlines, apostrophes, entities, etc.) runs after every merge and produces clean output
   5. Multi-language folder merge scans a source folder, auto-detects language suffixes per file/subfolder, and merges each language into the correct target
-**Plans**: 2 plans (Wave 1, parallel)
+**Plans**: 3 plans (Wave 1: foundation, Wave 2: match types + multi-lang parallel)
 
 Plans:
-- [ ] 57-01-PLAN.md -- Adapter import layer (sys.path setup, module wrapping, error handling)
-- [ ] 57-02-PLAN.md -- 3 match types + scope + category filter wired through adapter
-- [ ] 57-03-PLAN.md -- Multi-language folder merge with language suffix auto-detection
+- [ ] 57-01-PLAN.md -- Config shim + sys.path adapter import layer with test fixtures (XFER-01)
+- [ ] 57-02-PLAN.md -- execute_transfer with 3 match types, scope, postprocess (XFER-02..06)
+- [ ] 57-03-PLAN.md -- Multi-language folder merge with language auto-detection (XFER-07)
 
 ### Phase 58: Merge API
 **Goal**: FastAPI endpoints expose merge preview (dry-run) and execution (SSE streaming) so the frontend can drive the merge workflow
