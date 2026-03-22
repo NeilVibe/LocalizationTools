@@ -913,7 +913,7 @@ def run_pattern_check(
             sheets.append(("Critical", elem_headers, critical_rows))
 
         # Tab 2: Secondary — encoding artifacts, invisible chars, control chars
-        # Tab 2b: LoneAngleBrackets — lone brackets matching source (low-impact)
+        # Tab 2b: LowImpactWarnings — lone brackets matching source (low-impact)
         secondary_rows = []
         lone_bracket_rows = []
         for elem in all_integrity:
@@ -934,7 +934,7 @@ def run_pattern_check(
         if secondary_rows:
             sheets.append(("Secondary", elem_headers, secondary_rows))
         if lone_bracket_rows:
-            sheets.append(("LoneAngleBrackets", elem_headers, lone_bracket_rows))
+            sheets.append(("LowImpactWarnings", elem_headers, lone_bracket_rows))
 
         # Tab 3: PatternErrors
         if all_pattern_errors:

@@ -209,3 +209,4 @@ Build 083: fix XML write error in Fix Lone Brackets (detached root)
 Build 084: use battle-tested _parse_target_xml/_write_target_xml for XML write
 Build 085: add LoneBracketWarnings tab to Check Patterns Excel report
 Build 086: rename bracket to angle bracket everywhere
+Build 087: rename tab to LowImpactWarnings
