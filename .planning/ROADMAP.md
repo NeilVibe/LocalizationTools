@@ -102,6 +102,6 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 |-------|-----------|----------------|--------|-----------|
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
-| 58. Merge API | v6.0 | 2/2 | Complete   | 2026-03-22 |
+| 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 59. Merge UI | v6.0 | 0/3 | Not started | - |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |
