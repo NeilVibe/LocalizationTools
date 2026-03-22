@@ -450,6 +450,10 @@ app.include_router(health.router)
 from server.api import settings as settings_api
 app.include_router(settings_api.router)
 
+# Include Merge API (Phase 58: Merge preview + execute)
+from server.api import merge as merge_api
+app.include_router(merge_api.router)
+
 # Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
 # P37 Refactoring: Using modular router.py (aggregates 13 sub-routers, 44 endpoints)
 # Legacy api.py (3144 lines) preserved for reference
