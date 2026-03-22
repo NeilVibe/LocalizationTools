@@ -23,12 +23,12 @@ Refactor the LocaNext codebase for long-term maintainability. Split God componen
   2. codex_service.py is split into entity_registry and search modules, and Codex API endpoints return identical responses
   3. gamedata_context_service.py is split into reverse_index and crossref_resolver modules, and Game Dev context panel still renders cross-references
   4. DEV server starts without errors and all 4 Codex pages load correctly
-**Plans**: TBD
+**Plans**: 3 plans (all Wave 1 -- parallel)
 
 Plans:
-- [ ] 56-01: TBD
-- [ ] 56-02: TBD
-- [ ] 56-03: TBD
+- [ ] 56-01-PLAN.md -- Split mega_index.py into 6-file package (_helpers, _parsers, _builders, builder, lookup, __init__)
+- [ ] 56-02-PLAN.md -- Split codex_service.py into entity_registry + search modules
+- [ ] 56-03-PLAN.md -- Split gamedata_context_service.py into reverse_index + crossref_resolver modules
 
 ### Phase 57: Route Thinning
 **Goal**: Route handlers contain only HTTP concerns (parse request, call service, return response) with business logic in dedicated service modules
@@ -98,7 +98,7 @@ Phases 56 → 57 (depends on 56). Phases 58, 59 can run in parallel with 56-57. 
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Backend Service Decomposition | v6.0 | 0/3 | Not started | - |
+| 56. Backend Service Decomposition | v6.0 | 0/3 | Planned | - |
 | 57. Route Thinning | v6.0 | 0/2 | Not started | - |
 | 58. VirtualGrid Decomposition | v6.0 | 0/2 | Not started | - |
 | 59. FilesPage Decomposition + UI Fixes | v6.0 | 0/2 | Not started | - |
