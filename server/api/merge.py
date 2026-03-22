@@ -1,21 +1,24 @@
 """
-Merge API - Phase 58, Plan 01
+Merge API - Phase 58
 
 Provides merge preview (dry-run) and execute endpoints for the
 QuickTranslate-based transfer engine. Preview is synchronous,
-execute (Plan 02) will use SSE streaming.
+execute uses SSE streaming for real-time progress.
 
 Endpoints:
     POST /api/merge/preview  - Dry-run merge, returns match summary
-    POST /api/merge/execute  - (Plan 02) Real merge with SSE progress
+    POST /api/merge/execute  - Real merge with SSE progress streaming
 """
 from __future__ import annotations
 
 import asyncio
+import json
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from loguru import logger
+from sse_starlette.sse import EventSourceResponse
 
 from server.api.settings import translate_wsl_path
 from server.services.transfer_adapter import (
@@ -175,3 +178,111 @@ async def preview_merge(body: MergePreviewRequest):
     except Exception as exc:
         logger.error("Merge preview failed: {}", exc)
         return MergePreviewResponse(errors=[str(exc)])
+
+
+@router.post("/execute")
+async def execute_merge(body: MergeExecuteRequest):
+    """Execute merge with SSE streaming progress.
+
+    Runs the actual merge in a background thread, streaming per-file
+    progress events to the frontend in real-time, and sends a completion
+    summary when done.
+
+    SSE event types:
+        progress - Per-file progress message (plain text)
+        log      - Log message with level (JSON: {message, level})
+        complete - Final result summary (JSON dict with all counters)
+        error    - Error message (plain text), terminates stream
+        ping     - Keepalive sent if no events for 30 seconds
+    """
+    global _merge_in_progress
+
+    # Guard: prevent concurrent merges
+    if _merge_in_progress:
+        return JSONResponse(
+            status_code=409,
+            content={"error": "A merge is already in progress"},
+        )
+
+    # Validate match_mode
+    if body.match_mode not in MATCH_MODES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid match_mode '{body.match_mode}'. Must be one of: {list(MATCH_MODES.keys())}",
+        )
+
+    # Translate paths for WSL/DEV_MODE
+    translated_source = translate_wsl_path(body.source_path)
+    translated_target = translate_wsl_path(body.target_path)
+    translated_export = translate_wsl_path(body.export_path)
+
+    logger.info(
+        "Merge execute: mode={}, multi_language={}, source={}",
+        body.match_mode,
+        body.multi_language,
+        translated_source,
+    )
+
+    # Queue for piping progress from sync thread to async SSE generator
+    queue: asyncio.Queue = asyncio.Queue()
+
+    # Callbacks run in sync thread -- MUST use put_nowait (not put)
+    def progress_cb(message: str):
+        queue.put_nowait({"event": "progress", "data": message})
+
+    def log_cb(message: str, level: str = "info"):
+        queue.put_nowait({"event": "log", "data": json.dumps({"message": message, "level": level})})
+
+    async def run_transfer():
+        """Run blocking transfer in thread, signal completion via queue."""
+        global _merge_in_progress
+        _merge_in_progress = True
+        try:
+            if body.multi_language:
+                result = await asyncio.to_thread(
+                    execute_multi_language_transfer,
+                    source_path=translated_source,
+                    target_path=translated_target,
+                    export_path=translated_export,
+                    match_mode=body.match_mode,
+                    only_untranslated=body.only_untranslated,
+                    stringid_all_categories=body.stringid_all_categories,
+                    dry_run=False,
+                    progress_callback=progress_cb,
+                    log_callback=log_cb,
+                )
+            else:
+                result = await asyncio.to_thread(
+                    execute_transfer,
+                    source_path=translated_source,
+                    target_path=translated_target,
+                    export_path=translated_export,
+                    match_mode=body.match_mode,
+                    only_untranslated=body.only_untranslated,
+                    stringid_all_categories=body.stringid_all_categories,
+                    dry_run=False,
+                    progress_callback=progress_cb,
+                    log_callback=log_cb,
+                )
+            queue.put_nowait({"event": "complete", "data": json.dumps(result, default=str)})
+        except Exception as exc:
+            logger.error("Merge execute failed: {}", exc)
+            queue.put_nowait({"event": "error", "data": str(exc)})
+        finally:
+            _merge_in_progress = False
+
+    async def event_generator():
+        """Async generator yielding SSE events from the queue."""
+        task = asyncio.create_task(run_transfer())
+        while True:
+            try:
+                msg = await asyncio.wait_for(queue.get(), timeout=30.0)
+            except asyncio.TimeoutError:
+                yield {"event": "ping", "data": "keepalive"}
+                continue
+            yield msg
+            if msg["event"] in ("complete", "error"):
+                break
+        await task  # Ensure task finishes cleanly
+
+    return EventSourceResponse(event_generator())
