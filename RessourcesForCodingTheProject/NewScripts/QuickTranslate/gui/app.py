@@ -2575,8 +2575,9 @@ class QuickTranslateApp:
         self._log(f"Scanning {len(xml_files)} XML files in: {folder}")
 
         def work():
-            from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr
-            from core.xml_parser import STR_ATTRS, DESC_ATTRS, STRORIGIN_ATTRS, DESCORIGIN_ATTRS, STRINGID_ATTRS
+            from core.xml_transfer import _parse_target_xml, _write_target_xml
+            from core.xml_parser import iter_locstr_elements, get_attr
+            from core.xml_parser import STR_ATTRS, DESC_ATTRS, STRORIGIN_ATTRS, DESCORIGIN_ATTRS
             from core.text_utils import fix_lone_brackets, _VALID_BR_RE
 
             total_fixed = 0
@@ -2585,7 +2586,7 @@ class QuickTranslateApp:
             for i, xml_path in enumerate(xml_files):
                 self.root.after(0, lambda v=(i + 1) / len(xml_files) * 100: self.progress_value.set(v))
                 try:
-                    root = parse_xml_file(xml_path)
+                    tree, root = _parse_target_xml(xml_path)
                 except Exception as e:
                     self._log(f"  Skip {xml_path.name}: {e}", 'warning')
                     continue
@@ -2628,10 +2629,7 @@ class QuickTranslateApp:
                                     file_fixes += 1
 
                 if file_fixes > 0:
-                    # Write back using etree.tostring (root is detached, no tree.write)
-                    from lxml import etree
-                    xml_bytes = etree.tostring(root, encoding='utf-8', xml_declaration=False, pretty_print=True)
-                    xml_path.write_bytes(xml_bytes)
+                    _write_target_xml(tree, xml_path)
                     files_modified += 1
                     total_fixed += file_fixes
                     self._log(f"  {xml_path.name}: {file_fixes} brackets fixed", 'success')
