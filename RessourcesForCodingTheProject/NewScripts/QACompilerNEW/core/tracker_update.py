@@ -279,42 +279,51 @@ def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict]
 
         total_qa_dirs += 1
 
-        # Use the largest xlsx file (same logic as original discover_tracker_qa_folders)
-        xlsx_path = max(xlsx_files, key=lambda x: x.stat().st_size)
-
-        # Get file date from mtime
-        file_mtime = xlsx_path.stat().st_mtime
-        file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
+        # Get date from the most recently modified xlsx file in the folder
+        xlsx_with_mtime = [(f, f.stat().st_mtime) for f in xlsx_files]
+        latest_mtime = max(m for _, m in xlsx_with_mtime)
+        file_date = datetime.fromtimestamp(latest_mtime).strftime("%Y-%m-%d")
 
         # Collect images
         images = [f for f in dirpath.iterdir()
                   if f.suffix.lower() in IMAGE_EXTENSIONS]
 
         key = (username, category, file_date)
-        qa_candidates[key].append((file_mtime, xlsx_path, dirpath, images))
-        _tracker_log(f"  QA DIR: {dir_name} → user={username} cat={category} date={file_date} xlsx={xlsx_path.name}")
+        qa_candidates[key].append((latest_mtime, xlsx_files, dirpath, images))
+        _tracker_log(f"  QA DIR: {dir_name} → user={username} cat={category} date={file_date} xlsx_count={len(xlsx_files)} files={[f.name for f in xlsx_files]}")
 
     _tracker_log(f"FLAT DUMP: Found {total_qa_dirs} QA dirs, {total_master_dirs} master dirs")
 
-    # Phase 2: For each (username, category, date), keep LATEST mtime only
+    # Phase 2: For each (username, category, date), merge all xlsx files
+    # If same user+category+date appears in multiple folders, combine all files
     qa_folders = []
     for (username, category, file_date), candidates in sorted(qa_candidates.items()):
-        # Sort by mtime descending, pick first (latest)
-        candidates.sort(key=lambda x: x[0], reverse=True)
-        best_mtime, best_path, best_folder, best_images = candidates[0]
+        # Collect ALL xlsx files across all folders for this key
+        all_xlsx = []
+        all_images = []
+        best_folder = None
+        best_mtime = 0
+
+        for mtime, xlsx_list, folder, images in candidates:
+            all_xlsx.extend(xlsx_list)
+            all_images.extend(images)
+            if mtime > best_mtime:
+                best_mtime = mtime
+                best_folder = folder
 
         if len(candidates) > 1:
-            _tracker_log(f"  DEDUP: {username}_{category} on {file_date}: {len(candidates)} folders, kept {best_path.name} (mtime={datetime.fromtimestamp(best_mtime).strftime('%H:%M:%S')})")
+            _tracker_log(f"  MERGE: {username}_{category} on {file_date}: {len(candidates)} folders, {len(all_xlsx)} total xlsx files")
             if log_callback:
-                log_callback(f"  Dedup: {username}_{category} ({file_date}): {len(candidates)} folders, kept latest", 'info')
+                log_callback(f"  Merge: {username}_{category} ({file_date}): {len(candidates)} folders → {len(all_xlsx)} files", 'info')
 
         qa_folders.append({
             "username": username,
             "category": category,
-            "xlsx_path": best_path,
+            "xlsx_files": all_xlsx,  # ALL xlsx files to process
+            "xlsx_path": all_xlsx[0],  # Primary file (backwards compat)
             "folder_path": best_folder,
             "file_date": file_date,
-            "images": best_images,
+            "images": all_images,
         })
 
     # Phase 3: For master files, keep latest per (category, lang)
@@ -686,21 +695,19 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
     """
     username = folder["username"]
     category = folder["category"]
-    xlsx_path = folder["xlsx_path"]
     file_date = folder["file_date"]
+
+    # Support both single file (xlsx_path) and multi-file (xlsx_files) modes
+    xlsx_files = folder.get("xlsx_files", [folder["xlsx_path"]])
 
     # Determine language
     lang = tester_mapping.get(username, "EN")
     is_english = (lang == "EN")
 
     _tracker_log(f"COUNT FOLDER: {username}_{category} date={file_date} lang={lang}")
-    _tracker_log(f"  File: {xlsx_path.name}")
+    _tracker_log(f"  Files: {[f.name for f in xlsx_files]}")
 
-    # Load workbook
-    wb = safe_load_workbook(xlsx_path)
-    _tracker_log(f"  Sheets: {wb.sheetnames}")
-
-    # Aggregate stats across all sheets
+    # Aggregate stats across ALL files and ALL sheets
     total_stats = {
         "total": 0,
         "issue": 0,
@@ -710,19 +717,25 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
         "word_count": 0,
     }
 
-    try:
-        for sheet_name in wb.sheetnames:
-            if sheet_name == "STATUS":
-                _tracker_log(f"    SKIP: STATUS sheet")
-                continue
+    for xlsx_path in xlsx_files:
+        _tracker_log(f"  Processing: {xlsx_path.name}")
+        try:
+            wb = safe_load_workbook(xlsx_path)
+            _tracker_log(f"    Sheets: {wb.sheetnames}")
 
-            ws = wb[sheet_name]
-            sheet_stats = count_sheet_stats(ws, category, is_english, sheet_name)
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    _tracker_log(f"      SKIP: STATUS sheet")
+                    continue
 
-            for key in total_stats:
-                total_stats[key] += sheet_stats[key]
-    finally:
-        wb.close()
+                ws = wb[sheet_name]
+                sheet_stats = count_sheet_stats(ws, category, is_english, sheet_name)
+
+                for key in total_stats:
+                    total_stats[key] += sheet_stats[key]
+            wb.close()
+        except Exception as e:
+            _tracker_log(f"    ERROR reading {xlsx_path.name}: {e}", "ERROR")
 
     # Build tracker entry
     done = total_stats["issue"] + total_stats["no_issue"] + total_stats["blocked"] + total_stats["korean"]
