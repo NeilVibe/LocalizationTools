@@ -56,6 +56,13 @@ if (typeof localStorage !== 'undefined') {
  */
 export const savedFilesState = writable(null);
 
+/**
+ * Phase 56: Currently selected project (global, set by LDM.svelte)
+ * Shape: { id: number, name: string } | null
+ * Used by +layout.svelte to pass project context to ProjectSettingsModal
+ */
+export const selectedProject = writable(null);
+
 // =============================================================================
 // Navigation Actions
 // =============================================================================

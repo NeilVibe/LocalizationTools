@@ -7,7 +7,7 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
-  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex } from "$lib/stores/navigation.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, selectedProject } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -140,6 +140,19 @@
   let fileExplorer = $state(null);
   let virtualGrid = $state(null);
   let gridPageRef = $state(null);
+
+  // Phase 56: Sync local selectedProjectId to global navigation store
+  // so +layout.svelte can pass project context to ProjectSettingsModal
+  $effect(() => {
+    if (selectedProjectId && projects.length > 0) {
+      const project = projects.find(p => p.id === selectedProjectId);
+      if (project) {
+        selectedProject.set({ id: project.id, name: project.name });
+      }
+    } else {
+      selectedProject.set(null);
+    }
+  });
 
   /**
    * Check LDM API health
