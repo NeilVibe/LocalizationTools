@@ -339,6 +339,19 @@
     <!-- ================================================================== -->
     {#if phase === 'configure'}
       <div class="phase-configure">
+        <!-- Multi-language mode indicator -->
+        {#if multiLanguage}
+          <InlineNotification
+            kind="info"
+            title="Multi-Language Mode"
+            subtitle={folderPath
+              ? `Will scan folder for language-suffixed files and merge each language separately. Folder: ${folderPath}`
+              : 'Will scan folder for language-suffixed files and merge each language separately.'}
+            hideCloseButton
+            lowContrast
+          />
+        {/if}
+
         <!-- Path warning -->
         {#if !pathsConfigured}
           <InlineNotification
@@ -469,24 +482,44 @@
             </div>
           </div>
 
-          <!-- Multi-language breakdown -->
-          {#if previewResult.per_language && previewResult.scan}
+          <!-- Detected Languages (prominent card display - UI-09) -->
+          {#if previewResult.scan}
+            <div class="multi-lang-section">
+              <h4>Detected Languages</h4>
+              <div class="language-grid">
+                {#each Object.entries(previewResult.scan) as [langCode, langData] (langCode)}
+                  <div class="language-card">
+                    <Tag type="blue">{LANGUAGE_MAP[langCode.toUpperCase()] || langCode}</Tag>
+                    <span class="lang-card-stat">{langData.files} file{langData.files !== 1 ? 's' : ''}</span>
+                    {#if previewResult.per_language?.[langCode]}
+                      <span class="lang-card-stat">{previewResult.per_language[langCode].matched ?? 0} matches</span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Per-language breakdown table -->
+          {#if previewResult.per_language}
             <div class="multi-lang-section">
               <h4>Per-Language Breakdown</h4>
-              <table class="lang-table">
+              <table class="merge-summary-table">
                 <thead>
                   <tr>
                     <th>Language</th>
                     <th>Files</th>
                     <th>Matched</th>
+                    <th>Not Found</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {#each Object.keys(previewResult.per_language) as lang (lang)}
+                  {#each Object.entries(previewResult.per_language) as [langCode, stats] (langCode)}
                     <tr>
-                      <td>{LANGUAGE_MAP[lang.toUpperCase()] || lang}</td>
-                      <td>{previewResult.scan?.[lang]?.files ?? '—'}</td>
-                      <td>{previewResult.per_language[lang]?.matched ?? 0}</td>
+                      <td><Tag type="blue">{LANGUAGE_MAP[langCode.toUpperCase()] || langCode}</Tag></td>
+                      <td>{previewResult.scan?.[langCode]?.files ?? '—'}</td>
+                      <td>{stats.matched ?? 0}</td>
+                      <td>{stats.not_found ?? 0}</td>
                     </tr>
                   {/each}
                 </tbody>
@@ -615,20 +648,24 @@
           {#if mergeResult.per_language}
             <div class="multi-lang-section">
               <h4>Per-Language Results</h4>
-              <table class="lang-table">
+              <table class="merge-summary-table">
                 <thead>
                   <tr>
                     <th>Language</th>
                     <th>Matched</th>
                     <th>Updated</th>
+                    <th>Not Found</th>
+                    <th>Skipped</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {#each Object.keys(mergeResult.per_language) as lang (lang)}
+                  {#each Object.entries(mergeResult.per_language) as [langCode, stats] (langCode)}
                     <tr>
-                      <td>{LANGUAGE_MAP[lang.toUpperCase()] || lang}</td>
-                      <td>{mergeResult.per_language[lang]?.matched ?? 0}</td>
-                      <td>{mergeResult.per_language[lang]?.updated ?? 0}</td>
+                      <td><Tag type="blue">{LANGUAGE_MAP[langCode.toUpperCase()] || langCode}</Tag></td>
+                      <td>{stats.matched ?? 0}</td>
+                      <td>{stats.updated ?? 0}</td>
+                      <td>{stats.not_found ?? 0}</td>
+                      <td>{stats.skipped ?? 0}</td>
                     </tr>
                   {/each}
                 </tbody>
@@ -747,7 +784,7 @@
     margin-top: 0.25rem;
   }
 
-  /* Multi-language table */
+  /* Multi-language sections */
   .multi-lang-section {
     margin: 1rem 0;
   }
@@ -759,25 +796,50 @@
     color: var(--cds-text-01, #f4f4f4);
   }
 
-  .lang-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8125rem;
+  /* Language detection card grid (preview phase) */
+  .language-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
   }
 
-  .lang-table th,
-  .lang-table td {
+  .language-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--cds-ui-03, #393939);
+    border: 1px solid var(--cds-border-subtle, #393939);
+    border-radius: 4px;
+    background: var(--cds-layer-01, #262626);
   }
 
-  .lang-table th {
-    font-weight: 600;
+  .lang-card-stat {
+    font-size: 0.8125rem;
     color: var(--cds-text-02, #c6c6c6);
   }
 
-  .lang-table td {
+  /* Per-language summary table */
+  .merge-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.8125rem;
+  }
+
+  .merge-summary-table th,
+  .merge-summary-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--cds-border-subtle, #393939);
+  }
+
+  .merge-summary-table th {
+    color: var(--cds-text-secondary, #c6c6c6);
+    font-weight: 600;
+  }
+
+  .merge-summary-table td {
     color: var(--cds-text-01, #f4f4f4);
   }
 
