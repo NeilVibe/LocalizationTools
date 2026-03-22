@@ -693,9 +693,9 @@ class QuickTranslateApp:
 
         self._update_exclude_count_label()
 
-        # --- Fix Lone Brackets section ---
+        # --- Fix Lone Angle Brackets section ---
         lone_bracket_frame = tk.LabelFrame(
-            self._tab2_inner, text="Fix Lone Brackets",
+            self._tab2_inner, text="Fix Lone Angle Brackets",
             font=('Segoe UI', 10, 'bold'),
             bg='#f0f0f0', fg='#555', padx=15, pady=8)
         lone_bracket_frame.pack(fill=tk.X, pady=(0, 8))
@@ -721,7 +721,7 @@ class QuickTranslateApp:
         lone_bracket_btn_row.pack(fill=tk.X)
 
         self.fix_lone_brackets_btn = tk.Button(
-            lone_bracket_btn_row, text="Fix Lone Brackets",
+            lone_bracket_btn_row, text="Fix Lone Angle Brackets",
             command=self._fix_lone_brackets,
             font=('Segoe UI', 9, 'bold'), bg='#2980b9', fg='white',
             relief='flat', padx=10, cursor='hand2')
@@ -1161,7 +1161,7 @@ class QuickTranslateApp:
 
                 integrity = check_text_integrity_in_file(xf)
                 if integrity:
-                    # Split into critical vs low-impact (lone brackets matching source)
+                    # Split into critical vs low-impact (lone angle brackets matching source)
                     from core.text_utils import is_text_integrity_issue as _iti
                     from core.xml_parser import get_attr as _ga, STR_ATTRS as _SA, DESC_ATTRS as _DA
                     from core.xml_parser import STRORIGIN_ATTRS as _SOA, DESCORIGIN_ATTRS as _DOA
@@ -1187,7 +1187,7 @@ class QuickTranslateApp:
                         if len(crit_elems) > 10:
                             self._log(f"  ...and {len(crit_elems) - 10} more.", 'error')
                     if warn_count:
-                        self._log(f"  {xf.name}: {warn_count} lone bracket(s) match source — OK.", 'warning')
+                        self._log(f"  {xf.name}: {warn_count} lone angle bracket(s) match source — OK.", 'warning')
 
             # XML Load Test summary
             if total_load_fail == 0 and total_load_recovered == 0:
@@ -1330,7 +1330,7 @@ class QuickTranslateApp:
                                 all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                         # Report integrity issues in XML
                         if xml_integrity_report:
-                            # Split into critical (real issues) vs low-impact (lone brackets matching source)
+                            # Split into critical (real issues) vs low-impact (lone angle brackets matching source)
                             critical_items = [r for r in xml_integrity_report if not r.get('reason', '').startswith('Warning:')]
                             warning_items = [r for r in xml_integrity_report if r.get('reason', '').startswith('Warning:')]
 
@@ -1351,7 +1351,7 @@ class QuickTranslateApp:
 
                             if warning_items:
                                 self._log(
-                                    f"  {filepath.name}: {len(warning_items)} lone bracket(s) match source — transferred OK.",
+                                    f"  {filepath.name}: {len(warning_items)} lone angle bracket(s) match source — transferred OK.",
                                     'warning'
                                 )
 
@@ -1408,7 +1408,7 @@ class QuickTranslateApp:
 
                             if warning_xl:
                                 self._log(
-                                    f"  {filepath.name}: {len(warning_xl)} lone bracket(s) match source — transferred OK.",
+                                    f"  {filepath.name}: {len(warning_xl)} lone angle bracket(s) match source — transferred OK.",
                                     'warning'
                                 )
 
@@ -1562,10 +1562,10 @@ class QuickTranslateApp:
                     self._log(f"  ...and {len(secondary_integrity) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
 
-            # Low-impact: lone brackets matching source — one-liner, not cluttering
+            # Low-impact: lone angle brackets matching source — one-liner, not cluttering
             if low_impact:
                 self._log("", 'info')
-                self._log(f"INFO: {len(low_impact)} lone bracket(s) match StrOrigin — transferred as-is (use Fix Lone Brackets in Other Tools to clean).", 'warning')
+                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match StrOrigin — transferred as-is (use Fix Lone Angle Brackets in Other Tools to clean).", 'warning')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             other_total = len(all_no_translation_warnings)
@@ -2571,7 +2571,7 @@ class QuickTranslateApp:
         self._disable_buttons()
         self.progress_value.set(0)
         self._clear_log()
-        self._log(f"=== Fix Lone Brackets ({folder_label}) ===", 'header')
+        self._log(f"=== Fix Lone Angle Brackets ({folder_label}) ===", 'header')
         self._log(f"Scanning {len(xml_files)} XML files in: {folder}")
 
         def work():
@@ -2598,7 +2598,7 @@ class QuickTranslateApp:
                     desc_origin = get_attr(elem, DESCORIGIN_ATTRS)
                     desc_val = get_attr(elem, DESC_ATTRS)
 
-                    # Fix Str if it has lone brackets that DIFFER from source (critical)
+                    # Fix Str if it has lone angle brackets that DIFFER from source (critical)
                     if str_val:
                         str_stripped = _VALID_BR_RE.sub('', str_val)
                         src_stripped = _VALID_BR_RE.sub('', str_origin) if str_origin else ''
@@ -2636,9 +2636,9 @@ class QuickTranslateApp:
 
             self._log("")
             if total_fixed > 0:
-                self._log(f"Done! Fixed {total_fixed} lone brackets in {files_modified} files.", 'success')
+                self._log(f"Done! Fixed {total_fixed} lone angle brackets in {files_modified} files.", 'success')
             else:
-                self._log("No critical lone brackets found. All clean!", 'success')
+                self._log("No critical lone angle brackets found. All clean!", 'success')
             self.root.after(0, self._enable_buttons)
 
         self._run_in_thread(work)
