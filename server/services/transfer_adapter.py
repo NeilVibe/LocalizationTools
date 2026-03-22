@@ -258,3 +258,226 @@ class TransferAdapter:
     def export_path(self) -> str:
         """Current EXPORT folder path."""
         return self._export_path
+
+
+# ---------------------------------------------------------------------------
+# Multi-language folder merge (Plan 03 - XFER-07)
+# ---------------------------------------------------------------------------
+
+
+def _ensure_qt_initialized(target_path: str, export_path: str) -> dict:
+    """Ensure QT modules are initialized, initializing if needed."""
+    global _qt_modules
+    if _qt_modules is None:
+        return init_quicktranslate(target_path, export_path)
+    reconfigure_paths(target_path, export_path)
+    return _qt_modules
+
+
+def scan_source_languages(
+    source_path: str,
+    target_path: str | None = None,
+) -> dict:
+    """
+    Scan a source folder for language-tagged files/subfolders.
+
+    Wraps QuickTranslate's scan_source_for_languages() and converts the
+    SourceScanResult dataclass to a plain dict for JSON serialization.
+
+    Args:
+        source_path: Path to source folder to scan.
+        target_path: Optional LOC folder path for language code discovery.
+            If provided, config.LOC_FOLDER is set to this path so the scanner
+            can auto-detect valid language codes from languagedata_*.xml files.
+            If omitted, uses source_path (may miss codes if source has no
+            languagedata files).
+
+    Returns:
+        {
+            "languages": {"FRE": [str_paths], "ENG": [str_paths], ...},
+            "total_files": int,
+            "language_count": int,
+            "unrecognized": [str_paths],
+            "warnings": [str],
+        }
+    """
+    loc_dir = target_path or source_path
+    qt = _ensure_qt_initialized(loc_dir, loc_dir)
+    scanner = qt["scan_source_for_languages"]
+
+    scan_result = scanner(Path(source_path))
+
+    # Convert SourceScanResult to plain dict (Path -> str for JSON)
+    languages = {}
+    for lang_code, files in scan_result.lang_files.items():
+        languages[lang_code] = [str(f) for f in files]
+
+    return {
+        "languages": languages,
+        "total_files": scan_result.total_files,
+        "language_count": scan_result.language_count,
+        "unrecognized": [str(p) for p in scan_result.unrecognized],
+        "warnings": list(scan_result.warnings),
+    }
+
+
+def execute_multi_language_transfer(
+    source_path: str,
+    target_path: str,
+    export_path: str,
+    match_mode: str = "strict",
+    only_untranslated: bool = False,
+    stringid_all_categories: bool = False,
+    dry_run: bool = False,
+    progress_callback=None,
+    log_callback=None,
+) -> dict:
+    """
+    Execute multi-language transfer: scan source, merge each language.
+
+    Wraps QuickTranslate's transfer_folder_to_folder which already handles
+    multi-language internally via scan_source_for_languages. The wrapper adds:
+    - Pre-scan for UI preview (language list before merge)
+    - Per-language result breakdown extracted from file_results
+    - LocaNext-friendly dict structure
+
+    Args:
+        source_path: Folder containing correction files (subfolders per language).
+        target_path: LOC folder with languagedata_*.xml target files.
+        export_path: EXPORT folder for category/filepath lookups.
+        match_mode: "stringid_only" | "strict" | "strorigin_filename"
+        only_untranslated: If True, only merge entries where target Str is empty.
+        stringid_all_categories: If True, StringID-Only matches ALL categories.
+        dry_run: If True, compute matches but do not write files.
+        progress_callback: Optional progress reporting callable.
+        log_callback: Optional log message callable.
+
+    Returns:
+        {
+            "scan": {scan_source_languages result},
+            "per_language": {"FRE": {"matched": N, ...}, "ENG": {...}},
+            "total_matched": int,
+            "total_skipped": int,
+            "total_errors": int,
+        }
+    """
+    qt = _ensure_qt_initialized(target_path, export_path)
+
+    # Step 1: Pre-scan for UI preview data (pass target_path for language code discovery)
+    scan_data = scan_source_languages(source_path, target_path=target_path)
+
+    if scan_data["total_files"] == 0:
+        return {
+            "scan": scan_data,
+            "per_language": {},
+            "total_matched": 0,
+            "total_skipped": 0,
+            "total_errors": 0,
+        }
+
+    # Step 2: Build category/filepath maps if needed
+    stringid_to_category = None
+    stringid_to_subfolder = None
+    stringid_to_filepath = None
+
+    if match_mode == "stringid_only":
+        try:
+            stringid_to_category = qt["build_stringid_to_category"](Path(export_path))
+        except Exception as exc:
+            logger.warning("build_stringid_to_category failed ({}), proceeding without", exc)
+        try:
+            stringid_to_subfolder = qt["build_stringid_to_subfolder"](Path(export_path))
+        except Exception as exc:
+            logger.warning("build_stringid_to_subfolder failed ({}), proceeding without", exc)
+    elif match_mode == "strorigin_filename":
+        try:
+            stringid_to_filepath = qt["build_stringid_to_filepath"](Path(export_path))
+        except Exception as exc:
+            logger.warning("build_stringid_to_filepath failed ({}), proceeding without", exc)
+
+    # Step 3: Call transfer_folder_to_folder (handles multi-lang internally)
+    try:
+        raw_result = qt["transfer_folder_to_folder"](
+            source_folder=Path(source_path),
+            target_folder=Path(target_path),
+            stringid_to_category=stringid_to_category,
+            stringid_to_subfolder=stringid_to_subfolder,
+            stringid_to_filepath=stringid_to_filepath,
+            match_mode=match_mode,
+            dry_run=dry_run,
+            progress_callback=progress_callback,
+            log_callback=log_callback,
+            only_untranslated=only_untranslated,
+            stringid_all_categories=stringid_all_categories,
+        )
+    except Exception as exc:
+        logger.error("transfer_folder_to_folder failed: {}", exc)
+        return {
+            "scan": scan_data,
+            "per_language": {},
+            "total_matched": 0,
+            "total_skipped": 0,
+            "total_errors": 1,
+        }
+
+    # Step 4: Extract per-language breakdown from file_results
+    # file_results is keyed by target file path; extract language from filename
+    per_language: dict = {}
+    file_results = raw_result.get("file_results", {})
+
+    for file_key, file_data in file_results.items():
+        # Extract language code from target filename (e.g., languagedata_FRE.xml -> FRE)
+        fname = Path(file_key).stem
+        lang = None
+        if fname.lower().startswith("languagedata_"):
+            lang = fname[13:].upper()
+        elif "_" in fname:
+            lang = fname.split("_")[-1].upper()
+
+        if not lang:
+            lang = "UNKNOWN"
+
+        if lang not in per_language:
+            per_language[lang] = {
+                "matched": 0,
+                "updated": 0,
+                "not_found": 0,
+                "skipped": 0,
+                "errors": 0,
+            }
+
+        entry = per_language[lang]
+        if isinstance(file_data, dict):
+            entry["matched"] += file_data.get("matched", 0)
+            entry["updated"] += file_data.get("updated", 0)
+            entry["not_found"] += file_data.get("not_found", 0)
+            entry["skipped"] += (
+                file_data.get("skipped_translated", 0)
+                + file_data.get("skipped_non_script", 0)
+                + file_data.get("skipped_excluded", 0)
+                + file_data.get("skipped_empty_strorigin", 0)
+            )
+            entry["errors"] += len(file_data.get("errors", []))
+
+    # If no file_results were returned but we have aggregate totals, create
+    # a single "ALL" language entry from raw_result totals.
+    if not per_language and raw_result.get("total_matched", 0) > 0:
+        per_language["ALL"] = {
+            "matched": raw_result.get("total_matched", 0),
+            "updated": raw_result.get("total_updated", 0),
+            "not_found": raw_result.get("total_not_found", 0),
+            "skipped": raw_result.get("total_skipped", 0),
+            "errors": len(raw_result.get("errors", [])),
+        }
+
+    total_matched = raw_result.get("total_matched", 0)
+    total_skipped = raw_result.get("total_skipped", 0)
+    total_errors = len(raw_result.get("errors", []))
+
+    return {
+        "scan": scan_data,
+        "per_language": per_language,
+        "total_matched": total_matched,
+        "total_skipped": total_skipped,
+        "total_errors": total_errors,
+    }

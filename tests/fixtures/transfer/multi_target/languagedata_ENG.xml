@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringID="STR_HELLO" Str="" StrOrigin="Hello" DescOrigin="Greeting"/>
+  <LocStr StringID="STR_YES" Str="" StrOrigin="Yes" DescOrigin="Confirmation"/>
+</LanguageData>
