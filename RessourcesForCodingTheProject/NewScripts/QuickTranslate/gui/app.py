@@ -702,8 +702,7 @@ class QuickTranslateApp:
 
         tk.Label(lone_bracket_frame,
                  text=("Replace lone < and > (not part of <br/> tags) with hyphens (-) "
-                       "in all XML files under Target folder. Only fixes brackets that "
-                       "also exist in StrOrigin (low-impact warnings)."),
+                       "in Target XML files. Fixes brackets that differ from StrOrigin."),
                  font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
                  justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 4))
 
@@ -1309,20 +1308,31 @@ class QuickTranslateApp:
                                 all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                         # Report integrity issues in XML
                         if xml_integrity_report:
-                            xml_integrity_count = len(xml_integrity_report)
-                            self._log(
-                                f"WARNING: {xml_integrity_count} entry(ies) in {filepath.name} "
-                                f"have text integrity issues (skipped/neutralized).",
-                                'error'
-                            )
-                            for r in xml_integrity_report[:10]:
-                                sid = r['string_id'] or '(empty)'
+                            # Split into critical (real issues) vs low-impact (lone brackets matching source)
+                            critical_items = [r for r in xml_integrity_report if not r.get('reason', '').startswith('Warning:')]
+                            warning_items = [r for r in xml_integrity_report if r.get('reason', '').startswith('Warning:')]
+
+                            if critical_items:
                                 self._log(
-                                    f"  [{r['column']}] StringID={sid}: {r['reason']}",
+                                    f"WARNING: {len(critical_items)} entry(ies) in {filepath.name} "
+                                    f"have text integrity issues (skipped/neutralized).",
                                     'error'
                                 )
-                            if xml_integrity_count > 10:
-                                self._log(f"  ...and {xml_integrity_count - 10} more.", 'error')
+                                for r in critical_items[:10]:
+                                    sid = r['string_id'] or '(empty)'
+                                    self._log(
+                                        f"  [{r['column']}] StringID={sid}: {r['reason']}",
+                                        'error'
+                                    )
+                                if len(critical_items) > 10:
+                                    self._log(f"  ...and {len(critical_items) - 10} more.", 'error')
+
+                            if warning_items:
+                                self._log(
+                                    f"  {filepath.name}: {len(warning_items)} lone bracket(s) match source — transferred OK.",
+                                    'warning'
+                                )
+
                             for r in xml_integrity_report:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                         if xml_no_translation_report:
@@ -1356,20 +1366,30 @@ class QuickTranslateApp:
                             for r in formula_report:
                                 all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                         if integrity_report_xl:
-                            integrity_count_xl = len(integrity_report_xl)
-                            self._log(
-                                f"WARNING: {integrity_count_xl} cell(s) in {filepath.name} "
-                                f"have text integrity issues (skipped/neutralized).",
-                                'error'
-                            )
-                            for r in integrity_report_xl[:10]:
-                                sid = r['string_id'] or '(empty)'
+                            critical_xl = [r for r in integrity_report_xl if not r.get('reason', '').startswith('Warning:')]
+                            warning_xl = [r for r in integrity_report_xl if r.get('reason', '').startswith('Warning:')]
+
+                            if critical_xl:
                                 self._log(
-                                    f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}",
+                                    f"WARNING: {len(critical_xl)} cell(s) in {filepath.name} "
+                                    f"have text integrity issues (skipped/neutralized).",
                                     'error'
                                 )
-                            if integrity_count_xl > 10:
-                                self._log(f"  ...and {integrity_count_xl - 10} more.", 'error')
+                                for r in critical_xl[:10]:
+                                    sid = r['string_id'] or '(empty)'
+                                    self._log(
+                                        f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}",
+                                        'error'
+                                    )
+                                if len(critical_xl) > 10:
+                                    self._log(f"  ...and {len(critical_xl) - 10} more.", 'error')
+
+                            if warning_xl:
+                                self._log(
+                                    f"  {filepath.name}: {len(warning_xl)} lone bracket(s) match source — transferred OK.",
+                                    'warning'
+                                )
+
                             for r in integrity_report_xl:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                         if xl_no_translation_report:
@@ -1480,9 +1500,11 @@ class QuickTranslateApp:
                 lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
                 self._log(f"  Per-language: {lang_str}", 'warning' if has_unknown else 'info')
 
-            # Split integrity warnings into critical (broken linebreaks) vs secondary
+            # Split integrity warnings into critical / secondary / low-impact
             critical_integrity = [w for w in all_integrity_warnings if w[3].startswith('Broken') or w[3].startswith('Truncated')]
-            secondary_integrity = [w for w in all_integrity_warnings if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
+            low_impact = [w for w in all_integrity_warnings if w[3].startswith('Warning:')]
+            secondary_integrity = [w for w in all_integrity_warnings
+                                   if not (w[3].startswith('Broken') or w[3].startswith('Truncated') or w[3].startswith('Warning:'))]
 
             # End-of-log CRITICAL warning summary (formulas + broken linebreaks)
             if all_formula_warnings or critical_integrity:
@@ -1517,6 +1539,11 @@ class QuickTranslateApp:
                 if len(secondary_integrity) > 20:
                     self._log(f"  ...and {len(secondary_integrity) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
+
+            # Low-impact: lone brackets matching source — one-liner, not cluttering
+            if low_impact:
+                self._log("", 'info')
+                self._log(f"INFO: {len(low_impact)} lone bracket(s) match StrOrigin — transferred as-is (use Fix Lone Brackets in Other Tools to clean).", 'warning')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             other_total = len(all_no_translation_warnings)
@@ -2545,28 +2572,27 @@ class QuickTranslateApp:
                     desc_origin = get_attr(elem, DESCORIGIN_ATTRS)
                     desc_val = get_attr(elem, DESC_ATTRS)
 
-                    # Fix Str if it has lone brackets AND source also has them
+                    # Fix Str if it has lone brackets that DIFFER from source (critical)
                     if str_val:
                         str_stripped = _VALID_BR_RE.sub('', str_val)
                         src_stripped = _VALID_BR_RE.sub('', str_origin) if str_origin else ''
                         if ('<' in str_stripped or '>' in str_stripped):
-                            if (src_stripped.count('<') == str_stripped.count('<')
+                            if not (src_stripped.count('<') == str_stripped.count('<')
                                     and src_stripped.count('>') == str_stripped.count('>')):
                                 fixed = fix_lone_brackets(str_val)
                                 if fixed != str_val:
-                                    # Write back to element — find the actual attr name
                                     for attr_name in STR_ATTRS:
                                         if attr_name in elem.attrib:
                                             elem.set(attr_name, fixed)
                                             break
                                     file_fixes += 1
 
-                    # Fix Desc similarly
+                    # Fix Desc similarly — only when counts differ from source
                     if desc_val:
                         desc_stripped = _VALID_BR_RE.sub('', desc_val)
                         dsrc_stripped = _VALID_BR_RE.sub('', desc_origin) if desc_origin else ''
                         if ('<' in desc_stripped or '>' in desc_stripped):
-                            if (dsrc_stripped.count('<') == desc_stripped.count('<')
+                            if not (dsrc_stripped.count('<') == desc_stripped.count('<')
                                     and dsrc_stripped.count('>') == desc_stripped.count('>')):
                                 fixed = fix_lone_brackets(desc_val)
                                 if fixed != desc_val:
@@ -2591,7 +2617,7 @@ class QuickTranslateApp:
             if total_fixed > 0:
                 self._log(f"Done! Fixed {total_fixed} lone brackets in {files_modified} files.", 'success')
             else:
-                self._log("No lone brackets found that match source. All clean!", 'success')
+                self._log("No critical lone brackets found. All clean!", 'success')
             self.root.after(0, self._enable_buttons)
 
         self._run_in_thread(work)
