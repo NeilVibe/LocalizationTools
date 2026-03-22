@@ -37,8 +37,8 @@
 
 ### Merge UI
 
-- [ ] **UI-01**: "Merge to LOCDEV" button in main toolbar near Export actions (single-file/project merge)
-- [ ] **UI-02**: Right-click folder context menu "Merge Folder to LOCDEV" (multi-language folder merge)
+- [x] **UI-01**: "Merge to LOCDEV" button in main toolbar near Export actions (single-file/project merge)
+- [x] **UI-02**: Right-click folder context menu "Merge Folder to LOCDEV" (multi-language folder merge)
 - [x] **UI-03**: Single-page merge modal with target LOCDEV folder picker, match type radios, scope toggle
 - [x] **UI-04**: Category filter toggle visible only for StringID mode
 - [x] **UI-05**: Dry-run preview panel shows file/entry counts and overwrite warnings (per-language for multi)
@@ -88,8 +88,8 @@
 | API-02 | Phase 58 | Complete |
 | API-03 | Phase 58 | Complete |
 | API-04 | Phase 58 | Complete |
-| UI-01 | Phase 59 | Pending |
-| UI-02 | Phase 59 | Pending |
+| UI-01 | Phase 59 | Complete |
+| UI-02 | Phase 59 | Complete |
 | UI-03 | Phase 59 | Complete |
 | UI-04 | Phase 59 | Complete |
 | UI-05 | Phase 59 | Complete |

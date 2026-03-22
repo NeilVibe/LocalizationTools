@@ -9,7 +9,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
 - [x] **Phase 56: Mock Data + Settings** - CLI mock DB setup with 3 projects + LOC/EXPORT path configuration in Settings (completed 2026-03-22)
 - [x] **Phase 57: Transfer Service Adapter** - Import QuickTranslate core modules via sys.path for 3 match types, postprocess, and multi-language merge (completed 2026-03-22)
 - [x] **Phase 58: Merge API** - REST endpoints for dry-run preview and SSE-streamed merge execution (completed 2026-03-22)
-- [ ] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points
+- [x] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points (completed 2026-03-22)
 - [ ] **Phase 60: Integration Testing** - End-to-end pipeline verification with mock data and real test files
 
 ## Phase Details
@@ -75,7 +75,7 @@ Plans:
 
 Plans:
 - [x] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
-- [ ] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
+- [x] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
 - [x] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
 
 ### Phase 60: Integration Testing
@@ -103,5 +103,5 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
 | 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 59. Merge UI | v6.0 | 2/3 | In Progress|  |
+| 59. Merge UI | v6.0 | 3/3 | Complete   | 2026-03-22 |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |
