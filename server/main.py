@@ -446,6 +446,10 @@ app.include_router(admin_db_stats.router)
 from server.api import health
 app.include_router(health.router)
 
+# Include Settings API (Phase 56: Project Settings — path validation)
+from server.api import settings as settings_api
+app.include_router(settings_api.router)
+
 # Include LDM (LanguageData Manager) API - Real-time collaborative CAT tool
 # P37 Refactoring: Using modular router.py (aggregates 13 sub-routers, 44 endpoints)
 # Legacy api.py (3144 lines) preserved for reference
