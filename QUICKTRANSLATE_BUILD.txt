@@ -211,3 +211,4 @@ Build 085: add LoneBracketWarnings tab to Check Patterns Excel report
 Build 086: rename bracket to angle bracket everywhere
 Build 087: rename tab to LowImpactWarnings
 Build 088: fix misleading log message for low-impact angle brackets
+Build 089: hardcode Source for Fix Lone Brackets + Extract Translation by StringID
