@@ -58,25 +58,25 @@ Requirements for Architecture & Code Quality milestone. Each maps to roadmap pha
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | TBD | Pending |
-| COMP-02 | TBD | Pending |
-| COMP-03 | TBD | Pending |
-| SVC-01 | TBD | Pending |
-| SVC-02 | TBD | Pending |
-| SVC-03 | TBD | Pending |
-| ROUTE-01 | TBD | Pending |
-| ROUTE-02 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| UIFIX-01 | TBD | Pending |
-| UIFIX-02 | TBD | Pending |
+| COMP-01 | Phase 58 | Pending |
+| COMP-02 | Phase 59 | Pending |
+| COMP-03 | Phase 60 | Pending |
+| SVC-01 | Phase 56 | Pending |
+| SVC-02 | Phase 56 | Pending |
+| SVC-03 | Phase 56 | Pending |
+| ROUTE-01 | Phase 57 | Pending |
+| ROUTE-02 | Phase 57 | Pending |
+| TEST-01 | Phase 60 | Pending |
+| TEST-02 | Phase 60 | Pending |
+| TEST-03 | Phase 60 | Pending |
+| UIFIX-01 | Phase 59 | Pending |
+| UIFIX-02 | Phase 59 | Pending |
 
 **Coverage:**
 - v6.0 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after roadmap creation*
