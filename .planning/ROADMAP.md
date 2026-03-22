@@ -23,7 +23,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
   2. Each mock project auto-detects its language from the project name and displays the correct language badge (French, English, Multi)
   3. User can set LOC PATH and EXPORT PATH in the Settings page, values persist across app restarts, and invalid paths show validation errors
   4. Test languagedata files from the test123 directory load correctly when pointed to by LOC PATH
-**Plans**: 2 plans (Wave 1 → Wave 2, sequential)
+**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
 
 Plans:
 - [x] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
@@ -55,7 +55,7 @@ Plans:
   2. POST /api/merge/execute streams progress via SSE with per-file updates and postprocess step notifications
   3. On completion, the merge response includes matched, skipped, and overwritten counts as a summary report
   4. Multi-language preview mode scans the source folder and returns a per-language breakdown of files and expected matches
-**Plans**: 2 plans (Wave 1 → Wave 2, sequential)
+**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
 
 Plans:
 - [x] 58-01-PLAN.md -- Preview endpoint (dry-run summary) + multi-language preview
@@ -71,7 +71,7 @@ Plans:
   3. The merge modal walks through configure (target folder, match type, scope) then preview (dry-run results) then execute (progress bar) then done (summary report) as a single-page flow
   4. Category filter toggle appears only when StringID match type is selected, and language badge in the modal header matches the auto-detected project language
   5. Multi-language mode displays detected languages with file counts before merge, and the summary report shows per-language matched/skipped/overwritten counts
-**Plans**: 2 plans (Wave 1 → Wave 2, sequential)
+**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
 
 Plans:
 - [ ] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
@@ -87,7 +87,7 @@ Plans:
   2. Multi-language merge via right-click on project_MULTI folder correctly processes FRE and ENG subfolders with separate merge results
   3. All 3 match types produce correct merge output when tested against the test123 real data files
   4. SSE progress events stream correctly to the UI during merge execution (no dropped events, progress reaches 100%)
-**Plans**: 2 plans (Wave 1 → Wave 2, sequential)
+**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
 
 Plans:
 - [ ] 60-01-PLAN.md -- End-to-end pipeline test (single project + multi-language)
@@ -103,5 +103,5 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 | 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
 | 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 59. Merge UI | v6.0 | 0/3 | Not started | - |
+| 59. Merge UI | v6.0 | 0/3 | Planned     | - |
 | 60. Integration Testing | v6.0 | 0/2 | Not started | - |
