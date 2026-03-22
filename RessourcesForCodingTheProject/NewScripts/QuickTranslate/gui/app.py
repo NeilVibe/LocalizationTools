@@ -2847,7 +2847,7 @@ class QuickTranslateApp:
             self.root.after(0, lambda: self.progress_value.set(100))
             self._log("")
             self._log(f"Done! Saved to: {output_path}", 'success')
-            self._log(f"  {len(lang_data)} language tabs, {len(string_id_order)} StringIDs per tab")
+            self._log(f"  {len(lang_data)} language tabs, {len(entry_order)} entries per tab")
 
             # Open the file
             try:
