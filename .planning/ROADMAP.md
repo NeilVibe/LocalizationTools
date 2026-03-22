@@ -10,7 +10,7 @@ Enable translators to open languagedata files, translate offline, and merge chan
 - [x] **Phase 57: Transfer Service Adapter** - Import QuickTranslate core modules via sys.path for 3 match types, postprocess, and multi-language merge (completed 2026-03-22)
 - [x] **Phase 58: Merge API** - REST endpoints for dry-run preview and SSE-streamed merge execution (completed 2026-03-22)
 - [x] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points (completed 2026-03-22)
-- [ ] **Phase 60: Integration Testing** - End-to-end pipeline verification with mock data and real test files
+- [x] **Phase 60: Integration Testing** - End-to-end pipeline verification with mock data and real test files (completed 2026-03-22)
 
 ## Phase Details
 
@@ -91,7 +91,7 @@ Plans:
 
 Plans:
 - [x] 60-01-PLAN.md -- E2E pipeline tests (mock setup, settings validation, single-project preview/execute/SSE, multi-language preview)
-- [ ] 60-02-PLAN.md -- Match type verification with synthetic XML fixtures (all 3 modes + scope filter)
+- [x] 60-02-PLAN.md -- Match type verification with synthetic XML fixtures (all 3 modes + scope filter)
 
 ## Progress
 
@@ -104,4 +104,4 @@ Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 | 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
 | 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
 | 59. Merge UI | v6.0 | 3/3 | Complete    | 2026-03-22 |
-| 60. Integration Testing | v6.0 | 1/2 | In Progress|  |
+| 60. Integration Testing | v6.0 | 2/2 | Complete   | 2026-03-22 |

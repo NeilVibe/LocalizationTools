@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 60-01-PLAN.md
-last_updated: "2026-03-22T19:22:30.362Z"
+stopped_at: Completed 60-02-PLAN.md
+last_updated: "2026-03-22T19:26:39.429Z"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -53,6 +53,7 @@ Plan: 2 of 2
 | Phase 59 P03 | 2min | 2 tasks | 1 files |
 | Phase 59 P02 | 3min | 2 tasks | 2 files |
 | Phase 60 P01 | 2min | 1 tasks | 2 files |
+| Phase 60 P02 | 2min | 2 tasks | 5 files |
 
 ### Decisions
 
@@ -81,6 +82,7 @@ Recent decisions affecting current work:
 - [Phase 59]: Enhanced existing multi-language UI rather than rewriting — added language cards, expanded table columns
 - [Phase 59]: Custom event (merge-folder-to-locdev) for cross-component communication instead of prop threading
 - [Phase 60]: Used pytest_plugins for fixture registration instead of conftest.py rename
+- [Phase 60]: Own BASE_URL constant in test file for independence from conftest_merge
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-22T19:22:30.359Z
-Stopped at: Completed 60-01-PLAN.md
+Last session: 2026-03-22T19:26:39.426Z
+Stopped at: Completed 60-02-PLAN.md
 Resume file: None
