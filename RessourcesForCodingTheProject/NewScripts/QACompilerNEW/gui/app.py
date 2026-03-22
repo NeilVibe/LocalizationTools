@@ -695,6 +695,8 @@ class QACompilerSuiteGUI:
 
     def _do_update_tracker(self):
         """Update tracker from TrackerUpdateFolder (recursive scan, filename-based detection)."""
+        if hasattr(self, '_worker_thread') and self._worker_thread and self._worker_thread.is_alive():
+            return
         self._start_operation("Updating tracker...")
         log_cb, progress_cb, status_cb = self._make_callbacks()
 

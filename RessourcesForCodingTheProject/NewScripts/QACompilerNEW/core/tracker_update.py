@@ -31,9 +31,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
     TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
-    CATEGORIES,
+    CATEGORIES, CATEGORY_TO_MASTER,
     load_tester_mapping
 )
+
+# Valid categories for Master_*.xlsx filenames (CATEGORIES + master-level names like "Script")
+_VALID_MASTER_CATEGORIES = set(CATEGORIES) | set(CATEGORY_TO_MASTER.values())
 from core.discovery import IMAGE_EXTENSIONS
 from core.excel_ops import safe_load_workbook, find_column_by_header
 from core.processing import count_words_english, count_chars_chinese
@@ -198,7 +201,7 @@ def _parse_qa_filename(filename: str) -> Tuple:
     return username, category
 
 
-def discover_flat_dump(base_folder: Path) -> Tuple[List[Dict], List[Path]]:
+def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict], List[Path]]:
     """
     Recursively walk base_folder (infinite depth), ignore folder names.
 
@@ -244,8 +247,8 @@ def discover_flat_dump(base_folder: Path) -> Tuple[List[Dict], List[Path]]:
         # Check if it's a Master file (Master_{Category}.xlsx)
         if filename.startswith("Master_"):
             category = xlsx_path.stem.replace("Master_", "", 1)
-            if not category:
-                _tracker_log(f"  SKIP: {filename} (empty category after Master_ prefix)")
+            if not category or category not in _VALID_MASTER_CATEGORIES:
+                _tracker_log(f"  SKIP: {filename} (invalid master category '{category}')")
                 total_skipped += 1
                 continue
             mtime = xlsx_path.stat().st_mtime
@@ -257,7 +260,17 @@ def discover_flat_dump(base_folder: Path) -> Tuple[List[Dict], List[Path]]:
         username, category = _parse_qa_filename(filename)
         if username is None:
             total_skipped += 1
-            _tracker_log(f"  SKIP: {xlsx_path} (no valid Username_Category pattern)")
+            # Warn if file looks like it should match (has underscore) but category is invalid
+            stem = xlsx_path.stem
+            if "_" in stem:
+                parts = stem.rsplit("_", 1)
+                bad_cat = parts[1] if len(parts) == 2 else ""
+                msg = f"  SKIP: {filename} (unknown category '{bad_cat}', valid: {', '.join(sorted(CATEGORIES))})"
+                _tracker_log(msg, "WARN")
+                if log_callback:
+                    log_callback(msg, 'warning')
+            else:
+                _tracker_log(f"  SKIP: {filename} (no underscore, not a QA file)")
             continue
 
         stat = xlsx_path.stat()
@@ -427,7 +440,7 @@ def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tup
 
     # Phase 1: Discover
     _log("Scanning for QA and Master files...")
-    qa_folders, master_files = discover_flat_dump(base_folder)
+    qa_folders, master_files = discover_flat_dump(base_folder, log_callback=log_callback)
     _log(f"  Found {len(qa_folders)} QA file(s) (after dedup by latest-per-day)")
     _log(f"  Found {len(master_files)} Master file(s)")
 
