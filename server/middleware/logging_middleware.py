@@ -37,8 +37,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         url = str(request.url)
 
         # Get request body if present (for debugging)
+        # SKIP body reading for SSE streaming endpoints — BaseHTTPMiddleware
+        # breaks EventSourceResponse when body is consumed (Starlette bug:
+        # "Unexpected message received: http.request")
         body_data = None
-        if method in ["POST", "PUT", "PATCH"]:
+        is_sse = url.endswith("/merge/execute")
+        if method in ["POST", "PUT", "PATCH"] and not is_sse:
             try:
                 # Read and store body
                 body_bytes = await request.body()

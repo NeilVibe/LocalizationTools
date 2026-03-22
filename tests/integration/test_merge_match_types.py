@@ -210,7 +210,6 @@ def test_all_match_modes_valid(admin_headers, tmp_path):
 # ============================================================================
 
 
-@pytest.mark.xfail(reason="Server bug: 'core' module import conflict in asyncio.to_thread — SSE stream returns empty")
 def test_postprocess_runs_on_execute(admin_headers, tmp_path):
     """Execute merge via SSE and verify completion event with result data.
 
