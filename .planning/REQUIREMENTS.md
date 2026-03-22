@@ -70,12 +70,38 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| MOCK-01 | Phase 56 | Pending |
+| MOCK-02 | Phase 56 | Pending |
+| MOCK-03 | Phase 56 | Pending |
+| MOCK-04 | Phase 56 | Pending |
+| SET-01 | Phase 56 | Pending |
+| SET-02 | Phase 56 | Pending |
+| SET-03 | Phase 56 | Pending |
+| XFER-01 | Phase 57 | Pending |
+| XFER-02 | Phase 57 | Pending |
+| XFER-03 | Phase 57 | Pending |
+| XFER-04 | Phase 57 | Pending |
+| XFER-05 | Phase 57 | Pending |
+| XFER-06 | Phase 57 | Pending |
+| XFER-07 | Phase 57 | Pending |
+| API-01 | Phase 58 | Pending |
+| API-02 | Phase 58 | Pending |
+| API-03 | Phase 58 | Pending |
+| API-04 | Phase 58 | Pending |
+| UI-01 | Phase 59 | Pending |
+| UI-02 | Phase 59 | Pending |
+| UI-03 | Phase 59 | Pending |
+| UI-04 | Phase 59 | Pending |
+| UI-05 | Phase 59 | Pending |
+| UI-06 | Phase 59 | Pending |
+| UI-07 | Phase 59 | Pending |
+| UI-08 | Phase 59 | Pending |
+| UI-09 | Phase 59 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*

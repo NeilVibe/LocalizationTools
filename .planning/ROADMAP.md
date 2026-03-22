@@ -1,105 +1,107 @@
-# Roadmap: LocaNext v6.0 Architecture & Code Quality
+# Roadmap: LocaNext v6.0 Showcase Offline Transfer
 
 ## Overview
 
-Refactor the LocaNext codebase for long-term maintainability. Split God components (VirtualGrid 4299 lines, FilesPage 3080 lines) and backend services (mega_index 1310 lines), thin route handlers, add unit test infrastructure, and fix known UI issues. Backend decomposition first (unblocks route thinning and tests), then frontend decomposition, then verification.
+Enable translators to open languagedata files, translate offline, and merge changes back into LOC/LOCDEV using QuickTranslate's proven transfer logic. Foundation phase sets up mock data and path settings, then the transfer adapter imports QuickTranslate core modules directly (sys.path, never copy), the API layer exposes merge with SSE streaming, the UI delivers a single-page merge modal with phase-driven state, and integration testing verifies the full pipeline with real test data.
 
 ## Phases
 
-- [ ] **Phase 56: Backend Service Decomposition** - Split mega_index, codex_service, and gamedata_context_service into focused modules
-- [ ] **Phase 57: Route Thinning** - Extract business logic from files.py and sync.py into dedicated services
-- [ ] **Phase 58: VirtualGrid Decomposition** - Split 4299-line God component into 5 focused modules
-- [ ] **Phase 59: FilesPage Decomposition + UI Fixes** - Split FilesPage into 3 modules, fix right-click and audit issues
-- [ ] **Phase 60: Test Infrastructure + Regression Verification** - Unit tests for new backend modules, component test structure, full regression check
+- [ ] **Phase 56: Mock Data + Settings** - CLI mock DB setup with 3 projects + LOC/EXPORT path configuration in Settings
+- [ ] **Phase 57: Transfer Service Adapter** - Import QuickTranslate core modules via sys.path for 3 match types, postprocess, and multi-language merge
+- [ ] **Phase 58: Merge API** - REST endpoints for dry-run preview and SSE-streamed merge execution
+- [ ] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points
+- [ ] **Phase 60: Integration Testing** - End-to-end pipeline verification with mock data and real test files
 
 ## Phase Details
 
-### Phase 56: Backend Service Decomposition
-**Goal**: Backend services are cleanly separated into single-responsibility modules that maintain identical API behavior
+### Phase 56: Mock Data + Settings
+**Goal**: Users have a clean mock environment with configured paths so all subsequent merge work has data to operate on
 **Depends on**: Nothing (first phase)
-**Requirements**: SVC-01, SVC-02, SVC-03
+**Requirements**: MOCK-01, MOCK-02, MOCK-03, MOCK-04, SET-01, SET-02, SET-03
 **Success Criteria** (what must be TRUE):
-  1. mega_index.py is replaced by three files (builder.py, indexes.py, lookup.py) each under 500 lines, and all existing imports resolve without error
-  2. codex_service.py is split into entity_registry and search modules, and Codex API endpoints return identical responses
-  3. gamedata_context_service.py is split into reverse_index and crossref_resolver modules, and Game Dev context panel still renders cross-references
-  4. DEV server starts without errors and all 4 Codex pages load correctly
-**Plans**: 3 plans (all Wave 1 -- parallel)
+  1. Running `python scripts/setup_mock_data.py --confirm-wipe` creates a fresh DB with project_FRE, project_ENG, and project_MULTI visible in the file explorer
+  2. Each mock project auto-detects its language from the project name and displays the correct language badge (French, English, Multi)
+  3. User can set LOC PATH and EXPORT PATH in the Settings page, values persist across app restarts, and invalid paths show validation errors
+  4. Test languagedata files from the test123 directory load correctly when pointed to by LOC PATH
+**Plans**: TBD
 
 Plans:
-- [ ] 56-01-PLAN.md -- Split mega_index.py into 6-file package (_helpers, _parsers, _builders, builder, lookup, __init__)
-- [ ] 56-02-PLAN.md -- Split codex_service.py into entity_registry + search modules
-- [ ] 56-03-PLAN.md -- Split gamedata_context_service.py into reverse_index + crossref_resolver modules
+- [ ] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
+- [ ] 56-02-PLAN.md -- Settings UI for LOC PATH + EXPORT PATH with validation and persistence
 
-### Phase 57: Route Thinning
-**Goal**: Route handlers contain only HTTP concerns (parse request, call service, return response) with business logic in dedicated service modules
+### Phase 57: Transfer Service Adapter
+**Goal**: QuickTranslate's proven transfer logic is available as a LocaNext service via adapter import, supporting all 3 match types and the full postprocess pipeline
 **Depends on**: Phase 56
-**Requirements**: ROUTE-01, ROUTE-02
+**Requirements**: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05, XFER-06, XFER-07
 **Success Criteria** (what must be TRUE):
-  1. files.py route file is under 400 lines with file validation, TM registration, and merge coordination extracted to service modules
-  2. sync.py route file is under 400 lines with sync logic extracted to a service module
-  3. All file upload, merge, and sync API endpoints return identical responses as before extraction
+  1. The adapter successfully imports QuickTranslate modules (xml_transfer, postprocess, source_scanner, language_loader) via sys.path without copying any Sacred Script code
+  2. StringID Only match type correctly transfers entries with case-insensitive matching and SCRIPT/ALL category filtering
+  3. StringID+StrOrigin and StrOrigin+FileName 2PASS match types produce identical results to QuickTranslate standalone execution on the same test data
+  4. The 8-step postprocess pipeline (newlines, apostrophes, entities, etc.) runs after every merge and produces clean output
+  5. Multi-language folder merge scans a source folder, auto-detects language suffixes per file/subfolder, and merges each language into the correct target
 **Plans**: TBD
 
 Plans:
-- [ ] 57-01: TBD
-- [ ] 57-02: TBD
+- [ ] 57-01-PLAN.md -- Adapter import layer (sys.path setup, module wrapping, error handling)
+- [ ] 57-02-PLAN.md -- 3 match types + scope + category filter wired through adapter
+- [ ] 57-03-PLAN.md -- Multi-language folder merge with language suffix auto-detection
 
-### Phase 58: VirtualGrid Decomposition
-**Goal**: VirtualGrid is split into focused, independently maintainable components without any change in grid behavior
-**Depends on**: Nothing (independent of backend phases)
-**Requirements**: COMP-01
+### Phase 58: Merge API
+**Goal**: FastAPI endpoints expose merge preview (dry-run) and execution (SSE streaming) so the frontend can drive the merge workflow
+**Depends on**: Phase 57
+**Requirements**: API-01, API-02, API-03, API-04
 **Success Criteria** (what must be TRUE):
-  1. VirtualGrid.svelte is replaced by 5 modules (virtual scroll, search/filter, cell editing, TM leverage, QA layer) each under 800 lines
-  2. Language Data grid renders, scrolls, searches, filters, and edits identically to the monolithic version
-  3. TM suggestions appear in cells and QA badges display inline -- both verified with Playwright screenshots
-  4. No new Svelte warnings or runtime errors in browser console
+  1. POST /api/merge/preview returns a dry-run summary with file count, entry count, match count, and overwrite warnings without modifying any files
+  2. POST /api/merge/execute streams progress via SSE with per-file updates and postprocess step notifications
+  3. On completion, the merge response includes matched, skipped, and overwritten counts as a summary report
+  4. Multi-language preview mode scans the source folder and returns a per-language breakdown of files and expected matches
 **Plans**: TBD
 
 Plans:
-- [ ] 58-01: TBD
-- [ ] 58-02: TBD
+- [ ] 58-01-PLAN.md -- Preview endpoint (dry-run summary) + multi-language preview
+- [ ] 58-02-PLAN.md -- Execute endpoint with SSE streaming + completion summary
 
-### Phase 59: FilesPage Decomposition + UI Fixes
-**Goal**: FilesPage is split into focused modules and known UI bugs are resolved
-**Depends on**: Nothing (independent of other phases)
-**Requirements**: COMP-02, UIFIX-01, UIFIX-02
+### Phase 59: Merge UI
+**Goal**: Users can merge translations back to LOCDEV through a polished single-page modal with full control over match type, scope, and preview
+**Depends on**: Phase 58
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06, UI-07, UI-08, UI-09
 **Success Criteria** (what must be TRUE):
-  1. FilesPage.svelte is split into explorer navigation, context menu operations, and upload manager -- each a separate component
-  2. Right-click on file explorer panel opens a working context menu with correct actions
-  3. AudioContext residue warning is eliminated and AI capabilities 404 is handled gracefully (no console errors)
-  4. File upload, folder navigation, and context menu operations all work identically to before the split
+  1. "Merge to LOCDEV" button appears in the main toolbar and opens the merge modal for the current project
+  2. Right-click on a folder in file explorer shows "Merge Folder to LOCDEV" option that opens the modal in multi-language mode
+  3. The merge modal walks through configure (target folder, match type, scope) then preview (dry-run results) then execute (progress bar) then done (summary report) as a single-page flow
+  4. Category filter toggle appears only when StringID match type is selected, and language badge in the modal header matches the auto-detected project language
+  5. Multi-language mode displays detected languages with file counts before merge, and the summary report shows per-language matched/skipped/overwritten counts
 **Plans**: TBD
 
 Plans:
-- [ ] 59-01: TBD
-- [ ] 59-02: TBD
+- [ ] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
+- [ ] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
+- [ ] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
 
-### Phase 60: Test Infrastructure + Regression Verification
-**Goal**: New backend modules have unit test coverage and all split components are verified to maintain identical behavior
+### Phase 60: Integration Testing
+**Goal**: The full merge pipeline is verified end-to-end with mock data and real test files, confirming all phases work together
 **Depends on**: Phase 56, Phase 57, Phase 58, Phase 59
-**Requirements**: TEST-01, TEST-02, TEST-03, COMP-03
+**Requirements**: (verification phase -- validates all 26 requirements in context)
 **Success Criteria** (what must be TRUE):
-  1. conftest.py exists with mock DB fixtures and test helper utilities for backend service tests
-  2. At least 30 unit test cases pass covering mega_index (builder + lookup), codex_service, and gamedata_context_service modules
-  3. Component test structure exists for split Svelte components with at least one test file per split component
-  4. Playwright smoke test visits all 11 pages and confirms no regressions from the decomposition work
-  5. All 834 existing API E2E tests still pass
+  1. A complete merge workflow (mock setup, configure paths, open modal, preview, execute, verify output) succeeds using mock project_FRE data
+  2. Multi-language merge via right-click on project_MULTI folder correctly processes FRE and ENG subfolders with separate merge results
+  3. All 3 match types produce correct merge output when tested against the test123 real data files
+  4. SSE progress events stream correctly to the UI during merge execution (no dropped events, progress reaches 100%)
 **Plans**: TBD
 
 Plans:
-- [ ] 60-01: TBD
-- [ ] 60-02: TBD
-- [ ] 60-03: TBD
+- [ ] 60-01-PLAN.md -- End-to-end pipeline test (single project + multi-language)
+- [ ] 60-02-PLAN.md -- Match type verification with real test data
 
 ## Progress
 
 **Execution Order:**
-Phases 56 → 57 (depends on 56). Phases 58, 59 can run in parallel with 56-57. Phase 60 runs last.
+Phases execute sequentially: 56 → 57 → 58 → 59 → 60
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Backend Service Decomposition | v6.0 | 0/3 | Planned | - |
-| 57. Route Thinning | v6.0 | 0/2 | Not started | - |
-| 58. VirtualGrid Decomposition | v6.0 | 0/2 | Not started | - |
-| 59. FilesPage Decomposition + UI Fixes | v6.0 | 0/2 | Not started | - |
-| 60. Test Infrastructure + Regression Verification | v6.0 | 0/3 | Not started | - |
+| 56. Mock Data + Settings | v6.0 | 0/2 | Not started | - |
+| 57. Transfer Service Adapter | v6.0 | 0/3 | Not started | - |
+| 58. Merge API | v6.0 | 0/2 | Not started | - |
+| 59. Merge UI | v6.0 | 0/3 | Not started | - |
+| 60. Integration Testing | v6.0 | 0/2 | Not started | - |
