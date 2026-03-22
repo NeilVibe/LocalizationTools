@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Row StringID="MENU_START" StrOrigin="Start Game" Str="" Category="SCRIPT" FileName="menu.loc.xml"/>
+  <Row StringID="MENU_OPTIONS" StrOrigin="Options" Str="Options Existing" Category="SCRIPT" FileName="menu.loc.xml"/>
+  <Row StringID="DIALOG_HELLO" StrOrigin="Hello there" Str="" Category="SCRIPT" FileName="dialog.loc.xml"/>
+  <Row StringID="DIALOG_BYE" StrOrigin="Goodbye" Str="" Category="ALL" FileName="dialog.loc.xml"/>
+  <Row StringID="ITEM_SWORD" StrOrigin="Iron Sword" Str="" Category="ITEM" FileName="items.loc.xml"/>
+</LanguageData>
