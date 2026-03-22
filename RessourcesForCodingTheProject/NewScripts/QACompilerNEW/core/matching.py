@@ -244,6 +244,26 @@ def find_translation_col_in_ws(ws, is_english: bool) -> int:
     if "TRANSLATION" in headers:
         return headers["TRANSLATION"]
 
+    # Final fallback: detect bare language code columns (e.g., ZHO-CN, FRA, DEU, CHS, JP)
+    # Quest datasheets use bare language codes after ENG column.
+    # Mirror the same logic from find_translation_col_in_headers().
+    _KNOWN_NON_TRANS_WS = {
+        "ORIGINAL", "SOURCETEXT", "STRINGKEY", "STRINGID", "COMMAND",
+        "STATUS", "COMMENT", "MEMO", "SCREENSHOT", "DATATYPE", "FILENAME",
+        "ENG", "RECORDING", "DIALOGTYPE", "GROUP", "SEQUENCENAME",
+        "DIALOGVOICE", "SUBTIMELINENAME", "EVENTNAME", "INSTRUCTIONS",
+    }
+    eng_col = headers.get("ENG")
+    if eng_col is not None:
+        for header, col in headers.items():
+            if (col > eng_col and header not in _KNOWN_NON_TRANS_WS
+                    and not header.startswith("COMMENT_")
+                    and not header.startswith("STATUS_")
+                    and not header.startswith("TESTER_STATUS_")
+                    and not header.startswith("MANAGER_COMMENT_")
+                    and not header.startswith("SCREENSHOT_")):
+                return col
+
     return None
 
 

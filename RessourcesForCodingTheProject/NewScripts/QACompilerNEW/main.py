@@ -380,6 +380,16 @@ Output folders:
         help="Update tracker from QAFolderForTracker (without rebuilding masters)"
     )
 
+    parser.add_argument(
+        "--flat-dump",
+        type=str,
+        nargs="?",
+        const="",
+        default=None,
+        help="Update tracker from flat dump folder (recursive scan, folder names ignored). "
+             "Optionally specify folder path, defaults to TrackerUpdateFolder."
+    )
+
     args = parser.parse_args()
 
     # Ensure folders exist
@@ -408,6 +418,22 @@ Output folders:
         try:
             from core.tracker_update import update_tracker_only
             success, message, entries = update_tracker_only()
+            sys.exit(0 if success else 1)
+        except ImportError as e:
+            print_error(f"Tracker update module not available: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print_error(f"Tracker update failed: {e}")
+            sys.exit(1)
+
+    # Flat dump tracker update (recursive scan, folder names ignored)
+    if args.flat_dump is not None:
+        print_banner()
+        try:
+            from core.tracker_update import update_tracker_flat_dump
+            from pathlib import Path
+            folder = Path(args.flat_dump) if args.flat_dump else None
+            success, message, entries = update_tracker_flat_dump(base_folder=folder)
             sys.exit(0 if success else 1)
         except ImportError as e:
             print_error(f"Tracker update module not available: {e}")

@@ -173,6 +173,387 @@ def discover_tracker_qa_folders() -> List[Dict]:
 
 
 # =============================================================================
+# FLAT DUMP DISCOVERY (New — folder names ignored, recursive walk)
+# =============================================================================
+
+def _parse_qa_filename(filename: str) -> Tuple:
+    """
+    Parse a QA xlsx filename into (username, category).
+
+    Expected format: {Username}_{Category}.xlsx
+    Uses rsplit on last underscore so usernames can contain underscores.
+
+    Returns:
+        (username, category) or (None, None) if not parseable.
+    """
+    stem = Path(filename).stem
+    if "_" not in stem:
+        return None, None
+    parts = stem.rsplit("_", 1)
+    if len(parts) != 2:
+        return None, None
+    username, category = parts[0].strip(), parts[1].strip()
+    if category not in CATEGORIES:
+        return None, None
+    return username, category
+
+
+def discover_flat_dump(base_folder: Path) -> Tuple[List[Dict], List[Path]]:
+    """
+    Recursively walk base_folder (infinite depth), ignore folder names.
+
+    For each xlsx file found:
+    - If filename matches {Username}_{Category}.xlsx → QA file
+    - If filename matches Master_{Category}.xlsx → Master file
+    - Otherwise → skip
+
+    For QA files: group by (username, category, date). Keep only the
+    LATEST mtime file per (username, category, date) combination.
+
+    Args:
+        base_folder: Root folder to scan recursively.
+
+    Returns:
+        Tuple of (qa_folders, master_files) where:
+        - qa_folders: List of dicts with {username, category, xlsx_path, folder_path, file_date, images}
+        - master_files: List of Paths to Master_*.xlsx files (deduplicated by latest mtime per category)
+    """
+    _tracker_log(f"FLAT DUMP DISCOVER: Recursively scanning {base_folder}")
+
+    if not base_folder.exists():
+        _tracker_log(f"FLAT DUMP: Folder does not exist: {base_folder}", "WARN")
+        _tracker_log_flush("FLAT DUMP DISCOVER")
+        return [], []
+
+    # Phase 1: Walk and classify all xlsx files
+    # Key: (username, category, date) → list of (mtime, xlsx_path)
+    qa_candidates = defaultdict(list)
+    # Key: category → list of (mtime, master_path)
+    master_candidates = defaultdict(list)
+    total_scanned = 0
+    total_skipped = 0
+
+    for xlsx_path in base_folder.rglob("*.xlsx"):
+        # Skip temp files
+        if xlsx_path.name.startswith("~"):
+            continue
+        total_scanned += 1
+
+        filename = xlsx_path.name
+
+        # Check if it's a Master file (Master_{Category}.xlsx)
+        if filename.startswith("Master_"):
+            category = xlsx_path.stem.replace("Master_", "", 1)
+            if not category:
+                _tracker_log(f"  SKIP: {filename} (empty category after Master_ prefix)")
+                total_skipped += 1
+                continue
+            mtime = xlsx_path.stat().st_mtime
+            master_candidates[category].append((mtime, xlsx_path))
+            _tracker_log(f"  MASTER: {filename} category={category} mtime={datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')}")
+            continue
+
+        # Try parsing as QA file: {Username}_{Category}.xlsx
+        username, category = _parse_qa_filename(filename)
+        if username is None:
+            total_skipped += 1
+            _tracker_log(f"  SKIP: {xlsx_path} (no valid Username_Category pattern)")
+            continue
+
+        stat = xlsx_path.stat()
+        mtime = stat.st_mtime
+        file_date = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+
+        key = (username, category, file_date)
+        qa_candidates[key].append((mtime, xlsx_path))
+        _tracker_log(f"  QA: {filename} user={username} cat={category} date={file_date} mtime={datetime.fromtimestamp(mtime).strftime('%H:%M:%S')}")
+
+    _tracker_log(f"FLAT DUMP: Scanned {total_scanned} xlsx files, skipped {total_skipped}")
+
+    # Phase 2: For each (username, category, date), keep LATEST mtime only
+    qa_folders = []
+    for (username, category, file_date), candidates in sorted(qa_candidates.items()):
+        # Sort by mtime descending, pick first (latest)
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        best_mtime, best_path = candidates[0]
+
+        if len(candidates) > 1:
+            _tracker_log(f"  DEDUP: {username}_{category} on {file_date}: {len(candidates)} files, kept {best_path.name} (mtime={datetime.fromtimestamp(best_mtime).strftime('%H:%M:%S')})")
+
+        # Collect images from same folder as the winning file
+        images = [f for f in best_path.parent.iterdir()
+                  if f.suffix.lower() in IMAGE_EXTENSIONS]
+
+        qa_folders.append({
+            "username": username,
+            "category": category,
+            "xlsx_path": best_path,
+            "folder_path": best_path.parent,
+            "file_date": file_date,
+            "images": images,
+        })
+
+    # Phase 3: For master files, keep latest per category
+    master_files = []
+    for category, candidates in sorted(master_candidates.items()):
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        best_mtime, best_path = candidates[0]
+        master_files.append(best_path)
+        if len(candidates) > 1:
+            _tracker_log(f"  MASTER DEDUP: {category}: {len(candidates)} files, kept {best_path.name}")
+
+    _tracker_log(f"FLAT DUMP: Result: {len(qa_folders)} QA entries, {len(master_files)} master files")
+    _tracker_log_flush("FLAT DUMP DISCOVER")
+    return qa_folders, master_files
+
+
+def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping: Dict, log_callback=None) -> Tuple[Dict, Dict]:
+    """
+    Aggregate manager stats from a list of master file paths.
+
+    Same logic as aggregate_manager_stats() but takes explicit file list
+    instead of scanning fixed folders.
+
+    Args:
+        master_files: List of Path objects to Master_*.xlsx files.
+        tester_mapping: Dict mapping tester name -> "EN" or "CN".
+        log_callback: Optional callback(message, tag) for GUI logging.
+
+    Returns:
+        Tuple of (manager_stats, manager_dates).
+    """
+    manager_stats = defaultdict(lambda: defaultdict(
+        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
+    ))
+    manager_dates = {}
+
+    _tracker_log("MANAGER STATS (flat): Starting aggregation")
+
+    for master_path in master_files:
+        if master_path.name.startswith("~"):
+            continue
+
+        target_category = master_path.stem.replace("Master_", "", 1)
+        file_mtime = master_path.stat().st_mtime
+        file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
+
+        _tracker_log(f"MASTER FILE: {target_category} date={file_date} path={master_path}")
+
+        try:
+            wb = safe_load_workbook(master_path)
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                category = target_category
+                ws = wb[sheet_name]
+
+                status_cols = {}
+                for col in range(1, ws.max_column + 1):
+                    header = ws.cell(row=1, column=col).value
+                    if header:
+                        header_str = str(header)
+                        header_upper = header_str.upper()
+                        if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            status_cols[header_str[7:]] = col
+
+                if not status_cols:
+                    continue
+
+                for row in range(2, ws.max_row + 1):
+                    for username, col in status_cols.items():
+                        value = ws.cell(row=row, column=col).value
+                        if value:
+                            v = str(value).strip().upper()
+                            if v == "FIXED": manager_stats[category][username]["fixed"] += 1
+                            elif v == "REPORTED": manager_stats[category][username]["reported"] += 1
+                            elif v == "CHECKING": manager_stats[category][username]["checking"] += 1
+                            elif v in ("NON-ISSUE", "NON ISSUE"): manager_stats[category][username]["nonissue"] += 1
+
+                for username in status_cols.keys():
+                    manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
+                    manager_dates[(category, username)] = file_date
+
+            wb.close()
+        except Exception as e:
+            _tracker_log(f"  ERROR: {e}", "ERROR")
+            if log_callback:
+                log_callback(f"  ERROR reading {master_path.name}: {e}", 'error')
+
+    # Convert to regular dicts
+    result_stats = {}
+    for category, users_dd in manager_stats.items():
+        result_stats[category] = {}
+        for user, stats_dd in users_dd.items():
+            result_stats[category][user] = dict(stats_dd)
+
+    _tracker_log(f"MANAGER STATS (flat): Done. Categories={list(result_stats.keys())}")
+    _tracker_log_flush("MANAGER STATS (flat)")
+    return result_stats, manager_dates
+
+
+def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tuple[bool, str, List[Dict]]:
+    """
+    Update progress tracker from a flat dump folder.
+
+    Recursively walks base_folder (any depth, folder names ignored).
+    Detects QA files by {Username}_{Category}.xlsx naming.
+    Detects Master files by Master_{Category}.xlsx naming.
+    Groups by (username, category, date), keeps latest mtime per day.
+
+    Args:
+        base_folder: Root folder to scan. Defaults to TRACKER_UPDATE_FOLDER.
+        log_callback: Optional callback(message, tag) for GUI logging.
+
+    Returns:
+        Tuple of (success, message, entries).
+    """
+    if base_folder is None:
+        base_folder = TRACKER_UPDATE_FOLDER
+
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
+    _tracker_log_clear()
+    _tracker_log("=" * 50)
+    _tracker_log("FLAT DUMP TRACKER UPDATE - START")
+    _tracker_log("=" * 50)
+
+    _log("=== Flat Dump Tracker Update ===", 'header' if log_callback else 'info')
+    _log("Recursively scanning — folder names ignored, filename-based detection.")
+    _log(f"Source: {base_folder}/")
+
+    # Phase 1: Discover
+    _log("Scanning for QA and Master files...")
+    qa_folders, master_files = discover_flat_dump(base_folder)
+    _log(f"  Found {len(qa_folders)} QA file(s) (after dedup by latest-per-day)")
+    _log(f"  Found {len(master_files)} Master file(s)")
+
+    if not qa_folders and not master_files:
+        msg = f"No valid QA or Master files found in {base_folder}"
+        _tracker_log(msg, "ERROR")
+        _tracker_log_flush("FLAT DUMP - ABORTED")
+        _log(msg, 'error')
+        return False, msg, []
+
+    # Phase 2: Load tester mapping
+    _log("Loading tester->language mapping...")
+    tester_mapping = load_tester_mapping()
+
+    # Phase 3: Count tester stats
+    entries = []
+    if qa_folders:
+        _log("Processing QA files (tester stats)...")
+        for folder in qa_folders:
+            username = folder["username"]
+            category = folder["category"]
+            file_date = folder["file_date"]
+            lang = tester_mapping.get(username, "EN")
+
+            _log(f"  {username}_{category} ({file_date}) [{lang}]")
+
+            entry = count_qa_folder_stats(folder, tester_mapping)
+            entries.append(entry)
+
+            _log(f"    Total: {entry['total_rows']}, Done: {entry['done']}, Issues: {entry['issues']}")
+
+    # Phase 4: Count manager stats from discovered master files
+    manager_stats = {}
+    manager_dates = {}
+    if master_files:
+        _log("Processing master files (manager stats)...")
+        manager_stats, manager_dates = aggregate_manager_stats_from_files(master_files, tester_mapping, log_callback=log_callback)
+
+        for category, users in manager_stats.items():
+            for username, stats in users.items():
+                total = stats["fixed"] + stats["reported"] + stats["checking"] + stats["nonissue"]
+                if total > 0:
+                    date = manager_dates.get((category, username), "unknown")
+                    _log(f"  {username} ({category}, {date}): F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']}")
+
+    # Phase 5: Update tracker (same pipeline as update_tracker_only)
+    _log("Updating Progress Tracker...")
+
+    try:
+        from tracker.data import get_or_create_tracker, update_daily_data_sheet
+        from tracker.daily import build_daily_sheet
+        from tracker.total import build_total_sheet
+
+        tracker_wb, tracker_path = get_or_create_tracker()
+        dd_ws = tracker_wb["_DAILY_DATA"]
+        _tracker_log(f"_DAILY_DATA BEFORE: rows={dd_ws.max_row}, cols={dd_ws.max_column}")
+
+        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates)
+
+        _tracker_log(f"_DAILY_DATA AFTER: rows={dd_ws.max_row}, cols={dd_ws.max_column}")
+
+        build_daily_sheet(tracker_wb)
+        build_total_sheet(tracker_wb)
+
+        if "GRAPHS" in tracker_wb.sheetnames:
+            del tracker_wb["GRAPHS"]
+
+        tracker_wb.save(tracker_path)
+        _tracker_log("Save complete!")
+
+        # Verify
+        verify_wb = safe_load_workbook(tracker_path)
+        verify_ws = verify_wb["_DAILY_DATA"]
+        _tracker_log(f"VERIFY: Reloaded _DAILY_DATA: rows={verify_ws.max_row}")
+        verify_wb.close()
+
+        _tracker_log_flush("FLAT DUMP TRACKER UPDATE COMPLETE")
+
+        _log(f"Saved: {tracker_path}", 'success')
+        if entries:
+            unique_dates = len(set(e['date'] for e in entries))
+            unique_users = len(set(e['user'] for e in entries))
+            _log(f"  {len(entries)} entries from {unique_users} user(s) across {unique_dates} date(s)", 'success')
+        if manager_stats:
+            total_users = sum(len(users) for users in manager_stats.values())
+            _log(f"  Manager stats for {total_users} user(s)", 'success')
+
+    except Exception as e:
+        msg = f"Failed to update tracker: {e}"
+        _tracker_log(f"ERROR: {msg}", "ERROR")
+        _tracker_log_flush("FLAT DUMP TRACKER UPDATE FAILED")
+        _log(f"ERROR: {msg}", 'error')
+        import traceback
+        traceback.print_exc()
+        return False, msg, entries
+
+    # Summary
+    _log("Flat Dump Tracker Update Complete!", 'success')
+
+    if entries:
+        by_date = defaultdict(list)
+        for entry in entries:
+            by_date[entry["date"]].append(entry)
+
+        _log("Tester stats by date:")
+        for date in sorted(by_date.keys()):
+            date_entries = by_date[date]
+            total_done = sum(e["done"] for e in date_entries)
+            total_issues = sum(e["issues"] for e in date_entries)
+            users = [e["user"] for e in date_entries]
+            _log(f"  {date}: {len(users)} user(s), {total_done} done, {total_issues} issues")
+
+    msg = "Successfully updated tracker (flat dump)"
+    if entries:
+        msg += f" with {len(entries)} tester entries"
+    if manager_stats:
+        msg += f" and manager stats"
+
+    _tracker_log(f"RESULT: {msg}")
+    _tracker_log_flush("FINAL SUMMARY")
+
+    _log(msg, 'success')
+    return True, msg, entries
+
+
+# =============================================================================
 # TESTER STAT COUNTING
 # =============================================================================
 

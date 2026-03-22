@@ -292,6 +292,7 @@ class QACompilerSuiteGUI:
         ttk.Button(date_frame, text="Set File Dates...", command=self._do_set_file_dates, width=14).pack(side="left", padx=3)
 
         ttk.Button(s6, text="Update Tracker", command=self._do_update_tracker, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+        ttk.Button(s6, text="Flat Dump Update", command=self._do_flat_dump_update, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
 
     def _set_initial_sash(self):
         """Set PanedWindow sash to ~50% left / 50% right split."""
@@ -711,6 +712,42 @@ class QACompilerSuiteGUI:
             except Exception as e:
                 traceback.print_exc()
                 log_cb(f"Tracker update failed: {e}", 'error')
+            self._task_queue.put(('done',))
+
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
+
+    def _do_flat_dump_update(self):
+        """Update tracker from flat dump folder (recursive scan, folder names ignored)."""
+        from tkinter import filedialog
+        folder = filedialog.askdirectory(
+            title="Select Flat Dump Folder (recursive scan)",
+            initialdir=str(Path(__file__).parent.parent)
+        )
+        if not folder:
+            return
+
+        self._start_operation("Flat dump tracker update...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
+
+        def run():
+            try:
+                from core.tracker_update import update_tracker_flat_dump
+
+                log_cb("=== Flat Dump Tracker Update ===", 'header')
+                log_cb(f"Scanning: {folder}", 'info')
+                success, message, entries = update_tracker_flat_dump(
+                    base_folder=Path(folder),
+                    log_callback=log_cb
+                )
+
+                if not success:
+                    log_cb(f"Flat dump update failed: {message}", 'error')
+                progress_cb(100)
+            except Exception as e:
+                traceback.print_exc()
+                log_cb(f"Flat dump update failed: {e}", 'error')
             self._task_queue.put(('done',))
 
         self._worker_thread = threading.Thread(target=run, daemon=True)
