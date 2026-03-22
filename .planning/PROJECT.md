@@ -63,19 +63,17 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v5.1 Testing + Polish
+## Current Milestone: v6.0 Architecture & Code Quality
 
-**Goal:** Verify all v5.0 features work end-to-end in DEV mode with mock data. Fix TM flow, FAISS auto-build, LanguageData grid colors, and MegaIndex DEV init. Every page, every tab, every interaction tested and polished.
+**Goal:** Refactor the codebase for long-term maintainability — split God components and services, thin route handlers, add unit test infrastructure, and fix known UI issues.
 
 **Target features:**
-- DEV server verification — all 4 new Codex UIs render with mock data
-- MegaIndex DEV auto-init — build() on server start in DEV mode
-- TM flow verification — auto-register on reviewed status, FAISS index build
-- FAISS auto-build on TM upload/modification (currently manual trigger)
-- LanguageData grid default color — grey default, yellow = needs confirmation (hotkey), blue-green = confirmed
-- Right panel verification — Image + Audio tabs light up for StringIDs with mock data
-- End-to-end smoke test with Playwright
-- Bundling: Model2Vec (light), WEM decoder, no heavy Qwen 0.6B in light build
+- Split VirtualGrid.svelte (4299 lines → 5 focused components)
+- Split mega_index.py (1310 lines → 3 modules: builder, indexes, lookup)
+- Extract business logic from thick route handlers (files.py, sync.py) into services
+- Add unit test infrastructure with mocks for backend services
+- Fix right-click context menu on file explorer panel
+- Fix remaining UI issues from architecture audit
 
 ### Out of Scope
 
@@ -133,4 +131,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-17 after v3.3 milestone start*
+*Last updated: 2026-03-22 after v6.0 milestone start*
