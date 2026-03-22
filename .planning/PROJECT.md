@@ -8,7 +8,7 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v6.0 Phase 57 complete 2026-03-23)
+## Current State (v6.0 Phase 58 complete 2026-03-23)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
@@ -133,4 +133,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-23 after Phase 57 (Transfer Service Adapter) complete*
+*Last updated: 2026-03-23 after Phase 58 (Merge API) complete*
