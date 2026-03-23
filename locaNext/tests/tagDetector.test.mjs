@@ -1,0 +1,230 @@
+/**
+ * Tag Detector Tests
+ *
+ * Standalone Node.js test script for tagDetector.js.
+ * Run: node --test tests/tagDetector.test.mjs
+ */
+
+import assert from 'node:assert';
+import { describe, it } from 'node:test';
+import { detectTags, hasTags } from '../src/lib/utils/tagDetector.js';
+
+// ---- detectTags: individual tag types ----
+
+describe('detectTags', () => {
+  describe('braced tags', () => {
+    it('detects {0} as braced tag', () => {
+      const result = detectTags('{0}');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].tag, {
+        label: '0', type: 'braced', color: 'blue', raw: '{0}'
+      });
+    });
+
+    it('detects {PlayerName} as braced tag', () => {
+      const result = detectTags('{PlayerName}');
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].tag.label, 'PlayerName');
+      assert.strictEqual(result[0].tag.type, 'braced');
+    });
+  });
+
+  describe('param tags', () => {
+    it('detects %1# as param tag', () => {
+      const result = detectTags('%1#');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].tag, {
+        label: 'Param1', type: 'param', color: 'purple', raw: '%1#'
+      });
+    });
+
+    it('detects %2# as param tag', () => {
+      const result = detectTags('%2#');
+      assert.strictEqual(result[0].tag.label, 'Param2');
+    });
+  });
+
+  describe('escape tags', () => {
+    it('detects \\n as escape tag', () => {
+      const result = detectTags('\\n');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].tag, {
+        label: '\\n', type: 'escape', color: 'grey', raw: '\\n'
+      });
+    });
+
+    it('detects \\t as escape tag', () => {
+      const result = detectTags('\\t');
+      assert.strictEqual(result[0].tag.label, '\\t');
+      assert.strictEqual(result[0].tag.type, 'escape');
+    });
+
+    it('detects \\1 as escape tag (digit is \\w)', () => {
+      const result = detectTags('\\1');
+      assert.strictEqual(result[0].tag.label, '\\1');
+      assert.strictEqual(result[0].tag.type, 'escape');
+    });
+
+    it('detects \\_ as escape tag (underscore is \\w)', () => {
+      const result = detectTags('\\_');
+      assert.strictEqual(result[0].tag.label, '\\_');
+      assert.strictEqual(result[0].tag.type, 'escape');
+    });
+  });
+
+  describe('desc tags', () => {
+    it('detects &desc; as desc tag', () => {
+      const result = detectTags('&desc;');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].tag, {
+        label: 'desc', type: 'desc', color: 'orange', raw: '&desc;'
+      });
+    });
+
+    it('detects &amp;desc; as desc tag', () => {
+      const result = detectTags('&amp;desc;');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result[0].tag, {
+        label: 'desc', type: 'desc', color: 'orange', raw: '&amp;desc;'
+      });
+    });
+  });
+
+  describe('staticinfo tags', () => {
+    it('detects StaticInfo paired tag with all fields', () => {
+      const result = detectTags('{StaticInfo:Knowledge:Elixir#Potion of Healing}');
+      assert.strictEqual(result.length, 1);
+      const tag = result[0].tag;
+      assert.strictEqual(tag.label, 'Elixir');
+      assert.strictEqual(tag.inner, 'Potion of Healing');
+      assert.strictEqual(tag.type, 'staticinfo');
+      assert.strictEqual(tag.color, 'green');
+      assert.strictEqual(tag.raw, '{StaticInfo:Knowledge:Elixir#Potion of Healing}');
+    });
+
+    it('handles case-insensitive StaticInfo/Staticinfo', () => {
+      const result = detectTags('{Staticinfo:Quest:Dragon#Slay the dragon}');
+      assert.strictEqual(result[0].tag.type, 'staticinfo');
+      assert.strictEqual(result[0].tag.label, 'Dragon');
+    });
+  });
+
+  // ---- Priority / overlap tests ----
+
+  describe('priority ordering', () => {
+    it('StaticInfo takes priority over braced', () => {
+      const result = detectTags('{StaticInfo:Knowledge:Elixir#text}');
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].tag.type, 'staticinfo');
+      // Must NOT be detected as braced
+      assert.notStrictEqual(result[0].tag.type, 'braced');
+    });
+
+    it('braced does not match StaticInfo range', () => {
+      const result = detectTags('before {StaticInfo:Knowledge:ID#inner} after');
+      // Should be: text("before "), staticinfo tag, text(" after")
+      assert.strictEqual(result.length, 3);
+      assert.strictEqual(result[0].text, 'before ');
+      assert.strictEqual(result[1].tag.type, 'staticinfo');
+      assert.strictEqual(result[2].text, ' after');
+    });
+  });
+
+  // ---- Mixed text tests ----
+
+  describe('mixed text', () => {
+    it('detects multiple tags in mixed text', () => {
+      const result = detectTags('Hello {0} world %1# end');
+      assert.strictEqual(result.length, 5);
+      assert.strictEqual(result[0].text, 'Hello ');
+      assert.strictEqual(result[1].tag.label, '0');
+      assert.strictEqual(result[1].tag.type, 'braced');
+      assert.strictEqual(result[2].text, ' world ');
+      assert.strictEqual(result[3].tag.label, 'Param1');
+      assert.strictEqual(result[3].tag.type, 'param');
+      assert.strictEqual(result[4].text, ' end');
+    });
+
+    it('handles all 5 tag types in one string', () => {
+      const input = '{StaticInfo:Knowledge:A#B} then {0} and %1# with \\n plus &desc;';
+      const result = detectTags(input);
+      const tagTypes = result.filter(s => s.tag).map(s => s.tag.type);
+      assert.deepStrictEqual(tagTypes, ['staticinfo', 'braced', 'param', 'escape', 'desc']);
+    });
+  });
+
+  // ---- Edge cases ----
+
+  describe('edge cases', () => {
+    it('returns plain text segment for non-tag text', () => {
+      const result = detectTags('Hello world');
+      assert.deepStrictEqual(result, [{ text: 'Hello world' }]);
+    });
+
+    it('returns empty text segment for empty string', () => {
+      const result = detectTags('');
+      assert.deepStrictEqual(result, [{ text: '' }]);
+    });
+
+    it('returns empty text segment for null', () => {
+      const result = detectTags(null);
+      assert.deepStrictEqual(result, [{ text: '' }]);
+    });
+
+    it('returns empty text segment for undefined', () => {
+      const result = detectTags(undefined);
+      assert.deepStrictEqual(result, [{ text: '' }]);
+    });
+
+    it('handles consecutive tags without gap', () => {
+      const result = detectTags('{0}{1}');
+      assert.strictEqual(result.length, 2);
+      assert.strictEqual(result[0].tag.label, '0');
+      assert.strictEqual(result[1].tag.label, '1');
+    });
+  });
+});
+
+// ---- hasTags ----
+
+describe('hasTags', () => {
+  it('returns true for braced tag', () => {
+    assert.strictEqual(hasTags('{0}'), true);
+  });
+
+  it('returns true for param tag', () => {
+    assert.strictEqual(hasTags('%1#'), true);
+  });
+
+  it('returns true for escape tag', () => {
+    assert.strictEqual(hasTags('\\n'), true);
+  });
+
+  it('returns true for desc tag', () => {
+    assert.strictEqual(hasTags('&desc;'), true);
+  });
+
+  it('returns true for amp desc tag', () => {
+    assert.strictEqual(hasTags('&amp;desc;'), true);
+  });
+
+  it('returns true for StaticInfo tag', () => {
+    assert.strictEqual(hasTags('{StaticInfo:Knowledge:Elixir#text}'), true);
+  });
+
+  it('returns false for plain text', () => {
+    assert.strictEqual(hasTags('Hello world'), false);
+  });
+
+  it('returns false for empty string', () => {
+    assert.strictEqual(hasTags(''), false);
+  });
+
+  it('returns false for null', () => {
+    assert.strictEqual(hasTags(null), false);
+  });
+
+  it('returns false for non-string', () => {
+    assert.strictEqual(hasTags(42), false);
+  });
+});
