@@ -67,7 +67,11 @@ Plans:
   1. Qwen Vision screenshots of all 5 main pages (Files, Game Dev, Codex, Map, TM) have been reviewed and all critical issues cataloged
   2. All critical UIUX issues (alignment, spacing, contrast, truncation) identified by the AI audit are fixed and verified with follow-up screenshots
   3. Merge modal handles loading states (spinner during preview/execute), error states (clear error message + retry), and edge cases (empty project, no matches found, cancelled merge) gracefully
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 64-01-PLAN.md -- Harden merge modal: preview retry, zero-match guard, AbortController cancel, error recovery, adaptive done messaging
+- [ ] 64-02-PLAN.md -- AI visual audit of all 5 pages via Qwen Vision (requires live servers)
 
 ## Progress
 
@@ -78,5 +82,5 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 |-------|-----------|----------------|--------|-----------|
 | 61. Merge Internalization | v7.0 | 2/2 | Complete    | 2026-03-23 |
 | 62. TM Auto-Update Pipeline | v7.0 | 3/3 | Complete    | 2026-03-23 |
-| 63. Performance Instrumentation | v7.0 | 2/2 | Complete   | 2026-03-23 |
-| 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
+| 63. Performance Instrumentation | v7.0 | 2/2 | Complete    | 2026-03-23 |
+| 64. UIUX Quality Audit | v7.0 | 0/2 | Not started | - |
