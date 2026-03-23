@@ -1,0 +1,40 @@
+{
+  "final_audit_date": "2026-03-24",
+  "pages": {
+    "files": {
+      "score": 8,
+      "screenshot": "screenshots/final-files-page.webp",
+      "issues_remaining": [],
+      "improved_from": 6
+    },
+    "gamedev": {
+      "score": 9,
+      "screenshot": "screenshots/final-gamedev-page.webp",
+      "issues_remaining": [],
+      "improved_from": 7
+    },
+    "codex": {
+      "score": 8,
+      "screenshot": "screenshots/final-codex-page.webp",
+      "issues_remaining": ["Truncated description text (design limitation of card layout)"],
+      "improved_from": 7
+    },
+    "map": {
+      "score": 9,
+      "screenshot": "screenshots/final-map-page.webp",
+      "issues_remaining": [],
+      "improved_from": 7
+    },
+    "tm": {
+      "score": 9,
+      "screenshot": "screenshots/final-tm-page.webp",
+      "issues_remaining": [],
+      "improved_from": 6
+    }
+  },
+  "summary": {
+    "avg_score": 8.6,
+    "all_pass_7plus": true,
+    "total_critical_remaining": 0
+  }
+}
