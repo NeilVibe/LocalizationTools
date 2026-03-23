@@ -1,26 +1,35 @@
 """
-Transfer Adapter - QuickTranslate module import wrapper for LocaNext.
+Transfer Adapter - Merge module wrapper for LocaNext.
 
-Imports QuickTranslate's Sacred Script core modules via sys.path injection,
-making them available as a LocaNext service. NEVER copies or modifies Sacred
-Script code -- only imports and wraps.
+Imports merge logic from server.services.merge (internalized QuickTranslate
+core modules). No sys.path injection or importlib hacks.
 
 Usage:
-    from server.services.transfer_adapter import TransferAdapter
-
-    adapter = TransferAdapter(loc_path="/path/to/loc", export_path="/path/to/export")
-    qt = adapter.qt_modules
-    qt["transfer_folder_to_folder"](source, target, ...)
+    from server.services.transfer_adapter import execute_transfer, MATCH_MODES
 """
 from __future__ import annotations
 
-import importlib.util
-import sys
 from pathlib import Path
 
 from loguru import logger
 
-from server.services.transfer_config_shim import inject_config_shim, reconfigure_paths
+from server.services.merge._config import (
+    configure as _merge_configure,
+    reconfigure as _merge_reconfigure,
+    get_config as _merge_get_config,
+)
+from server.services.merge import (
+    transfer_folder_to_folder,
+    merge_corrections_to_xml,
+    merge_corrections_stringid_only,
+    run_all_postprocess,
+    scan_source_for_languages,
+    discover_language_files,
+    build_translation_lookup,
+    build_stringid_to_category,
+    build_stringid_to_subfolder,
+    build_stringid_to_filepath,
+)
 
 # Match mode constants mapping LocaNext UI labels to QuickTranslate internals
 MATCH_MODES = {
@@ -29,113 +38,44 @@ MATCH_MODES = {
     "strorigin_filename": "StrOrigin + FileName 2PASS (3-tuple then 2-tuple)",
 }
 
-# QuickTranslate root path (relative to project root)
-QT_ROOT = str(
-    Path(__file__).resolve().parent.parent.parent
-    / "RessourcesForCodingTheProject"
-    / "NewScripts"
-    / "QuickTranslate"
-)
-
-# Core module directory
-_QT_CORE = Path(QT_ROOT) / "core"
-
-
-def _ensure_qt_core_package():
-    """Register QT's core/ as a proper package under 'qt_core' namespace.
-
-    This avoids naming conflicts with 'core' (e.g., pydantic_core) while
-    preserving relative imports within QT's core modules (from .text_utils etc).
-    """
-    pkg_name = "qt_core"
-    if pkg_name in sys.modules:
-        return
-
-    # Register the package itself
-    init_path = _QT_CORE / "__init__.py"
-    spec = importlib.util.spec_from_file_location(
-        pkg_name,
-        str(init_path),
-        submodule_search_locations=[str(_QT_CORE)],
-    )
-    pkg = importlib.util.module_from_spec(spec)
-    sys.modules[pkg_name] = pkg
-    # Also register as 'core' so relative imports within QT work
-    sys.modules["core"] = pkg
-    if init_path.exists():
-        spec.loader.exec_module(pkg)
-
-
-def _import_qt_module(module_name: str):
-    """Import a QuickTranslate core module under the qt_core namespace.
-
-    Ensures the parent package is registered first so relative imports
-    (from .text_utils etc) work correctly within QT core modules.
-    """
-    _ensure_qt_core_package()
-    qualified = f"qt_core.{module_name}"
-    if qualified in sys.modules:
-        return sys.modules[qualified]
-    file_path = _QT_CORE / f"{module_name}.py"
-    spec = importlib.util.spec_from_file_location(qualified, str(file_path))
-    mod = importlib.util.module_from_spec(spec)
-    mod.__package__ = "qt_core"
-    sys.modules[qualified] = mod
-    # Also register as core.xxx for internal cross-imports
-    sys.modules[f"core.{module_name}"] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
 # Module-level cache for imported QT functions
 _qt_modules: dict | None = None
 
 
 def init_quicktranslate(loc_path: str, export_path: str) -> dict:
     """
-    Initialize QuickTranslate module imports with LocaNext-controlled paths.
+    Initialize merge module imports with LocaNext-controlled paths.
 
-    1. Injects config shim into sys.modules['config']
-    2. Adds QuickTranslate root to sys.path[0]
-    3. Imports core modules and caches function references
+    1. Configures the merge package with project paths
+    2. Builds function reference dict from internalized modules
 
     Args:
         loc_path: Path to LOC folder containing languagedata_*.xml files.
         export_path: Path to EXPORT folder with categorized .loc.xml files.
 
     Returns:
-        Dict mapping function names to callable references from QT core modules.
+        Dict mapping function names to callable references from merge modules.
     """
     global _qt_modules
 
-    # Step 1: Inject config shim (MUST happen before any QT import)
-    inject_config_shim(loc_path, export_path)
+    # Step 1: Configure the merge package with project paths
+    _merge_configure(loc_path, export_path)
 
-    # Step 2: Add QuickTranslate root to sys.path (needed for QT's own
-    # internal imports like `import config` and cross-module references)
-    if QT_ROOT not in sys.path:
-        sys.path.insert(0, QT_ROOT)
-
-    # Step 3: Import core modules via importlib (avoids 'core' package
-    # naming conflict with pydantic_core / other installed packages)
-    xml_transfer = _import_qt_module("xml_transfer")
-    postprocess = _import_qt_module("postprocess")
-    source_scanner = _import_qt_module("source_scanner")
-    language_loader = _import_qt_module("language_loader")
-
+    # Step 2: Build function reference dict from internalized modules
     _qt_modules = {
-        "transfer_folder_to_folder": xml_transfer.transfer_folder_to_folder,
-        "merge_corrections_to_xml": xml_transfer.merge_corrections_to_xml,
-        "merge_corrections_stringid_only": xml_transfer.merge_corrections_stringid_only,
-        "run_all_postprocess": postprocess.run_all_postprocess,
-        "scan_source_for_languages": source_scanner.scan_source_for_languages,
-        "discover_language_files": language_loader.discover_language_files,
-        "build_translation_lookup": language_loader.build_translation_lookup,
-        "build_stringid_to_category": language_loader.build_stringid_to_category,
-        "build_stringid_to_subfolder": language_loader.build_stringid_to_subfolder,
-        "build_stringid_to_filepath": language_loader.build_stringid_to_filepath,
+        "transfer_folder_to_folder": transfer_folder_to_folder,
+        "merge_corrections_to_xml": merge_corrections_to_xml,
+        "merge_corrections_stringid_only": merge_corrections_stringid_only,
+        "run_all_postprocess": run_all_postprocess,
+        "scan_source_for_languages": scan_source_for_languages,
+        "discover_language_files": discover_language_files,
+        "build_translation_lookup": build_translation_lookup,
+        "build_stringid_to_category": build_stringid_to_category,
+        "build_stringid_to_subfolder": build_stringid_to_subfolder,
+        "build_stringid_to_filepath": build_stringid_to_filepath,
     }
 
-    logger.info("QuickTranslate modules loaded from {}", QT_ROOT)
+    logger.info("Merge modules loaded from server.services.merge")
     return _qt_modules
 
 
@@ -165,9 +105,9 @@ def execute_transfer(
     progress_callback=None,
     log_callback=None,
 ) -> dict:
-    """Execute a transfer operation using QuickTranslate's engine.
+    """Execute a transfer operation using the merge engine.
 
-    Wraps QuickTranslate's ``transfer_folder_to_folder()`` with LocaNext-friendly
+    Wraps ``transfer_folder_to_folder()`` with LocaNext-friendly
     parameters.  Handles config reconfiguration, lookup map building, and error
     handling so callers only need to provide simple string paths and flags.
 
@@ -193,10 +133,10 @@ def execute_transfer(
             f"Unknown match_mode '{match_mode}'. Must be one of: {list(MATCH_MODES.keys())}"
         )
 
-    # Ensure config shim is current for this project's paths
-    reconfigure_paths(target_path, export_path)
+    # Ensure config is current for this project's paths
+    _merge_reconfigure(target_path, export_path)
 
-    # Lazy-initialize QuickTranslate if not yet loaded
+    # Lazy-initialize if not yet loaded
     if _qt_modules is None:
         init_quicktranslate(target_path, export_path)
 
@@ -225,7 +165,7 @@ def execute_transfer(
     except Exception as exc:
         logger.error("Failed to build lookup maps: {}", exc)
 
-    # Delegate to QuickTranslate's all-in-one orchestrator
+    # Delegate to the merge engine's all-in-one orchestrator
     try:
         result = qt["transfer_folder_to_folder"](
             source_folder=Path(source_path),
@@ -254,9 +194,9 @@ def execute_transfer(
 
 class TransferAdapter:
     """
-    High-level adapter for QuickTranslate operations.
+    High-level adapter for merge operations.
 
-    Manages config shim lifecycle and provides access to QT module functions.
+    Manages config lifecycle and provides access to merge module functions.
     Supports path reconfiguration for project switching.
     """
 
@@ -276,7 +216,7 @@ class TransferAdapter:
         """
         Reconfigure paths for a different project.
 
-        Updates the config shim and clears stale caches.
+        Updates the merge config and clears stale caches.
 
         Args:
             loc_path: New LOC folder path.
@@ -284,11 +224,11 @@ class TransferAdapter:
         """
         self._loc_path = loc_path
         self._export_path = export_path
-        reconfigure_paths(loc_path, export_path)
+        _merge_reconfigure(loc_path, export_path)
 
     @property
     def qt_modules(self) -> dict:
-        """Get QuickTranslate module function references."""
+        """Get merge module function references."""
         return self._modules
 
     @property
@@ -308,11 +248,11 @@ class TransferAdapter:
 
 
 def _ensure_qt_initialized(target_path: str, export_path: str) -> dict:
-    """Ensure QT modules are initialized, initializing if needed."""
+    """Ensure merge modules are initialized, initializing if needed."""
     global _qt_modules
     if _qt_modules is None:
         return init_quicktranslate(target_path, export_path)
-    reconfigure_paths(target_path, export_path)
+    _merge_reconfigure(target_path, export_path)
     return _qt_modules
 
 
@@ -323,7 +263,7 @@ def scan_source_languages(
     """
     Scan a source folder for language-tagged files/subfolders.
 
-    Wraps QuickTranslate's scan_source_for_languages() and converts the
+    Wraps scan_source_for_languages() and converts the
     SourceScanResult dataclass to a plain dict for JSON serialization.
 
     Args:
@@ -377,7 +317,7 @@ def execute_multi_language_transfer(
     """
     Execute multi-language transfer: scan source, merge each language.
 
-    Wraps QuickTranslate's transfer_folder_to_folder which already handles
+    Wraps transfer_folder_to_folder which already handles
     multi-language internally via scan_source_for_languages. The wrapper adds:
     - Pre-scan for UI preview (language list before merge)
     - Per-language result breakdown extracted from file_results

@@ -1,11 +1,12 @@
+# DEPRECATED: This module is no longer used. Config is now handled by
+# server.services.merge._config (MergeConfig dataclass).
+# Kept for backward compatibility -- do not import from this module.
 """
 Config shim for QuickTranslate module imports.
 
-Creates a synthetic `config` module and injects it into sys.modules so that
-QuickTranslate core modules (which do `import config` at module level) get
-LocaNext-controlled paths instead of reading from settings.json / F: drive defaults.
-
-CRITICAL: This shim MUST be injected BEFORE any `from core.*` import.
+DEPRECATED: Replaced by server.services.merge._config in Phase 61.
+This file is kept only to prevent ImportError if any stale reference exists.
+All functions below are deprecated and should not be called.
 """
 from __future__ import annotations
 
