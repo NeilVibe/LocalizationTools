@@ -1,6 +1,6 @@
 # AI-Generated Web Assets — Iterative Plan v3
 
-> **Status:** v1 REJECTED (cheap coded dots + spinning text). v2 was planning only.
+> **Status:** Layer 12 attempted then reverted (2026-03-20). Layer 13 not started. OPEN.
 > **v3:** Try-and-revert iterative approach. Each attempt is cheap. If it doesn't look premium, revert and try the next approach.
 > **Stable revision:** `9290e310` — always revert to this if an attempt fails.
 > **Lesson learned:** `memory/feedback_cheap_3d_effects.md`

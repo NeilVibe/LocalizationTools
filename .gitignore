@@ -239,12 +239,17 @@ windows_tests/
 
 # -------------------- Claude Code Local Config --------------------
 .claude/settings.json
+.claude/settings.local.json
 .claude/hooks/
 .claude/ralph-loop.local.md
 .claude/skills/
 !.claude/skills/ui-ux-pro-max/
 .claude/commands/
 .claude/contexts/
+.claude/helpers/
+.claude/agents/
+.claude/memory.db
+.claude/projects/
 
 # -------------------- Coverage Reports --------------------
 .coverage

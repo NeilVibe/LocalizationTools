@@ -265,6 +265,21 @@ All pieces exist in the codebase or are proven technology. Implementation is ass
 
 ---
 
+---
+
+## UI Polish — LanguageData Grid Default Colors (Noted 2026-03-21)
+
+**Current:** Default row color is yellow (unchecked state) — feels noisy, like everything needs attention.
+
+**Desired:**
+- **Grey** (standard/default) — normal, untouched rows. No status set. This is the baseline.
+- **Yellow** (needs confirmation) — only when explicitly set by user via hotkey. Means "someone flagged this for review."
+- **Blue-green** (confirmed) — confirmed/approved rows. The satisfying "done" color.
+
+**Key change:** Yellow should NOT appear automatically. It must be a deliberate user action (hotkey or button). Default = grey = neutral.
+
+---
+
 *Captured: 2026-03-14 during Phase 1 planning session*
 *Updated: 2026-03-14 with Game Dev Grid concrete demo scenario, Codex interactive encyclopedia, world map, QA pipeline integration, and implementation priority*
 *Source: User vision dumps (3 sessions)*

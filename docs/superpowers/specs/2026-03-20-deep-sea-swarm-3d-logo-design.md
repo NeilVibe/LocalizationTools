@@ -1,5 +1,7 @@
 # Design Spec: Deep Sea Swarm Trails + 3D LocaNext Logo
 
+**Status:** Open (Layer 12 attempted then reverted 2026-03-20, Layer 13 not started)
+
 > Landing page Layers 12 & 13. Careful, layer-by-layer implementation.
 
 ## Layer 12: Deep Sea Bioluminescent Swarm Trails

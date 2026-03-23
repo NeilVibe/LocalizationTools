@@ -2,6 +2,60 @@
 
 > **Goal:** Enable maximum multi-agent power in our Claude Code environment.
 > **Three layers:** Native Agent Teams (Top 1) + Sub-Agent Patterns Skill (Top 2) + Ruflo (Top 4).
+> **Updated 2026-03-22:** Full global power architecture — everything installed at user level.
+
+---
+
+## Global Power Architecture (CRITICAL)
+
+**EVERYTHING is global.** No project-level configs needed. Any `cd` into any project gets the full arsenal.
+
+### Skills — 111 Global (0 Project-Level)
+
+All skills live in `~/.agents/skills/` and are symlinked to `~/.claude/skills/`.
+Install new skills globally: `npx skills@latest add <repo> -g --all -y`
+
+**Key skill packs (all global):**
+- **Pocock/skills (17):** /grill-me, /write-a-prd, /prd-to-issues, /tdd, /improve-codebase-architecture + 12 more
+- **ECC (80+):** everything-claude-code plugin — /save-session, /python-review, /security-scan, etc.
+- **Superpowers (12):** brainstorming, writing-plans, executing-plans, TDD, debugging, etc.
+- **GSD (30+):** project management — /gsd:plan-phase, /gsd:execute-phase, etc.
+- **Design (15+):** ui-ux-pro-max, frontend-design, animate, polish, bolder, etc.
+
+### MCP Servers — All Global
+
+| Server | Config Location | Purpose |
+|--------|----------------|---------|
+| **Ruflo** | `~/.claude/.mcp.json` | Enterprise orchestration (175+ tools, queen/worker) |
+| **OpenViking** | `~/.claude/.mcp.json` | Semantic search (project docs, embeddings) |
+| **Exa** | `~/.claude/.mcp.json` | Neural web search |
+| **Firecrawl** | `~/.claude/.mcp.json` | Web crawling + extraction |
+| **Context7** | `~/.claude/.mcp.json` | Library-specific documentation |
+| **Sequential Thinking** | `~/.claude/.mcp.json` | Structured reasoning |
+| **Memory** | `~/.claude/.mcp.json` | Persistent memory |
+| **Stitch** | Plugin (auto) | Screen generation |
+| **Playwright** | Plugin (auto) | Browser automation |
+| **Chrome DevTools** | Plugin (auto) | CDP debugging |
+| **fal.ai** | Plugin (auto) | AI media generation |
+| **dbhub** | Plugin (auto) | Database access |
+| **local-models** | Plugin (auto) | Qwen3-VL, local vision |
+
+**Project `.mcp.json` is for overrides only** (e.g., different python version for OpenViking).
+
+### Agent Teams — Global
+
+Enabled in `~/.claude/settings.json`:
+```json
+{ "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
+```
+
+### Hooks — Global
+
+All hooks in `~/.claude/settings.json` (GSD update check, context monitor, intelligence routing).
+
+### Rules — Global
+
+All rules in `~/.claude/rules/` (power-stack.md, playwright-efficiency.md, screenshot-directory.md, media-cache-bust.md).
 
 ---
 
