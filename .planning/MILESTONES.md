@@ -1,5 +1,21 @@
 # Milestones
 
+## v7.0 Production-Ready Merge + Performance + UIUX (Shipped: 2026-03-23)
+
+**Phases completed:** 4 phases, 9 plans, 12 tasks
+
+**Key accomplishments:**
+
+- 1. [Rule 1 - Bug] Fixed importlib detection test false positive
+- FAISSManager extended with IndexIDMap2(FlatIP) for ID-based add/remove, plus InlineTMUpdater service for synchronous per-entry FAISS + hash PKL updates
+- All TM CRUD endpoints (add/edit/delete/upload) now update FAISS index and hash lookups inline before HTTP response, giving users immediate search consistency
+- InlineTMUpdater now tracks and persists line-level FAISS data (line.index, line.npy, line_mapping.pkl) so Tier 4 line-embedding search returns current results immediately after inline add/edit/delete
+- PerfTimer context manager with ring buffer metrics + 6 modules instrumented for duration_ms logging across embedding, FAISS, TM CRUD, merge, and upload
+- GET /api/performance/summary endpoint exposing ring buffer metrics as JSON with p50/p95/max/count/avg per instrumented operation
+- MergeModal hardened with preview retry, zero-match guard, AbortController cancel, execute error recovery, and adaptive done-phase messaging
+
+---
+
 ## v5.1 Testing + Polish (Shipped: 2026-03-21)
 
 **Phases completed:** 11 phases, 21 plans, 41 tasks

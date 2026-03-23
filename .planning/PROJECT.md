@@ -8,13 +8,14 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v7.0 started 2026-03-23, v6.0 complete)
+## Current State (v7.0 complete 2026-03-23)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
 - v3.0: 7 phases, 14 plans, 45 requirements — game dev platform + AI intelligence
 - v3.1: 4 phases, 19 plans, 48 tasks — Svelte 5 migration + bug fixes + UIUX polish + API E2E testing
 - v3.2: 6 phases, 12 plans, 25 requirements — GameData Tree UI + Context Intelligence + Image Gen
+- v7.0: 4 phases, 9 plans, 18 requirements — merge internalization + TM auto-update + perf instrumentation + UIUX audit
 - 834 API test functions across 40 test files covering 275 endpoints
 - 36 Svelte components migrated to pure Svelte 5 Runes (zero createEventDispatcher)
 - 12 runtime bugs fixed, 60 UIUX audit issues resolved
@@ -61,20 +62,15 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ UX-01 through UX-05 — aria-expanded, tab dividers, PlaceholderImage div layout, image fallback, text wrap — v3.1
 - ✓ TEST-E2E-01 through TEST-E2E-25 — 834 API test functions, 40 files, 275 endpoints, mock expansion — v3.1
 
+- ✓ MARCH-01 through MARCH-04 — Merge internalization, no sys.path/importlib, PyInstaller-safe, all 3 match types — v7.0
+- ✓ TMAU-01 through TMAU-05 — TM auto-update: inline embedding + HNSW on add/edit/delete, batch import, immediate search — v7.0
+- ✓ PERF-01 through PERF-06 — Performance instrumentation: PerfTimer on all hot paths, /api/performance/summary — v7.0
+- ✓ UIUX-03 — Merge modal edge case hardening (retry, cancel, zero-match, error recovery) — v7.0
+
 ### Active
 
-## Current Milestone: v7.0 Production-Ready Merge + Performance + UIUX
-
-**Goal:** Make the merge pipeline production-ready by internalizing QuickTranslate logic (PyInstaller-safe), adding performance instrumentation at every step, enabling incremental TM/HNSW auto-updates, and polishing UIUX via AI-powered visual critique.
-
-**Target features:**
-- Internalize QT merge logic into LocaNext's own module (no sys.path/importlib, PyInstaller-safe)
-- Performance monitoring: Model2Vec, FAISS/HNSW, TM CRUD, merge, file upload — log duration at every step
-- Incremental HNSW auto-update on TM edit/add (add_items, no full rebuild)
-- Automatic embedding update on TM changes
-- UIUX quality audit via Qwen Vision + fal.ai + Tribunal critique
-- Build verification with PyInstaller bundle
-- Smooth, fully automatic TM flow: edit/add → embedding → FAISS update → search ready
+- [ ] UIUX-01 — AI visual audit of all 5 pages (needs live servers)
+- [ ] UIUX-02 — Fix critical UIUX issues from visual audit
 
 ### Out of Scope
 
@@ -93,6 +89,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **AI pipeline operational** — Qwen3-4B via Ollama at 117 tok/s (RTX 4070 Ti, CUDA in WSL2)
 - **v3.0 shipped** — Game Dev Platform, Codex, World Map, AI Suggestions, QA Pipeline, Category Clustering, Naming Coherence, Mock GameData
 - **v3.1 shipped** — Pure Svelte 5 Runes, 12 bug fixes, 60 UIUX audit fixes, 834 API E2E tests, 7 post-review fixes
+- **v7.0 shipped** — Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer on all hot paths, merge modal hardened
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -127,6 +124,10 @@ The platform delivers real, working localization workflows — real XML parsing,
 | Post-milestone code review | Catch issues before archiving | ✓ Good — found 11 real issues including 2 crashes |
 | v3.0 post-milestone review | Same pattern as v2.0 | ✓ Good — found 9 issues (1 build-breaking, 2 critical) |
 | d3-zoom for World Map | SVG pan/zoom for 14 nodes, no Leaflet needed | ✓ Good — lightweight, correct paradigm |
+| Internalize QT modules (copy, not pip package) | Same repo, one consumer, avoids version ceremony | ✓ Good — tribunal 4/4 unanimous, 14 files clean |
+| Direct inline FAISS updates (not event/queue) | ~6ms on GPU, single-user desktop app, immediacy required | ✓ Good — tribunal 3/4 for inline, search always fresh |
+| IDMap2 wrapper for FAISS remove support | Plain HNSW can't remove vectors, edits need remove+add | ✓ Good — IndexIDMap2(IndexFlatIP) enables full CRUD |
+| PerfTimer ring buffer (not external monitoring) | Zero deps, sufficient for desktop diagnostic use | ✓ Good — in-memory deque, numpy p50/p95/max |
 | CodexService + FAISS for entity search | Reuse existing embedding infrastructure | ✓ Good — semantic search across all entity types |
 | Route-handler category filtering | Keep repo layer clean, filter in Python | ✓ Good — simpler than DB-side filtering |
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
