@@ -263,11 +263,16 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
             old_date = latest_data[key]["date"] if key in latest_data else "N/A"
             old_done = latest_data[key]["done"] if key in latest_data else "N/A"
             print(f"  [PICK] {user}/{category}: date={date} done={done_val} (was: date={old_date} done={old_done})")
+            raw_total_rows = data_ws.cell(row, 4).value or 0
+            raw_done = data_ws.cell(row, 5).value or 0
+            # Script types: ignore pending (total_rows = done)
+            if category in ("Sequencer", "Dialog", "Face") and raw_total_rows > raw_done:
+                raw_total_rows = raw_done
             latest_data[key] = {
                 "date": date,
                 "category": category,
-                "total_rows": data_ws.cell(row, 4).value or 0,
-                "done": data_ws.cell(row, 5).value or 0,
+                "total_rows": raw_total_rows,
+                "done": raw_done,
                 "issues": data_ws.cell(row, 6).value or 0,
                 "no_issue": data_ws.cell(row, 7).value or 0,
                 "blocked": data_ws.cell(row, 8).value or 0,
