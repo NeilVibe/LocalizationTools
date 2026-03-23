@@ -45,7 +45,7 @@ Plans:
 - [x] 75-02-PLAN.md — Trigger Light Build + verify installer on offline Windows PC
 
 ### Phase 76: Language Data E2E
-**Goal**: Users can upload, edit, and save language data in the built app with full media resolution, all working offline
+**Goal**: E2E API tests verify the upload-parse-edit-save-reload pipeline and media resolution work correctly with mock data under SQLite
 **Depends on**: Phase 75
 **Requirements**: LDE2E-01, LDE2E-02, LDE2E-03, LDE2E-04
 **Success Criteria** (what must be TRUE):
@@ -53,7 +53,11 @@ Plans:
   2. User edits a cell value, saves, reloads the file, and the edit persists with correct XML encoding
   3. Grid rows show associated DDS images and WEM audio resolved from Perforce-path mock data
   4. All upload/edit/save operations work with SQLite backend (no PostgreSQL required)
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 76-01-PLAN.md — Upload + edit + save round-trip E2E tests (LDE2E-01, LDE2E-02, LDE2E-04)
+- [ ] 76-02-PLAN.md — DDS/WEM media resolution E2E tests (LDE2E-03)
 
 ### Phase 78: Feature Pipeline Verification
 **Goal**: All core feature pipelines work end-to-end in DEV mode with mock data — TM cascade, merge, QA, entity detection, context panel with media
@@ -87,6 +91,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 2/2 | Complete    | 2026-03-23 |
-| 76. Language Data E2E | 0/TBD | Not started | - |
+| 76. Language Data E2E | 0/2 | Not started | - |
 | 78. Feature Pipeline Verification | 0/TBD | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |
