@@ -185,6 +185,57 @@ describe('detectTags', () => {
   });
 });
 
+// ---- Round-trip integrity (CRITICAL for merge safety) ----
+
+describe('round-trip integrity', () => {
+  // The tag detector is DISPLAY ONLY. When data is saved/merged back,
+  // the raw text must be perfectly reconstructable from segments.
+  // This proves no data is lost or modified during detection.
+
+  function reconstructRaw(segments) {
+    return segments.map(seg => seg.tag ? seg.tag.raw : seg.text).join('');
+  }
+
+  const MOCK_GAME_DATA = [
+    // Real-world game localization strings with tags
+    '{0}이(가) {1}을(를) 사용했습니다.',
+    '%1#님이 %2#을(를) 획득하였습니다.',
+    '첫 번째 줄\\n두 번째 줄\\n세 번째 줄',
+    '{StaticInfo:Knowledge:Elixir#회복의 물약}을 발견했습니다!',
+    '아이템 설명&desc;',
+    // Complex mixed: all 5 tag types in realistic context
+    '{StaticInfo:Quest:Dragon#용을 처치하라} 보상: {0} 골드 (%1# 배율)\\n&desc;',
+    // Edge: tags adjacent to Korean text with no spaces
+    '{PlayerName}의 공격력이{0}만큼 증가했습니다.',
+    // Edge: multiple escapes in a row
+    '\\n\\t\\n',
+    // Edge: empty braced (should still round-trip)
+    'before {} after',
+    // Plain text (no tags — must also round-trip)
+    '태그가 없는 일반 텍스트입니다.',
+    // Real XML-style data with br tags (display converts these, but raw stays)
+    '첫 번째&lt;br/&gt;두 번째',
+  ];
+
+  for (const input of MOCK_GAME_DATA) {
+    it(`round-trips: "${input.slice(0, 50)}${input.length > 50 ? '...' : ''}"`, () => {
+      const segments = detectTags(input);
+      const reconstructed = reconstructRaw(segments);
+      assert.strictEqual(reconstructed, input,
+        `Round-trip FAILED.\nInput:  ${input}\nOutput: ${reconstructed}`);
+    });
+  }
+
+  it('round-trips every segment has either .text or .tag.raw', () => {
+    const input = '{StaticInfo:Quest:A#B} hello {0} %1# \\n &desc;';
+    const segments = detectTags(input);
+    for (const seg of segments) {
+      assert.ok(seg.text !== undefined || (seg.tag && seg.tag.raw !== undefined),
+        `Segment missing both .text and .tag.raw: ${JSON.stringify(seg)}`);
+    }
+  });
+});
+
 // ---- hasTags ----
 
 describe('hasTags', () => {
