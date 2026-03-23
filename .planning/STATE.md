@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 73-01-PLAN.md
-last_updated: "2026-03-23T15:17:25.579Z"
+stopped_at: Completed 73-02-PLAN.md
+last_updated: "2026-03-23T15:20:10.099Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -46,6 +46,7 @@ Plan: 2 of 2
 - [v8.0 Roadmap]: API contracts stay identical — zero user-facing changes
 - [v8.0 Roadmap]: 8 THIN modules (merge, sessions, settings, etc.) need no changes
 - [Phase 73]: tagDetector uses \w in escape pattern to match tmx_tools.py; formatPlainText only converts br tags, preserves \n as pills
+- [Phase 73]: Pass raw text to TagText (no formatGridText) so backslash-n detected as pill before conversion
 
 ## Deferred
 
@@ -56,6 +57,6 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-Last session: 2026-03-23T15:17:25.576Z
-Stopped at: Completed 73-01-PLAN.md
+Last session: 2026-03-23T15:20:10.096Z
+Stopped at: Completed 73-02-PLAN.md
 Next action: /gsd:plan-phase 73

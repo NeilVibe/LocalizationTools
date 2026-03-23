@@ -38,8 +38,8 @@
 ### Tag Visualization (v8.0)
 
 - [x] **TAG-01**: tagDetector.js detects all 5 tag types ({N}, %N#, \X, {StaticInfo}, &desc;) using tmx_tools.py regexes
-- [ ] **TAG-02**: TagText.svelte renders detected tags as colored inline pills in VirtualGrid display mode
-- [ ] **TAG-03**: Tags preserved exactly during editing (pills → raw text in edit mode, raw text → pills on save)
+- [x] **TAG-02**: TagText.svelte renders detected tags as colored inline pills in VirtualGrid display mode
+- [x] **TAG-03**: Tags preserved exactly during editing (pills → raw text in edit mode, raw text → pills on save)
 
 ## v2 Requirements
 
@@ -86,8 +86,8 @@
 | UIUX-03 | Phase 64 | Complete |
 
 | TAG-01 | Phase 73 | Complete |
-| TAG-02 | Phase 73 | Pending |
-| TAG-03 | Phase 73 | Pending |
+| TAG-02 | Phase 73 | Complete |
+| TAG-03 | Phase 73 | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total + 3 TAG (v8.0)

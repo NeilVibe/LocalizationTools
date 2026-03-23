@@ -6,7 +6,7 @@ MemoQ-style tag pills for translators (Phase 73 — user-facing, do first) + ser
 
 ## Phases
 
-- [ ] **Phase 73: Regex Tag Visualizer** - MemoQ-style inline tag pills ({0}, %1#, \n → colored badges) in VirtualGrid editor
+- [x] **Phase 73: Regex Tag Visualizer** - MemoQ-style inline tag pills ({0}, %1#, \n → colored badges) in VirtualGrid editor (completed 2026-03-23)
 - [ ] **Phase 69: Stats & Rankings Service** - Extract StatsService + RankingsService from stats.py (1371) + rankings.py (608)
 - [ ] **Phase 70: Auth Service** - Extract AuthService from auth_async.py (629)
 - [ ] **Phase 71: Telemetry & Remote Logging** - Extract TelemetryService + RemoteLoggingService (1185 lines)
@@ -96,8 +96,8 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
   3. VirtualGrid source/target cells show tag pills in display mode
   4. Tags are preserved exactly when editing (pills disappear in edit mode, raw text shown)
   5. All existing tag types work: `{0}`, `{Name}`, `%1#`, `\n`, `\t`, `{StaticInfo:...}`, `&desc;`
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 73-01-PLAN.md -- Create tagDetector.js (5 regex patterns) + TagText.svelte (pill renderer) + Node.js tests
-- [ ] 73-02-PLAN.md -- Wire TagText into VirtualGrid source/target/reference cells + visual verification
+- [x] 73-02-PLAN.md -- Wire TagText into VirtualGrid source/target/reference cells + visual verification
