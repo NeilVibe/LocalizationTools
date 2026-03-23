@@ -446,6 +446,13 @@ app.include_router(admin_db_stats.router)
 from server.api import health
 app.include_router(health.router)
 
+# Include Performance Metrics API (Phase 63: Performance Instrumentation)
+try:
+    from server.api import performance as performance_api
+    app.include_router(performance_api.router)
+except ImportError as e:
+    logger.warning(f"Performance API not available: {e}")
+
 # Include Settings API (Phase 56: Project Settings — path validation)
 from server.api import settings as settings_api
 app.include_router(settings_api.router)
