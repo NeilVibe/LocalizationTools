@@ -20,7 +20,44 @@ from server.database.models import LDMTranslationMemory
 # Repository Pattern imports - ALL DB access goes through here
 from server.repositories import TMRepository, get_tm_repository
 
+# TMAU-01/02/03: Inline index updates (replaces background sync for single-entry ops)
+from server.tools.ldm.indexing.inline_updater import get_inline_updater
+
 router = APIRouter(tags=["LDM"])
+
+
+# =============================================================================
+# Entry Fetch Helper (for inline index updates needing old data)
+# =============================================================================
+
+async def _get_entry_by_id(entry_id: int) -> Optional[dict]:
+    """
+    Fetch a TM entry by ID for pre-modification data capture.
+
+    Used by update/delete endpoints to get old source_text before
+    DB modification, enabling proper FAISS + hash cleanup.
+    """
+    import asyncio
+    from server.database.models import LDMTMEntry as _LDMTMEntry
+
+    def _fetch():
+        sync_db = next(get_db())
+        try:
+            entry = sync_db.query(_LDMTMEntry).filter(
+                _LDMTMEntry.id == entry_id
+            ).first()
+            if entry:
+                return {
+                    "id": entry.id,
+                    "source_text": entry.source_text,
+                    "target_text": entry.target_text,
+                    "string_id": getattr(entry, "string_id", None),
+                }
+            return None
+        finally:
+            sync_db.close()
+
+    return await asyncio.to_thread(_fetch)
 
 
 # =============================================================================
@@ -197,10 +234,19 @@ async def add_tm_entry(
 
     logger.success(f"[TM-ENTRY] [TM-ENTRY] TM entry added: tm_id={tm_id}, total entries={entry_count}")
 
-    # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
-    # TODO: Add index sync for SQLite mode
-    if background_tasks:
-        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+    # TMAU-01/02: Inline index update (replaces background sync)
+    try:
+        updater = get_inline_updater(tm_id)
+        updater.add_entry(
+            entry_id=entry.get("id"),
+            source_text=source_text,
+            target_text=target_text
+        )
+    except Exception as e:
+        logger.warning(f"[TM-ENTRY] Inline index update failed for add (tm_id={tm_id}): {e}")
+        # Fallback: schedule background sync
+        if background_tasks:
+            background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 
     return {
         "success": True,
@@ -234,6 +280,10 @@ async def update_tm_entry(
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
+    # Get old source text for index update (before modification)
+    old_entry = await _get_entry_by_id(entry_id)
+    old_source = old_entry.get("source_text") if old_entry else None
+
     # Update entry using repository
     username = current_user.get("username", "unknown")
     updated_entry = await repo.update_entry(
@@ -249,9 +299,20 @@ async def update_tm_entry(
 
     logger.info(f"[TM-ENTRY] Updated TM entry: tm_id={tm_id}, entry_id={entry_id}, by={username}")
 
-    # Q-001: Auto-sync indexes in background
-    if background_tasks:
-        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+    # TMAU-03: Inline index update for edit
+    try:
+        updater = get_inline_updater(tm_id)
+        updater.update_entry(
+            entry_id=entry_id,
+            source_text=source_text or old_source,
+            target_text=target_text or (old_entry.get("target_text") if old_entry else None),
+            string_id=string_id,
+            old_source_text=old_source
+        )
+    except Exception as e:
+        logger.warning(f"[TM-ENTRY] Inline index update failed for edit (tm_id={tm_id}, entry_id={entry_id}): {e}")
+        if background_tasks:
+            background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 
     return updated_entry
 
@@ -277,6 +338,10 @@ async def delete_tm_entry(
     if not tm:
         raise HTTPException(status_code=404, detail="Translation Memory not found")
 
+    # Get source text before deletion for index cleanup
+    entry_to_delete = await _get_entry_by_id(entry_id)
+    source_text_for_removal = entry_to_delete.get("source_text") if entry_to_delete else None
+
     # Delete entry using repository
     deleted = await repo.delete_entry(entry_id)
     if not deleted:
@@ -284,9 +349,15 @@ async def delete_tm_entry(
 
     logger.info(f"[TM-ENTRY] Deleted TM entry: tm_id={tm_id}, entry_id={entry_id}")
 
-    # Q-001: Auto-sync indexes in background (only for PostgreSQL mode)
-    if background_tasks:
-        background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
+    # TMAU-03: Inline index update for delete
+    if source_text_for_removal:
+        try:
+            updater = get_inline_updater(tm_id)
+            updater.remove_entry(entry_id=entry_id, source_text=source_text_for_removal)
+        except Exception as e:
+            logger.warning(f"[TM-ENTRY] Inline index update failed for delete (tm_id={tm_id}, entry_id={entry_id}): {e}")
+            if background_tasks:
+                background_tasks.add_task(_auto_sync_tm_indexes, tm_id, current_user["user_id"])
 
     return {"message": "Entry deleted", "entry_id": entry_id}
 
