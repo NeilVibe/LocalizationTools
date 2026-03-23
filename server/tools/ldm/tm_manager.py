@@ -8,6 +8,7 @@ Supported formats:
 - TXT/TSV: Column 5 = Source, Column 6 = Target (via txt_handler.py)
 - XML: StrOrigin = Source, Str = Target (via xml_handler.py)
 - Excel: Column A (0) = Source, Column B (1) = Target (simple parser)
+- TMX: Korean (ko) = Source, Target language = Target (via tmx_tools.py)
 
 Uses bulk_insert_tm_entries() for high-performance import (20k+ entries/sec).
 """
@@ -105,8 +106,10 @@ class TMManager:
                     has_header=has_header,
                     mode=mode
                 )
+            elif file_ext == '.tmx':
+                entries = self._parse_tmx_for_tm(file_content, filename)
             else:
-                raise ValueError(f"Unsupported file format: {file_ext}")
+                raise ValueError(f"Unsupported file format: {file_ext}. Supported: .txt, .tsv, .xml, .xlsx, .xls, .tmx")
 
             if not entries:
                 raise ValueError("No valid entries found in file")
@@ -207,6 +210,44 @@ class TMManager:
                 })
 
         return entries
+
+    def _parse_tmx_for_tm(self, file_content: bytes, filename: str) -> List[Dict]:
+        """
+        Parse TMX (Translation Memory eXchange) file for TM entries.
+        Uses tmx_tools.parse_tmx_to_rows() with deduplication.
+        TMX format: <tu> containing <tuv> pairs with ko (source) and target segments.
+        """
+        import tempfile
+        from server.services.merge.tmx_tools import parse_tmx_to_rows, dedup_rows
+
+        # parse_tmx_to_rows reads from file path, so write to temp file
+        with tempfile.NamedTemporaryFile(suffix='.tmx', delete=False, mode='wb') as tmp:
+            tmp.write(file_content)
+            tmp_path = tmp.name
+
+        try:
+            rows = parse_tmx_to_rows(tmp_path)
+            logger.info(f"TMX parsed: {len(rows)} raw TUs from {filename}")
+
+            # Deduplicate by (x_context, ko_seg), keep latest changedate
+            rows = dedup_rows(rows)
+            logger.info(f"TMX after dedup: {len(rows)} unique entries")
+
+            # Convert to TM entry format
+            entries = []
+            for row in rows:
+                source = row.get('ko_seg', '').strip()
+                target = row.get('tgt_seg', '').strip()
+
+                if source and target:
+                    entries.append({
+                        'source_text': source,
+                        'target_text': target,
+                    })
+
+            return entries
+        finally:
+            os.unlink(tmp_path)
 
     def _parse_excel_for_tm(
         self,

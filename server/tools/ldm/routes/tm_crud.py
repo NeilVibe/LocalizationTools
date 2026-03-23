@@ -91,10 +91,10 @@ async def upload_tm(
             detail=f"A Translation Memory named '{name}' already exists. Please use a different name."
         )
 
-    if ext not in ('txt', 'tsv', 'xml', 'xlsx', 'xls'):
+    if ext not in ('txt', 'tsv', 'xml', 'xlsx', 'xls', 'tmx'):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported TM format: {ext}. Use TXT, TSV, XML, or XLSX."
+            detail=f"Unsupported TM format: {ext}. Use TXT, TSV, XML, XLSX, or TMX."
         )
 
     logger.info(f"[TM] TM upload started: name={name}, file={filename}, user={current_user['user_id']}, auto_index={auto_index}")
