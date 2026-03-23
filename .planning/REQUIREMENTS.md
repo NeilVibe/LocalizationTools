@@ -23,9 +23,9 @@
 
 ### TM Auto-Update
 
-- [ ] **TMAU-01**: TM entry add triggers automatic embedding generation
-- [ ] **TMAU-02**: TM entry add triggers incremental HNSW add_items (no full rebuild)
-- [ ] **TMAU-03**: TM entry edit triggers embedding re-computation + HNSW update
+- [x] **TMAU-01**: TM entry add triggers automatic embedding generation
+- [x] **TMAU-02**: TM entry add triggers incremental HNSW add_items (no full rebuild)
+- [x] **TMAU-03**: TM entry edit triggers embedding re-computation + HNSW update
 - [ ] **TMAU-04**: TM batch import triggers bulk embedding + HNSW batch add
 - [ ] **TMAU-05**: Search returns updated results immediately after add/edit (no manual refresh)
 
@@ -70,9 +70,9 @@
 | PERF-04 | Phase 63 | Pending |
 | PERF-05 | Phase 63 | Pending |
 | PERF-06 | Phase 63 | Pending |
-| TMAU-01 | Phase 62 | Pending |
-| TMAU-02 | Phase 62 | Pending |
-| TMAU-03 | Phase 62 | Pending |
+| TMAU-01 | Phase 62 | Complete |
+| TMAU-02 | Phase 62 | Complete |
+| TMAU-03 | Phase 62 | Complete |
 | TMAU-04 | Phase 62 | Pending |
 | TMAU-05 | Phase 62 | Pending |
 | UIUX-01 | Phase 64 | Pending |

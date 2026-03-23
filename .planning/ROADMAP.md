@@ -37,10 +37,10 @@ Plans:
   2. Editing an existing TM entry re-computes the embedding and updates the HNSW index in-place (old vector removed, new vector inserted)
   3. Batch importing TM entries (e.g., from file upload) triggers bulk embedding generation and batch HNSW add_items in a single pass
   4. Searching for a term that was just added or edited returns the updated entry in the results without any manual refresh or page reload
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 62-01-PLAN.md -- Extend FAISSManager with IDMap2 support + create InlineTMUpdater service
+- [x] 62-01-PLAN.md -- Extend FAISSManager with IDMap2 support + create InlineTMUpdater service
 - [ ] 62-02-PLAN.md -- Wire inline updates into CRUD endpoints + batch import + search consistency
 
 ### Phase 63: Performance Instrumentation
@@ -72,6 +72,6 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 61. Merge Internalization | v7.0 | 2/2 | Complete    | 2026-03-23 |
-| 62. TM Auto-Update Pipeline | v7.0 | 0/2 | Not started | - |
+| 62. TM Auto-Update Pipeline | v7.0 | 1/2 | In Progress|  |
 | 63. Performance Instrumentation | v7.0 | 0/0 | Not started | - |
 | 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
