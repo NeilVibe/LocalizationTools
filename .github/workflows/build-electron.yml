@@ -648,7 +648,7 @@ jobs:
             sqlalchemy aiosqlite psycopg2-binary `
             PyJWT python-jose passlib python-dotenv bcrypt `
             pydantic pydantic-settings email-validator `
-            pandas openpyxl xlrd `
+            pandas openpyxl xlrd lxml `
             httpx requests loguru tqdm pyyaml
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
@@ -692,6 +692,7 @@ jobs:
           & "tools\python\python.exe" -c "import pandas; print(f'[OK] pandas v{pandas.__version__}')"
           & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
           & "tools\python\python.exe" -c "import xlrd; print('[OK] xlrd ready')"
+          & "tools\python\python.exe" -c "from lxml import etree; print('[OK] lxml ready')"
 
           # HTTP
           & "tools\python\python.exe" -c "import httpx; print('[OK] httpx ready')"
