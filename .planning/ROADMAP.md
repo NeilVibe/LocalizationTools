@@ -7,7 +7,7 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
 ## Phases
 
 - [x] **Phase 74: Mock Data Foundation** - Perforce-path mock gamedata (DDS/WEM/XML) loadable by PerforcePathService (completed 2026-03-23)
-- [ ] **Phase 75: Build Pipeline** - Light Build produces working installer with internalized merge module
+- [x] **Phase 75: Build Pipeline** - Light Build produces working installer with internalized merge module (completed 2026-03-23)
 - [ ] **Phase 76: Language Data E2E** - Upload, edit, save, media resolution in built app (offline)
 - [ ] **Phase 78: Feature Pipeline Verification** - TM cascade, merge, QA, Aho-Corasick, context panel with media — all verified in DEV mode with mock data
 - [ ] **Phase 79: Visual Audit** - Qwen3-VL review of all 5 pages, fix critical issues, screenshot evidence
@@ -38,11 +38,11 @@ Plans:
   2. Built app executes merge workflow (match + postprocess) without errors or missing modules
   3. GitHub Actions Light Build completes and uploads installer artifact to release
   4. Downloaded .exe installer installs and launches the app on an offline Windows PC
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 75-01-PLAN.md — Add lxml to embedded Python deps + merge module import verification step
-- [ ] 75-02-PLAN.md — Trigger Light Build + verify installer on offline Windows PC
+- [x] 75-02-PLAN.md — Trigger Light Build + verify installer on offline Windows PC
 
 ### Phase 76: Language Data E2E
 **Goal**: Users can upload, edit, and save language data in the built app with full media resolution, all working offline
@@ -86,7 +86,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
-| 75. Build Pipeline | 1/2 | In Progress|  |
+| 75. Build Pipeline | 2/2 | Complete   | 2026-03-23 |
 | 76. Language Data E2E | 0/TBD | Not started | - |
 | 78. Feature Pipeline Verification | 0/TBD | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |
