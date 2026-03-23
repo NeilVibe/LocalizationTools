@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <Row StringID="MENU_START" StrOrigin="Different Origin" Str="Demarrer" Category="SCRIPT"/>
-  <Row StringID="dialog_hello" StrOrigin="Also Different" Str="Bonjour" Category="SCRIPT"/>
-  <Row StringID="NONEXISTENT_ID" StrOrigin="Missing" Str="Manquant" Category="SCRIPT"/>
+  <LocStr StringID="MENU_START" StrOrigin="Different Origin" Str="Demarrer" Category="SCRIPT"/>
+  <LocStr StringID="dialog_hello" StrOrigin="Also Different" Str="Bonjour" Category="SCRIPT"/>
+  <LocStr StringID="NONEXISTENT_ID" StrOrigin="Missing" Str="Manquant" Category="SCRIPT"/>
 </LanguageData>

@@ -79,8 +79,8 @@ def merge_temp_target(tmp_path):
         xml_content = (
             '<?xml version="1.0" encoding="utf-8"?>\n'
             "<LanguageData>\n"
-            '  <Row StringID="TEST_001" StrOrigin="Hello" Str="" Category="SCRIPT"/>\n'
-            '  <Row StringID="TEST_002" StrOrigin="World" Str="" Category="SCRIPT"/>\n'
+            '  <LocStr StringID="TEST_001" StrOrigin="Hello" Str="" Category="SCRIPT"/>\n'
+            '  <LocStr StringID="TEST_002" StrOrigin="World" Str="" Category="SCRIPT"/>\n'
             "</LanguageData>\n"
         )
         (target_dir / "languagedata_FRE.xml").write_text(xml_content, encoding="utf-8")
@@ -97,9 +97,9 @@ def merge_temp_source(tmp_path):
     xml_content = (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         "<LanguageData>\n"
-        '  <Row StringID="TEST_001" StrOrigin="Hello" Str="Bonjour" Category="SCRIPT"/>\n'
+        '  <LocStr StringID="TEST_001" StrOrigin="Hello" Str="Bonjour" Category="SCRIPT"/>\n'
         "</LanguageData>\n"
     )
-    (source_dir / "corrections.xml").write_text(xml_content, encoding="utf-8")
+    (source_dir / "corrections_FRE.xml").write_text(xml_content, encoding="utf-8")
 
     return source_dir

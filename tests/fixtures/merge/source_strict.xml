@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <Row StringID="MENU_START" StrOrigin="Start Game" Str="Demarrer le jeu" Category="SCRIPT"/>
-  <Row StringID="DIALOG_HELLO" StrOrigin="Hello there" Str="Bonjour la" Category="SCRIPT"/>
-  <Row StringID="MENU_START" StrOrigin="Wrong Origin" Str="Should Not Match" Category="SCRIPT"/>
+  <LocStr StringID="MENU_START" StrOrigin="Start Game" Str="Demarrer le jeu" Category="SCRIPT"/>
+  <LocStr StringID="DIALOG_HELLO" StrOrigin="Hello there" Str="Bonjour la" Category="SCRIPT"/>
+  <LocStr StringID="MENU_START" StrOrigin="Wrong Origin" Str="Should Not Match" Category="SCRIPT"/>
 </LanguageData>

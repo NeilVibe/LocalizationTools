@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <Row StringID="MENU_START" StrOrigin="Start Game" Str="Demarrer" FileName="menu.loc.xml"/>
-  <Row StringID="ITEM_SWORD" StrOrigin="Iron Sword" Str="Epee de fer" FileName="items.loc.xml"/>
-  <Row StringID="DIALOG_HELLO" StrOrigin="Hello there" Str="Bonjour" FileName="wrong_file.loc.xml"/>
+  <LocStr StringID="MENU_START" StrOrigin="Start Game" Str="Demarrer" FileName="menu.loc.xml"/>
+  <LocStr StringID="ITEM_SWORD" StrOrigin="Iron Sword" Str="Epee de fer" FileName="items.loc.xml"/>
+  <LocStr StringID="DIALOG_HELLO" StrOrigin="Hello there" Str="Bonjour" FileName="wrong_file.loc.xml"/>
 </LanguageData>

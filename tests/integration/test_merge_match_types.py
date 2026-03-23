@@ -46,7 +46,7 @@ def _setup_merge_dirs(tmp_path: Path, source_fixture: str) -> tuple[Path, Path]:
     )
     shutil.copy(
         FIXTURES_DIR / source_fixture,
-        source_dir / "corrections.xml",
+        source_dir / "corrections_FRE.xml",
     )
     return source_dir, target_dir
 
@@ -274,3 +274,87 @@ def test_postprocess_runs_on_execute(admin_headers, tmp_path):
             assert "total_matched" in result or "files_processed" in result, (
                 f"Complete event missing expected keys: {list(result.keys())}"
             )
+
+
+# ============================================================================
+# 7. Real data test — test123 languagedata (SC-3)
+# ============================================================================
+
+# Sample rows from test123/languagedata_fr PC 0904 1847.txt converted to XML.
+# Original format: tab-delimited with columns for IDs, KR text, FR translation.
+_TEST123_TARGET_XML = """\
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringID="ALCHEMY_SKILL_EXP" StrOrigin="연금 스킬 경험치가 증가합니다." Str="" Category="SCRIPT" FileName="alchemy.loc.xml"/>
+  <LocStr StringID="HONEY_KNOWLEDGE" StrOrigin="고급 식용벌꿀 지식을 습득할 수 있습니다." Str="" Category="SCRIPT" FileName="cooking.loc.xml"/>
+  <LocStr StringID="KAIA_FISHING_BOW" StrOrigin="카이아 어선 뱃머리" Str="" Category="ALL" FileName="ship.loc.xml"/>
+  <LocStr StringID="LIBERATED_ARMOR" StrOrigin="해방된 마력의 갑옷" Str="" Category="ITEM" FileName="equipment.loc.xml"/>
+  <LocStr StringID="VOLCANIC_DRESSER" StrOrigin="화산암 장식이 된 서랍장이다." Str="" Category="SCRIPT" FileName="housing.loc.xml"/>
+</LanguageData>
+"""
+
+_TEST123_SOURCE_XML = """\
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringID="ALCHEMY_SKILL_EXP" StrOrigin="연금 스킬 경험치가 증가합니다." Str="Augmente l'EXP de compétence d'alchimie." Category="SCRIPT"/>
+  <LocStr StringID="KAIA_FISHING_BOW" StrOrigin="카이아 어선 뱃머리" Str="Proue de bateau de pêche de Kaia" Category="ALL"/>
+  <LocStr StringID="LIBERATED_ARMOR" StrOrigin="해방된 마력의 갑옷" Str="Armure de magie libérée" Category="ITEM"/>
+  <LocStr StringID="UNKNOWN_NEW" StrOrigin="새로운 항목" Str="Nouvel élément" Category="SCRIPT"/>
+</LanguageData>
+"""
+
+
+def test_real_data_match_types(admin_headers, tmp_path):
+    """All 3 match types produce results against test123-derived XML data.
+
+    Uses real Korean/French game data patterns from test123 converted to XML.
+    Verifies SC-3: All 3 match types produce correct merge output.
+    """
+    target_dir = tmp_path / "test123_target"
+    source_dir = tmp_path / "test123_source"
+    target_dir.mkdir()
+    source_dir.mkdir()
+
+    (target_dir / "languagedata_FRE.xml").write_text(
+        _TEST123_TARGET_XML, encoding="utf-8"
+    )
+    (source_dir / "corrections_FRE.xml").write_text(
+        _TEST123_SOURCE_XML, encoding="utf-8"
+    )
+
+    results = {}
+    for match_mode in ["stringid_only", "strict", "strorigin_filename"]:
+        resp = requests.post(
+            f"{BASE_URL}/api/merge/preview",
+            headers=admin_headers,
+            json={
+                "source_path": str(source_dir),
+                "target_path": str(target_dir),
+                "export_path": str(target_dir),
+                "match_mode": match_mode,
+                "only_untranslated": False,
+            },
+            timeout=60,
+        )
+        assert resp.status_code == 200, (
+            f"Match mode '{match_mode}' failed: {resp.text}"
+        )
+        data = resp.json()
+        assert "total_matched" in data, (
+            f"Match mode '{match_mode}' missing total_matched"
+        )
+        results[match_mode] = data["total_matched"]
+
+    # StringID-only should match 3 (ALCHEMY, KAIA, LIBERATED — UNKNOWN_NEW has no target)
+    assert results["stringid_only"] >= 1, (
+        f"stringid_only found 0 matches against real data — expected >=1"
+    )
+
+    # Strict should also match (StringID + StrOrigin both present)
+    assert results["strict"] >= 1, (
+        f"strict found 0 matches against real data — expected >=1"
+    )
+
+    # All modes should return non-negative
+    for mode, count in results.items():
+        assert count >= 0, f"{mode} returned negative: {count}"

@@ -123,11 +123,20 @@ def reconfigure_paths(loc_path: str, export_path: str) -> None:
                 config.LANGUAGE_NAMES[code.upper()] = code.upper()
 
     # Clear source_scanner's cached language codes (stale after path change)
-    try:
-        from core.source_scanner import clear_language_code_cache
-        clear_language_code_cache()
-    except (ImportError, AttributeError):
-        pass  # source_scanner not yet imported or function doesn't exist
+    # Try both qt_core (importlib) and core (sys.path) namespaces
+    cleared = False
+    for mod_name in ("qt_core.source_scanner", "core.source_scanner"):
+        mod = sys.modules.get(mod_name)
+        if mod and hasattr(mod, "clear_language_code_cache"):
+            mod.clear_language_code_cache()
+            cleared = True
+            break
+    if not cleared:
+        try:
+            from core.source_scanner import clear_language_code_cache
+            clear_language_code_cache()
+        except (ImportError, AttributeError):
+            pass  # source_scanner not yet imported
 
     logger.info(
         "Config paths reconfigured: LOC_FOLDER={}, EXPORT_FOLDER={}",
