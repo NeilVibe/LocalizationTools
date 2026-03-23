@@ -24,6 +24,7 @@ from loguru import logger
 
 from server.tools.shared.faiss_manager import FAISSManager, ThreadSafeIndex
 from server.tools.shared import get_embedding_engine, get_current_engine_name
+from server.utils.perf_timer import PerfTimer
 from .utils import normalize_for_hash, normalize_for_embedding
 
 
@@ -164,36 +165,38 @@ class InlineTMUpdater:
         """
         self._ensure_loaded()
 
-        # Encode embedding
-        text = normalize_for_embedding(source_text)
-        embedding = self._engine.encode([text], normalize=True)
-        embedding = np.ascontiguousarray(embedding, dtype=np.float32)
-        FAISSManager.normalize_vectors(embedding)
+        with PerfTimer("tm_add_entry", tm_id=self.tm_id, entry_id=entry_id):
+            # Encode embedding
+            text = normalize_for_embedding(source_text)
+            embedding = self._engine.encode([text], normalize=True)
+            embedding = np.ascontiguousarray(embedding, dtype=np.float32)
+            FAISSManager.normalize_vectors(embedding)
 
-        # Add to FAISS with explicit ID
-        self._ts_index.add_with_ids(
-            embedding, np.array([entry_id], dtype=np.int64)
-        )
-
-        # Update whole_lookup (mirrors sync_manager._incremental_sync pattern)
-        self._add_to_whole_lookup(entry_id, source_text, target_text, string_id)
-
-        # Update line_lookup
-        self._add_to_line_lookup(entry_id, source_text, target_text)
-
-        # Update line-level embeddings (Tier 4 FAISS)
-        self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
-
-        # Update mapping and embeddings
-        self._whole_mapping.append(entry_id)
-        if self._whole_embeddings is not None:
-            self._whole_embeddings = np.vstack(
-                [self._whole_embeddings, embedding]
+            # Add to FAISS with explicit ID
+            self._ts_index.add_with_ids(
+                embedding, np.array([entry_id], dtype=np.int64)
             )
-        else:
-            self._whole_embeddings = embedding.copy()
 
-        self._persist()
+            # Update whole_lookup (mirrors sync_manager._incremental_sync pattern)
+            self._add_to_whole_lookup(entry_id, source_text, target_text, string_id)
+
+            # Update line_lookup
+            self._add_to_line_lookup(entry_id, source_text, target_text)
+
+            # Update line-level embeddings (Tier 4 FAISS)
+            self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
+
+            # Update mapping and embeddings
+            self._whole_mapping.append(entry_id)
+            if self._whole_embeddings is not None:
+                self._whole_embeddings = np.vstack(
+                    [self._whole_embeddings, embedding]
+                )
+            else:
+                self._whole_embeddings = embedding.copy()
+
+            self._persist()
+
         logger.info(
             f"Inline add: tm_id={self.tm_id}, entry_id={entry_id}, "
             f"source={source_text[:30]}..."
@@ -219,49 +222,51 @@ class InlineTMUpdater:
         """
         self._ensure_loaded()
 
-        # Remove old vector from FAISS
-        import faiss as _faiss
+        with PerfTimer("tm_update_entry", tm_id=self.tm_id, entry_id=entry_id):
+            # Remove old vector from FAISS
+            import faiss as _faiss
 
-        id_array = np.array([entry_id], dtype=np.int64)
-        id_selector = _faiss.IDSelectorBatch(
-            len(id_array), _faiss.swig_ptr(id_array)
-        )
-        self._ts_index.remove_ids(id_selector)
-
-        # Remove old hash entries
-        if old_source_text:
-            self._remove_from_whole_lookup(entry_id, old_source_text)
-            self._remove_from_line_lookup(entry_id, old_source_text)
-
-        # Remove old line-level embeddings (Tier 4 FAISS)
-        self._remove_from_line_embeddings(entry_id)
-
-        # Remove from mapping and embeddings
-        self._remove_from_mapping(entry_id)
-
-        # Add new data (encode + FAISS + lookups)
-        text = normalize_for_embedding(source_text)
-        embedding = self._engine.encode([text], normalize=True)
-        embedding = np.ascontiguousarray(embedding, dtype=np.float32)
-        FAISSManager.normalize_vectors(embedding)
-
-        self._ts_index.add_with_ids(
-            embedding, np.array([entry_id], dtype=np.int64)
-        )
-
-        self._add_to_whole_lookup(entry_id, source_text, target_text, string_id)
-        self._add_to_line_lookup(entry_id, source_text, target_text)
-        self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
-
-        self._whole_mapping.append(entry_id)
-        if self._whole_embeddings is not None:
-            self._whole_embeddings = np.vstack(
-                [self._whole_embeddings, embedding]
+            id_array = np.array([entry_id], dtype=np.int64)
+            id_selector = _faiss.IDSelectorBatch(
+                len(id_array), _faiss.swig_ptr(id_array)
             )
-        else:
-            self._whole_embeddings = embedding.copy()
+            self._ts_index.remove_ids(id_selector)
 
-        self._persist()
+            # Remove old hash entries
+            if old_source_text:
+                self._remove_from_whole_lookup(entry_id, old_source_text)
+                self._remove_from_line_lookup(entry_id, old_source_text)
+
+            # Remove old line-level embeddings (Tier 4 FAISS)
+            self._remove_from_line_embeddings(entry_id)
+
+            # Remove from mapping and embeddings
+            self._remove_from_mapping(entry_id)
+
+            # Add new data (encode + FAISS + lookups)
+            text = normalize_for_embedding(source_text)
+            embedding = self._engine.encode([text], normalize=True)
+            embedding = np.ascontiguousarray(embedding, dtype=np.float32)
+            FAISSManager.normalize_vectors(embedding)
+
+            self._ts_index.add_with_ids(
+                embedding, np.array([entry_id], dtype=np.int64)
+            )
+
+            self._add_to_whole_lookup(entry_id, source_text, target_text, string_id)
+            self._add_to_line_lookup(entry_id, source_text, target_text)
+            self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
+
+            self._whole_mapping.append(entry_id)
+            if self._whole_embeddings is not None:
+                self._whole_embeddings = np.vstack(
+                    [self._whole_embeddings, embedding]
+                )
+            else:
+                self._whole_embeddings = embedding.copy()
+
+            self._persist()
+
         logger.info(
             f"Inline update: tm_id={self.tm_id}, entry_id={entry_id}, "
             f"source={source_text[:30]}..."
@@ -277,26 +282,28 @@ class InlineTMUpdater:
         """
         self._ensure_loaded()
 
-        # Remove vector from FAISS
-        import faiss as _faiss
+        with PerfTimer("tm_remove_entry", tm_id=self.tm_id, entry_id=entry_id):
+            # Remove vector from FAISS
+            import faiss as _faiss
 
-        id_array = np.array([entry_id], dtype=np.int64)
-        id_selector = _faiss.IDSelectorBatch(
-            len(id_array), _faiss.swig_ptr(id_array)
-        )
-        self._ts_index.remove_ids(id_selector)
+            id_array = np.array([entry_id], dtype=np.int64)
+            id_selector = _faiss.IDSelectorBatch(
+                len(id_array), _faiss.swig_ptr(id_array)
+            )
+            self._ts_index.remove_ids(id_selector)
 
-        # Remove from hash lookups
-        self._remove_from_whole_lookup(entry_id, source_text)
-        self._remove_from_line_lookup(entry_id, source_text)
+            # Remove from hash lookups
+            self._remove_from_whole_lookup(entry_id, source_text)
+            self._remove_from_line_lookup(entry_id, source_text)
 
-        # Remove line-level embeddings (Tier 4 FAISS)
-        self._remove_from_line_embeddings(entry_id)
+            # Remove line-level embeddings (Tier 4 FAISS)
+            self._remove_from_line_embeddings(entry_id)
 
-        # Remove from mapping and embeddings
-        self._remove_from_mapping(entry_id)
+            # Remove from mapping and embeddings
+            self._remove_from_mapping(entry_id)
 
-        self._persist()
+            self._persist()
+
         logger.info(
             f"Inline remove: tm_id={self.tm_id}, entry_id={entry_id}, "
             f"source={source_text[:30]}..."

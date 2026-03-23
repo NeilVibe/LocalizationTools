@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from loguru import logger
 from sse_starlette.sse import EventSourceResponse
 
+from server.utils.perf_timer import PerfTimer
 from server.api.settings import translate_wsl_path
 from server.services.transfer_adapter import (
     execute_transfer,
@@ -121,16 +122,17 @@ async def preview_merge(body: MergePreviewRequest):
     try:
         if body.multi_language:
             # Multi-language: scan + dry-run all languages
-            result = await asyncio.to_thread(
-                execute_multi_language_transfer,
-                source_path=translated_source,
-                target_path=translated_target,
-                export_path=translated_export,
-                match_mode=body.match_mode,
-                only_untranslated=body.only_untranslated,
-                stringid_all_categories=body.stringid_all_categories,
-                dry_run=True,
-            )
+            with PerfTimer("merge_preview", match_mode=body.match_mode, multi_language=True):
+                result = await asyncio.to_thread(
+                    execute_multi_language_transfer,
+                    source_path=translated_source,
+                    target_path=translated_target,
+                    export_path=translated_export,
+                    match_mode=body.match_mode,
+                    only_untranslated=body.only_untranslated,
+                    stringid_all_categories=body.stringid_all_categories,
+                    dry_run=True,
+                )
             return MergePreviewResponse(
                 total_matched=result.get("total_matched", 0),
                 total_skipped=result.get("total_skipped", 0),
@@ -140,16 +142,17 @@ async def preview_merge(body: MergePreviewRequest):
             )
         else:
             # Single-language dry-run
-            result = await asyncio.to_thread(
-                execute_transfer,
-                source_path=translated_source,
-                target_path=translated_target,
-                export_path=translated_export,
-                match_mode=body.match_mode,
-                only_untranslated=body.only_untranslated,
-                stringid_all_categories=body.stringid_all_categories,
-                dry_run=True,
-            )
+            with PerfTimer("merge_preview", match_mode=body.match_mode, multi_language=False):
+                result = await asyncio.to_thread(
+                    execute_transfer,
+                    source_path=translated_source,
+                    target_path=translated_target,
+                    export_path=translated_export,
+                    match_mode=body.match_mode,
+                    only_untranslated=body.only_untranslated,
+                    stringid_all_categories=body.stringid_all_categories,
+                    dry_run=True,
+                )
 
             # Extract overwrite warnings from file_results
             overwrite_warnings: list[str] = []
@@ -239,31 +242,33 @@ async def execute_merge(body: MergeExecuteRequest):
         _merge_in_progress = True
         try:
             if body.multi_language:
-                result = await asyncio.to_thread(
-                    execute_multi_language_transfer,
-                    source_path=translated_source,
-                    target_path=translated_target,
-                    export_path=translated_export,
-                    match_mode=body.match_mode,
-                    only_untranslated=body.only_untranslated,
-                    stringid_all_categories=body.stringid_all_categories,
-                    dry_run=False,
-                    progress_callback=progress_cb,
-                    log_callback=log_cb,
-                )
+                with PerfTimer("merge_execute", match_mode=body.match_mode, multi_language=True):
+                    result = await asyncio.to_thread(
+                        execute_multi_language_transfer,
+                        source_path=translated_source,
+                        target_path=translated_target,
+                        export_path=translated_export,
+                        match_mode=body.match_mode,
+                        only_untranslated=body.only_untranslated,
+                        stringid_all_categories=body.stringid_all_categories,
+                        dry_run=False,
+                        progress_callback=progress_cb,
+                        log_callback=log_cb,
+                    )
             else:
-                result = await asyncio.to_thread(
-                    execute_transfer,
-                    source_path=translated_source,
-                    target_path=translated_target,
-                    export_path=translated_export,
-                    match_mode=body.match_mode,
-                    only_untranslated=body.only_untranslated,
-                    stringid_all_categories=body.stringid_all_categories,
-                    dry_run=False,
-                    progress_callback=progress_cb,
-                    log_callback=log_cb,
-                )
+                with PerfTimer("merge_execute", match_mode=body.match_mode, multi_language=False):
+                    result = await asyncio.to_thread(
+                        execute_transfer,
+                        source_path=translated_source,
+                        target_path=translated_target,
+                        export_path=translated_export,
+                        match_mode=body.match_mode,
+                        only_untranslated=body.only_untranslated,
+                        stringid_all_categories=body.stringid_all_categories,
+                        dry_run=False,
+                        progress_callback=progress_cb,
+                        log_callback=log_cb,
+                    )
             queue.put_nowait({"event": "complete", "data": json.dumps(result, default=str)})
         except Exception as exc:
             logger.error("Merge execute failed: {}", exc)

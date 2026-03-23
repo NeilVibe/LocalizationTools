@@ -33,6 +33,8 @@ import numpy as np
 
 from loguru import logger
 
+from server.utils.perf_timer import PerfTimer
+
 # Lazy import FAISS to avoid startup delay
 _faiss = None
 
@@ -159,7 +161,8 @@ class FAISSManager:
             vectors = cls.normalize_vectors(vectors)
 
         before = index.ntotal
-        index.add(vectors)
+        with PerfTimer("faiss_add_vectors", count=vectors.shape[0]):
+            index.add(vectors)
         logger.debug(f"Added {vectors.shape[0]} vectors to index ({before} -> {index.ntotal})")
 
     @classmethod
@@ -191,7 +194,8 @@ class FAISSManager:
         if normalize:
             query = cls.normalize_vectors(query)
 
-        distances, indices = index.search(query, k)
+        with PerfTimer("faiss_search", k=k, index_size=index.ntotal):
+            distances, indices = index.search(query, k)
         return distances, indices
 
     @classmethod
@@ -430,7 +434,8 @@ class ThreadSafeIndex:
     def search(self, query: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
         """Thread-safe search."""
         with self._lock:
-            return self._index.search(query, k)
+            with PerfTimer("faiss_search_threadsafe", k=k, index_size=self._index.ntotal):
+                return self._index.search(query, k)
 
     @property
     def ntotal(self) -> int:

@@ -26,6 +26,7 @@ from fastapi.responses import Response
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async, get_db
+from server.utils.perf_timer import PerfTimer
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
 
 # Repository Pattern imports
@@ -104,6 +105,7 @@ async def upload_tm(
 
     try:
         file_content = await file.read()
+        file_size_bytes = len(file_content)
 
         # Run sync TMManager in threadpool to avoid blocking event loop
         def _upload_tm():
@@ -146,8 +148,9 @@ async def upload_tm(
             finally:
                 sync_db.close()
 
-        result = await asyncio.to_thread(_upload_tm)
-        
+        with PerfTimer("tm_upload", file_size_bytes=file_size_bytes, filename=filename):
+            result = await asyncio.to_thread(_upload_tm)
+
         # TMAU-04: Batch inline index update (replaces full background rebuild)
         if auto_index and result.get("tm_id"):
             tm_id = result["tm_id"]
@@ -196,7 +199,7 @@ async def upload_tm(
                     silent=True
                 )
                 result["indexing_status"] = "scheduled"
-        
+
         return result
 
     except ValueError as e:

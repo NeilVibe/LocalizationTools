@@ -27,6 +27,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from server.utils.perf_timer import PerfTimer
+
 # Global engine cache (lazy loaded)
 _engines = {}
 _current_engine_name = "model2vec"  # Default
@@ -193,15 +195,16 @@ class Model2VecEngine(EmbeddingEngine):
         if isinstance(texts, str):
             texts = [texts]
 
-        # Model2Vec encode
-        embeddings = self._model.encode(texts)
-        embeddings = np.array(embeddings, dtype=np.float32)
+        with PerfTimer("embedding_encode", batch_size=len(texts), engine="model2vec"):
+            # Model2Vec encode
+            embeddings = self._model.encode(texts)
+            embeddings = np.array(embeddings, dtype=np.float32)
 
-        # Normalize for cosine similarity
-        if normalize:
-            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-            norms = np.where(norms == 0, 1, norms)  # Avoid div by zero
-            embeddings = embeddings / norms
+            # Normalize for cosine similarity
+            if normalize:
+                norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+                norms = np.where(norms == 0, 1, norms)  # Avoid div by zero
+                embeddings = embeddings / norms
 
         return embeddings
 
@@ -267,13 +270,14 @@ class QwenEngine(EmbeddingEngine):
         if isinstance(texts, str):
             texts = [texts]
 
-        # SentenceTransformer encode
-        embeddings = self._model.encode(
-            texts,
-            normalize_embeddings=normalize,
-            show_progress_bar=show_progress
-        )
-        embeddings = np.array(embeddings, dtype=np.float32)
+        with PerfTimer("embedding_encode", batch_size=len(texts), engine="qwen"):
+            # SentenceTransformer encode
+            embeddings = self._model.encode(
+                texts,
+                normalize_embeddings=normalize,
+                show_progress_bar=show_progress
+            )
+            embeddings = np.array(embeddings, dtype=np.float32)
 
         return embeddings
 
