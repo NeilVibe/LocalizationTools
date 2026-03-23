@@ -107,6 +107,10 @@
     previewResult && (previewResult.total_matched ?? 0) === 0
   );
 
+  let hadExecutionErrors = $derived(
+    progressMessages.some(m => m.startsWith('[ERROR]') || m.startsWith('[Error]'))
+  );
+
   // ---------------------------------------------------------------------------
   // Reset on open
   // ---------------------------------------------------------------------------
@@ -657,13 +661,23 @@
     <!-- ================================================================== -->
     {:else if phase === 'done'}
       <div class="phase-done">
-        <InlineNotification
-          kind="success"
-          title="Merge Complete"
-          subtitle="All files have been processed successfully."
-          hideCloseButton
-          lowContrast
-        />
+        {#if hadExecutionErrors}
+          <InlineNotification
+            kind="warning"
+            title="Merge Completed with Issues"
+            subtitle="Some files encountered errors during processing. Review the execution log below."
+            hideCloseButton
+            lowContrast
+          />
+        {:else}
+          <InlineNotification
+            kind="success"
+            title="Merge Complete"
+            subtitle="All files have been processed successfully."
+            hideCloseButton
+            lowContrast
+          />
+        {/if}
 
         {#if mergeResult}
           <div class="result-summary">
@@ -726,7 +740,7 @@
 
         <!-- Progress log (collapsed) -->
         {#if progressMessages.length > 0}
-          <details class="log-details">
+          <details class="log-details" open={hadExecutionErrors}>
             <summary>View execution log ({progressMessages.length} messages)</summary>
             <div class="progress-log">
               {#each progressMessages as msg, i (i)}
