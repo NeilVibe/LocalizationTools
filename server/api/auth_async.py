@@ -2,6 +2,7 @@
 Authentication API Endpoints (ASYNC)
 
 User registration, login, and authentication management with async/await.
+Business logic delegated to AuthService; login remains sync (uses Session).
 """
 
 import os
@@ -26,6 +27,7 @@ from server.utils.audit_logger import (
     log_password_change,
     get_failed_login_count,
 )
+from server.services.auth_service import AuthService
 
 # Rate limiting constants
 MAX_FAILED_LOGINS = 5  # Max attempts per IP
@@ -44,9 +46,6 @@ def get_client_ip(request: Request) -> str:
         return request.client.host
     return "unknown"
 
-
-# Valid user roles
-VALID_ROLES = ["user", "admin"]
 
 # Create router
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -155,59 +154,29 @@ def login(
 async def register(
     user_data: UserRegister,
     db: AsyncSession = Depends(get_async_db),
-    admin: dict = Depends(require_admin_async)  # Only admins can register new users
+    admin: dict = Depends(require_admin_async)
 ):
     """
     User registration endpoint (admin only) (ASYNC).
 
     Creates a new user account.
     """
-    # Check if username already exists
-    result = await db.execute(
-        select(User).where(User.username == user_data.username)
-    )
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
+    service = AuthService(db)
+    try:
+        new_user = await service.register_user(
+            username=user_data.username,
+            password=user_data.password,
+            email=user_data.email,
+            full_name=user_data.full_name,
+            department=user_data.department,
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
+            detail=str(e),
         )
 
-    # Check if email already exists (if provided)
-    if user_data.email:
-        result = await db.execute(
-            select(User).where(User.email == user_data.email)
-        )
-        existing_email = result.scalar_one_or_none()
-
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-
-    # Hash password
-    password_hash = hash_password(user_data.password)
-
-    # Create new user (no db.begin() - get_async_db handles transaction)
-    new_user = User(
-        username=user_data.username,
-        password_hash=password_hash,
-        email=user_data.email,
-        full_name=user_data.full_name,
-        department=user_data.department,
-        role="user",  # Default role
-        is_active=True,
-        created_at=datetime.utcnow()
-    )
-
-    db.add(new_user)
-    await db.flush()  # Flush to get the user_id
-    await db.refresh(new_user)
-
-    logger.info(f"New user registered: {new_user.username} (ID: {new_user.user_id}) by admin: {admin['username']}")
-
+    logger.info(f"User {new_user.username} registered by admin: {admin['username']}")
     return new_user
 
 
@@ -225,10 +194,8 @@ async def get_current_user_info(
 
     Returns detailed info for the authenticated user.
     """
-    result = await db.execute(
-        select(User).where(User.user_id == current_user["user_id"])
-    )
-    user = result.scalar_one_or_none()
+    service = AuthService(db)
+    user = await service.get_user_by_id(current_user["user_id"])
 
     if not user:
         raise HTTPException(
@@ -251,9 +218,8 @@ async def list_users(
 
     Returns paginated list of all users.
     """
-    query = select(User).order_by(User.user_id).offset(skip).limit(limit)
-    result = await db.execute(query)
-    users = result.scalars().all()
+    service = AuthService(db)
+    users = await service.list_users(skip=skip, limit=limit)
 
     logger.info(f"Admin {admin['username']} requested user list")
     return users
@@ -268,10 +234,8 @@ async def get_user(
     """
     Get user by ID (admin only) (ASYNC).
     """
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
+    service = AuthService(db)
+    user = await service.get_user_by_id(user_id)
 
     if not user:
         raise HTTPException(
@@ -291,23 +255,16 @@ async def activate_user(
     """
     Activate a user account (admin only) (ASYNC).
     """
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    try:
+        user = await service.activate_user(user_id)
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 
-    # No db.begin() - get_async_db handles transaction
-    user.is_active = True
-    await db.commit()
-
     logger.info(f"User {user.username} activated by admin {admin['username']}")
-
     return {"message": f"User {user.username} activated successfully"}
 
 
@@ -320,30 +277,21 @@ async def deactivate_user(
     """
     Deactivate a user account (admin only) (ASYNC).
     """
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    try:
+        user = await service.deactivate_user(user_id, admin["user_id"])
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-
-    # Prevent deactivating yourself
-    if user.user_id == admin["user_id"]:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate your own account"
+            detail=str(e),
         )
 
-    # No db.begin() - get_async_db handles transaction
-    user.is_active = False
-    await db.commit()
-
     logger.info(f"User {user.username} deactivated by admin {admin['username']}")
-
     return {"message": f"User {user.username} deactivated successfully"}
 
 
@@ -372,35 +320,32 @@ async def change_password(
             detail="New passwords do not match"
         )
 
-    # Get user from database
-    result = await db.execute(
-        select(User).where(User.user_id == current_user["user_id"])
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    try:
+        user = await service.change_password(
+            user_id=current_user["user_id"],
+            current_password=password_data.current_password,
+            new_password=password_data.new_password,
+        )
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-
-    # Verify current password
-    if not verify_password(password_data.current_password, user.password_hash):
-        logger.warning(f"Failed password change attempt for user: {user.username} - wrong current password")
+    except ValueError as e:
+        if "incorrect" in str(e).lower():
+            logger.warning(f"Failed password change attempt for user ID: {current_user['user_id']} - wrong current password")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e),
+            )
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
 
-    # Update password
-    user.password_hash = hash_password(password_data.new_password)
-    user.last_password_change = datetime.utcnow()
-    user.must_change_password = False  # Clear the flag after password change
-    await db.commit()
-
-    # Audit log
+    # Audit log (needs request context)
     log_password_change(user.username, client_ip, user.user_id)
-    logger.info(f"Password changed successfully for user: {user.username}")
 
     return {"message": "Password changed successfully"}
 
@@ -423,62 +368,27 @@ async def admin_create_user(
     """
     client_ip = get_client_ip(request)
 
-    # Check if username already exists
-    result = await db.execute(
-        select(User).where(User.username == user_data.username)
-    )
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user:
+    service = AuthService(db)
+    try:
+        new_user = await service.admin_create_user(
+            username=user_data.username,
+            password=user_data.password,
+            role=user_data.role,
+            email=user_data.email,
+            full_name=user_data.full_name,
+            team=user_data.team,
+            language=user_data.language,
+            department=user_data.department,
+            must_change_password=user_data.must_change_password,
+            created_by=admin["user_id"],
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
+            detail=str(e),
         )
 
-    # Check if email already exists (if provided)
-    if user_data.email:
-        result = await db.execute(
-            select(User).where(User.email == user_data.email)
-        )
-        existing_email = result.scalar_one_or_none()
-
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-
-    # Validate role
-    if user_data.role not in VALID_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Must be one of: {VALID_ROLES}"
-        )
-
-    # Hash password
-    password_hash = hash_password(user_data.password)
-
-    # Create new user with all profile fields
-    new_user = User(
-        username=user_data.username,
-        password_hash=password_hash,
-        email=user_data.email,
-        full_name=user_data.full_name,
-        team=user_data.team,
-        language=user_data.language,
-        department=user_data.department,
-        role=user_data.role,
-        is_active=True,
-        created_at=datetime.utcnow(),
-        created_by=admin["user_id"],
-        must_change_password=user_data.must_change_password
-    )
-
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    # Audit log
+    # Audit log (needs request context)
     log_user_created(new_user.username, admin["username"], client_ip)
     logger.info(f"New user created: {new_user.username} (ID: {new_user.user_id}) by admin: {admin['username']}")
 
@@ -497,56 +407,26 @@ async def admin_update_user(
 
     Admin can update email, full_name, team, language, department, role, is_active.
     """
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    update_data = user_data.model_dump(exclude_unset=True)
+    try:
+        user = await service.admin_update_user(
+            user_id=user_id,
+            update_data=update_data,
+            admin_user_id=admin["user_id"],
+        )
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-
-    # Check email uniqueness if being updated
-    if user_data.email and user_data.email != user.email:
-        result = await db.execute(
-            select(User).where(User.email == user_data.email)
-        )
-        existing_email = result.scalar_one_or_none()
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-
-    # Validate role if being updated
-    if user_data.role:
-        valid_roles = ["user", "admin"]
-        if user_data.role not in valid_roles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {VALID_ROLES}"
-            )
-
-    # Prevent admin from demoting themselves
-    if user.user_id == admin["user_id"] and user_data.role == "user":
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot demote your own account"
+            detail=str(e),
         )
 
-    # Update only provided fields
-    update_data = user_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        if value is not None:
-            setattr(user, field, value)
-
-    await db.commit()
-    await db.refresh(user)
-
     logger.info(f"User {user.username} updated by admin {admin['username']}: {update_data}")
-
     return user
 
 
@@ -565,25 +445,20 @@ async def admin_reset_password(
     """
     client_ip = get_client_ip(request)
 
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    try:
+        user = await service.admin_reset_password(
+            user_id=user_id,
+            new_password=password_data.new_password,
+            must_change_password=password_data.must_change_password,
+        )
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 
-    # Update password
-    user.password_hash = hash_password(password_data.new_password)
-    user.last_password_change = datetime.utcnow()
-    user.must_change_password = password_data.must_change_password
-
-    await db.commit()
-
-    # Audit log
+    # Audit log (needs request context)
     log_password_change(user.username, client_ip, user.user_id, changed_by=admin["username"])
     logger.info(f"Password reset for user {user.username} by admin {admin['username']}")
 
@@ -602,28 +477,19 @@ async def admin_delete_user(
     This is a soft delete - sets is_active=False instead of deleting the record.
     Use PUT /users/{user_id}/activate to reactivate.
     """
-    result = await db.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
+    service = AuthService(db)
+    try:
+        user = await service.admin_delete_user(user_id, admin["user_id"])
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-
-    # Prevent deleting yourself
-    if user.user_id == admin["user_id"]:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
+            detail=str(e),
         )
 
-    # Soft delete
-    user.is_active = False
-    await db.commit()
-
     logger.info(f"User {user.username} deactivated (soft delete) by admin {admin['username']}")
-
     return {"message": f"User {user.username} deactivated successfully"}

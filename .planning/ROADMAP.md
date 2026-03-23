@@ -7,10 +7,10 @@ MemoQ-style tag pills for translators (Phase 73 — user-facing, do first) + ser
 ## Phases
 
 - [x] **Phase 73: Regex Tag Visualizer** - MemoQ-style inline tag pills ({0}, %1#, \n → colored badges) in VirtualGrid editor (completed 2026-03-23)
-- [ ] **Phase 69: Stats & Rankings Service** - Extract StatsService + RankingsService from stats.py (1371) + rankings.py (608)
-- [ ] **Phase 70: Auth Service** - Extract AuthService from auth_async.py (629)
-- [ ] **Phase 71: Telemetry & Remote Logging** - Extract TelemetryService + RemoteLoggingService (1185 lines)
-- [ ] **Phase 72: Infrastructure Services** - Extract DbHealth + Health + Progress services (1009 lines)
+- [x] **Phase 69: Stats & Rankings Service** - Extract StatsService + RankingsService from stats.py (1371) + rankings.py (608) (completed 2026-03-24)
+- [x] **Phase 70: Auth Service** - Extract AuthService from auth_async.py (629) (completed 2026-03-24)
+- [x] **Phase 71: Telemetry & Remote Logging** - Extract TelemetryService + RemoteLoggingService (1185 lines) (completed 2026-03-24)
+- [x] **Phase 72: Infrastructure Services** - Extract DbHealth + Health + Progress services (1009 lines) (completed 2026-03-24)
 
 ## Phase Details
 

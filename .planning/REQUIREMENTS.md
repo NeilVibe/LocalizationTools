@@ -41,6 +41,13 @@
 - [x] **TAG-02**: TagText.svelte renders detected tags as colored inline pills in VirtualGrid display mode
 - [x] **TAG-03**: Tags preserved exactly during editing (pills → raw text in edit mode, raw text → pills on save)
 
+### Service Layer Extraction (v8.0)
+
+- [x] **SVC-01**: StatsService + RankingsService extracted from stats.py (1371→307 lines) + rankings.py (609→131 lines)
+- [x] **SVC-02**: AuthService extracted from auth_async.py (630→495 lines), sync login stays in route
+- [x] **SVC-03**: TelemetryService + RemoteLoggingService extracted from admin_telemetry.py (619→201) + remote_logging.py (568→361)
+- [x] **SVC-04**: DbStatsService + HealthService + ProgressService extracted from admin_db_stats.py (240→46) + health.py (324→84) + progress_operations.py (448→298)
+
 ## v2 Requirements
 
 ### Build Verification
@@ -88,12 +95,16 @@
 | TAG-01 | Phase 73 | Complete |
 | TAG-02 | Phase 73 | Complete |
 | TAG-03 | Phase 73 | Complete |
+| SVC-01 | Phase 69 | Complete |
+| SVC-02 | Phase 70 | Complete |
+| SVC-03 | Phase 71 | Complete |
+| SVC-04 | Phase 72 | Complete |
 
 **Coverage:**
-- v1 requirements: 18 total + 3 TAG (v8.0)
-- Mapped to phases: 21
+- v1 requirements: 18 total + 3 TAG + 4 SVC (v8.0)
+- Mapped to phases: 25
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-23*
-*Last updated: 2026-03-23 after roadmap creation*
+*Last updated: 2026-03-24 after service layer extraction*
