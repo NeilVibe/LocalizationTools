@@ -84,6 +84,19 @@ def get_metrics_summary() -> dict:
     return {"operations": operations}
 
 
+def reset_metrics() -> int:
+    """
+    Clear all collected metrics from the ring buffer.
+
+    Returns:
+        Number of operation keys cleared.
+    """
+    with _metrics_lock:
+        count = len(_metrics)
+        _metrics.clear()
+    return count
+
+
 class PerfTimer:
     """
     Context manager for measuring operation duration.

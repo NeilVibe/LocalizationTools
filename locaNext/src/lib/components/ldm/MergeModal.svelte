@@ -74,10 +74,15 @@
   let progressMessages = $state([]);
   let executing = $state(false);
   let progressPercent = $state(0);
-  let abortController = $state(null);
+  let abortController = null; // plain let — imperative handle, not reactive
+  let serverErrorAborted = false; // distinguishes server error abort from user cancel
+  let msgIdCounter = 0;
 
   // Done state
   let mergeResult = $state(null);
+
+  // Progress log auto-scroll ref
+  let progressLogEl = $state(null);
 
   // ---------------------------------------------------------------------------
   // Derived
@@ -108,14 +113,32 @@
   );
 
   let hadExecutionErrors = $derived(
-    progressMessages.some(m => m.startsWith('[ERROR]') || m.startsWith('[Error]'))
+    progressMessages.some(m => m.startsWith('[ERROR]'))
   );
+
+  // ---------------------------------------------------------------------------
+  // Auto-scroll progress log
+  // ---------------------------------------------------------------------------
+  $effect(() => {
+    if (progressMessages.length && progressLogEl) {
+      // Tick: wait for DOM update then scroll
+      requestAnimationFrame(() => {
+        if (progressLogEl) progressLogEl.scrollTop = progressLogEl.scrollHeight;
+      });
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Reset on open
   // ---------------------------------------------------------------------------
   $effect(() => {
     if (open) {
+      // Abort any in-flight merge from a previous open
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+
       phase = 'configure';
       matchMode = 'strict';
       onlyUntranslated = false;
@@ -127,7 +150,8 @@
       executing = false;
       progressPercent = 0;
       mergeResult = null;
-      abortController = null;
+      serverErrorAborted = false;
+      msgIdCounter = 0;
 
       // Auto-fill paths from project settings
       if (projectId) {
@@ -196,13 +220,12 @@
   // Execute (SSE streaming via fetch + ReadableStream)
   // ---------------------------------------------------------------------------
   async function executeMerge() {
+    if (executing) return; // Guard against double-click
     executing = true;
     progressMessages = [];
     progressPercent = 0;
     phase = 'execute';
-
-    const filesExpected = previewResult?.files_processed || 1;
-    let filesProcessed = 0;
+    serverErrorAborted = false;
 
     abortController = new AbortController();
 
@@ -220,12 +243,12 @@
 
       if (!response.ok) {
         if (response.status === 409) {
-          progressMessages = [...progressMessages, '[Error] A merge is already in progress'];
+          progressMessages = [...progressMessages, '[ERROR] A merge is already in progress'];
           executing = false;
           return;
         }
         const errData = await response.json().catch(() => ({}));
-        progressMessages = [...progressMessages, `[Error] ${errData.detail || errData.error || response.status}`];
+        progressMessages = [...progressMessages, `[ERROR] ${errData.detail || errData.error || response.status}`];
         executing = false;
         return;
       }
@@ -250,38 +273,29 @@
             const data = line.slice(6);
             handleSSEEvent(currentEvent, data);
             currentEvent = 'message'; // Reset after processing
-
-            // Update progress estimate
-            if (currentEvent === 'progress') {
-              filesProcessed++;
-              progressPercent = Math.min(
-                (filesProcessed / filesExpected) * 100,
-                95
-              );
-            }
           }
           // Empty lines and other prefixes are ignored
         }
       }
     } catch (err) {
-      if (err.name === 'AbortError') {
+      if (err.name === 'AbortError' && !serverErrorAborted) {
         progressMessages = [...progressMessages, '[CANCELLED] Merge cancelled by user'];
-      } else {
-        progressMessages = [...progressMessages, `[Error] Connection lost: ${err.message}`];
+      } else if (err.name !== 'AbortError') {
+        progressMessages = [...progressMessages, `[ERROR] Connection lost: ${err.message}`];
       }
+      // If serverErrorAborted, the [ERROR] message was already added by handleSSEEvent
     } finally {
       executing = false;
       abortController = null;
+      serverErrorAborted = false;
     }
   }
 
   function cancelMerge() {
     if (abortController) {
       abortController.abort();
-      abortController = null;
+      // catch block in executeMerge handles the message and cleanup
     }
-    progressMessages = [...progressMessages, '[CANCELLED] Merge cancelled by user'];
-    executing = false;
   }
 
   function handleSSEEvent(eventType, data) {
@@ -301,15 +315,18 @@
                          logData.level === 'warning' ? '[WARN]' : '[INFO]';
           progressMessages = [...progressMessages, `${prefix} ${logData.message}`];
         } catch {
-          progressMessages = [...progressMessages, data];
+          progressMessages = [...progressMessages, `[WARN] ${data}`];
         }
         break;
       }
       case 'complete': {
         try {
           mergeResult = JSON.parse(data);
-        } catch {
+        } catch (e) {
           mergeResult = {};
+          progressMessages = [...progressMessages,
+            `[ERROR] Failed to parse merge result: ${e.message}`
+          ];
         }
         progressPercent = 100;
         phase = 'done';
@@ -318,6 +335,11 @@
       case 'error':
         progressMessages = [...progressMessages, `[ERROR] ${data}`];
         executing = false;
+        // Abort stream to prevent a subsequent 'complete' from overriding the error
+        serverErrorAborted = true;
+        if (abortController) {
+          abortController.abort();
+        }
         break;
       case 'ping':
         // Keepalive — ignore
@@ -606,7 +628,7 @@
             </Button>
             <Button
               kind="danger"
-              disabled={previewLoading || hasPreviewErrors || !previewResult || hasZeroMatches}
+              disabled={previewLoading || hasPreviewErrors || !previewResult || hasZeroMatches || executing}
               onclick={executeMerge}
             >
               Execute Merge
@@ -627,7 +649,7 @@
           helperText={executing ? `${Math.round(progressPercent)}% complete` : 'Finishing...'}
         />
 
-        <div class="progress-log">
+        <div class="progress-log" bind:this={progressLogEl}>
           {#each progressMessages as msg, i (i)}
             <div class="log-entry" class:log-error={msg.startsWith('[ERROR]')} class:log-warn={msg.startsWith('[WARN]')}>
               {msg}
@@ -758,6 +780,14 @@
           </Button>
         </div>
       </div>
+    {:else}
+      <InlineNotification
+        kind="error"
+        title="Unknown state"
+        subtitle="Unexpected phase: {phase}. Please close and reopen the modal."
+        hideCloseButton
+        lowContrast
+      />
     {/if}
   </div>
 </Modal>
