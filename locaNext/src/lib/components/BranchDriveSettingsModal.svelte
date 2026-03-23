@@ -20,6 +20,7 @@
   import { preferences } from "$lib/stores/preferences.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
+  import { getAuthHeaders } from "$lib/utils/api.js";
 
   // Svelte 5 Runes
   let { open = $bindable(false) } = $props();
@@ -50,12 +51,6 @@
         .replace('{branch}', selectedBranch)
     }))
   );
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
-  }
 
   // Load from store
   function loadFromStore() {

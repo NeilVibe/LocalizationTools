@@ -215,10 +215,15 @@
     }
   }
 
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function highlightMatch(text, q) {
-    if (!q) return text;
+    const escaped = escapeHtml(String(text ?? ''));
+    if (!q) return escaped;
     const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
+    return escaped.replace(regex, '<mark>$1</mark>');
   }
 
   // Close context menu on outside click

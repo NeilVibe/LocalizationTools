@@ -18,6 +18,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { serverUrl } from "$lib/stores/app.js";
   import { get } from "svelte/store";
+  import { getAuthHeaders } from "$lib/utils/api.js";
 
   // Svelte 5: Props
   let { open = $bindable(false) } = $props();
@@ -30,12 +31,6 @@
 
   // Svelte 5: Derived - API base URL from store
   let API_BASE = $derived(get(serverUrl));
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // Fetch simple health status
   async function checkHealth() {

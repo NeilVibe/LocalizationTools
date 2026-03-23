@@ -13,6 +13,7 @@
     InlineLoading
   } from "carbon-components-svelte";
   import { getProjectSettings, setProjectSettings } from "$lib/stores/projectSettings.js";
+  import { getApiBase, getAuthHeaders } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
 
   // Props (Svelte 5 Runes)
@@ -68,9 +69,9 @@
     validating = true;
 
     try {
-      const res = await fetch('/api/settings/validate-path', {
+      const res = await fetch(`${getApiBase()}/api/settings/validate-path`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ path })
       });
 

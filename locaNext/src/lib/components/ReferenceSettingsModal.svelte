@@ -21,6 +21,7 @@
   import { get } from "svelte/store";
   import { onMount } from "svelte";
   import FilePickerDialog from "$lib/components/ldm/FilePickerDialog.svelte";
+  import { getAuthHeaders } from "$lib/utils/api.js";
 
   // Svelte 5 Runes
   let { open = $bindable(false) } = $props();
@@ -34,12 +35,6 @@
   let referenceFileName = $state(null);
   let referenceFileRowCount = $state(0);
   let referenceMatchMode = $state('stringIdOnly');
-
-  // Helper to get auth headers
-  function getAuthHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  }
 
   // Load file info if we have a reference file ID
   async function loadFileInfo(fileId) {
