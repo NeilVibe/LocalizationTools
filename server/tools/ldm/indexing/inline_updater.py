@@ -54,6 +54,8 @@ class InlineTMUpdater:
         self._line_lookup: Optional[Dict] = None
         self._whole_mapping: Optional[List] = None
         self._whole_embeddings: Optional[np.ndarray] = None
+        self._line_embeddings: Optional[np.ndarray] = None
+        self._line_mapping: Optional[List[Dict]] = None
         self._loaded = False
 
     def _ensure_loaded(self) -> None:
@@ -120,12 +122,28 @@ class InlineTMUpdater:
         else:
             self._whole_embeddings = None
 
+        # Load line embeddings and mapping (Tier 4)
+        line_embeddings_path = self.tm_path / "embeddings" / "line.npy"
+        line_mapping_path = self.tm_path / "embeddings" / "line_mapping.pkl"
+
+        if line_embeddings_path.exists():
+            self._line_embeddings = np.load(line_embeddings_path)
+        else:
+            self._line_embeddings = None
+
+        if line_mapping_path.exists():
+            with open(line_mapping_path, "rb") as f:
+                self._line_mapping = pickle.load(f)  # noqa: S301
+        else:
+            self._line_mapping = []
+
         self._loaded = True
         logger.debug(
             f"InlineTMUpdater loaded for tm_id={self.tm_id}: "
             f"index={self._ts_index.ntotal} vectors, "
             f"whole_lookup={len(self._whole_lookup)}, "
-            f"line_lookup={len(self._line_lookup)}"
+            f"line_lookup={len(self._line_lookup)}, "
+            f"line_mapping={len(self._line_mapping)}"
         )
 
     def add_entry(
@@ -162,6 +180,9 @@ class InlineTMUpdater:
 
         # Update line_lookup
         self._add_to_line_lookup(entry_id, source_text, target_text)
+
+        # Update line-level embeddings (Tier 4 FAISS)
+        self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
 
         # Update mapping and embeddings
         self._whole_mapping.append(entry_id)
@@ -212,6 +233,9 @@ class InlineTMUpdater:
             self._remove_from_whole_lookup(entry_id, old_source_text)
             self._remove_from_line_lookup(entry_id, old_source_text)
 
+        # Remove old line-level embeddings (Tier 4 FAISS)
+        self._remove_from_line_embeddings(entry_id)
+
         # Remove from mapping and embeddings
         self._remove_from_mapping(entry_id)
 
@@ -227,6 +251,7 @@ class InlineTMUpdater:
 
         self._add_to_whole_lookup(entry_id, source_text, target_text, string_id)
         self._add_to_line_lookup(entry_id, source_text, target_text)
+        self._add_to_line_embeddings(entry_id, source_text, target_text, string_id)
 
         self._whole_mapping.append(entry_id)
         if self._whole_embeddings is not None:
@@ -264,6 +289,9 @@ class InlineTMUpdater:
         # Remove from hash lookups
         self._remove_from_whole_lookup(entry_id, source_text)
         self._remove_from_line_lookup(entry_id, source_text)
+
+        # Remove line-level embeddings (Tier 4 FAISS)
+        self._remove_from_line_embeddings(entry_id)
 
         # Remove from mapping and embeddings
         self._remove_from_mapping(entry_id)
@@ -306,6 +334,9 @@ class InlineTMUpdater:
             )
             self._add_to_line_lookup(
                 entry["id"], entry["source_text"], entry["target_text"]
+            )
+            self._add_to_line_embeddings(
+                entry["id"], entry["source_text"], entry["target_text"], entry.get("string_id")
             )
 
         # Update mapping and embeddings
@@ -430,6 +461,75 @@ class InlineTMUpdater:
                 if self._line_lookup[normalized_line].get("entry_id") == entry_id:
                     del self._line_lookup[normalized_line]
 
+    def _add_to_line_embeddings(
+        self, entry_id: int, source_text: str, target_text: str, string_id: str = None
+    ) -> None:
+        """Add line-level embeddings for an entry (for Tier 4 FAISS search)."""
+        if not source_text:
+            return
+
+        target = target_text or ""
+        source_lines = source_text.split("\n")
+        target_lines = target.split("\n")
+
+        texts_to_encode = []
+        mappings_to_add = []
+
+        for i, line in enumerate(source_lines):
+            if not line.strip():
+                continue
+            normalized = normalize_for_embedding(line)
+            if not normalized or len(normalized) < 3:
+                continue
+
+            target_line = target_lines[i] if i < len(target_lines) else ""
+            texts_to_encode.append(normalized)
+            mappings_to_add.append({
+                "entry_id": entry_id,
+                "line_num": i,
+                "source_line": line,
+                "target_line": target_line,
+                "string_id": string_id,
+            })
+
+        if not texts_to_encode:
+            return
+
+        # Encode line embeddings
+        line_embs = self._engine.encode(texts_to_encode, normalize=True)
+        line_embs = np.ascontiguousarray(line_embs, dtype=np.float32)
+
+        # Append to line_embeddings array
+        if self._line_embeddings is not None and len(self._line_embeddings) > 0:
+            self._line_embeddings = np.vstack([self._line_embeddings, line_embs])
+        else:
+            self._line_embeddings = line_embs.copy()
+
+        # Append to line_mapping list
+        self._line_mapping.extend(mappings_to_add)
+
+    def _remove_from_line_embeddings(self, entry_id: int) -> None:
+        """Remove all line-level embeddings for an entry (for Tier 4 FAISS search)."""
+        if not self._line_mapping:
+            return
+
+        # Find indices to keep (those NOT belonging to this entry_id)
+        keep_indices = [
+            i for i, m in enumerate(self._line_mapping) if m["entry_id"] != entry_id
+        ]
+
+        if len(keep_indices) == len(self._line_mapping):
+            return  # Nothing to remove
+
+        # Filter mapping
+        self._line_mapping = [self._line_mapping[i] for i in keep_indices]
+
+        # Filter embeddings
+        if self._line_embeddings is not None and len(keep_indices) > 0:
+            self._line_embeddings = self._line_embeddings[keep_indices]
+        else:
+            self._line_embeddings = None
+
     def _remove_from_mapping(self, entry_id: int) -> None:
         """Remove entry from whole_mapping and whole_embeddings."""
         if entry_id not in self._whole_mapping:
@@ -467,6 +567,29 @@ class InlineTMUpdater:
         # Save embeddings
         if self._whole_embeddings is not None:
             np.save(self.tm_path / "embeddings" / "whole.npy", self._whole_embeddings)
+
+        # Save line-level embeddings and mapping (Tier 4)
+        if self._line_embeddings is not None and len(self._line_embeddings) > 0:
+            np.save(self.tm_path / "embeddings" / "line.npy", self._line_embeddings)
+
+            # Rebuild line.index from line_embeddings (positional index for searcher compatibility)
+            FAISSManager.build_index(
+                self._line_embeddings,
+                path=self.tm_path / "faiss" / "line.index",
+                normalize=True,
+            )
+        else:
+            # Remove stale line files if no line embeddings remain
+            line_index_path = self.tm_path / "faiss" / "line.index"
+            line_npy_path = self.tm_path / "embeddings" / "line.npy"
+            if line_index_path.exists():
+                line_index_path.unlink()
+            if line_npy_path.exists():
+                line_npy_path.unlink()
+
+        # Save line_mapping (always -- even if empty, so searcher doesn't use stale data)
+        with open(self.tm_path / "embeddings" / "line_mapping.pkl", "wb") as f:
+            pickle.dump(self._line_mapping, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 # Module-level cache for updater instances
