@@ -85,3 +85,19 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 | 62. TM Auto-Update Pipeline | v7.0 | 3/3 | Complete    | 2026-03-23 |
 | 63. Performance Instrumentation | v7.0 | 2/2 | Complete    | 2026-03-23 |
 | 64. UIUX Quality Audit | v7.0 | 1/2 | Complete    | 2026-03-23 |
+
+### Phase 73: Regex Tag Visualizer
+**Goal**: Translators see inline tag pills (like MemoQ) instead of raw code patterns -- `{0}` shows as `[0]` blue pill, `%1#` as `[Param1]` purple pill, `\n` as `[\n]` grey pill
+**Depends on**: Nothing (independent, frontend-only)
+**Requirements**: TAG-01, TAG-02, TAG-03
+**Success Criteria**:
+  1. `tagDetector.js` detects all 5 tag types using exact regexes from tmx_tools.py postprocessor
+  2. `TagText.svelte` renders detected tags as colored inline pills (non-editable badges)
+  3. VirtualGrid source/target cells show tag pills in display mode
+  4. Tags are preserved exactly when editing (pills disappear in edit mode, raw text shown)
+  5. All existing tag types work: `{0}`, `{Name}`, `%1#`, `\n`, `\t`, `{StaticInfo:...}`, `&desc;`
+**Plans:** 2 plans
+
+Plans:
+- [ ] 73-01-PLAN.md -- Create tagDetector.js (5 regex patterns) + TagText.svelte (pill renderer) + Node.js tests
+- [ ] 73-02-PLAN.md -- Wire TagText into VirtualGrid source/target/reference cells + visual verification
