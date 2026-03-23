@@ -34,11 +34,15 @@ Plans:
 **Depends on**: Phase 74
 **Requirements**: BUILD-01, BUILD-02, BUILD-03, BUILD-04
 **Success Criteria** (what must be TRUE):
-  1. PyInstaller spec includes all 14 server/services/merge/ files as hidden imports
+  1. Embedded Python bundle includes lxml (required by merge module XML operations)
   2. Built app executes merge workflow (match + postprocess) without errors or missing modules
   3. GitHub Actions Light Build completes and uploads installer artifact to release
   4. Downloaded .exe installer installs and launches the app on an offline Windows PC
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 75-01-PLAN.md — Add lxml to embedded Python deps + merge module import verification step
+- [ ] 75-02-PLAN.md — Trigger Light Build + verify installer on offline Windows PC
 
 ### Phase 76: Language Data E2E
 **Goal**: Users can upload, edit, and save language data in the built app with full media resolution, all working offline
@@ -82,7 +86,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
-| 75. Build Pipeline | 0/TBD | Not started | - |
+| 75. Build Pipeline | 0/2 | Not started | - |
 | 76. Language Data E2E | 0/TBD | Not started | - |
 | 78. Feature Pipeline Verification | 0/TBD | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |
