@@ -56,27 +56,27 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | TBD | Pending |
-| BUILD-02 | TBD | Pending |
-| BUILD-03 | TBD | Pending |
-| BUILD-04 | TBD | Pending |
-| MOCK-09 | TBD | Pending |
-| MOCK-10 | TBD | Pending |
-| MOCK-11 | TBD | Pending |
-| MOCK-12 | TBD | Pending |
-| LDE2E-01 | TBD | Pending |
-| LDE2E-02 | TBD | Pending |
-| LDE2E-03 | TBD | Pending |
-| LDE2E-04 | TBD | Pending |
-| UIUX-01 | TBD | Pending |
-| UIUX-02 | TBD | Pending |
-| UIUX-03 | TBD | Pending |
+| BUILD-01 | Phase 75 | Pending |
+| BUILD-02 | Phase 75 | Pending |
+| BUILD-03 | Phase 75 | Pending |
+| BUILD-04 | Phase 75 | Pending |
+| MOCK-09 | Phase 74 | Pending |
+| MOCK-10 | Phase 74 | Pending |
+| MOCK-11 | Phase 74 | Pending |
+| MOCK-12 | Phase 74 | Pending |
+| LDE2E-01 | Phase 76 | Pending |
+| LDE2E-02 | Phase 76 | Pending |
+| LDE2E-03 | Phase 76 | Pending |
+| LDE2E-04 | Phase 76 | Pending |
+| UIUX-01 | Phase 77 | Pending |
+| UIUX-02 | Phase 77 | Pending |
+| UIUX-03 | Phase 77 | Pending |
 
 **Coverage:**
 - v9.0 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 (pending roadmap)
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after initial definition*
+*Last updated: 2026-03-24 after roadmap creation*
