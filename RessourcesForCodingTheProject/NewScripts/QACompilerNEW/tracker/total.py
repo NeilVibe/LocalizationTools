@@ -266,7 +266,7 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
             raw_total_rows = data_ws.cell(row, 4).value or 0
             raw_done = data_ws.cell(row, 5).value or 0
             # Script types: ignore pending (total_rows = done)
-            if category in ("Sequencer", "Dialog", "Face") and raw_total_rows > raw_done:
+            if str(category).lower() in ("sequencer", "dialog", "face") and raw_total_rows > raw_done:
                 raw_total_rows = raw_done
             latest_data[key] = {
                 "date": date,
