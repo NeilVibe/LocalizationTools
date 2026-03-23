@@ -320,6 +320,11 @@ def read_daily_data(wb: openpyxl.Workbook) -> Dict:
         korean = ws.cell(row, 14).value or 0
 
         if date and user:
+            # Script types (Sequencer, Dialog, Face): ignore pending.
+            # Force total_rows = done so pending (total - done) = 0.
+            if category in ("Sequencer", "Dialog", "Face") and total_rows > done:
+                total_rows = done
+
             # Store per-category data
             raw_data[date][user][category]["total_rows"] = total_rows
             raw_data[date][user][category]["done"] = done
