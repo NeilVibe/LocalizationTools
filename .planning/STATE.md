@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 62-02-PLAN.md
-last_updated: "2026-03-23T05:28:39.203Z"
+stopped_at: Completed 62-03-PLAN.md
+last_updated: "2026-03-23T05:40:14.624Z"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -46,6 +46,7 @@ Plan: 2 of 2
 | Phase 61 P02 | 4min | 2 tasks | 3 files |
 | Phase 62 P01 | 5min | 2 tasks | 3 files |
 | Phase 62 P02 | 4min | 2 tasks | 2 files |
+| Phase 62 P03 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Recent decisions affecting current work:
 - [Phase 62]: Used IndexFlatIP instead of IndexHNSWFlat as IDMap2 sub-index because HNSW lacks remove_ids
 - [Phase 62]: Added _get_entry_by_id helper for pre-modification data capture rather than skipping old_source_text
 - [Phase 62]: TMSearcher consistency is automatic -- per-request disk load, no cache invalidation needed
+- [Phase 62]: Rebuild line.index from line_embeddings on each _persist() via FAISSManager.build_index() for positional consistency
 
 ### Key v6.0 Decisions (carry forward)
 
@@ -99,7 +101,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-23T05:28:39.201Z
-Stopped at: Completed 62-02-PLAN.md
+Last session: 2026-03-23T05:40:14.622Z
+Stopped at: Completed 62-03-PLAN.md
 Resume file: None
 Next action: /gsd:plan-phase 61
