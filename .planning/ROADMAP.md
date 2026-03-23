@@ -22,7 +22,11 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
   2. PerforcePathService resolves mock DDS image paths and returns valid PNG thumbnails
   3. PerforcePathService resolves mock WEM audio paths and returns playable audio
   4. Mock .loc.xml files contain realistic multi-language content (EN/KR/JP minimum) with br-tags and entity references
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 74-01-PLAN.md — Valid DDS textures + WAV-content WEM audio + Korean/Chinese audio folders
+- [ ] 74-02-PLAN.md — Japanese language data XML + comprehensive verification tests
 
 ### Phase 75: Build Pipeline
 **Goal**: GitHub Actions Light Build produces a downloadable installer that includes the internalized merge module and runs offline
@@ -62,7 +66,7 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 74. Mock Data Foundation | 0/TBD | Not started | - |
+| 74. Mock Data Foundation | 0/2 | Planned | - |
 | 75. Build Pipeline | 0/TBD | Not started | - |
 | 76. Language Data E2E | 0/TBD | Not started | - |
 | 77. Visual Audit | 0/TBD | Not started | - |
