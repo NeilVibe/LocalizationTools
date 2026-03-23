@@ -7,9 +7,9 @@
 
 ### Merge Architecture
 
-- [ ] **MARCH-01**: Merge logic runs without sys.path injection or importlib hacks -- fully internalized, PyInstaller-safe
-- [ ] **MARCH-02**: All 3 match types (stringid_only, strict, strorigin_filename) work with internalized module
-- [ ] **MARCH-03**: Postprocess 8-step pipeline runs from internalized module
+- [x] **MARCH-01**: Merge logic runs without sys.path injection or importlib hacks -- fully internalized, PyInstaller-safe
+- [x] **MARCH-02**: All 3 match types (stringid_only, strict, strorigin_filename) work with internalized module
+- [x] **MARCH-03**: Postprocess 8-step pipeline runs from internalized module
 - [ ] **MARCH-04**: SSE execute endpoint streams events correctly with internalized module
 
 ### Performance Monitoring
@@ -60,9 +60,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MARCH-01 | Phase 61 | Pending |
-| MARCH-02 | Phase 61 | Pending |
-| MARCH-03 | Phase 61 | Pending |
+| MARCH-01 | Phase 61 | Complete |
+| MARCH-02 | Phase 61 | Complete |
+| MARCH-03 | Phase 61 | Complete |
 | MARCH-04 | Phase 61 | Pending |
 | PERF-01 | Phase 63 | Pending |
 | PERF-02 | Phase 63 | Pending |

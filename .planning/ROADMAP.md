@@ -22,10 +22,10 @@ Make the merge pipeline production-ready by internalizing QuickTranslate logic (
   2. All 3 match types (stringid_only, strict, strorigin_filename) produce identical merge output to the v6.0 sys.path adapter when run against the same test data
   3. The 8-step postprocess pipeline runs from the internalized module and produces output identical to QuickTranslate standalone
   4. SSE merge execution endpoint streams progress events correctly using the internalized module (no regressions from v6.0)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 61-01-PLAN.md -- Create server/services/merge/ package with 14 QT modules + internal config
+- [x] 61-01-PLAN.md -- Create server/services/merge/ package with 14 QT modules + internal config
 - [ ] 61-02-PLAN.md -- Rewire transfer_adapter.py, remove old hacks, integration tests
 
 ### Phase 62: TM Auto-Update Pipeline
@@ -67,7 +67,7 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 61. Merge Internalization | v7.0 | 0/2 | Planned | - |
+| 61. Merge Internalization | v7.0 | 1/2 | In Progress|  |
 | 62. TM Auto-Update Pipeline | v7.0 | 0/0 | Not started | - |
 | 63. Performance Instrumentation | v7.0 | 0/0 | Not started | - |
 | 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
