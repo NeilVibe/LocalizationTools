@@ -19,7 +19,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 - [x] **MOCK-09**: Mock gamedata structure mirrors real Perforce paths exactly (F:\perforce\cd\mainline\...)
 - [x] **MOCK-10**: Mock DDS textures resolvable via PerforcePathService with correct drive/branch substitution
 - [x] **MOCK-11**: Mock WEM audio files present at expected audio folder paths per language
-- [ ] **MOCK-12**: Mock language data XML files (.loc.xml) with realistic content at loc folder paths
+- [x] **MOCK-12**: Mock language data XML files (.loc.xml) with realistic content at loc folder paths
 
 ### Language Data E2E
 
@@ -63,7 +63,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | MOCK-09 | Phase 74 | Complete |
 | MOCK-10 | Phase 74 | Complete |
 | MOCK-11 | Phase 74 | Complete |
-| MOCK-12 | Phase 74 | Pending |
+| MOCK-12 | Phase 74 | Complete |
 | LDE2E-01 | Phase 76 | Pending |
 | LDE2E-02 | Phase 76 | Pending |
 | LDE2E-03 | Phase 76 | Pending |

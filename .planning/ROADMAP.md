@@ -6,7 +6,7 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
 
 ## Phases
 
-- [ ] **Phase 74: Mock Data Foundation** - Perforce-path mock gamedata (DDS/WEM/XML) loadable by PerforcePathService
+- [x] **Phase 74: Mock Data Foundation** - Perforce-path mock gamedata (DDS/WEM/XML) loadable by PerforcePathService (completed 2026-03-23)
 - [ ] **Phase 75: Build Pipeline** - Light Build produces working installer with internalized merge module
 - [ ] **Phase 76: Language Data E2E** - Upload, edit, save, media resolution in built app (offline)
 - [ ] **Phase 77: Visual Audit** - Qwen3-VL review of all 5 pages, fix critical issues, screenshot evidence
@@ -22,11 +22,11 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
   2. PerforcePathService resolves mock DDS image paths and returns valid PNG thumbnails
   3. PerforcePathService resolves mock WEM audio paths and returns playable audio
   4. Mock .loc.xml files contain realistic multi-language content (EN/KR/JP minimum) with br-tags and entity references
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 74-01-PLAN.md — Valid DDS textures + WAV-content WEM audio + Korean/Chinese audio folders
-- [ ] 74-02-PLAN.md — Japanese language data XML + comprehensive verification tests
+- [x] 74-02-PLAN.md — Japanese language data XML + comprehensive verification tests
 
 ### Phase 75: Build Pipeline
 **Goal**: GitHub Actions Light Build produces a downloadable installer that includes the internalized merge module and runs offline
@@ -66,7 +66,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 74. Mock Data Foundation | 1/2 | In Progress|  |
+| 74. Mock Data Foundation | 2/2 | Complete   | 2026-03-23 |
 | 75. Build Pipeline | 0/TBD | Not started | - |
 | 76. Language Data E2E | 0/TBD | Not started | - |
 | 77. Visual Audit | 0/TBD | Not started | - |
