@@ -37,7 +37,6 @@ from generators.base import (
     parse_xml_file,
     load_language_tables,
     normalize_placeholders,
-    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -96,6 +95,15 @@ class SkillEntry:
     knowledge_source_file: str      # Knowledge XML filename
     knowledge2_source_file: str = ""  # Pass 2 source file
     child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
+
+
+@dataclass
+class WeaponVariant:
+    """A weapon-specific Description override within KnowledgeInfo."""
+    weapon_key: str     # UILocalStringKey suffix (e.g., "Spear", "TwoHandSword", "DualWeapon", "Fist")
+    name_kor: str       # Override Name (empty = same as parent, skip)
+    desc_kor: str       # Override Desc (empty = same as parent, skip)
+    source_file: str    # Knowledge XML filename
 
 
 @dataclass
@@ -360,6 +368,93 @@ def build_skill_by_knowledge_map(
 
 
 # =============================================================================
+# WEAPON VARIANT EXTRACTION
+# =============================================================================
+
+_WEAPON_KEY_RE = re.compile(r'UI_Knowledge_Description_(\w+)$')
+
+
+def build_weapon_variants_map(
+    knowledge_folder: Path,
+) -> Dict[str, List[WeaponVariant]]:
+    """Build map: KnowledgeInfo StrKey → list of weapon-specific Description overrides.
+
+    Scans all KnowledgeInfo elements for <Description> children inside <LevelData>.
+    Only includes variants where Name or Desc is present (i.e., the weapon has
+    a DIFFERENT description from the parent KnowledgeInfo).
+
+    Returns:
+        {knowledge_strkey.lower(): [WeaponVariant, ...]}
+    """
+    from generators.base import iter_xml_files
+
+    log.info("Building weapon variants map...")
+
+    variants_map: Dict[str, List[WeaponVariant]] = {}
+    total_variants = 0
+    total_skipped = 0
+
+    if not knowledge_folder.exists():
+        log.warning("Knowledge folder does not exist: %s", knowledge_folder)
+        return {}
+
+    for path in sorted(iter_xml_files(knowledge_folder)):
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+
+        for ki in root.iter("KnowledgeInfo"):
+            strkey = ki.get("StrKey") or ""
+            if not strkey:
+                continue
+            sk_lower = strkey.lower()
+
+            # Scan LevelData → Description children
+            variants: List[WeaponVariant] = []
+            for level_data in ki.findall("LevelData"):
+                for desc_el in level_data.findall("Description"):
+                    ui_key = desc_el.get("UILocalStringKey") or ""
+                    name = desc_el.get("Name") or ""
+                    desc = desc_el.get("Desc") or ""
+
+                    # Only include if there's an actual override
+                    if not name and not desc:
+                        total_skipped += 1
+                        continue
+
+                    # Extract weapon type from UILocalStringKey
+                    weapon_type = ""
+                    m = _WEAPON_KEY_RE.search(ui_key)
+                    if m:
+                        weapon_type = m.group(1)
+                    else:
+                        weapon_type = ui_key  # fallback: use full key
+
+                    # Collect Korean strings for coverage tracking
+                    _collect_korean_string(name)
+                    _collect_korean_string(desc)
+
+                    variants.append(WeaponVariant(
+                        weapon_key=weapon_type,
+                        name_kor=name,
+                        desc_kor=desc,
+                        source_file=path.name,
+                    ))
+                    total_variants += 1
+
+            if variants:
+                # Append to existing (a KnowledgeInfo may span multiple files)
+                if sk_lower in variants_map:
+                    variants_map[sk_lower].extend(variants)
+                else:
+                    variants_map[sk_lower] = variants
+
+    log.info("  Weapon variants: %d knowledge entries with %d total variants (%d skipped, no override)",
+             len(variants_map), total_variants, total_skipped)
+    return variants_map
+
+
+# =============================================================================
 # SKILLTREEINFO PARSING (with UIPosition)
 # =============================================================================
 
@@ -468,16 +563,21 @@ def _write_skill_rows(
     skill_lookup: Optional[Dict[str, 'SkillEntry']] = None,
     _visited: Optional[Set[str]] = None,
     depth: int = 0,
+    weapon_variants_map: Optional[Dict[str, List[WeaponVariant]]] = None,
 ) -> int:
-    """Write 1-6 rows for a single skill, then nest sub-skills. Returns next excel_row.
+    """Write 1-6 rows for a single skill, then weapon variants, then sub-skills. Returns next excel_row.
 
     Sub-skill nesting: After writing the parent's rows, check its LearnKnowledgeKey
     for child KnowledgeInfo elements. If a child has a corresponding SkillInfo,
     write it recursively as a sub-skill. If not, write SubKnowledgeData rows.
 
+    Weapon variants: After KnowledgeData rows, output weapon-specific Description
+    overrides at depth+1 (only when Name or Desc differs from parent).
+
     Args:
         depth: Nesting depth (0 = top-level, 1+ = nested sub-skill).
                Controls visual indentation and DataType prefix.
+        weapon_variants_map: {knowledge_strkey.lower(): [WeaponVariant, ...]}
     """
     if _visited is None:
         _visited = set()
@@ -495,7 +595,7 @@ def _write_skill_rows(
 
     def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> int:
         nonlocal excel_row
-        vals = [data_type, group_info, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
+        vals = [data_type, group_info, kor_text, trans, "", "", "", sid]
         for ci, val in enumerate(vals, 1):
             cell = ws.cell(excel_row, ci, val)
             cell.fill = row_fill
@@ -549,6 +649,55 @@ def _write_skill_rows(
         t, s, so = pre.get((sk_lower, "knowledge2_desc"), ("", "", ""))
         excel_row = _write_row(f"{prefix}KnowledgeData2", so if so else entry.knowledge2_desc_kor, t, s)
 
+    # 7. Weapon variants — Description overrides per weapon type (depth+1)
+    if weapon_variants_map and entry.learn_knowledge_key:
+        lkk_variants = entry.learn_knowledge_key.lower()
+        variants = weapon_variants_map.get(lkk_variants, [])
+        if variants:
+            weapon_fill = _fill_sub  # lavender for weapon variants
+            weapon_depth = depth + 1
+            for wv in variants:
+                if wv.name_kor:
+                    t_wv, s_wv, so_wv = pre.get((lkk_variants, f"wv_{wv.weapon_key}_name"), ("", "", ""))
+                    wv_vals = [f"{prefix}WeaponVariant [{wv.weapon_key}]", group_info,
+                               so_wv if so_wv else wv.name_kor, t_wv, "", "", "", s_wv]
+                    for ci, val in enumerate(wv_vals, 1):
+                        cell = ws.cell(excel_row, ci, val)
+                        cell.fill = weapon_fill
+                        cell.border = THIN_BORDER
+                        if ci in (3, 4):
+                            cell.alignment = Alignment(
+                                indent=weapon_depth, horizontal="left",
+                                vertical="top", wrap_text=True)
+                        elif ci == 5:
+                            cell.alignment = Alignment(
+                                horizontal="center", vertical="center")
+                        else:
+                            cell.alignment = Alignment(
+                                horizontal="left", vertical="top", wrap_text=True)
+                    ws.cell(excel_row, 8).number_format = '@'
+                    excel_row += 1
+                if wv.desc_kor:
+                    t_wv, s_wv, so_wv = pre.get((lkk_variants, f"wv_{wv.weapon_key}_desc"), ("", "", ""))
+                    wv_vals = [f"{prefix}WeaponVariant [{wv.weapon_key}]", group_info,
+                               so_wv if so_wv else wv.desc_kor, t_wv, "", "", "", s_wv]
+                    for ci, val in enumerate(wv_vals, 1):
+                        cell = ws.cell(excel_row, ci, val)
+                        cell.fill = weapon_fill
+                        cell.border = THIN_BORDER
+                        if ci in (3, 4):
+                            cell.alignment = Alignment(
+                                indent=weapon_depth, horizontal="left",
+                                vertical="top", wrap_text=True)
+                        elif ci == 5:
+                            cell.alignment = Alignment(
+                                horizontal="center", vertical="center")
+                        else:
+                            cell.alignment = Alignment(
+                                horizontal="left", vertical="top", wrap_text=True)
+                    ws.cell(excel_row, 8).number_format = '@'
+                    excel_row += 1
+
     # --- Sub-skill nesting via LearnKnowledgeKey ---
     # Always show knowledge children under their parent. No dedup — if a skill
     # appears in multiple trees, its children show under each occurrence.
@@ -573,17 +722,25 @@ def _write_skill_rows(
                 excel_row = _write_skill_rows(
                     ws, excel_row, sub_entry, current_fill, pre, group_info,
                     knowledge_children_map, skill_by_knowledge, skill_lookup,
-                    _visited, depth + 1,
+                    _visited, depth + 1, weapon_variants_map,
                 )
             else:
                 # Knowledge-only child (no SkillInfo) — write SubKnowledgeData rows
                 log.info("    → knowledge-only: %s (%s)", child.strkey, child.name_kor)
                 child_fill = _fill_sub
                 child_depth = depth + 1
+
+                # Weapon variants for knowledge-only children
+                child_sk_lower = child.strkey.lower()
+                if weapon_variants_map:
+                    child_variants = weapon_variants_map.get(child_sk_lower, [])
+                else:
+                    child_variants = []
+
                 if child.name_kor:
                     t_name, s_name, _so_name = pre.get((child_sk, "kchild_name"), ("", "", ""))
                     _vals = ["SubKnowledgeData", group_info,
-                             br_to_newline(child.name_kor), br_to_newline(t_name),
+                             child.name_kor, t_name,
                              "", "", "", s_name]
                     for ci, val in enumerate(_vals, 1):
                         cell = ws.cell(excel_row, ci, val)
@@ -604,7 +761,7 @@ def _write_skill_rows(
                 if child.desc_kor:
                     t_desc, s_desc, _so_desc = pre.get((child_sk, "kchild_desc"), ("", "", ""))
                     _vals = ["SubKnowledgeData", group_info,
-                             br_to_newline(child.desc_kor), br_to_newline(t_desc),
+                             child.desc_kor, t_desc,
                              "", "", "", s_desc]
                     for ci, val in enumerate(_vals, 1):
                         cell = ws.cell(excel_row, ci, val)
@@ -623,12 +780,57 @@ def _write_skill_rows(
                     ws.cell(excel_row, 8).number_format = '@'
                     excel_row += 1
 
+                # Weapon variants for knowledge-only children (depth+1 from child)
+                if child_variants:
+                    wv_depth = child_depth + 1
+                    for wv in child_variants:
+                        if wv.name_kor:
+                            t_wv, s_wv, so_wv = pre.get((child_sk_lower, f"wv_{wv.weapon_key}_name"), ("", "", ""))
+                            wv_vals = ["SubWeaponVariant [{}]".format(wv.weapon_key), group_info,
+                                       so_wv if so_wv else wv.name_kor, t_wv, "", "", "", s_wv]
+                            for ci, val in enumerate(wv_vals, 1):
+                                cell = ws.cell(excel_row, ci, val)
+                                cell.fill = _fill_sub
+                                cell.border = THIN_BORDER
+                                if ci in (3, 4):
+                                    cell.alignment = Alignment(
+                                        indent=wv_depth, horizontal="left",
+                                        vertical="top", wrap_text=True)
+                                elif ci == 5:
+                                    cell.alignment = Alignment(
+                                        horizontal="center", vertical="center")
+                                else:
+                                    cell.alignment = Alignment(
+                                        horizontal="left", vertical="top", wrap_text=True)
+                            ws.cell(excel_row, 8).number_format = '@'
+                            excel_row += 1
+                        if wv.desc_kor:
+                            t_wv, s_wv, so_wv = pre.get((child_sk_lower, f"wv_{wv.weapon_key}_desc"), ("", "", ""))
+                            wv_vals = ["SubWeaponVariant [{}]".format(wv.weapon_key), group_info,
+                                       so_wv if so_wv else wv.desc_kor, t_wv, "", "", "", s_wv]
+                            for ci, val in enumerate(wv_vals, 1):
+                                cell = ws.cell(excel_row, ci, val)
+                                cell.fill = _fill_sub
+                                cell.border = THIN_BORDER
+                                if ci in (3, 4):
+                                    cell.alignment = Alignment(
+                                        indent=wv_depth, horizontal="left",
+                                        vertical="top", wrap_text=True)
+                                elif ci == 5:
+                                    cell.alignment = Alignment(
+                                        horizontal="center", vertical="center")
+                                else:
+                                    cell.alignment = Alignment(
+                                        horizontal="left", vertical="top", wrap_text=True)
+                            ws.cell(excel_row, 8).number_format = '@'
+                            excel_row += 1
+
     return excel_row
 
 
 def _write_header_row(ws, excel_row: int, data_type: str, group_info: str, kor_text: str) -> int:
     """Write a gold header row. Returns next excel_row."""
-    vals = [data_type, group_info, br_to_newline(kor_text), "", "", "", "", ""]
+    vals = [data_type, group_info, kor_text, "", "", "", "", ""]
     for ci, val in enumerate(vals, 1):
         cell = ws.cell(excel_row, ci, val)
         cell.fill = _gold_fill
@@ -646,6 +848,7 @@ def write_skill_excel(
     export_index: Dict[str, Set[str]],
     output_path: Path,
     knowledge_children_map: Optional[Dict[str, List[KnowledgeChild]]] = None,
+    weapon_variants_map: Optional[Dict[str, List[WeaponVariant]]] = None,
 ) -> None:
     """Write Skill Excel with single "Skills" sheet, UIPositionXY ordered.
 
@@ -688,6 +891,8 @@ def write_skill_excel(
     # ------------------------------------------------------------------
     pre: Dict[Tuple[str, str], Tuple[str, str, str]] = {}  # (sk, field) -> (trans, sid, str_origin)
     seen_kchildren: Set[str] = set()
+    seen_wv_keys: Set[str] = set()  # Dedup weapon variant pre-resolve by knowledge key
+    wvm = weapon_variants_map or {}
 
     for sk, entry in skill_lookup.items():
         pre[(sk, "skill_name")] = resolve_translation(
@@ -715,6 +920,19 @@ def write_skill_excel(
             pre[(sk, "knowledge2_desc")] = resolve_translation(
                 entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
 
+        # Pre-resolve weapon variants for this skill's knowledge (dedup by knowledge key)
+        if entry.learn_knowledge_key:
+            lkk_lower = entry.learn_knowledge_key.lower()
+            if lkk_lower not in seen_wv_keys:
+                seen_wv_keys.add(lkk_lower)
+                for wv in wvm.get(lkk_lower, []):
+                    if wv.name_kor:
+                        pre[(lkk_lower, f"wv_{wv.weapon_key}_name")] = resolve_translation(
+                            wv.name_kor, lang_tbl, wv.source_file, export_index, consumer=consumer)
+                    if wv.desc_kor:
+                        pre[(lkk_lower, f"wv_{wv.weapon_key}_desc")] = resolve_translation(
+                            wv.desc_kor, lang_tbl, wv.source_file, export_index, consumer=consumer)
+
     # Pre-resolve knowledge-only children (no SkillInfo counterpart)
     for parent_key, children in kcm.items():
         for child in children:
@@ -735,6 +953,15 @@ def write_skill_excel(
                 pre[(child_sk, "kchild_desc")] = resolve_translation(
                     child.desc_kor, lang_tbl, child.source_file, export_index, consumer=consumer)
                 _collect_korean_string(child.desc_kor)
+
+            # Pre-resolve weapon variants for knowledge-only children
+            for wv in wvm.get(child_sk, []):
+                if wv.name_kor:
+                    pre[(child_sk, f"wv_{wv.weapon_key}_name")] = resolve_translation(
+                        wv.name_kor, lang_tbl, wv.source_file, export_index, consumer=consumer)
+                if wv.desc_kor:
+                    pre[(child_sk, f"wv_{wv.weapon_key}_desc")] = resolve_translation(
+                        wv.desc_kor, lang_tbl, wv.source_file, export_index, consumer=consumer)
 
     if consumer.warnings:
         log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
@@ -803,7 +1030,7 @@ def write_skill_excel(
             excel_row = _write_skill_rows(
                 ws, excel_row, entry, current_fill, pre, group_info,
                 kcm, skill_by_knowledge, skill_lookup,
-                None, 0,
+                None, 0, weapon_variants_map,
             )
             written_skills.add(sk_lower)
 
@@ -825,6 +1052,7 @@ def write_skill_excel(
             excel_row = _write_skill_rows(
                 ws, excel_row, entry, current_fill, pre, "Other Skills",
                 kcm, skill_by_knowledge, skill_lookup,
+                None, 0, weapon_variants_map,
             )
 
     _finalize_sheet(ws, excel_row)
@@ -903,6 +1131,9 @@ def generate_skill_datasheets() -> Dict:
         # 3. Build knowledge children map (for sub-skill nesting)
         knowledge_children_map = build_knowledge_children_map(knowledge_folder)
 
+        # 3b. Build weapon variants map (per-weapon Description overrides)
+        weapon_variants_map = build_weapon_variants_map(knowledge_folder)
+
         # 4. Parse skillinfo_pc -> skill_lookup
         skill_lookup = scan_skills_with_knowledge(
             skill_file, knowledge_map, knowledge_name_index)
@@ -911,6 +1142,14 @@ def generate_skill_datasheets() -> Dict:
             result["errors"].append("No skill data found!")
             log.warning("No skill data found!")
             return result
+
+        # 4b. Diagnostic: weapon variant match rate
+        if weapon_variants_map:
+            matched = sum(1 for sk in skill_lookup.values()
+                          if sk.learn_knowledge_key and sk.learn_knowledge_key.lower() in weapon_variants_map)
+            skills_with_lkk = sum(1 for sk in skill_lookup.values() if sk.learn_knowledge_key)
+            log.info("  Weapon variants matched to skills: %d / %d (with LearnKnowledgeKey)",
+                     matched, skills_with_lkk)
 
         # 5. Parse SkillTreeInfo -> skill_trees (with UIPosition)
         skill_trees: List[SkillTreeEntry] = []
@@ -933,6 +1172,7 @@ def generate_skill_datasheets() -> Dict:
                 skill_lookup, skill_trees,
                 tbl, code, export_index, excel_path,
                 knowledge_children_map,
+                weapon_variants_map,
             )
             result["files_created"] += 1
 

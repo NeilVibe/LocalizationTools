@@ -27,7 +27,6 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
-    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     get_first_translation,
