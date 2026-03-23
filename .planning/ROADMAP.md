@@ -96,8 +96,8 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
   3. VirtualGrid source/target cells show tag pills in display mode
   4. Tags are preserved exactly when editing (pills disappear in edit mode, raw text shown)
   5. All existing tag types work: `{0}`, `{Name}`, `%1#`, `\n`, `\t`, `{StaticInfo:...}`, `&desc;`
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 73-01-PLAN.md -- Create tagDetector.js (5 regex patterns) + TagText.svelte (pill renderer) + Node.js tests
+- [x] 73-01-PLAN.md -- Create tagDetector.js (5 regex patterns) + TagText.svelte (pill renderer) + Node.js tests
 - [ ] 73-02-PLAN.md -- Wire TagText into VirtualGrid source/target/reference cells + visual verification
