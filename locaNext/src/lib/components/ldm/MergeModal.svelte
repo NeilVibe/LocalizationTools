@@ -74,6 +74,7 @@
   let progressMessages = $state([]);
   let executing = $state(false);
   let progressPercent = $state(0);
+  let abortController = $state(null);
 
   // Done state
   let mergeResult = $state(null);
@@ -102,6 +103,10 @@
     previewResult?.errors?.length > 0
   );
 
+  let hasZeroMatches = $derived(
+    previewResult && (previewResult.total_matched ?? 0) === 0
+  );
+
   // ---------------------------------------------------------------------------
   // Reset on open
   // ---------------------------------------------------------------------------
@@ -118,6 +123,7 @@
       executing = false;
       progressPercent = 0;
       mergeResult = null;
+      abortController = null;
 
       // Auto-fill paths from project settings
       if (projectId) {
@@ -194,6 +200,8 @@
     const filesExpected = previewResult?.files_processed || 1;
     let filesProcessed = 0;
 
+    abortController = new AbortController();
+
     try {
       const API_BASE = getApiBase();
       const response = await fetch(`${API_BASE}/api/merge/execute`, {
@@ -202,7 +210,8 @@
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        body: JSON.stringify(buildRequestBody())
+        body: JSON.stringify(buildRequestBody()),
+        signal: abortController.signal
       });
 
       if (!response.ok) {
@@ -251,10 +260,24 @@
         }
       }
     } catch (err) {
-      progressMessages = [...progressMessages, `[Error] Connection lost: ${err.message}`];
+      if (err.name === 'AbortError') {
+        progressMessages = [...progressMessages, '[CANCELLED] Merge cancelled by user'];
+      } else {
+        progressMessages = [...progressMessages, `[Error] Connection lost: ${err.message}`];
+      }
     } finally {
       executing = false;
+      abortController = null;
     }
+  }
+
+  function cancelMerge() {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    progressMessages = [...progressMessages, '[CANCELLED] Merge cancelled by user'];
+    executing = false;
   }
 
   function handleSSEEvent(eventType, data) {
@@ -446,6 +469,10 @@
             hideCloseButton
             lowContrast
           />
+          <div class="modal-actions">
+            <Button kind="secondary" onclick={goBackToConfigure}>Back</Button>
+            <Button kind="tertiary" onclick={runPreview}>Retry Preview</Button>
+          </div>
         {:else if previewResult}
           <!-- Summary table -->
           <div class="preview-summary">
@@ -556,21 +583,32 @@
               {/each}
             </div>
           {/if}
-        {/if}
 
-        <!-- Actions -->
-        <div class="modal-actions">
-          <Button kind="secondary" onclick={goBackToConfigure}>
-            Back
-          </Button>
-          <Button
-            kind="danger"
-            disabled={previewLoading || hasPreviewErrors || !previewResult}
-            onclick={executeMerge}
-          >
-            Execute Merge
-          </Button>
-        </div>
+          <!-- Zero matches info -->
+          {#if hasZeroMatches}
+            <InlineNotification
+              kind="info"
+              title="No matches found"
+              subtitle="No matching entries found. Check your match type and source files."
+              hideCloseButton
+              lowContrast
+            />
+          {/if}
+
+          <!-- Actions -->
+          <div class="modal-actions">
+            <Button kind="secondary" onclick={goBackToConfigure}>
+              Back
+            </Button>
+            <Button
+              kind="danger"
+              disabled={previewLoading || hasPreviewErrors || !previewResult || hasZeroMatches}
+              onclick={executeMerge}
+            >
+              Execute Merge
+            </Button>
+          </div>
+        {/if}
       </div>
 
     <!-- ================================================================== -->
@@ -593,11 +631,23 @@
           {/each}
         </div>
 
-        {#if !executing && phase === 'execute'}
+        {#if executing}
           <div class="modal-actions">
-            <Button kind="secondary" onclick={goBackToConfigure}>
-              Back to Configure
-            </Button>
+            <Button kind="danger--tertiary" onclick={cancelMerge}>Cancel Merge</Button>
+          </div>
+        {/if}
+
+        {#if !executing && phase === 'execute'}
+          <InlineNotification
+            kind="error"
+            title="Merge did not complete"
+            subtitle="The merge was interrupted. You can retry or go back to reconfigure."
+            hideCloseButton
+            lowContrast
+          />
+          <div class="modal-actions">
+            <Button kind="secondary" onclick={goBackToConfigure}>Back to Configure</Button>
+            <Button kind="danger" onclick={executeMerge}>Retry Merge</Button>
           </div>
         {/if}
       </div>
