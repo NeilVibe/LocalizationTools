@@ -1225,8 +1225,7 @@ class QuickTranslateApp:
                             self._log(f"  Integrity issue: StringID={sid}", 'error')
                         if len(crit_elems) > 10:
                             self._log(f"  ...and {len(crit_elems) - 10} more.", 'error')
-                    if warn_count:
-                        self._log(f"  {xf.name}: {warn_count} lone angle bracket(s) match source — OK.", 'warning')
+                    # warn_count tracked but not logged per-file (summary at end only)
 
             # XML Load Test summary
             if total_load_fail == 0 and total_load_recovered == 0:
@@ -1388,11 +1387,7 @@ class QuickTranslateApp:
                                 if len(critical_items) > 10:
                                     self._log(f"  ...and {len(critical_items) - 10} more.", 'error')
 
-                            if warning_items:
-                                self._log(
-                                    f"  {filepath.name}: {len(warning_items)} lone angle bracket(s) match source — transferred OK.",
-                                    'warning'
-                                )
+                            # warning_items tracked but not logged per-file (summary at end only)
 
                             for r in xml_integrity_report:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
@@ -1445,11 +1440,7 @@ class QuickTranslateApp:
                                 if len(critical_xl) > 10:
                                     self._log(f"  ...and {len(critical_xl) - 10} more.", 'error')
 
-                            if warning_xl:
-                                self._log(
-                                    f"  {filepath.name}: {len(warning_xl)} lone angle bracket(s) match source — transferred OK.",
-                                    'warning'
-                                )
+                            # warning_xl tracked but not logged per-file (summary at end only)
 
                             for r in integrity_report_xl:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
@@ -1604,7 +1595,7 @@ class QuickTranslateApp:
             # Low-impact: lone angle brackets matching source — one-liner, not cluttering
             if low_impact:
                 self._log("", 'info')
-                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match StrOrigin — transferred as-is, no action needed.", 'warning')
+                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match source — transferred as-is.", 'info')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             other_total = len(all_no_translation_warnings)

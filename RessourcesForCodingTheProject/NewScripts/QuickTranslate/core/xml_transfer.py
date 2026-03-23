@@ -1982,25 +1982,28 @@ def transfer_folder_to_folder(
                         results["formula_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                 if integrity_report:
-                    integrity_count = len(integrity_report)
-                    msg = (
-                        f"WARNING: {integrity_count} entry(ies) in {source_file.name} "
-                        f"have text integrity issues (skipped/neutralized)"
-                    )
-                    if log_callback:
-                        log_callback(msg, 'warning')
-                    logger.warning(msg)
-                    for r in integrity_report[:10]:
-                        sid = r['string_id'] or '(empty)'
-                        detail = f"  [{r['column']}] StringID={sid}: {r['reason']}"
+                    # Split: critical issues vs low-impact warnings (lone brackets matching source)
+                    critical_ir = [r for r in integrity_report if not r.get('reason', '').startswith('Warning:')]
+                    if critical_ir:
+                        msg = (
+                            f"WARNING: {len(critical_ir)} entry(ies) in {source_file.name} "
+                            f"have text integrity issues (skipped/neutralized)"
+                        )
                         if log_callback:
-                            log_callback(detail, 'warning')
-                        logger.warning(detail)
-                    if integrity_count > 10:
-                        overflow = f"  ...and {integrity_count - 10} more."
-                        if log_callback:
-                            log_callback(overflow, 'warning')
-                        logger.warning(overflow)
+                            log_callback(msg, 'warning')
+                        logger.warning(msg)
+                        for r in critical_ir[:10]:
+                            sid = r['string_id'] or '(empty)'
+                            detail = f"  [{r['column']}] StringID={sid}: {r['reason']}"
+                            if log_callback:
+                                log_callback(detail, 'warning')
+                            logger.warning(detail)
+                        if len(critical_ir) > 10:
+                            overflow = f"  ...and {len(critical_ir) - 10} more."
+                            if log_callback:
+                                log_callback(overflow, 'warning')
+                            logger.warning(overflow)
+                    # All items (including warnings) still tracked for end-of-report summary
                     for r in integrity_report:
                         results["integrity_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
@@ -2039,25 +2042,28 @@ def transfer_folder_to_folder(
                         results["formula_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                 if integrity_report:
-                    integrity_count = len(integrity_report)
-                    msg = (
-                        f"WARNING: {integrity_count} cell(s) in {source_file.name} "
-                        f"have text integrity issues (skipped/neutralized)"
-                    )
-                    if log_callback:
-                        log_callback(msg, 'warning')
-                    logger.warning(msg)
-                    for r in integrity_report[:10]:
-                        sid = r['string_id'] or '(empty)'
-                        detail = f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}"
+                    # Split: critical issues vs low-impact warnings (lone brackets matching source)
+                    critical_ir = [r for r in integrity_report if not r.get('reason', '').startswith('Warning:')]
+                    if critical_ir:
+                        msg = (
+                            f"WARNING: {len(critical_ir)} cell(s) in {source_file.name} "
+                            f"have text integrity issues (skipped/neutralized)"
+                        )
                         if log_callback:
-                            log_callback(detail, 'warning')
-                        logger.warning(detail)
-                    if integrity_count > 10:
-                        overflow = f"  ...and {integrity_count - 10} more."
-                        if log_callback:
-                            log_callback(overflow, 'warning')
-                        logger.warning(overflow)
+                            log_callback(msg, 'warning')
+                        logger.warning(msg)
+                        for r in critical_ir[:10]:
+                            sid = r['string_id'] or '(empty)'
+                            detail = f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}"
+                            if log_callback:
+                                log_callback(detail, 'warning')
+                            logger.warning(detail)
+                        if len(critical_ir) > 10:
+                            overflow = f"  ...and {len(critical_ir) - 10} more."
+                            if log_callback:
+                                log_callback(overflow, 'warning')
+                            logger.warning(overflow)
+                    # All items (including warnings) still tracked for end-of-report summary
                     for r in integrity_report:
                         results["integrity_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
@@ -3014,7 +3020,9 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
     formula_warnings = results.get("formula_warnings", [])
     integrity_warnings = results.get("integrity_warnings", [])
     critical_integrity = [w for w in integrity_warnings if w[3].startswith('Broken') or w[3].startswith('Truncated')]
-    secondary_integrity = [w for w in integrity_warnings if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
+    secondary_integrity = [w for w in integrity_warnings
+                           if not (w[3].startswith('Broken') or w[3].startswith('Truncated') or w[3].startswith('Warning:'))]
+    low_impact = [w for w in integrity_warnings if w[3].startswith('Warning:')]
 
     # ─── End-of-report CRITICAL warnings (formulas + broken linebreaks) ───
     if formula_warnings or critical_integrity:
@@ -3056,6 +3064,10 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if len(secondary_integrity) > 10:
             lines.append(f"    ...and {len(secondary_integrity) - 10} more.")
         lines.append("=" * 60)
+
+    # ─── Low-impact: lone angle brackets matching source — single info line ────
+    if low_impact:
+        lines.append(f"  INFO: {len(low_impact)} lone angle bracket(s) match source — transferred as-is.")
 
     lines.append("")
     lines.append("Legend: ● >=95% coverage  ◐ >=80% coverage  ○ <80% coverage")
