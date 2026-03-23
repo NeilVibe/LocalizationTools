@@ -6,7 +6,7 @@ Make the merge pipeline production-ready by internalizing QuickTranslate logic (
 
 ## Phases
 
-- [ ] **Phase 61: Merge Internalization** - Internalize QT merge logic into LocaNext's own module (no sys.path, PyInstaller-safe) with all 3 match types, postprocess, and SSE
+- [x] **Phase 61: Merge Internalization** - Internalize QT merge logic into LocaNext's own module (no sys.path, PyInstaller-safe) with all 3 match types, postprocess, and SSE (completed 2026-03-23)
 - [ ] **Phase 62: TM Auto-Update Pipeline** - Automatic embedding generation and incremental HNSW updates on every TM add/edit/batch import
 - [ ] **Phase 63: Performance Instrumentation** - Duration logging across Model2Vec, FAISS, TM CRUD, merge, file upload, plus summary API endpoint
 - [ ] **Phase 64: UIUX Quality Audit** - AI visual audit of all 5 pages via Qwen Vision, fix critical issues, polish merge modal
@@ -22,11 +22,11 @@ Make the merge pipeline production-ready by internalizing QuickTranslate logic (
   2. All 3 match types (stringid_only, strict, strorigin_filename) produce identical merge output to the v6.0 sys.path adapter when run against the same test data
   3. The 8-step postprocess pipeline runs from the internalized module and produces output identical to QuickTranslate standalone
   4. SSE merge execution endpoint streams progress events correctly using the internalized module (no regressions from v6.0)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 61-01-PLAN.md -- Create server/services/merge/ package with 14 QT modules + internal config
-- [ ] 61-02-PLAN.md -- Rewire transfer_adapter.py, remove old hacks, integration tests
+- [x] 61-02-PLAN.md -- Rewire transfer_adapter.py, remove old hacks, integration tests
 
 ### Phase 62: TM Auto-Update Pipeline
 **Goal**: Users get a fully automatic TM flow where every add/edit immediately updates embeddings and FAISS index -- search always returns current results with zero manual intervention
@@ -67,7 +67,7 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 61. Merge Internalization | v7.0 | 1/2 | In Progress|  |
+| 61. Merge Internalization | v7.0 | 2/2 | Complete   | 2026-03-23 |
 | 62. TM Auto-Update Pipeline | v7.0 | 0/0 | Not started | - |
 | 63. Performance Instrumentation | v7.0 | 0/0 | Not started | - |
 | 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
