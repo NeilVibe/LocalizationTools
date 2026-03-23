@@ -7,7 +7,7 @@
 
 ### Merge Architecture
 
-- [ ] **MARCH-01**: Merge logic runs without sys.path injection or importlib hacks — fully internalized, PyInstaller-safe
+- [ ] **MARCH-01**: Merge logic runs without sys.path injection or importlib hacks -- fully internalized, PyInstaller-safe
 - [ ] **MARCH-02**: All 3 match types (stringid_only, strict, strorigin_filename) work with internalized module
 - [ ] **MARCH-03**: Postprocess 8-step pipeline runs from internalized module
 - [ ] **MARCH-04**: SSE execute endpoint streams events correctly with internalized module
@@ -51,8 +51,8 @@
 
 | Feature | Reason |
 |---------|--------|
-| Full QT port (all features) | Only merge/transfer functions needed — Sacred Scripts stay as reference |
-| Cloud-based performance monitoring | Local logging only — zero cloud dependency |
+| Full QT port (all features) | Only merge/transfer functions needed -- Sacred Scripts stay as reference |
+| Cloud-based performance monitoring | Local logging only -- zero cloud dependency |
 | Automated UIUX testing pipeline | Manual audit with AI assistance sufficient for v7.0 |
 | Real-time performance dashboard UI | API endpoint + logs sufficient for v7.0 |
 
@@ -60,30 +60,30 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MARCH-01 | TBD | Pending |
-| MARCH-02 | TBD | Pending |
-| MARCH-03 | TBD | Pending |
-| MARCH-04 | TBD | Pending |
-| PERF-01 | TBD | Pending |
-| PERF-02 | TBD | Pending |
-| PERF-03 | TBD | Pending |
-| PERF-04 | TBD | Pending |
-| PERF-05 | TBD | Pending |
-| PERF-06 | TBD | Pending |
-| TMAU-01 | TBD | Pending |
-| TMAU-02 | TBD | Pending |
-| TMAU-03 | TBD | Pending |
-| TMAU-04 | TBD | Pending |
-| TMAU-05 | TBD | Pending |
-| UIUX-01 | TBD | Pending |
-| UIUX-02 | TBD | Pending |
-| UIUX-03 | TBD | Pending |
+| MARCH-01 | Phase 61 | Pending |
+| MARCH-02 | Phase 61 | Pending |
+| MARCH-03 | Phase 61 | Pending |
+| MARCH-04 | Phase 61 | Pending |
+| PERF-01 | Phase 63 | Pending |
+| PERF-02 | Phase 63 | Pending |
+| PERF-03 | Phase 63 | Pending |
+| PERF-04 | Phase 63 | Pending |
+| PERF-05 | Phase 63 | Pending |
+| PERF-06 | Phase 63 | Pending |
+| TMAU-01 | Phase 62 | Pending |
+| TMAU-02 | Phase 62 | Pending |
+| TMAU-03 | Phase 62 | Pending |
+| TMAU-04 | Phase 62 | Pending |
+| TMAU-05 | Phase 62 | Pending |
+| UIUX-01 | Phase 64 | Pending |
+| UIUX-02 | Phase 64 | Pending |
+| UIUX-03 | Phase 64 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-23*
-*Last updated: 2026-03-23 after initial definition*
+*Last updated: 2026-03-23 after roadmap creation*

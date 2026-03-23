@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Production-Ready Merge + Performance + UIUX
-status: defining_requirements
+status: roadmap_complete
 stopped_at: null
-last_updated: "2026-03-23T13:00:00.000Z"
+last_updated: "2026-03-23T14:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,31 +18,41 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-23)
 
-**Core value:** Real, working localization workflows with zero cloud dependency, dual-mode for translators and game developers.
-**Current focus:** Defining requirements for v7.0
+**Core value:** Production-ready merge pipeline with performance monitoring, automatic TM-to-FAISS flow, and AI-audited UIUX
+**Current focus:** Phase 61 -- Merge Internalization
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-23 — Milestone v7.0 started
+Phase: 61 - Merge Internalization
+Plan: Not yet planned
+Status: Roadmap complete, ready to plan Phase 61
+Last activity: 2026-03-23 -- Roadmap created
+
+```
+[                              ] 0%
+Phase 61 [ ] -> Phase 62 [ ] -> Phase 63 [ ] -> Phase 64 [ ]
+```
 
 ## Performance Metrics
 
 **Velocity:**
 
 - Total plans completed: 0
-- Average duration: —
+- Average duration: --
 - Total execution time: 0 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 61. Merge Internalization | 0/0 | -- | -- |
+| 62. TM Auto-Update Pipeline | 0/0 | -- | -- |
+| 63. Performance Instrumentation | 0/0 | -- | -- |
+| 64. UIUX Quality Audit | 0/0 | -- | -- |
 
 ## Accumulated Context
+
+### v6.0 Execution History (reference)
 
 | Phase 56 P01 | 3min | 2 tasks | 2 files |
 | Phase 56 P02 | 7min | 3 tasks | 9 files |
@@ -62,44 +72,33 @@ Last activity: 2026-03-23 — Milestone v7.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [Tribunal 2026-03-22]: Port QuickTranslate via adapter import (sys.path), never copy — Sacred Scripts rule
-- [Tribunal 2026-03-22]: Single-page merge modal with phase-driven state (configure/preview/execute/done)
-- [Tribunal 2026-03-22]: 3 match types: StringID Only, StringID+StrOrigin, StrOrigin+FileName 2PASS
-- [Tribunal 2026-03-22]: SSE streaming for merge progress, sync endpoint for dry-run preview
-- [Tribunal 2026-03-22]: No backup needed — trust QuickTranslate's battle-tested logic
-- [Tribunal 2026-03-22]: Mock DB via CLI script (scripts/setup_mock_data.py --confirm-wipe)
-- [Tribunal 2026-03-22]: LOC PATH + EXPORT PATH in Settings page, not merge modal
-- [Tribunal 2026-03-22]: Two entry points: toolbar button (single) + right-click folder (multi-language)
-- [Phase 56]: Used sync sqlite3 directly for mock script — no ORM dependency needed
-- [Phase 56]: Per-project settings in localStorage keyed by projectId, path validation via backend endpoint
-- [Phase 56]: selectedProject global store in navigation.js synced from LDM.svelte via $effect
-- [Phase 57]: Config shim uses types.ModuleType injected into sys.modules['config'] before any QT import
-- [Phase 57]: Graceful degradation: build_stringid_to_category failure passes None to QT
-- [Phase 57]: scan_source_languages needs target_path param for LOC folder language code discovery
-- [Phase 58]: Single /preview endpoint with multi_language bool flag instead of separate endpoints
-- [Phase 58]: put_nowait() for thread-safe queue writes from sync QT callbacks to async SSE generator
-- [Phase 58]: json.dumps(default=str) for Path objects in QT merge results
-- [Phase 59]: fetch+ReadableStream for SSE instead of EventSource (execute is POST)
-- [Phase 59]: passiveModal during execute phase prevents accidental close
-- [Phase 59]: Enhanced existing multi-language UI rather than rewriting — added language cards, expanded table columns
-- [Phase 59]: Custom event (merge-folder-to-locdev) for cross-component communication instead of prop threading
-- [Phase 60]: Used pytest_plugins for fixture registration instead of conftest.py rename
-- [Phase 60]: Own BASE_URL constant in test file for independence from conftest_merge
+- [v7.0 Roadmap]: Internalize QT merge logic -- replace sys.path adapter with self-contained module under server/services/
+- [v7.0 Roadmap]: Phase 62 (TMAU) independent of Phase 61 (MARCH) -- can parallelize
+- [v7.0 Roadmap]: Phase 63 (PERF) after both 61+62 to instrument all new code paths
+- [v7.0 Roadmap]: Phase 64 (UIUX) last to audit final state after all functional changes
+
+### Key v6.0 Decisions (carry forward)
+
+- Config shim uses types.ModuleType injected into sys.modules['config'] before QT import
+- fetch+ReadableStream for SSE (execute is POST, not EventSource)
+- passiveModal during execute phase prevents accidental close
+- Custom event (merge-folder-to-locdev) for cross-component communication
 
 ### Pending Todos
 
-(None — fresh milestone)
+- [ ] Plan Phase 61
 
 ### Deferred from v6.0
 
-- Split VirtualGrid.svelte (4299 lines) — ARCH-01
-- Split mega_index.py (1310 lines) — ARCH-02
-- Extract business logic from thick route handlers — ARCH-03
-- Add unit test infrastructure — ARCH-04
+- Split VirtualGrid.svelte (4299 lines) -- ARCH-01
+- Split mega_index.py (1310 lines) -- ARCH-02
+- Extract business logic from thick route handlers -- ARCH-03
+- Add unit test infrastructure -- ARCH-04
 - Fix right-click context menu on file explorer panel
 
 ## Session Continuity
 
-Last session: 2026-03-22T19:26:39.426Z
-Stopped at: Completed 60-02-PLAN.md
+Last session: 2026-03-23
+Stopped at: Roadmap created for v7.0
 Resume file: None
+Next action: /gsd:plan-phase 61

@@ -1,107 +1,69 @@
-# Roadmap: LocaNext v6.0 Showcase Offline Transfer
+# Roadmap: LocaNext v7.0 Production-Ready Merge + Performance + UIUX
 
 ## Overview
 
-Enable translators to open languagedata files, translate offline, and merge changes back into LOC/LOCDEV using QuickTranslate's proven transfer logic. Foundation phase sets up mock data and path settings, then the transfer adapter imports QuickTranslate core modules directly (sys.path, never copy), the API layer exposes merge with SSE streaming, the UI delivers a single-page merge modal with phase-driven state, and integration testing verifies the full pipeline with real test data.
+Make the merge pipeline production-ready by internalizing QuickTranslate logic (replacing sys.path adapter with PyInstaller-safe module), enabling automatic TM-to-FAISS flow on every edit/add, adding performance instrumentation across all hot paths, and polishing UIUX via AI-powered visual critique.
 
 ## Phases
 
-- [x] **Phase 56: Mock Data + Settings** - CLI mock DB setup with 3 projects + LOC/EXPORT path configuration in Settings (completed 2026-03-22)
-- [x] **Phase 57: Transfer Service Adapter** - Import QuickTranslate core modules via sys.path for 3 match types, postprocess, and multi-language merge (completed 2026-03-22)
-- [x] **Phase 58: Merge API** - REST endpoints for dry-run preview and SSE-streamed merge execution (completed 2026-03-22)
-- [x] **Phase 59: Merge UI** - Single-page merge modal with configure/preview/execute/done phases and dual entry points (completed 2026-03-22)
-- [x] **Phase 60: Integration Testing** - End-to-end pipeline verification with mock data and real test files (completed 2026-03-22)
+- [ ] **Phase 61: Merge Internalization** - Internalize QT merge logic into LocaNext's own module (no sys.path, PyInstaller-safe) with all 3 match types, postprocess, and SSE
+- [ ] **Phase 62: TM Auto-Update Pipeline** - Automatic embedding generation and incremental HNSW updates on every TM add/edit/batch import
+- [ ] **Phase 63: Performance Instrumentation** - Duration logging across Model2Vec, FAISS, TM CRUD, merge, file upload, plus summary API endpoint
+- [ ] **Phase 64: UIUX Quality Audit** - AI visual audit of all 5 pages via Qwen Vision, fix critical issues, polish merge modal
 
 ## Phase Details
 
-### Phase 56: Mock Data + Settings
-**Goal**: Users have a clean mock environment with configured paths so all subsequent merge work has data to operate on
+### Phase 61: Merge Internalization
+**Goal**: Merge logic runs as a self-contained LocaNext module without any sys.path injection, importlib hacks, or dependency on the QT source tree -- ready for PyInstaller bundling
 **Depends on**: Nothing (first phase)
-**Requirements**: MOCK-01, MOCK-02, MOCK-03, MOCK-04, SET-01, SET-02, SET-03
+**Requirements**: MARCH-01, MARCH-02, MARCH-03, MARCH-04
 **Success Criteria** (what must be TRUE):
-  1. Running `python scripts/setup_mock_data.py --confirm-wipe` creates a fresh DB with project_FRE, project_ENG, and project_MULTI visible in the file explorer
-  2. Each mock project auto-detects its language from the project name and displays the correct language badge (French, English, Multi)
-  3. User can set LOC PATH and EXPORT PATH in the Settings page, values persist across app restarts, and invalid paths show validation errors
-  4. Test languagedata files from the test123 directory load correctly when pointed to by LOC PATH
-**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
+  1. Merge executes successfully with no sys.path manipulation anywhere in the import chain -- the internalized module lives under server/services/ and imports cleanly
+  2. All 3 match types (stringid_only, strict, strorigin_filename) produce identical merge output to the v6.0 sys.path adapter when run against the same test data
+  3. The 8-step postprocess pipeline runs from the internalized module and produces output identical to QuickTranslate standalone
+  4. SSE merge execution endpoint streams progress events correctly using the internalized module (no regressions from v6.0)
+**Plans**: TBD
 
-Plans:
-- [x] 56-01-PLAN.md -- CLI mock DB script with --confirm-wipe, 3 projects, language auto-detection
-- [x] 56-02-PLAN.md -- Settings UI for LOC PATH + EXPORT PATH with validation and persistence
-
-### Phase 57: Transfer Service Adapter
-**Goal**: QuickTranslate's proven transfer logic is available as a LocaNext service via adapter import, supporting all 3 match types and the full postprocess pipeline
-**Depends on**: Phase 56
-**Requirements**: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05, XFER-06, XFER-07
+### Phase 62: TM Auto-Update Pipeline
+**Goal**: Users get a fully automatic TM flow where every add/edit immediately updates embeddings and FAISS index -- search always returns current results with zero manual intervention
+**Depends on**: Nothing (independent of Phase 61)
+**Requirements**: TMAU-01, TMAU-02, TMAU-03, TMAU-04, TMAU-05
 **Success Criteria** (what must be TRUE):
-  1. The adapter successfully imports QuickTranslate modules (xml_transfer, postprocess, source_scanner, language_loader) via sys.path without copying any Sacred Script code
-  2. StringID Only match type correctly transfers entries with case-insensitive matching and SCRIPT/ALL category filtering
-  3. StringID+StrOrigin and StrOrigin+FileName 2PASS match types produce identical results to QuickTranslate standalone execution on the same test data
-  4. The 8-step postprocess pipeline (newlines, apostrophes, entities, etc.) runs after every merge and produces clean output
-  5. Multi-language folder merge scans a source folder, auto-detects language suffixes per file/subfolder, and merges each language into the correct target
-**Plans**: 3 plans (Wave 1: foundation, Wave 2: match types + multi-lang parallel)
+  1. Adding a new TM entry via the UI immediately generates its embedding and adds it to the HNSW index without any full rebuild
+  2. Editing an existing TM entry re-computes the embedding and updates the HNSW index in-place (old vector removed, new vector inserted)
+  3. Batch importing TM entries (e.g., from file upload) triggers bulk embedding generation and batch HNSW add_items in a single pass
+  4. Searching for a term that was just added or edited returns the updated entry in the results without any manual refresh or page reload
+**Plans**: TBD
 
-Plans:
-- [x] 57-01-PLAN.md -- Config shim + sys.path adapter import layer with test fixtures (XFER-01)
-- [x] 57-02-PLAN.md -- execute_transfer with 3 match types, scope, postprocess (XFER-02..06)
-- [x] 57-03-PLAN.md -- Multi-language folder merge with language auto-detection (XFER-07)
-
-### Phase 58: Merge API
-**Goal**: FastAPI endpoints expose merge preview (dry-run) and execution (SSE streaming) so the frontend can drive the merge workflow
-**Depends on**: Phase 57
-**Requirements**: API-01, API-02, API-03, API-04
+### Phase 63: Performance Instrumentation
+**Goal**: Every hot path in the application logs its duration so developers can identify bottlenecks and users can verify performance via API
+**Depends on**: Phase 61, Phase 62
+**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06
 **Success Criteria** (what must be TRUE):
-  1. POST /api/merge/preview returns a dry-run summary with file count, entry count, match count, and overwrite warnings without modifying any files
-  2. POST /api/merge/execute streams progress via SSE with per-file updates and postprocess step notifications
-  3. On completion, the merge response includes matched, skipped, and overwritten counts as a summary report
-  4. Multi-language preview mode scans the source folder and returns a per-language breakdown of files and expected matches
-**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
+  1. Model2Vec embedding generation, FAISS/HNSW search, and TM add/edit operations all emit structured log lines with duration in milliseconds
+  2. Merge preview and execute operations log duration per step (scan, match, postprocess, write) with step-level granularity
+  3. File upload operations log duration and file size in a single structured log line
+  4. GET /api/performance/summary returns a JSON response with p50/p95/max timings for each instrumented operation over the last N requests
+**Plans**: TBD
 
-Plans:
-- [x] 58-01-PLAN.md -- Preview endpoint (dry-run summary) + multi-language preview
-- [x] 58-02-PLAN.md -- Execute endpoint with SSE streaming + completion summary
-
-### Phase 59: Merge UI
-**Goal**: Users can merge translations back to LOCDEV through a polished single-page modal with full control over match type, scope, and preview
-**Depends on**: Phase 58
-**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06, UI-07, UI-08, UI-09
+### Phase 64: UIUX Quality Audit
+**Goal**: All 5 main pages pass AI-powered visual critique and the merge modal handles every edge case gracefully
+**Depends on**: Phase 61, Phase 62, Phase 63
+**Requirements**: UIUX-01, UIUX-02, UIUX-03
 **Success Criteria** (what must be TRUE):
-  1. "Merge to LOCDEV" button appears in the main toolbar and opens the merge modal for the current project
-  2. Right-click on a folder in file explorer shows "Merge Folder to LOCDEV" option that opens the modal in multi-language mode
-  3. The merge modal walks through configure (target folder, match type, scope) then preview (dry-run results) then execute (progress bar) then done (summary report) as a single-page flow
-  4. Category filter toggle appears only when StringID match type is selected, and language badge in the modal header matches the auto-detected project language
-  5. Multi-language mode displays detected languages with file counts before merge, and the summary report shows per-language matched/skipped/overwritten counts
-**Plans**: 3 plans (Wave 1: modal component, Wave 2: entry points + multi-lang polish)
-
-Plans:
-- [x] 59-01-PLAN.md -- Merge modal component with phase-driven state (configure/preview/execute/done)
-- [x] 59-02-PLAN.md -- Toolbar button + right-click context menu entry points
-- [x] 59-03-PLAN.md -- Multi-language mode UI (language detection display, per-language summary)
-
-### Phase 60: Integration Testing
-**Goal**: The full merge pipeline is verified end-to-end with mock data and real test files, confirming all phases work together
-**Depends on**: Phase 56, Phase 57, Phase 58, Phase 59
-**Requirements**: (verification phase -- validates all 26 requirements in context)
-**Success Criteria** (what must be TRUE):
-  1. A complete merge workflow (mock setup, configure paths, open modal, preview, execute, verify output) succeeds using mock project_FRE data
-  2. Multi-language merge via right-click on project_MULTI folder correctly processes FRE and ENG subfolders with separate merge results
-  3. All 3 match types produce correct merge output when tested against the test123 real data files
-  4. SSE progress events stream correctly to the UI during merge execution (no dropped events, progress reaches 100%)
-**Plans**: 2 plans (Wave 1: pipeline tests, Wave 2: match type tests)
-
-Plans:
-- [x] 60-01-PLAN.md -- E2E pipeline tests (mock setup, settings validation, single-project preview/execute/SSE, multi-language preview)
-- [x] 60-02-PLAN.md -- Match type verification with synthetic XML fixtures (all 3 modes + scope filter)
+  1. Qwen Vision screenshots of all 5 main pages (Files, Game Dev, Codex, Map, TM) have been reviewed and all critical issues cataloged
+  2. All critical UIUX issues (alignment, spacing, contrast, truncation) identified by the AI audit are fixed and verified with follow-up screenshots
+  3. Merge modal handles loading states (spinner during preview/execute), error states (clear error message + retry), and edge cases (empty project, no matches found, cancelled merge) gracefully
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute sequentially: 56 → 57 → 58 → 59 → 60
+Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 after both 61 and 62. Phase 64 last.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 56. Mock Data + Settings | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 57. Transfer Service Adapter | v6.0 | 3/3 | Complete    | 2026-03-22 |
-| 58. Merge API | v6.0 | 2/2 | Complete    | 2026-03-22 |
-| 59. Merge UI | v6.0 | 3/3 | Complete    | 2026-03-22 |
-| 60. Integration Testing | v6.0 | 2/2 | Complete   | 2026-03-22 |
+| 61. Merge Internalization | v7.0 | 0/0 | Not started | - |
+| 62. TM Auto-Update Pipeline | v7.0 | 0/0 | Not started | - |
+| 63. Performance Instrumentation | v7.0 | 0/0 | Not started | - |
+| 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
