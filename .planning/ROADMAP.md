@@ -53,10 +53,10 @@ Plans:
   2. User edits a cell value, saves, reloads the file, and the edit persists with correct XML encoding
   3. Grid rows show associated DDS images and WEM audio resolved from Perforce-path mock data
   4. All upload/edit/save operations work with SQLite backend (no PostgreSQL required)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 76-01-PLAN.md — Upload + edit + save round-trip E2E tests (LDE2E-01, LDE2E-02, LDE2E-04)
+- [x] 76-01-PLAN.md — Upload + edit + save round-trip E2E tests (LDE2E-01, LDE2E-02, LDE2E-04)
 - [ ] 76-02-PLAN.md — DDS/WEM media resolution E2E tests (LDE2E-03)
 
 ### Phase 78: Feature Pipeline Verification
@@ -91,6 +91,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 2/2 | Complete    | 2026-03-23 |
-| 76. Language Data E2E | 0/2 | Not started | - |
+| 76. Language Data E2E | 1/2 | In Progress|  |
 | 78. Feature Pipeline Verification | 0/TBD | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |

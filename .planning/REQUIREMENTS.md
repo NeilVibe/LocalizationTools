@@ -23,10 +23,10 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 ### Language Data E2E
 
-- [ ] **LDE2E-01**: User can upload language data (.loc.xml) in built app and see it in grid
-- [ ] **LDE2E-02**: User can edit language data cells and save — round-trip integrity verified
+- [x] **LDE2E-01**: User can upload language data (.loc.xml) in built app and see it in grid
+- [x] **LDE2E-02**: User can edit language data cells and save — round-trip integrity verified
 - [ ] **LDE2E-03**: Language data entries resolve to associated images/audio via Perforce paths
-- [ ] **LDE2E-04**: All language data operations work in offline mode (SQLite)
+- [x] **LDE2E-04**: All language data operations work in offline mode (SQLite)
 
 ### Feature Pipeline Verification (DEV mode)
 
@@ -73,10 +73,10 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | MOCK-10 | Phase 74 | Complete |
 | MOCK-11 | Phase 74 | Complete |
 | MOCK-12 | Phase 74 | Complete |
-| LDE2E-01 | Phase 76 | Pending |
-| LDE2E-02 | Phase 76 | Pending |
+| LDE2E-01 | Phase 76 | Complete |
+| LDE2E-02 | Phase 76 | Complete |
 | LDE2E-03 | Phase 76 | Pending |
-| LDE2E-04 | Phase 76 | Pending |
+| LDE2E-04 | Phase 76 | Complete |
 | FEAT-01 | Phase 78 | Pending |
 | FEAT-02 | Phase 78 | Pending |
 | FEAT-03 | Phase 78 | Pending |
