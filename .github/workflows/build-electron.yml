@@ -757,6 +757,60 @@ jobs:
           Write-Host "Server launch test passed!"
         shell: pwsh
 
+      - name: Verify Merge Module Imports
+        if: env.LIGHT_MODE == 'yes'
+        run: |
+          Write-Host "=== Verifying internalized merge module ==="
+          $env:PYTHONPATH = Get-Location
+
+          # Test all 14 merge module files import successfully
+          & "tools\python\python.exe" -c @"
+          import sys
+          sys.path.insert(0, '.')
+          errors = []
+
+          # Core merge package
+          try:
+              from server.services.merge import (
+                  configure, get_config,
+                  normalize_text, sanitize_xml_content,
+                  parse_xml_file, discover_language_files,
+                  build_translation_lookup, detect_excel_columns,
+                  read_corrections_from_excel, merge_corrections_to_xml,
+                  run_all_postprocess, run_preprocess_excel,
+                  scan_source_for_languages, get_eventname_mapping,
+                  clean_segment, combine_xmls_to_tmx,
+              )
+              print('[OK] All merge module exports imported')
+          except ImportError as e:
+              errors.append(f'Merge module import failed: {e}')
+
+          # Transfer adapter (consumes merge module)
+          try:
+              from server.services.transfer_adapter import TransferService
+              print('[OK] TransferService (merge consumer) imported')
+          except ImportError as e:
+              errors.append(f'TransferService import failed: {e}')
+
+          # lxml (critical dependency for merge XML operations)
+          try:
+              from lxml import etree
+              print('[OK] lxml.etree available')
+          except ImportError as e:
+              errors.append(f'lxml missing: {e}')
+
+          if errors:
+              print()
+              for e in errors:
+                  print(f'  FAIL: {e}')
+              sys.exit(1)
+          else:
+              print('[OK] Merge module fully operational')
+          "@
+          if ($LASTEXITCODE -ne 0) { Write-Error "Merge module verification FAILED!"; exit 1 }
+          Write-Host "[OK] Merge module verification passed" -ForegroundColor Green
+        shell: pwsh
+
       # ============================================================
       # STEP 2b: Light Mode Setup (Model2Vec only, no torch/Qwen)
       # Only runs when triggered with "Build Light"
