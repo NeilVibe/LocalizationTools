@@ -32,8 +32,7 @@ async def get_user_rankings(
     period: Literal["daily", "weekly", "monthly", "all_time"] = Query("monthly", description="Ranking period"),
     limit: int = Query(20, ge=1, le=100, description="Number of users to return"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get user rankings by operations count.
@@ -138,8 +137,7 @@ async def get_user_rankings_by_time(
     period: Literal["daily", "weekly", "monthly", "all_time"] = Query("monthly", description="Ranking period"),
     limit: int = Query(20, ge=1, le=100, description="Number of users to return"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get user rankings by total processing time spent.
@@ -240,8 +238,7 @@ async def get_user_rankings_by_time(
 async def get_app_rankings(
     period: Literal["daily", "weekly", "monthly", "all_time"] = Query("monthly", description="Ranking period"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get app/tool rankings by usage.
@@ -323,8 +320,7 @@ async def get_function_rankings(
     limit: int = Query(20, ge=1, le=100, description="Number of functions to return"),
     tool_name: Optional[str] = Query(None, description="Filter by specific tool"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get function rankings by usage.
@@ -408,8 +404,7 @@ async def get_function_rankings_by_time(
     limit: int = Query(20, ge=1, le=100, description="Number of functions to return"),
     tool_name: Optional[str] = Query(None, description="Filter by specific tool"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get function rankings by total processing time.
@@ -498,8 +493,7 @@ async def get_function_rankings_by_time(
 async def get_top_rankings(
     period: Literal["daily", "weekly", "monthly", "all_time"] = Query("monthly", description="Ranking period"),
     db: AsyncSession = Depends(get_async_db),
-    # TEMPORARILY DISABLED FOR DASHBOARD TESTING
-    # current_user: dict = Depends(require_admin_async)
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get combined top rankings in one call.

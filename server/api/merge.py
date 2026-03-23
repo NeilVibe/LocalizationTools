@@ -14,7 +14,9 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from server.utils.dependencies import get_current_active_user_async
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from loguru import logger
@@ -81,6 +83,25 @@ class MergeExecuteRequest(BaseModel):
 _merge_in_progress: bool = False
 
 
+def _validate_merge_path(path: str, label: str) -> None:
+    """Reject paths that attempt directory traversal or access system dirs."""
+    from pathlib import Path as P
+    resolved = P(path).resolve()
+    # Block traversal patterns and system directories
+    blocked = ('/etc', '/usr', '/bin', '/sbin', '/var', '/root', '/proc', '/sys')
+    resolved_str = str(resolved)
+    if any(resolved_str.startswith(b) for b in blocked):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Blocked path for {label}: access to system directories is not allowed",
+        )
+    if '..' in path:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Blocked path for {label}: directory traversal not allowed",
+        )
+
+
 # ============================================================================
 # Router
 # ============================================================================
@@ -94,7 +115,7 @@ router = APIRouter(prefix="/api/merge", tags=["Merge"])
 
 
 @router.post("/preview", response_model=MergePreviewResponse)
-async def preview_merge(body: MergePreviewRequest):
+async def preview_merge(body: MergePreviewRequest, _user: dict = Depends(get_current_active_user_async)):
     """Dry-run merge preview.
 
     Returns match summary without writing any files.
@@ -106,6 +127,11 @@ async def preview_merge(body: MergePreviewRequest):
             status_code=422,
             detail=f"Invalid match_mode '{body.match_mode}'. Must be one of: {list(MATCH_MODES.keys())}",
         )
+
+    # Validate paths against traversal
+    _validate_merge_path(body.source_path, "source_path")
+    _validate_merge_path(body.target_path, "target_path")
+    _validate_merge_path(body.export_path, "export_path")
 
     # Translate paths for WSL/DEV_MODE
     translated_source = translate_wsl_path(body.source_path)
@@ -184,7 +210,7 @@ async def preview_merge(body: MergePreviewRequest):
 
 
 @router.post("/execute")
-async def execute_merge(body: MergeExecuteRequest):
+async def execute_merge(body: MergeExecuteRequest, _user: dict = Depends(get_current_active_user_async)):
     """Execute merge with SSE streaming progress.
 
     Runs the actual merge in a background thread, streaming per-file
@@ -213,6 +239,11 @@ async def execute_merge(body: MergeExecuteRequest):
             status_code=422,
             detail=f"Invalid match_mode '{body.match_mode}'. Must be one of: {list(MATCH_MODES.keys())}",
         )
+
+    # Validate paths against traversal
+    _validate_merge_path(body.source_path, "source_path")
+    _validate_merge_path(body.target_path, "target_path")
+    _validate_merge_path(body.export_path, "export_path")
 
     # Translate paths for WSL/DEV_MODE
     translated_source = translate_wsl_path(body.source_path)

@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server.utils.dependencies import get_async_db, get_current_active_user_async, require_admin_async
 from server import config
 
 router = APIRouter(prefix="/api/health", tags=["Health"])
@@ -275,12 +275,12 @@ async def get_simple_health(
 @router.get("/status", response_model=DetailedHealthResponse)
 async def get_detailed_health(
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_active_user_async)
+    _admin: dict = Depends(require_admin_async)
 ):
     """
     Detailed health metrics for admin dashboard.
 
-    Requires authentication.
+    Requires admin authentication.
     """
     # API stats
     uptime = get_uptime()

@@ -14,7 +14,7 @@ from sqlalchemy import select, func, and_, desc, Integer
 from loguru import logger
 
 from server.database.models import Installation, RemoteLog, RemoteSession, TelemetrySummary
-from server.utils.dependencies import get_async_db
+from server.utils.dependencies import get_async_db, require_admin_async
 
 # Create router
 router = APIRouter(prefix="/api/v2/admin/telemetry", tags=["Admin Telemetry"])
@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/v2/admin/telemetry", tags=["Admin Telemetry"])
 @router.get("/overview")
 async def get_telemetry_overview(
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get telemetry overview for dashboard home.
@@ -110,6 +111,7 @@ async def get_telemetry_overview(
 async def get_installations(
     include_inactive: bool = Query(False, description="Include inactive installations"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get all registered installations.
@@ -189,6 +191,7 @@ async def get_installations(
 async def get_installation_detail(
     installation_id: str,
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get detailed information for a specific installation.
@@ -274,6 +277,7 @@ async def get_sessions(
     days: int = Query(7, ge=1, le=30, description="Number of days of history"),
     limit: int = Query(100, ge=1, le=500, description="Maximum results"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get remote sessions with optional filtering.
@@ -342,6 +346,7 @@ async def get_remote_logs(
     hours: int = Query(24, ge=1, le=168, description="Hours of history"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get remote logs with filtering options.
@@ -406,6 +411,7 @@ async def get_error_logs(
     hours: int = Query(24, ge=1, le=168, description="Hours of history"),
     limit: int = Query(100, ge=1, le=500, description="Maximum results"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get error and critical logs only.
@@ -466,6 +472,7 @@ async def get_error_logs(
 async def get_daily_telemetry_stats(
     days: int = Query(30, ge=1, le=90, description="Number of days"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get daily telemetry statistics.
@@ -540,6 +547,7 @@ async def get_daily_telemetry_stats(
 async def get_stats_by_installation(
     days: int = Query(30, ge=1, le=90, description="Number of days"),
     db: AsyncSession = Depends(get_async_db),
+    _admin: dict = Depends(require_admin_async),
 ):
     """
     Get aggregated statistics per installation.
