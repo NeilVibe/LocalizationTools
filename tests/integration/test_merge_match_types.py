@@ -324,16 +324,21 @@ def test_real_data_match_types(admin_headers, tmp_path):
 
     results = {}
     for match_mode in ["stringid_only", "strict", "strorigin_filename"]:
+        body = {
+            "source_path": str(source_dir),
+            "target_path": str(target_dir),
+            "export_path": str(target_dir),
+            "match_mode": match_mode,
+            "only_untranslated": False,
+        }
+        # StringID-only needs stringid_all_categories when no export path
+        # has categorized .loc.xml files to build stringid_to_category from
+        if match_mode == "stringid_only":
+            body["stringid_all_categories"] = True
         resp = requests.post(
             f"{BASE_URL}/api/merge/preview",
             headers=admin_headers,
-            json={
-                "source_path": str(source_dir),
-                "target_path": str(target_dir),
-                "export_path": str(target_dir),
-                "match_mode": match_mode,
-                "only_untranslated": False,
-            },
+            json=body,
             timeout=60,
         )
         assert resp.status_code == 200, (
