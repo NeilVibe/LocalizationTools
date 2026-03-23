@@ -14,7 +14,7 @@ updated: 2026-03-24T00:00:00.000Z
 
 ### 1. Tag pills visible in display mode
 expected: Source, target, and reference columns show colored tag pills ({0} blue, %1# purple, \n grey, StaticInfo green, &desc; orange)
-result: [pending]
+result: PASSED — Qwen Vision confirmed 8/10, all 5 colors visible (screenshots/03-tag-pills-visible.png)
 
 ### 2. Edit mode shows raw text
 expected: Double-clicking a cell switches to raw text editing — tag pills disappear, raw patterns visible
@@ -35,9 +35,9 @@ result: [pending]
 ## Summary
 
 total: 5
-passed: 0
+passed: 1
 issues: 0
-pending: 5
+pending: 4
 skipped: 0
 blocked: 0
 
