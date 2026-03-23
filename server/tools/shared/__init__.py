@@ -7,7 +7,7 @@ This module provides common functionality used across multiple tools:
 - TMLoader: Unified TM entry loading (LIMIT-002)
 """
 
-from .faiss_manager import FAISSManager
+from .faiss_manager import FAISSManager, ThreadSafeIndex
 from .embedding_engine import (
     EmbeddingEngine,
     Model2VecEngine,
@@ -26,6 +26,7 @@ from .tm_loader import TMLoader
 
 __all__ = [
     "FAISSManager",
+    "ThreadSafeIndex",
     "EmbeddingEngine",
     "Model2VecEngine",
     "QwenEngine",

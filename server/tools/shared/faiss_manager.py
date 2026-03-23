@@ -26,8 +26,9 @@ Usage:
     index = FAISSManager.incremental_add(path, new_vectors, dim=1024)
 """
 
+import threading
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 import numpy as np
 
 from loguru import logger
@@ -288,3 +289,150 @@ class FAISSManager:
     def is_empty(index: "faiss.Index") -> bool:
         """Check if index has no vectors."""
         return index.ntotal == 0
+
+    @classmethod
+    def create_idmap_index(cls, dim: int) -> "faiss.Index":
+        """
+        Create an IndexIDMap2-wrapped flat index that supports add_with_ids and remove_ids.
+
+        Uses IndexFlatIP (exact inner product search) as the sub-index because
+        IndexHNSWFlat does not support remove_ids. For typical TM sizes (<100K entries),
+        IndexFlatIP provides fast enough search with full add/remove support.
+
+        Args:
+            dim: Embedding dimension
+
+        Returns:
+            faiss.IndexIDMap2 wrapping an IndexFlatIP
+        """
+        faiss = _get_faiss()
+
+        flat = faiss.IndexFlatIP(dim)
+        index = faiss.IndexIDMap2(flat)
+        logger.debug(f"Created FAISS IndexIDMap2(FlatIP) index (dim={dim})")
+        return index
+
+    @classmethod
+    def add_with_ids(
+        cls,
+        index: "faiss.Index",
+        vectors: np.ndarray,
+        ids: np.ndarray,
+        normalize: bool = True,
+    ) -> None:
+        """
+        Add vectors with explicit IDs to an IndexIDMap2 index.
+
+        Args:
+            index: FAISS IndexIDMap2 index
+            vectors: Vectors to add (N x dim)
+            ids: int64 array of IDs (length N)
+            normalize: Whether to normalize vectors (default True)
+        """
+        if vectors.size == 0:
+            logger.debug("No vectors to add_with_ids")
+            return
+
+        vectors = np.ascontiguousarray(vectors, dtype=np.float32)
+        ids = np.ascontiguousarray(ids, dtype=np.int64)
+
+        if normalize:
+            vectors = cls.normalize_vectors(vectors)
+
+        before = index.ntotal
+        index.add_with_ids(vectors, ids)
+        logger.debug(f"add_with_ids: added {len(ids)} vectors ({before} -> {index.ntotal})")
+
+    @classmethod
+    def remove_ids(cls, index: "faiss.Index", ids: List[int]) -> int:
+        """
+        Remove vectors by ID from an IndexIDMap2 index.
+
+        Args:
+            index: FAISS IndexIDMap2 index
+            ids: List of int IDs to remove
+
+        Returns:
+            Number of vectors actually removed
+        """
+        faiss = _get_faiss()
+
+        id_array = np.array(ids, dtype=np.int64)
+        id_selector = faiss.IDSelectorBatch(len(id_array), faiss.swig_ptr(id_array))
+
+        before = index.ntotal
+        n_removed = index.remove_ids(id_selector)
+        logger.debug(f"remove_ids: removed {n_removed}/{len(ids)} vectors ({before} -> {index.ntotal})")
+
+        if n_removed != len(ids):
+            logger.warning(f"remove_ids: expected to remove {len(ids)} but removed {n_removed}")
+
+        return n_removed
+
+    @classmethod
+    def convert_to_idmap(cls, existing_index: "faiss.Index", dim: int) -> "faiss.Index":
+        """
+        Convert a plain IndexHNSWFlat to an IndexIDMap2 wrapper.
+
+        Reconstructs all vectors from the old index and adds them with sequential IDs.
+
+        Args:
+            existing_index: Plain IndexHNSWFlat index
+            dim: Embedding dimension
+
+        Returns:
+            New IndexIDMap2 index containing all vectors from existing_index
+        """
+        faiss = _get_faiss()
+
+        ntotal = existing_index.ntotal
+        new_index = cls.create_idmap_index(dim)
+
+        if ntotal == 0:
+            logger.info("convert_to_idmap: source index empty, returning empty IDMap2")
+            return new_index
+
+        # Reconstruct all vectors from the old index
+        vectors = np.zeros((ntotal, dim), dtype=np.float32)
+        for i in range(ntotal):
+            vectors[i] = existing_index.reconstruct(i)
+
+        ids = np.arange(ntotal, dtype=np.int64)
+        # Vectors are already normalized in the index, skip re-normalization
+        new_index.add_with_ids(vectors, ids)
+
+        logger.info(f"convert_to_idmap: migrated {ntotal} vectors to IndexIDMap2")
+        return new_index
+
+
+class ThreadSafeIndex:
+    """Thread-safe wrapper around a FAISS index for concurrent access."""
+
+    def __init__(self, index: "faiss.Index"):
+        self._index = index
+        self._lock = threading.RLock()
+
+    @property
+    def index(self) -> "faiss.Index":
+        """Access the underlying FAISS index."""
+        return self._index
+
+    def add_with_ids(self, vectors: np.ndarray, ids: np.ndarray) -> None:
+        """Thread-safe add_with_ids."""
+        with self._lock:
+            self._index.add_with_ids(vectors, ids)
+
+    def remove_ids(self, id_selector) -> int:
+        """Thread-safe remove_ids."""
+        with self._lock:
+            return self._index.remove_ids(id_selector)
+
+    def search(self, query: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Thread-safe search."""
+        with self._lock:
+            return self._index.search(query, k)
+
+    @property
+    def ntotal(self) -> int:
+        """Number of vectors in the index."""
+        return self._index.ntotal
