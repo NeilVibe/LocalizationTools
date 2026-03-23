@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 78-03-PLAN.md (Phase 78 plan 3)
-last_updated: "2026-03-23T19:43:14.000Z"
+stopped_at: Completed 78-02-PLAN.md
+last_updated: "2026-03-23T19:46:34.609Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
   completed_plans: 9
 ---
@@ -49,6 +49,7 @@ Plan: 3 of 3
 | Phase 76 P01 | 2min | 2 tasks | 3 files |
 | Phase 76 P02 | 3min | 2 tasks | 1 files |
 | Phase 78 P03 | 3min | 1 tasks | 2 files |
+| Phase 78 P02 | 5min | 1 tasks | 2 files |
 
 ### Decisions
 
@@ -62,6 +63,7 @@ No new decisions yet for v9.0.
 - [Phase 76]: Created separate e2e/conftest.py mirroring api/conftest.py for test directory isolation
 - [Phase 76]: Module-scoped TestClient for media tests; xfail for MegaIndex-dependent endpoints
 - [Phase 78]: xfail for gamedata-dependent entity detection tests; validate endpoint structure not detection accuracy
+- [Phase 78]: Merge tests xfail: TranslatorMergeService route shadowed by files.py merge route
 
 ### Pending Todos
 
@@ -79,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T19:43:14Z
-Stopped at: Completed 78-03-PLAN.md (Phase 78 plan 3)
+Last session: 2026-03-23T19:46:23.724Z
+Stopped at: Completed 78-02-PLAN.md
 Next action: Continue Phase 78 remaining plans or advance to Phase 79
