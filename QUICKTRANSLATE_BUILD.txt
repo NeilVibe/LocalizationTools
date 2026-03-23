@@ -214,3 +214,4 @@ Build 088: fix misleading log message for low-impact angle brackets
 Build 089: hardcode Source for Fix Lone Brackets + Extract Translation by StringID
 Build 090: Extract Translations - add StrOrigin match mode with frequency bias for duplicates
 Build 091: fix undefined string_id_order reference
+Build 092: silence lone bracket warnings matching source — single info line at end only
