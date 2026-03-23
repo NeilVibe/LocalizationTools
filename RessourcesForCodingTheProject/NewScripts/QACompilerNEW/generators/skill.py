@@ -572,7 +572,8 @@ def _write_skill_rows(
     write it recursively as a sub-skill. If not, write SubKnowledgeData rows.
 
     Weapon variants: After KnowledgeData rows, output weapon-specific Description
-    overrides at depth+1 (only when Name or Desc differs from parent).
+    overrides at same depth as parent (only when Name or Desc differs from parent).
+    Color matches parent: green/orange for WeaponVariant, lavender for SubWeaponVariant.
 
     Args:
         depth: Nesting depth (0 = top-level, 1+ = nested sub-skill).
@@ -649,13 +650,13 @@ def _write_skill_rows(
         t, s, so = pre.get((sk_lower, "knowledge2_desc"), ("", "", ""))
         excel_row = _write_row(f"{prefix}KnowledgeData2", so if so else entry.knowledge2_desc_kor, t, s)
 
-    # 7. Weapon variants — Description overrides per weapon type (depth+1)
+    # 7. Weapon variants — Description overrides per weapon type (same depth)
     if weapon_variants_map and entry.learn_knowledge_key:
         lkk_variants = entry.learn_knowledge_key.lower()
         variants = weapon_variants_map.get(lkk_variants, [])
         if variants:
-            weapon_fill = _fill_sub  # lavender for weapon variants
-            weapon_depth = depth + 1
+            weapon_fill = row_fill  # same color as parent: green/orange for normal, lavender for sub
+            weapon_depth = depth
             for wv in variants:
                 if wv.name_kor:
                     t_wv, s_wv, so_wv = pre.get((lkk_variants, f"wv_{wv.weapon_key}_name"), ("", "", ""))
@@ -780,9 +781,9 @@ def _write_skill_rows(
                     ws.cell(excel_row, 8).number_format = '@'
                     excel_row += 1
 
-                # Weapon variants for knowledge-only children (depth+1 from child)
+                # Weapon variants for knowledge-only children (same depth as child)
                 if child_variants:
-                    wv_depth = child_depth + 1
+                    wv_depth = child_depth
                     for wv in child_variants:
                         if wv.name_kor:
                             t_wv, s_wv, so_wv = pre.get((child_sk_lower, f"wv_{wv.weapon_key}_name"), ("", "", ""))
