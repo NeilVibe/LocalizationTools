@@ -91,6 +91,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 2/2 | Complete    | 2026-03-23 |
-| 76. Language Data E2E | 2/2 | Complete    | 2026-03-24 |
+| 76. Language Data E2E | 2/2 | Complete    | 2026-03-23 |
 | 78. Feature Pipeline Verification | 0/TBD | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |
