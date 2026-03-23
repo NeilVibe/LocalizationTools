@@ -1,10 +1,10 @@
 # Milestones
 
-## v8.0 Service Layer Extraction (IN PROGRESS)
+## v8.0 Tag Visualizer + Service Layer Extraction (IN PROGRESS)
 
-**Phases:** 69-72 (4 phases)
-**Requirements:** 0/13 complete (4 categories: SVC-STATS, SVC-AUTH, SVC-TELEM, SVC-INFRA)
-**Goal:** Extract business logic from 6 thick API modules (4,032 lines) into service classes. Route→service→repository. Zero user-facing changes. Unblocks unit testing (ARCH-04).
+**Phases:** 73, 69-72 (5 phases)
+**Requirements:** 0/16 complete (5 categories: TAG, SVC-STATS, SVC-AUTH, SVC-TELEM, SVC-INFRA)
+**Goal:** (1) MemoQ-style tag pills for translators — {0}, %1#, \n rendered as colored inline badges. (2) Extract business logic from 6 thick API modules into service classes.
 
 ---
 

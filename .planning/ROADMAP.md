@@ -1,11 +1,12 @@
-# Roadmap: LocaNext v8.0 Service Layer Extraction (ARCH-03)
+# Roadmap: LocaNext v8.0 Tag Visualizer + Service Layer Extraction
 
 ## Overview
 
-Extract business logic from 6 thick FastAPI route handlers (4,032 lines) into service classes. Creates route→service→repository architecture. Eliminates ~60% duplication. Enables unit testing. Zero user-facing changes.
+MemoQ-style tag pills for translators (Phase 73 — user-facing, do first) + service layer extraction from 6 thick API modules (Phases 69-72 — architecture).
 
 ## Phases
 
+- [ ] **Phase 73: Regex Tag Visualizer** - MemoQ-style inline tag pills ({0}, %1#, \n → colored badges) in VirtualGrid editor
 - [ ] **Phase 69: Stats & Rankings Service** - Extract StatsService + RankingsService from stats.py (1371) + rankings.py (608)
 - [ ] **Phase 70: Auth Service** - Extract AuthService from auth_async.py (629)
 - [ ] **Phase 71: Telemetry & Remote Logging** - Extract TelemetryService + RemoteLoggingService (1185 lines)

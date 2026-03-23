@@ -18,12 +18,12 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-23)
 
-**Core value:** Extract business logic from 6 thick API modules into service classes — route→service→repository
-**Current focus:** Phase 69 — Stats & Rankings Service
+**Core value:** MemoQ-style tag pills for translators + service layer extraction for maintainability
+**Current focus:** Phase 73 — Regex Tag Visualizer (user-facing, do first)
 
 ## Current Position
 
-Phase: 69
+Phase: 73 (Tag Visualizer — user-facing, do first)
 Plan: Not started
 
 ## Module Audit (Tribunal Analysis)
@@ -57,4 +57,4 @@ Plan: Not started
 
 Last session: 2026-03-23
 Stopped at: Roadmap created
-Next action: /gsd:plan-phase 69
+Next action: /gsd:plan-phase 73
