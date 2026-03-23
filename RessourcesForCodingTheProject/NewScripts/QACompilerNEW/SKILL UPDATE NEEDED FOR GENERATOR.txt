@@ -1,0 +1,152 @@
+something changed  skill data structure apprendtly the generator is not woerking well. heres hte most recent data for you to understnad. i give you random stuff and you just fully review evething and understnad the idfferences ig uess?
+
+
+from F:\perforce\cd\cd_alpha\Resource\GameData\StaticInfo\knowledgeinfo\knowledgeinfo_skill.staticinfo.xml
+
+   <KnowledgeInfo StrKey="Knowledge_TurnBash_I" Name="회전 베기" isDefault="True" UITextureName="cd_icon_Skill_TurnBash_I" Desc="사용 방법 : {Key:Key_Skill_7}<br/><br/>회전하며 짧게 도약하여 적을 벤다." VideoPath="ui/media/Skill_TurnBash_I.mp4" LocalizationDescription="">
+    <LevelData Level="1">
+     <Description UILocalStringKey="UI_Knowledge_Description_Spear" Name="기동 찌르기" Desc="사용 방법 : {Key:Key_Skill_7}<br/><br/>빠르게 이동하며 적을 연속으로 찌른다." VideoPath="ui/media/Skill_TurnBash_I_Spear.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" Name="회전 베기" Desc="사용 방법 : {Key:Key_Skill_7}<br/><br/>회전하며 주변의 적을 베고 전진한다." VideoPath="ui/media/Skill_TurnBash_I_TwoHandSword.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_TurnBash_I_DualWeapon.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="연각" Desc="사용 방법 : {Key:Key_Skill_7}<br/><br/>회전하며 발차기로 적을 타격한다." VideoPath="ui/media/Skill_UnArmedCombination_LotusKick_I.mp4"/>
+    </>
+    <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level2_Sword"/>
+   </>
+    <!-- 회전베기 강화 : 숙련-->
+    <KnowledgeInfo StrKey="Knowledge_TurnBash_II" Name="회전 베기 강화 : 숙련" UITextureName="cd_icon_Skill_TurnBash_II" Desc="사용 방법 : {Key:Key_Skill_7} 유지<br/><br/>연속으로 {Staticinfo:Knowledge:Knowledge_TurnBash_I} 사용이 가능해진다." VideoPath="ui/media/Skill_TurnBash_II.mp4" LocalizationDescription="" LearnSpot="cd_m11_m04_npc_farm_00_0007_00">
+     <Dev Memo="스킬포인트"/>
+     <LevelData Level="1">
+      <Learnable LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_TurnBash_I(2)"/>
+      <Learnable LearnStyle="FollowManualLockOn" Condition="Macro(SkillLearn_Battle) && CheckCharacterKey(Kliff)" ManualLockOnString="UI_ManualLockOn_Common"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" Name="기동 찌르기 강화 : 숙련" Desc="사용 방법 : {Key:Key_Skill_7} 유지<br/><br/>{Staticinfo:Knowledge:Knowledge_TurnBash_I:UI_Knowledge_Description_Spear}를 연속으로 사용할 수 있다." VideoPath="ui/media/Skill_TurnBash_II_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_TurnBash_II_TwodHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_TurnBash_II_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="연각 강화 : 숙련" Desc="사용 방법 : {Key:Key_Skill_7} 유지<br/><br/>{Staticinfo:Knowledge:Knowledge_TurnBash_I:UI_Knowledge_Description_Fist}을 연속으로 사용할 수 있다." VideoPath="ui/media/Skill_UnArmedCombination_LotusKick_II.mp4"/>
+     </>
+    </>
+
+
+then from  F:\perforce\cd\cd_alpha\Resource\GameData\StaticInfo\skillinfo\skillinfo_pc.staticinfo.xml
+
+
+ <SkillInfo Key="10273" StrKey="Skill_TurnBash_I" SkillName="회전 베기" ApplyType="Active" MaxLevel="1" UseResourceStat="Stamina(-30)" LearnKnowledgeKey="Knowledge_TurnBash_I"
+  SkillIcon="Skill_TurnBash" VideoPath="ui/media/Skill_TurnBash_I.mp4" SkillDesc="사용 방법 : {Key:Key_Skill_7}<br/><br/>회전하며 짧게 도약하여 적을 베어 넘긴다.">
+  <Buff SkillLevel="1" BuffNameForDev="데미지" BuffType="damage" AttackType="Direct" AdditionalDamage="0" DamagePercent="120" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+  <Buff SkillLevel="1" BuffNameForDev="CC" BuffType="damagedactionrestriction" ActionRestrictionType="PushLight" BuffTimeStyle="immediately" BuffTargetType="actor"/>
+ </>
+
+ <SkillInfo Key="10079" StrKey="Skill_TurnBash_II" SkillName="회전 베기 강화 : 숙련" ApplyType="Active" MaxLevel="1" UseResourceStat="Stamina(-30)" LearnKnowledgeKey="Knowledge_TurnBash_II"
+  SkillIcon="Skill_TurnBash" VideoPath="ui/media/Skill_TurnBash_II.mp4" SkillDesc="사용 방법 : {Key:Key_Skill_7} 유지<br/><br/>연속으로 회전 베기 공격이 가능해 진다.">
+ </>
+ <SkillInfo Key="10090" StrKey="Skill_TurnBash_III" SkillName="회전 베기 강화 II" ApplyType="Active" MaxLevel="1" LearnKnowledgeKey="Knowledge_TurnBash_III"
+  SkillIcon="Skill_TurnBash" VideoPath="ui/media/Skill_TurnBash_II.mp4" SkillDesc="사용 방법 : {Key:Key_Skill_7} 유지<br/><br/>연속으로 회전 베기 공격이 가능해지며, 진행 중인 공격을 멈추고 회전 베기 공격을 할 수 있다.">
+ </>
+
+
+apparently each skill has like  5 differnet weapon variant. but description can chacnge depending on the weapon vcariant. BUT they dont change all. some weapon variant have same desc. anyway i'll keep giving you some data maybe you can make sense of it?
+in :f:\perforce\cd\cd_alpha\Resource\GameData\StaticInfo\knowledgeinfo\knowledgeinfo_skill.staticinfo.xml
+   <KnowledgeInfo StrKey="Knowledge_MoveCutting_I" Name="전진 베기" isDefault="True" UITextureName="cd_icon_Skill_MoveCutting_I" Desc="사용 방법 : {Key:Key_Skill_9}<br/><br/>보폭을 크게 잡고 전진하며 적을 강하게 베어 나간다." VideoPath="ui/media/Skill_MoveCutting_I.mp4" LocalizationDescription="">
+    <Dev Memo="기본 습득"/>
+    <LevelData Level="1" LearnStyle="Outer">
+     <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_MoveCutting_I_Spear.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_MoveCutting_I_TwoHandSword.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_MoveCutting_I_DualWeapon.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권" Desc="사용 방법 : {Key:Key_Skill_9}<br/><br/>전진하며 주먹으로 적을 타격한다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_I.mp4"/>
+    </>
+    <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level3_Sword"/>
+   </>
+    <KnowledgeInfo StrKey="Knowledge_MoveCutting_II" Name="전진 베기 강화 : 숙련" UITextureName="cd_icon_Skill_MoveCutting_II" Desc="사용 방법 : {Key:Key_HardAttack}<br/><br/>보폭을 크게 잡고 전진하며 마무리 베기까지 이어 갈 수 있다." VideoPath="ui/media/Skill_MoveCutting_III.mp4" LocalizationDescription="" LearnSpot="Calphade_Finalstory_Epilogue_I_Child1">
+     <LevelData Level="1">
+      <Learnable LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_MoveCutting_I(2)"/>
+      <Learnable LearnStyle="FollowManualLockOn" Condition="Macro(SkillLearn_Battle) && CheckCharacterKey(Kliff)" ManualLockOnString="UI_ManualLockOn_Common"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_MoveCutting_II_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_MoveCutting_II_TwoHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_MoveCutting_II_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권 강화 : 숙련" Desc="사용 방법 : {Key:Key_HardAttack}<br/><br/>마무리 타격으로 기운을 분출해 전방의 적을 날려 보낸다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_II.mp4"/>
+     </>
+    </>
+
+    <KnowledgeInfo StrKey="Knowledge_MoveCutting_Expert" Name="전진 베기 강화 : 정밀" UITextureName="cd_icon_Skill_MoveCutting_Expert" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_MoveCutting_I} 시 자동 적용<br/><br/>{Staticinfo:Knowledge:Knowledge_MoveCutting_I}에 통달하여 더 이상 {Staticinfo:Knowledge:Knowledge_MoveCutting_I}가 빗나가지 않는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_MoveCutting_I(3)">
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권 강화 : 정밀" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_MoveCutting_I:UI_Knowledge_Description_Fist} 시 자동 적용<br/><br/>더 이상 {Staticinfo:Knowledge:Knowledge_MoveCutting_I:UI_Knowledge_Description_Fist}가 빗나가지 않는다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_II.mp4"/>
+     </>
+    </>
+
+
+   <KnowledgeInfo StrKey="Knowledge_RotationBash_I" Name="회전 가르기" isDefault="True" UITextureName="cd_icon_Skill_RotationBash_I" Desc="사용 방법 : {Key:Key_Skill_1}<br/><br/>힘을 모아 회전하며 강하게 내려쳐 적을 날려버린다." VideoPath="ui/media/Skill_RotationBash_I.mp4" LocalizationDescription="">
+    <Dev Memo="기본 습득"/>
+     <LevelData Level="1" LearnStyle="Outer">
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_RotationBash_I_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_RotationBash_I_TwoHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_RotationBash_I_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="호포" Desc="사용 방법 : {Key:Key_Skill_1}<br/><br/>양 주먹에 기운을 모아 적을 강타한다." VideoPath="ui/media/Skill_UnArmedCombination_TigerRoar_I.mp4"/>
+     </>
+     <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level3_Sword"/>
+    </>
+    <KnowledgeInfo StrKey="Knowledge_RotationBash_NoDelay" Name="회전 가르기 강화 : 신속" UITextureName="cd_icon_Skill_RotationBash_NoDelay" Desc="사용 방법 : 다른 기술 사용 중 {Key:Key_Skill_1}<br/><br/>다른 기술 사용 중 {Staticinfo:Knowledge:Knowledge_RotationBash_I}로 신속하게 연계 공격을 한다." VideoPath="ui/media/Skill_NoDelayRotationBash.mp4" LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_RotationBash_I(2)">
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_NoDelayRotationBash_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_NoDelayRotationBash_TwoHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_NoDelayRotationBash_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="호포 강화 : 신속" Desc="사용 방법 : 다른 기술 사용 중 {Key:Key_Skill_1}<br/><br/>다른 기술 사용 중 {Staticinfo:Knowledge:Knowledge_RotationBash_I:UI_Knowledge_Description_Fist}로 신속하게 연계 한다." VideoPath="ui/media/Skill_UnArmedCombination_TigerRoar_NoDelay.mp4"/>
+     </>
+    </>
+
+    <KnowledgeInfo StrKey="Knowledge_RotationBash_II" Name="회전 가르기 강화 : 증폭" UITextureName="cd_icon_Skill_RotationBash_II" Desc="사용 방법 : {Key:Key_Skill_1} 유지<br/><br/>{Staticinfo:Knowledge:Knowledge_RotationBash_I} 이후 추가로 한 번 더 강력한 내려치기 공격을 한다." VideoPath="ui/media/Skill_RotationBash_II.mp4" LocalizationDescription="" LearnSpot="IcemoorCastleRuins_Block_DeerKing_Boss_Battle">
+     <Dev Memo="보스_cd_Seq_Quest_DeerKing_Boss_9000"/>
+     <LevelData Level="1">
+      <Learnable LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_RotationBash_I(3)"/>
+      <Learnable LearnStyle="Follow" Condition="Macro(SkillLearn_Battle) && CheckCharacterKey(Kliff)" RepeatCount="1"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_RotationBash_II_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_RotationBash_II_TwoHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_RotationBash_II_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="호포 강화 : 증폭" Desc="사용 방법 : {Key:Key_Skill_1} 유지<br/><br/>{Staticinfo:Knowledge:Knowledge_RotationBash_I:UI_Knowledge_Description_Fist} 타격 전, 주먹으로 적을 빠르게 난타한다." VideoPath="ui/media/Skill_UnArmedCombination_TigerRoar_II.mp4"/>
+     </>
+    </>
+    <KnowledgeInfo StrKey="Knowledge_RotationBash_Expert" Name="회전 가르기 강화 : 제압" UITextureName="cd_icon_Skill_RotationBash_Expert" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_RotationBash_I} 공격 시 자동 적용<br/><br/>{Staticinfo:Knowledge:Knowledge_RotationBash_I}에 통달하여 상대의 슈퍼아머 상태를 무시하고 날려버린다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_RotationBash_I(3)">
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="호포 강화 : 제압" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_RotationBash_I:UI_Knowledge_Description_Fist} 공격 시 자동 적용<br/><br/>{Staticinfo:Knowledge:Knowledge_RotationBash_I:UI_Knowledge_Description_Fist}에 통달하여 상대의 슈퍼아머 상태를 무시하고 날려버린다."/>
+     </>
+    </>
+
+
+so theres going to be bascially different DESCRIPTION for differfnet WEAPON TYPE. that hsould be added ON TOP. 
+
+   <KnowledgeInfo StrKey="Knowledge_MoveCutting_I" Name="전진 베기" isDefault="True" UITextureName="cd_icon_Skill_MoveCutting_I" Desc="사용 방법 : {Key:Key_Skill_9}<br/><br/>보폭을 크게 잡고 전진하며 적을 강하게 베어 나간다." VideoPath="ui/media/Skill_MoveCutting_I.mp4" LocalizationDescription="">
+    <Dev Memo="기본 습득"/>
+    <LevelData Level="1" LearnStyle="Outer">
+     <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_MoveCutting_I_Spear.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_MoveCutting_I_TwoHandSword.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_MoveCutting_I_DualWeapon.mp4"/>
+     <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권" Desc="사용 방법 : {Key:Key_Skill_9}<br/><br/>전진하며 주먹으로 적을 타격한다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_I.mp4"/>
+    </>
+    <UseMacroNode Name="Macro_Skill_SkillPoint_Follow_Level3_Sword"/>
+   </>
+    <KnowledgeInfo StrKey="Knowledge_MoveCutting_II" Name="전진 베기 강화 : 숙련" UITextureName="cd_icon_Skill_MoveCutting_II" Desc="사용 방법 : {Key:Key_HardAttack}<br/><br/>보폭을 크게 잡고 전진하며 마무리 베기까지 이어 갈 수 있다." VideoPath="ui/media/Skill_MoveCutting_III.mp4" LocalizationDescription="" LearnSpot="Calphade_Finalstory_Epilogue_I_Child1">
+     <LevelData Level="1">
+      <Learnable LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_MoveCutting_I(2)"/>
+      <Learnable LearnStyle="FollowManualLockOn" Condition="Macro(SkillLearn_Battle) && CheckCharacterKey(Kliff)" ManualLockOnString="UI_ManualLockOn_Common"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Spear" VideoPath="ui/media/Skill_MoveCutting_II_Spear.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_TwoHandSword" VideoPath="ui/media/Skill_MoveCutting_II_TwoHandSword.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_DualWeapon" VideoPath="ui/media/Skill_MoveCutting_II_DualWeapon.mp4"/>
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권 강화 : 숙련" Desc="사용 방법 : {Key:Key_HardAttack}<br/><br/>마무리 타격으로 기운을 분출해 전방의 적을 날려 보낸다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_II.mp4"/>
+     </>
+    </>
+
+    <KnowledgeInfo StrKey="Knowledge_MoveCutting_Expert" Name="전진 베기 강화 : 정밀" UITextureName="cd_icon_Skill_MoveCutting_Expert" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_MoveCutting_I} 시 자동 적용<br/><br/>{Staticinfo:Knowledge:Knowledge_MoveCutting_I}에 통달하여 더 이상 {Staticinfo:Knowledge:Knowledge_MoveCutting_I}가 빗나가지 않는다." LocalizationDescription="">
+     <LevelData Level="1" LearnStyle="LearnedPriorKnowledge" KnowledgeList="Knowledge_MoveCutting_I(3)">
+      <Description UILocalStringKey="UI_Knowledge_Description_Fist" Name="강권 강화 : 정밀" Desc="사용 방법 : {Staticinfo:Knowledge:Knowledge_MoveCutting_I:UI_Knowledge_Description_Fist} 시 자동 적용<br/><br/>더 이상 {Staticinfo:Knowledge:Knowledge_MoveCutting_I:UI_Knowledge_Description_Fist}가 빗나가지 않는다." VideoPath="ui/media/Skill_UnArmedCombination_PunchAttack_II.mp4"/>
+     </>
+    </>
+
+
+
+
+and this change in Descipriton according to hte weapon APPEAR in normal skill depth OR sub skill depth (the purple one yeah?)
+
+
+I UNDERSTNQD LOOK . i udnestnad look : you see 
+
+UI_Knowledge_Description_Fist UI_Knowledge_Description_DualWeapon UI_Knowledge_Description_TwoHandSword UI_Knowledge_Description_Spear
+
+you can se at the end the WEAPON CHANGE right?  thats where we can build hte output with the weapon dscepiroiton speicfic. that we can just ADD another depth +1 yea? identation even further just for spceiic cpweaon descpiriotn OK? you go all the dinformation. tell me if you also spot some new strucuter with new information that you need. Beside that make sure we do normazliation maximum normazliaton for SPACES, CODE, LIENBREAK so that we FULLY match as mucha s we can what is in the lanugagedata ok? 
