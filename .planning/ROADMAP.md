@@ -76,7 +76,7 @@ Plans:
 Plans:
 - [ ] 78-01-PLAN.md — TM pipeline: populate mock entries, build indexes, cascade search (FEAT-01, FEAT-02, FEAT-07)
 - [ ] 78-02-PLAN.md — Merge + QA pipeline: merge modes, line/term check detection (FEAT-03, FEAT-04)
-- [ ] 78-03-PLAN.md — Entity + Context pipeline: Aho-Corasick detection, context panel with media (FEAT-05, FEAT-06)
+- [x] 78-03-PLAN.md — Entity + Context pipeline: Aho-Corasick detection, context panel with media (FEAT-05, FEAT-06)
 
 ### Phase 79: Visual Audit
 **Goal**: Every page passes AI visual review with real-looking data loaded, critical issues fixed, and screenshot evidence captured
