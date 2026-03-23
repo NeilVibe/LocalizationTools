@@ -53,7 +53,11 @@ Plans:
   2. Merge preview and execute operations log duration per step (scan, match, postprocess, write) with step-level granularity
   3. File upload operations log duration and file size in a single structured log line
   4. GET /api/performance/summary returns a JSON response with p50/p95/max timings for each instrumented operation over the last N requests
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 63-01-PLAN.md -- Create PerfTimer utility + instrument all hot paths (embedding, FAISS, TM CRUD, merge, upload)
+- [ ] 63-02-PLAN.md -- Create GET /api/performance/summary endpoint with p50/p95/max stats
 
 ### Phase 64: UIUX Quality Audit
 **Goal**: All 5 main pages pass AI-powered visual critique and the merge modal handles every edge case gracefully
@@ -73,6 +77,6 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 61. Merge Internalization | v7.0 | 2/2 | Complete    | 2026-03-23 |
-| 62. TM Auto-Update Pipeline | v7.0 | 3/3 | Complete   | 2026-03-23 |
-| 63. Performance Instrumentation | v7.0 | 0/0 | Not started | - |
+| 62. TM Auto-Update Pipeline | v7.0 | 3/3 | Complete    | 2026-03-23 |
+| 63. Performance Instrumentation | v7.0 | 0/2 | Not started | - |
 | 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |
