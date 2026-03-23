@@ -573,7 +573,8 @@ def _write_skill_rows(
 
     Weapon variants: After KnowledgeData rows, output weapon-specific Description
     overrides at same depth as parent (only when Name or Desc differs from parent).
-    Color matches parent: green/orange for WeaponVariant, lavender for SubWeaponVariant.
+    Color matches parent: green/orange for normal, lavender for sub.
+    DataType uses SkillData [Weapon Variant] / SubSkillData [Weapon Variant] format.
 
     Args:
         depth: Nesting depth (0 = top-level, 1+ = nested sub-skill).
@@ -660,7 +661,7 @@ def _write_skill_rows(
             for wv in variants:
                 if wv.name_kor:
                     t_wv, s_wv, so_wv = pre.get((lkk_variants, f"wv_{wv.weapon_key}_name"), ("", "", ""))
-                    wv_vals = [f"{prefix}WeaponVariant [{wv.weapon_key}]", group_info,
+                    wv_vals = [f"{prefix}SkillData [{wv.weapon_key} Variant]", group_info,
                                so_wv if so_wv else wv.name_kor, t_wv, "", "", "", s_wv]
                     for ci, val in enumerate(wv_vals, 1):
                         cell = ws.cell(excel_row, ci, val)
@@ -680,7 +681,7 @@ def _write_skill_rows(
                     excel_row += 1
                 if wv.desc_kor:
                     t_wv, s_wv, so_wv = pre.get((lkk_variants, f"wv_{wv.weapon_key}_desc"), ("", "", ""))
-                    wv_vals = [f"{prefix}WeaponVariant [{wv.weapon_key}]", group_info,
+                    wv_vals = [f"{prefix}SkillData [{wv.weapon_key} Variant]", group_info,
                                so_wv if so_wv else wv.desc_kor, t_wv, "", "", "", s_wv]
                     for ci, val in enumerate(wv_vals, 1):
                         cell = ws.cell(excel_row, ci, val)
@@ -787,7 +788,7 @@ def _write_skill_rows(
                     for wv in child_variants:
                         if wv.name_kor:
                             t_wv, s_wv, so_wv = pre.get((child_sk_lower, f"wv_{wv.weapon_key}_name"), ("", "", ""))
-                            wv_vals = ["SubWeaponVariant [{}]".format(wv.weapon_key), group_info,
+                            wv_vals = ["SubSkillData [{} Variant]".format(wv.weapon_key), group_info,
                                        so_wv if so_wv else wv.name_kor, t_wv, "", "", "", s_wv]
                             for ci, val in enumerate(wv_vals, 1):
                                 cell = ws.cell(excel_row, ci, val)
@@ -807,7 +808,7 @@ def _write_skill_rows(
                             excel_row += 1
                         if wv.desc_kor:
                             t_wv, s_wv, so_wv = pre.get((child_sk_lower, f"wv_{wv.weapon_key}_desc"), ("", "", ""))
-                            wv_vals = ["SubWeaponVariant [{}]".format(wv.weapon_key), group_info,
+                            wv_vals = ["SubSkillData [{} Variant]".format(wv.weapon_key), group_info,
                                        so_wv if so_wv else wv.desc_kor, t_wv, "", "", "", s_wv]
                             for ci, val in enumerate(wv_vals, 1):
                                 cell = ws.cell(excel_row, ci, val)
