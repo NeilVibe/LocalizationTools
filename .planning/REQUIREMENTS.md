@@ -30,13 +30,13 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 ### Feature Pipeline Verification (DEV mode)
 
-- [ ] **FEAT-01**: TM auto-update fires on add/edit/delete — Model2Vec embedding + FAISS index update in ~6ms
-- [ ] **FEAT-02**: 5-tier TM cascade returns matches (hash → FAISS → n-gram → text → fallback) with correct confidence scores
+- [x] **FEAT-01**: TM auto-update fires on add/edit/delete — Model2Vec embedding + FAISS index update in ~6ms
+- [x] **FEAT-02**: 5-tier TM cascade returns matches (hash → FAISS → n-gram → text → fallback) with correct confidence scores
 - [x] **FEAT-03**: QuickTranslate merge executes all match modes (strict, stringid, strorigin, fuzzy, cascade) with postprocess pipeline
 - [x] **FEAT-04**: QuickCheck QA runs line check + term check on uploaded language data, badges appear in grid
 - [ ] **FEAT-05**: Aho-Corasick entity detection identifies characters/items/locations in source text
 - [ ] **FEAT-06**: Context panel shows entity info + DDS image + WEM audio when clicking a string with entity references
-- [ ] **FEAT-07**: Mock TM data populated so cascade search returns real matches for uploaded language data
+- [x] **FEAT-07**: Mock TM data populated so cascade search returns real matches for uploaded language data
 
 ### Visual Audit
 
@@ -77,13 +77,13 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | LDE2E-02 | Phase 76 | Complete |
 | LDE2E-03 | Phase 76 | Pending |
 | LDE2E-04 | Phase 76 | Complete |
-| FEAT-01 | Phase 78 | Pending |
-| FEAT-02 | Phase 78 | Pending |
+| FEAT-01 | Phase 78 | Complete |
+| FEAT-02 | Phase 78 | Complete |
 | FEAT-03 | Phase 78 | Complete |
 | FEAT-04 | Phase 78 | Complete |
 | FEAT-05 | Phase 78 | Pending |
 | FEAT-06 | Phase 78 | Pending |
-| FEAT-07 | Phase 78 | Pending |
+| FEAT-07 | Phase 78 | Complete |
 | UIUX-01 | Phase 79 | Pending |
 | UIUX-02 | Phase 79 | Pending |
 | UIUX-03 | Phase 79 | Pending |

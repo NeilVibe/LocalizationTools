@@ -9,7 +9,7 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
 - [x] **Phase 74: Mock Data Foundation** - Perforce-path mock gamedata (DDS/WEM/XML) loadable by PerforcePathService (completed 2026-03-23)
 - [x] **Phase 75: Build Pipeline** - Light Build produces working installer with internalized merge module (completed 2026-03-23)
 - [x] **Phase 76: Language Data E2E** - Upload, edit, save, media resolution in built app (offline) (completed 2026-03-24)
-- [ ] **Phase 78: Feature Pipeline Verification** - TM cascade, merge, QA, Aho-Corasick, context panel with media — all verified in DEV mode with mock data
+- [x] **Phase 78: Feature Pipeline Verification** - TM cascade, merge, QA, Aho-Corasick, context panel with media — all verified in DEV mode with mock data (completed 2026-03-23)
 - [ ] **Phase 79: Visual Audit** - Qwen3-VL review of all 5 pages, fix critical issues, screenshot evidence
 
 ## Phase Details
@@ -71,11 +71,11 @@ Plans:
   5. Aho-Corasick automaton detects entity names from mock glossary in source text
   6. Context panel returns entity info + image + audio for a known entity StringId
   7. Mock TM contains entries that produce cascade hits for uploaded language data
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 78-01-PLAN.md — TM pipeline: populate mock entries, build indexes, cascade search (FEAT-01, FEAT-02, FEAT-07)
-- [ ] 78-02-PLAN.md — Merge + QA pipeline: merge modes, line/term check detection (FEAT-03, FEAT-04)
+- [x] 78-01-PLAN.md — TM pipeline: populate mock entries, build indexes, cascade search (FEAT-01, FEAT-02, FEAT-07)
+- [x] 78-02-PLAN.md — Merge + QA pipeline: merge modes, line/term check detection (FEAT-03, FEAT-04)
 - [x] 78-03-PLAN.md — Entity + Context pipeline: Aho-Corasick detection, context panel with media (FEAT-05, FEAT-06)
 
 ### Phase 79: Visual Audit
@@ -97,5 +97,5 @@ Plans:
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 2/2 | Complete    | 2026-03-23 |
 | 76. Language Data E2E | 2/2 | Complete    | 2026-03-23 |
-| 78. Feature Pipeline Verification | 0/3 | Not started | - |
+| 78. Feature Pipeline Verification | 3/3 | Complete   | 2026-03-23 |
 | 79. Visual Audit | 0/TBD | Not started | - |

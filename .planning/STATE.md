@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 78-02-PLAN.md
-last_updated: "2026-03-23T19:46:34.609Z"
+stopped_at: Completed 78-01-PLAN.md
+last_updated: "2026-03-23T19:46:50.516Z"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -50,6 +50,7 @@ Plan: 3 of 3
 | Phase 76 P02 | 3min | 2 tasks | 1 files |
 | Phase 78 P03 | 3min | 1 tasks | 2 files |
 | Phase 78 P02 | 5min | 1 tasks | 2 files |
+| Phase 78 P01 | 5min | 1 tasks | 1 files |
 
 ### Decisions
 
@@ -64,6 +65,7 @@ No new decisions yet for v9.0.
 - [Phase 76]: Module-scoped TestClient for media tests; xfail for MegaIndex-dependent endpoints
 - [Phase 78]: xfail for gamedata-dependent entity detection tests; validate endpoint structure not detection accuracy
 - [Phase 78]: Merge tests xfail: TranslatorMergeService route shadowed by files.py merge route
+- [Phase 78]: Used Form data for TM entry endpoint; xfail for FAISS-dependent search tests
 
 ### Pending Todos
 
@@ -81,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T19:46:23.724Z
-Stopped at: Completed 78-02-PLAN.md
+Last session: 2026-03-23T19:46:50.513Z
+Stopped at: Completed 78-01-PLAN.md
 Next action: Continue Phase 78 remaining plans or advance to Phase 79
