@@ -13,10 +13,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from server.api.merge import router
+from server.utils.dependencies import get_current_active_user_async
 
-# Minimal test app with just the merge router
+# Minimal test app with just the merge router + mocked auth
 test_app = FastAPI()
 test_app.include_router(router)
+
+# Override auth dependency with a fake user for testing
+MOCK_USER = {"user_id": 1, "username": "test_admin", "role": "admin", "is_active": True}
+test_app.dependency_overrides[get_current_active_user_async] = lambda: MOCK_USER
+
 client = TestClient(test_app)
 
 
