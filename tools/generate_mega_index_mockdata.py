@@ -15,10 +15,14 @@ Quick task: w79-megaindex-mock-data-generator
 from __future__ import annotations
 
 import argparse
+import struct
 import sys
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
+
+from PIL import Image
 
 from lxml import etree
 from loguru import logger
@@ -977,7 +981,7 @@ def generate_export_xmls(root_dir: Path) -> None:
 
 
 def generate_dds_stubs(root_dir: Path) -> None:
-    """Generate empty .dds files for all UITextureName values."""
+    """Generate valid .dds files openable by Pillow for all UITextureName values."""
     dds_dir = root_dir / "texture" / "image"
     dds_dir.mkdir(parents=True, exist_ok=True)
 
@@ -989,19 +993,43 @@ def generate_dds_stubs(root_dir: Path) -> None:
 
     for tex_name in sorted(textures):
         dds_path = dds_dir / f"{tex_name}.dds"
-        dds_path.write_bytes(b"DDS ")  # 4-byte DDS magic
-    logger.info(f"  Generated {len(textures)} DDS stubs in texture/image/")
+        # Generate unique color from name hash so textures are visually distinguishable
+        h = hash(tex_name) & 0xFFFFFF
+        color = ((h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF, 255)
+        img = Image.new("RGBA", (64, 64), color)
+        img.save(str(dds_path), format="DDS")
+    logger.info(f"  Generated {len(textures)} valid DDS files in texture/image/")
 
 
 def generate_wem_stubs(root_dir: Path) -> None:
-    """Generate empty .wem files for all audio event names."""
-    wem_dir = root_dir / "sound" / "windows" / "English(US)"
-    wem_dir.mkdir(parents=True, exist_ok=True)
+    """Generate valid WAV-content .wem files for all audio events in all language folders."""
+    lang_folders = [
+        "English(US)",
+        "Korean",
+        "Chinese(PRC)",
+    ]
 
-    for a in AUDIO_EVENTS:
-        wem_path = wem_dir / f"{a.event_name}.wem"
-        wem_path.write_bytes(b"")  # Empty is fine, MegaIndex only reads stems
-    logger.info(f"  Generated {len(AUDIO_EVENTS)} WEM stubs")
+    for lang_folder in lang_folders:
+        wem_dir = root_dir / "sound" / "windows" / lang_folder
+        wem_dir.mkdir(parents=True, exist_ok=True)
+
+        for a in AUDIO_EVENTS:
+            wem_path = wem_dir / f"{a.event_name}.wem"
+            _create_wav_content(wem_path, duration_ms=100, sample_rate=22050)
+
+    total = len(AUDIO_EVENTS) * len(lang_folders)
+    logger.info(f"  Generated {total} WEM stubs across {len(lang_folders)} language folders")
+
+
+def _create_wav_content(output_path: Path, duration_ms: int = 100, sample_rate: int = 22050) -> None:
+    """Create a minimal valid WAV file at the given path."""
+    num_samples = int(sample_rate * duration_ms / 1000)
+    with wave.open(str(output_path), 'wb') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)  # 16-bit
+        wav.setframerate(sample_rate)
+        samples = struct.pack(f'<{num_samples}h', *([0] * num_samples))
+        wav.writeframes(samples)
 
 
 # =============================================================================
