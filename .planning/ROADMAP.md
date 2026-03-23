@@ -71,7 +71,12 @@ Plans:
   5. Aho-Corasick automaton detects entity names from mock glossary in source text
   6. Context panel returns entity info + image + audio for a known entity StringId
   7. Mock TM contains entries that produce cascade hits for uploaded language data
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 78-01-PLAN.md — TM pipeline: populate mock entries, build indexes, cascade search (FEAT-01, FEAT-02, FEAT-07)
+- [ ] 78-02-PLAN.md — Merge + QA pipeline: merge modes, line/term check detection (FEAT-03, FEAT-04)
+- [ ] 78-03-PLAN.md — Entity + Context pipeline: Aho-Corasick detection, context panel with media (FEAT-05, FEAT-06)
 
 ### Phase 79: Visual Audit
 **Goal**: Every page passes AI visual review with real-looking data loaded, critical issues fixed, and screenshot evidence captured
@@ -92,5 +97,5 @@ Plans:
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 2/2 | Complete    | 2026-03-23 |
 | 76. Language Data E2E | 2/2 | Complete    | 2026-03-23 |
-| 78. Feature Pipeline Verification | 0/TBD | Not started | - |
+| 78. Feature Pipeline Verification | 0/3 | Not started | - |
 | 79. Visual Audit | 0/TBD | Not started | - |
