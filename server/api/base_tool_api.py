@@ -387,7 +387,12 @@ class BaseToolAPI:
 
         file_paths = []
         for i, file in enumerate(files, 1):
-            file_path = self.temp_dir / file.filename
+            # Sanitize filename: strip directory components to prevent path traversal
+            safe_name = Path(file.filename).name
+            if not safe_name or safe_name in ('.', '..'):
+                logger.warning(f"{log_prefix} Skipped unsafe filename: {file.filename!r}")
+                continue
+            file_path = self.temp_dir / safe_name
 
             with open(file_path, "wb") as f:
                 content = await file.read()
@@ -551,16 +556,11 @@ class BaseToolAPI:
                 original_cwd = os.getcwd()
                 os.chdir(project_root)
 
-                # Redirect stderr to avoid broken pipe errors in background thread
-                old_stderr = sys.stderr
-                sys.stderr = open(os.devnull, 'w')
-
                 try:
                     # Execute the actual task
                     result = task_func(**task_kwargs)
                 finally:
-                    # Restore stderr and directory
-                    sys.stderr = old_stderr
+                    # Restore directory
                     os.chdir(original_cwd)
 
                 # Mark operation as complete

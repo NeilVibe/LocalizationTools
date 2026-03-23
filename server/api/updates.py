@@ -43,13 +43,19 @@ async def download_installer(filename: str):
     Args:
         filename: Name of the file to download (e.g., "LocaNext-Setup-1.0.0.exe")
     """
-    file_path = UPDATES_DIR / filename
+    # Sanitize: strip directory components to prevent path traversal
+    safe_name = Path(filename).name
+    file_path = (UPDATES_DIR / safe_name).resolve()
+
+    # Verify resolved path stays within UPDATES_DIR
+    if not str(file_path).startswith(str(UPDATES_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Invalid path")
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
     # Security: Only allow .exe, .nupkg, .zip files
-    if not filename.endswith(('.exe', '.nupkg', '.zip', '.yml')):
+    if not safe_name.endswith(('.exe', '.nupkg', '.zip', '.yml')):
         raise HTTPException(status_code=403, detail="Invalid file type")
 
     logger.info(f"Serving update file: {filename}")
