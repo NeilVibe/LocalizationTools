@@ -119,6 +119,8 @@ github_token.txt
 *.sqlite
 *.sqlite3
 server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
 server/data/*.sqlite
 
 # Server Data (user-generated, not tracked)
@@ -236,6 +238,10 @@ audio/
 # -------------------- Test Artifacts --------------------
 test-results/
 windows_tests/
+
+# -------------------- MCP / Tribunal Local --------------------
+.mcp.json
+.tribunal/
 
 # -------------------- Claude Code Local Config --------------------
 .claude/settings.json
