@@ -9,7 +9,8 @@ v9.0 validates that the built LocaNext app works end-to-end on an offline Window
 - [x] **Phase 74: Mock Data Foundation** - Perforce-path mock gamedata (DDS/WEM/XML) loadable by PerforcePathService (completed 2026-03-23)
 - [ ] **Phase 75: Build Pipeline** - Light Build produces working installer with internalized merge module
 - [ ] **Phase 76: Language Data E2E** - Upload, edit, save, media resolution in built app (offline)
-- [ ] **Phase 77: Visual Audit** - Qwen3-VL review of all 5 pages, fix critical issues, screenshot evidence
+- [ ] **Phase 78: Feature Pipeline Verification** - TM cascade, merge, QA, Aho-Corasick, context panel with media — all verified in DEV mode with mock data
+- [ ] **Phase 79: Visual Audit** - Qwen3-VL review of all 5 pages, fix critical issues, screenshot evidence
 
 ## Phase Details
 
@@ -50,9 +51,23 @@ Plans:
   4. All upload/edit/save operations work with SQLite backend (no PostgreSQL required)
 **Plans**: TBD
 
-### Phase 77: Visual Audit
-**Goal**: Every page passes AI visual review with real-looking data loaded, critical issues fixed, and screenshot evidence captured
+### Phase 78: Feature Pipeline Verification
+**Goal**: All core feature pipelines work end-to-end in DEV mode with mock data — TM cascade, merge, QA, entity detection, context panel with media
 **Depends on**: Phase 76
+**Requirements**: FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05, FEAT-06, FEAT-07
+**Success Criteria** (what must be TRUE):
+  1. TM auto-update produces embeddings and FAISS index updates within 10ms on add/edit/delete
+  2. TM cascade search returns ranked matches across all 5 tiers for a test query
+  3. QuickTranslate merge completes with at least one match mode on mock language data
+  4. QuickCheck QA detects at least one line issue and one term issue in test data
+  5. Aho-Corasick automaton detects entity names from mock glossary in source text
+  6. Context panel returns entity info + image + audio for a known entity StringId
+  7. Mock TM contains entries that produce cascade hits for uploaded language data
+**Plans**: TBD
+
+### Phase 79: Visual Audit
+**Goal**: Every page passes AI visual review with real-looking data loaded, critical issues fixed, and screenshot evidence captured
+**Depends on**: Phase 78
 **Requirements**: UIUX-01, UIUX-02, UIUX-03
 **Success Criteria** (what must be TRUE):
   1. Qwen3-VL scores all 5 pages (Files, Game Dev, Codex, Map, TM) at 7+/10 with mock data loaded
@@ -62,11 +77,12 @@ Plans:
 
 ## Progress
 
-**Execution Order:** 74 -> 75 -> 76 -> 77
+**Execution Order:** 74 -> 75 -> 76 -> 78 -> 79
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 74. Mock Data Foundation | 2/2 | Complete    | 2026-03-23 |
 | 75. Build Pipeline | 0/TBD | Not started | - |
 | 76. Language Data E2E | 0/TBD | Not started | - |
-| 77. Visual Audit | 0/TBD | Not started | - |
+| 78. Feature Pipeline Verification | 0/TBD | Not started | - |
+| 79. Visual Audit | 0/TBD | Not started | - |

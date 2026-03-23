@@ -28,6 +28,16 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 - [ ] **LDE2E-03**: Language data entries resolve to associated images/audio via Perforce paths
 - [ ] **LDE2E-04**: All language data operations work in offline mode (SQLite)
 
+### Feature Pipeline Verification (DEV mode)
+
+- [ ] **FEAT-01**: TM auto-update fires on add/edit/delete — Model2Vec embedding + FAISS index update in ~6ms
+- [ ] **FEAT-02**: 5-tier TM cascade returns matches (hash → FAISS → n-gram → text → fallback) with correct confidence scores
+- [ ] **FEAT-03**: QuickTranslate merge executes all match modes (strict, stringid, strorigin, fuzzy, cascade) with postprocess pipeline
+- [ ] **FEAT-04**: QuickCheck QA runs line check + term check on uploaded language data, badges appear in grid
+- [ ] **FEAT-05**: Aho-Corasick entity detection identifies characters/items/locations in source text
+- [ ] **FEAT-06**: Context panel shows entity info + DDS image + WEM audio when clicking a string with entity references
+- [ ] **FEAT-07**: Mock TM data populated so cascade search returns real matches for uploaded language data
+
 ### Visual Audit
 
 - [ ] **UIUX-01**: Qwen3-VL visual review of all 5 pages with mock data loaded (score 7+/10)
@@ -48,7 +58,6 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 |---------|--------|
 | Full production Perforce integration | Mock paths only — real P4 requires P4 client |
 | macOS build testing | Windows-only for this milestone |
-| Full QA pipeline testing in build | QA already verified in DEV mode (v3.0) |
 | Performance benchmarking | Focus is correctness, not speed |
 | Multi-user online testing | Offline PC testing only |
 
@@ -68,15 +77,22 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | LDE2E-02 | Phase 76 | Pending |
 | LDE2E-03 | Phase 76 | Pending |
 | LDE2E-04 | Phase 76 | Pending |
-| UIUX-01 | Phase 77 | Pending |
-| UIUX-02 | Phase 77 | Pending |
-| UIUX-03 | Phase 77 | Pending |
+| FEAT-01 | Phase 78 | Pending |
+| FEAT-02 | Phase 78 | Pending |
+| FEAT-03 | Phase 78 | Pending |
+| FEAT-04 | Phase 78 | Pending |
+| FEAT-05 | Phase 78 | Pending |
+| FEAT-06 | Phase 78 | Pending |
+| FEAT-07 | Phase 78 | Pending |
+| UIUX-01 | Phase 79 | Pending |
+| UIUX-02 | Phase 79 | Pending |
+| UIUX-03 | Phase 79 | Pending |
 
 **Coverage:**
-- v9.0 requirements: 15 total
-- Mapped to phases: 15
+- v9.0 requirements: 22 total
+- Mapped to phases: 22
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after roadmap creation*
+*Last updated: 2026-03-24 after scope expansion (FEAT-01..07 added, Phase 78 added, Phase 77→79 renumbered)*
