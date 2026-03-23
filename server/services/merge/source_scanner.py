@@ -1,0 +1,946 @@
+# Origin: QuickTranslate/core/source_scanner.py
+from __future__ import annotations
+"""
+Source Scanner - Auto-recursive language detection from folder/file structure.
+
+Automatically detects language codes from source folder structure:
+- Standalone code: FRE/ -> all files inside mapped to FRE
+- Folders with suffix: Corrections_FRE/ -> all files inside mapped to FRE
+- Standalone file: GER.xml -> mapped to GER
+- Files with suffix: hotfix_SPA.xml -> mapped to SPA
+
+No substring matching: LaLaFRElala does NOT match.
+This eliminates manual language selection for batch operations.
+"""
+
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Set
+
+# Try lxml first (more robust), fallback to standard library
+try:
+    from lxml import etree
+    USING_LXML = True
+except ImportError:
+    from xml.etree import ElementTree as etree
+    USING_LXML = False
+
+from ._config import get_config
+from .xml_parser import iter_locstr_elements
+
+logger = logging.getLogger(__name__)
+
+# Supported file extensions for source and target files
+_SUPPORTED_EXTENSIONS = (".xml", ".xlsx", ".xls")
+
+
+def _format_skip_reason(filename: str, suffix: str) -> str:
+    """Format a consistent skip reason for unsupported file types."""
+    ext_display = suffix if suffix else "(no extension)"
+    return f"{filename}: Unsupported file type '{ext_display}' — only .xml, .xlsx, .xls accepted"
+
+
+# Module-level cache for valid language codes (avoids repeated LOC folder globbing)
+_cached_valid_codes: Optional[Set[str]] = None
+
+
+@dataclass
+class SourceScanResult:
+    """Result of scanning a source folder for language-tagged items."""
+
+    lang_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [files]}
+    unrecognized: List[Path] = field(default_factory=list)  # Items without lang suffix
+    skipped_files: List[str] = field(default_factory=list)  # Human-readable skip reasons
+    warnings: List[str] = field(default_factory=list)
+    stats: Dict[str, int] = field(default_factory=dict)
+
+    @property
+    def total_files(self) -> int:
+        """Total number of files across all languages."""
+        return sum(len(files) for files in self.lang_files.values())
+
+    @property
+    def language_count(self) -> int:
+        """Number of unique languages detected."""
+        return len(self.lang_files)
+
+    def get_languages(self) -> List[str]:
+        """Get sorted list of detected language codes."""
+        return sorted(self.lang_files.keys())
+
+
+def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
+    """
+    Extract language code from a folder or file name.
+
+    Patterns supported:
+    - FRE -> FRE (standalone code, entire name matches)
+    - ZHO-CN -> ZHO-CN (standalone hyphenated code)
+    - name_ZHO-CN -> ZHO-CN (underscore-prefixed, hyphenated)
+    - name_FRE -> FRE (underscore-prefixed, single code)
+    - languagedata_ger.xml -> GER (from stem, case-insensitive)
+
+    NOT matched (no substring detection):
+    - LaLaFRElala -> None (code embedded in string, no boundary)
+
+    Args:
+        name: Folder name or file stem (without extension)
+        valid_codes: Set of valid language codes (uppercase)
+
+    Returns:
+        Uppercase language code if found, None otherwise
+    """
+    if not name:
+        return None
+
+    # Remove extension if present (for file names)
+    if "." in name:
+        name = Path(name).stem
+
+    # Split by underscore
+    parts = name.split("_")
+
+    # Standalone code: entire name is a valid code (e.g. "FRE", "ZHO-CN")
+    if len(parts) == 1:
+        upper = name.upper()
+        if upper in valid_codes:
+            return upper
+        return None
+
+    # Underscore-separated: check last part(s) for language code
+    # First try hyphenated codes (ZHO-CN, ZHO-TW) - join last two parts with hyphen
+    # Works for both: corrections_ZHO_CN (3 parts) AND ZHO_CN (2 parts)
+    if len(parts) >= 2:
+        hyphenated = f"{parts[-2]}-{parts[-1]}".upper()
+        if hyphenated in valid_codes:
+            return hyphenated
+
+    # Then try single last part (for non-hyphenated codes like FRE, GER)
+    suffix = parts[-1].upper()
+    if suffix in valid_codes:
+        return suffix
+
+    return None
+
+
+def clear_language_code_cache() -> None:
+    """
+    Clear the cached language codes.
+
+    Call this if the LOC folder contents change during runtime.
+    """
+    global _cached_valid_codes
+    _cached_valid_codes = None
+    logger.debug("Language code cache cleared")
+
+
+def _get_valid_language_codes() -> Set[str]:
+    """
+    Get set of valid language codes.
+
+    Auto-discovers codes from LOC folder (languagedata_*.xml files)
+    plus hardcoded fallback from get_config().LANGUAGE_NAMES.
+
+    This ensures regional variants like SPA-ES, SPA-MX, POR-BR are detected.
+
+    Results are cached after first call. Use clear_language_code_cache() to reset.
+    """
+    global _cached_valid_codes
+
+    # Return cached result if available
+    if _cached_valid_codes is not None:
+        return _cached_valid_codes
+
+    codes = set()
+
+    # 1. AUTO-DISCOVER from LOC folder (primary source)
+    loc_folder = get_config().LOC_FOLDER
+    if loc_folder.exists():
+        for f in loc_folder.glob("languagedata_*.xml"):
+            # Extract code from filename: languagedata_SPA-ES.xml -> SPA-ES
+            lang_code = f.stem[13:].upper()  # After "languagedata_"
+            if lang_code:
+                codes.add(lang_code)
+                logger.debug(f"Auto-discovered language code: {lang_code}")
+
+    # 2. FALLBACK: Add hardcoded codes from config (in case LOC folder not available)
+    for code in get_config().LANGUAGE_NAMES.keys():
+        codes.add(code.upper())
+    for abbrev in get_config().LANGUAGE_NAMES.values():
+        codes.add(abbrev.upper())
+
+    logger.debug(f"Valid language codes ({len(codes)}): {sorted(codes)}")
+
+    # Cache the result
+    _cached_valid_codes = codes
+    return codes
+
+
+def scan_source_for_languages(source_path: Path) -> SourceScanResult:
+    """
+    Scan source folder for language-tagged files/folders.
+
+    Detection rules:
+    1. Folder named as language code (e.g., FRE/) or with suffix (e.g., Corrections_FRE/):
+       - ALL files inside (recursive) are assigned to that language
+    2. File named as language code (e.g., GER.xml) or with suffix (e.g., patch_GER.xml):
+       - Single file assigned to that language
+    3. languagedata_XXX.xml pattern:
+       - Standard language data file pattern
+
+    Args:
+        source_path: Path to source folder to scan
+
+    Returns:
+        SourceScanResult with detected languages and files
+    """
+    result = SourceScanResult()
+    valid_codes = _get_valid_language_codes()
+
+    if not source_path.exists():
+        result.warnings.append(f"Source path does not exist: {source_path}")
+        return result
+
+    if not source_path.is_dir():
+        # Single file mode - detect language from filename
+        lang = extract_language_suffix(source_path.stem, valid_codes)
+        if lang:
+            result.lang_files[lang] = [source_path]
+        else:
+            result.unrecognized.append(source_path)
+            reason = f"{source_path.name}: No valid language suffix detected — cannot determine target language"
+            result.warnings.append(reason)
+            logger.warning(reason)
+        return result
+
+    # Scan immediate children of source folder
+    try:
+        children = list(source_path.iterdir())
+    except OSError as e:
+        result.warnings.append(f"Cannot read folder: {e}")
+        return result
+
+    for child in children:
+        if child.is_dir():
+            # Check folder name for language suffix
+            lang = extract_language_suffix(child.name, valid_codes)
+            if lang:
+                # Collect ALL files inside (recursive) for this language
+                lang_files = []
+                for f in child.rglob("*"):
+                    if f.is_file():
+                        if f.suffix.lower() in _SUPPORTED_EXTENSIONS:
+                            lang_files.append(f)
+                        else:
+                            reason = _format_skip_reason(f.name, f.suffix)
+                            result.skipped_files.append(reason)
+                            result.warnings.append(reason)
+                            logger.warning(f"[{lang}] {reason}")
+
+                if lang_files:
+                    if lang not in result.lang_files:
+                        result.lang_files[lang] = []
+                    result.lang_files[lang].extend(lang_files)
+                    logger.debug(f"Folder {child.name}: {len(lang_files)} files -> {lang}")
+                else:
+                    result.warnings.append(f"Folder {child.name} has suffix {lang} but no source files")
+            else:
+                # No language suffix - mark as unrecognized
+                result.unrecognized.append(child)
+                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                result.warnings.append(reason)
+                logger.warning(reason)
+
+        elif child.is_file():
+            if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+                # Wrong file extension — explicitly log and skip
+                reason = _format_skip_reason(child.name, child.suffix)
+                result.skipped_files.append(reason)
+                result.warnings.append(reason)
+                logger.warning(reason)
+                continue
+
+            # Check file name for language suffix
+            lang = extract_language_suffix(child.stem, valid_codes)
+
+            # Also handle standard languagedata_XXX.xml pattern
+            if not lang and child.stem.lower().startswith("languagedata_"):
+                suffix_part = child.stem[13:]  # After "languagedata_"
+                if suffix_part.upper() in valid_codes or suffix_part.lower() in [k.lower() for k in valid_codes]:
+                    # Find the proper uppercase version
+                    for code in valid_codes:
+                        if code.lower() == suffix_part.lower():
+                            lang = code
+                            break
+
+            if lang:
+                if lang not in result.lang_files:
+                    result.lang_files[lang] = []
+                result.lang_files[lang].append(child)
+                logger.debug(f"File {child.name}: -> {lang}")
+            else:
+                result.unrecognized.append(child)
+                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                result.warnings.append(reason)
+                logger.warning(reason)
+
+    # Build stats
+    result.stats = {
+        "languages_detected": len(result.lang_files),
+        "total_files": result.total_files,
+        "unrecognized_items": len(result.unrecognized),
+        "skipped_files": len(result.skipped_files),
+    }
+
+    for lang, files in result.lang_files.items():
+        result.stats[f"files_{lang}"] = len(files)
+
+    return result
+
+
+@dataclass
+class TargetScanResult:
+    """Result of scanning a target folder for language-tagged items."""
+
+    lang_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [files]}
+    unrecognized: List[Path] = field(default_factory=list)  # Items without lang suffix
+    warnings: List[str] = field(default_factory=list)
+    xml_count: int = 0
+    excel_count: int = 0
+    validated_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [valid files]}
+    skipped_files: List[str] = field(default_factory=list)  # Human-readable skip reasons
+
+    @property
+    def total_files(self) -> int:
+        return sum(len(files) for files in self.lang_files.values())
+
+    @property
+    def language_count(self) -> int:
+        return len(self.lang_files)
+
+    def get_languages(self) -> List[str]:
+        return sorted(self.lang_files.keys())
+
+
+def scan_target_for_languages(target_path: Path) -> TargetScanResult:
+    """
+    Scan target folder for language-tagged files/folders.
+
+    Uses the same detection logic as scan_source_for_languages:
+    - Folder named as language code (FRE/) or with suffix (LOC_FRE/)
+    - File with language suffix (languagedata_FRE.xml, custom_GER.xlsx)
+    - Recursive scanning inside language-tagged folders
+
+    Accepts both .xml and .xlsx/.xls files as valid targets.
+
+    Args:
+        target_path: Path to target folder to scan
+
+    Returns:
+        TargetScanResult with detected languages and files
+    """
+    result = TargetScanResult()
+    valid_codes = _get_valid_language_codes()
+
+    if not target_path.exists():
+        result.warnings.append(f"Target path does not exist: {target_path}")
+        return result
+
+    if not target_path.is_dir():
+        result.warnings.append(f"Target path is not a directory: {target_path}")
+        return result
+
+    xml_count = 0
+    excel_count = 0
+
+    try:
+        children = list(target_path.iterdir())
+    except OSError as e:
+        result.warnings.append(f"Cannot read folder: {e}")
+        return result
+
+    for child in children:
+        if child.is_dir():
+            lang = extract_language_suffix(child.name, valid_codes)
+            if lang:
+                lang_files = []
+                for f in child.rglob("*"):
+                    if f.is_file():
+                        if f.suffix.lower() in _SUPPORTED_EXTENSIONS:
+                            lang_files.append(f)
+                            if f.suffix.lower() == ".xml":
+                                xml_count += 1
+                            else:
+                                excel_count += 1
+                        else:
+                            reason = _format_skip_reason(f.name, f.suffix)
+                            result.skipped_files.append(reason)
+                            result.warnings.append(reason)
+                            logger.warning(f"[{lang}] {reason}")
+
+                if lang_files:
+                    if lang not in result.lang_files:
+                        result.lang_files[lang] = []
+                    result.lang_files[lang].extend(lang_files)
+                    logger.debug(f"Target folder {child.name}: {len(lang_files)} files -> {lang}")
+                else:
+                    result.warnings.append(f"Folder {child.name} has suffix {lang} but no target files")
+            else:
+                result.unrecognized.append(child)
+                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                result.warnings.append(reason)
+                logger.warning(reason)
+
+        elif child.is_file():
+            if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+                # Wrong file extension — explicitly log and skip
+                reason = _format_skip_reason(child.name, child.suffix)
+                result.skipped_files.append(reason)
+                result.warnings.append(reason)
+                logger.warning(reason)
+                continue
+
+            lang = extract_language_suffix(child.stem, valid_codes)
+
+            # Also handle standard languagedata_XXX.xml pattern
+            if not lang and child.stem.lower().startswith("languagedata_"):
+                suffix_part = child.stem[13:]
+                for code in valid_codes:
+                    if code.lower() == suffix_part.lower():
+                        lang = code
+                        break
+
+            if lang:
+                if lang not in result.lang_files:
+                    result.lang_files[lang] = []
+                result.lang_files[lang].append(child)
+                if child.suffix.lower() == ".xml":
+                    xml_count += 1
+                else:
+                    excel_count += 1
+                logger.debug(f"Target file {child.name}: -> {lang}")
+            else:
+                result.unrecognized.append(child)
+                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                result.warnings.append(reason)
+                logger.warning(reason)
+
+    result.xml_count = xml_count
+    result.excel_count = excel_count
+
+    return result
+
+
+def validate_target_files(scan_result: TargetScanResult) -> TargetScanResult:
+    """
+    Validate each detected target file for parseability.
+
+    - XML files: check for LocStr elements with StringId + StrOrigin + Str attributes
+    - Excel files: check for StringID + StrOrigin headers (Str column optional, auto-created)
+
+    Files that fail validation are removed from lang_files and added to warnings.
+    Files that pass are also added to validated_files.
+
+    Args:
+        scan_result: Result from scan_target_for_languages
+
+    Returns:
+        The same TargetScanResult with validated_files populated and invalid files removed
+    """
+    from .excel_io import _detect_column_indices
+
+    for lang, files in list(scan_result.lang_files.items()):
+        valid_files = []
+        for f in files:
+            if f.suffix.lower() == ".xml":
+                # Validate XML: check for LocStr elements
+                try:
+                    if USING_LXML:
+                        parser = etree.XMLParser(
+                            resolve_entities=False, load_dtd=False,
+                            no_network=True, recover=True,
+                        )
+                        tree = etree.parse(str(f), parser)
+                    else:
+                        tree = etree.parse(str(f))
+                    root = tree.getroot()
+
+                    # Count LocStr elements (case-insensitive) via canonical helper
+                    locstr_elements = iter_locstr_elements(root)
+                    locstr_count = len(locstr_elements)
+
+                    if locstr_count > 0:
+                        valid_files.append(f)
+                        logger.debug(f"Target {f.name}: {locstr_count} LocStr entries")
+                    else:
+                        scan_result.warnings.append(f"{f.name}: No LocStr elements found - SKIPPED")
+                        scan_result.skipped_files.append(f"{f.name}: No LocStr elements")
+                except Exception as e:
+                    scan_result.warnings.append(f"{f.name}: XML parse error ({e}) - SKIPPED")
+                    scan_result.skipped_files.append(f"{f.name}: Parse error")
+
+            elif f.suffix.lower() in (".xlsx", ".xls"):
+                # Validate Excel: check for StringID + StrOrigin headers
+                try:
+                    from openpyxl import load_workbook
+                    wb = load_workbook(f, read_only=True)
+                    try:
+                        ws = wb.active
+                        col_indices = _detect_column_indices(ws)
+
+                        has_stringid = "stringid" in col_indices or "string_id" in col_indices
+                        has_strorigin = "strorigin" in col_indices or "str_origin" in col_indices
+                        has_str = "str" in col_indices
+
+                        if has_stringid and has_strorigin:
+                            valid_files.append(f)
+                            if not has_str:
+                                scan_result.warnings.append(
+                                    f"{f.name}: No 'Str' column - will auto-create after StrOrigin"
+                                )
+                            logger.debug(f"Target {f.name}: Excel validated (StringID+StrOrigin)")
+                        else:
+                            missing = []
+                            if not has_stringid:
+                                missing.append("StringID")
+                            if not has_strorigin:
+                                missing.append("StrOrigin")
+                            scan_result.warnings.append(
+                                f"{f.name}: Missing {', '.join(missing)} column(s) - SKIPPED"
+                            )
+                            scan_result.skipped_files.append(f"{f.name}: Missing {', '.join(missing)}")
+                    finally:
+                        wb.close()
+                except Exception as e:
+                    scan_result.warnings.append(f"{f.name}: Excel read error ({e}) - SKIPPED")
+                    scan_result.skipped_files.append(f"{f.name}: Read error")
+
+        if valid_files:
+            scan_result.validated_files[lang] = valid_files
+        scan_result.lang_files[lang] = valid_files  # Replace with only valid files
+
+    # Remove languages with no valid files
+    empty_langs = [lang for lang, files in scan_result.lang_files.items() if not files]
+    for lang in empty_langs:
+        del scan_result.lang_files[lang]
+
+    return scan_result
+
+
+@dataclass
+class ValidationResult:
+    """Result of validating source scan against target folder."""
+
+    matched_languages: List[str] = field(default_factory=list)  # Languages with target match
+    source_only: List[str] = field(default_factory=list)  # Languages with no target
+    target_only: List[str] = field(default_factory=list)  # Targets with no source
+    is_valid: bool = True
+    warnings: List[str] = field(default_factory=list)
+
+
+def validate_source_structure(
+    scan_result: SourceScanResult,
+    target_folder: Path,
+    target_scan: Optional['TargetScanResult'] = None,
+) -> ValidationResult:
+    """
+    Validate scanned source against target folder.
+
+    Checks which source languages have matching targets.
+    Uses flexible target scanning (not just languagedata_*.xml).
+
+    Args:
+        scan_result: Result from scan_source_for_languages
+        target_folder: Target folder with language files
+        target_scan: Optional pre-computed target scan (avoids re-scanning)
+
+    Returns:
+        ValidationResult with match analysis
+    """
+    validation = ValidationResult()
+
+    if not target_folder.exists():
+        validation.is_valid = False
+        validation.warnings.append(f"Target folder does not exist: {target_folder}")
+        return validation
+
+    # Use flexible target scanner instead of hardcoded languagedata_*.xml
+    if target_scan is None:
+        target_scan = scan_target_for_languages(target_folder)
+
+    target_langs = set(target_scan.lang_files.keys())
+    source_langs = set(scan_result.lang_files.keys())
+
+    # Compare
+    validation.matched_languages = sorted(source_langs & target_langs)
+    validation.source_only = sorted(source_langs - target_langs)
+    validation.target_only = sorted(target_langs - source_langs)
+
+    if validation.source_only:
+        validation.warnings.append(
+            f"Source languages without target: {', '.join(validation.source_only)}"
+        )
+
+    if not validation.matched_languages:
+        validation.is_valid = False
+        validation.warnings.append("No matching languages between source and target")
+
+    return validation
+
+
+def format_scan_result(
+    scan_result: SourceScanResult,
+    validation: Optional[ValidationResult] = None,
+) -> str:
+    """
+    Format scan result as a human-readable report.
+
+    Args:
+        scan_result: Result from scan_source_for_languages
+        validation: Optional validation result
+
+    Returns:
+        Formatted report string
+    """
+    lines = []
+    H = "─"
+    width = 60
+
+    lines.append("")
+    lines.append(H * width)
+    lines.append("  SOURCE LANGUAGE SCAN RESULTS")
+    lines.append(H * width)
+
+    if scan_result.lang_files:
+        lines.append(f"\n  DETECTED LANGUAGES ({scan_result.language_count}):")
+        lines.append(f"  {'Language':<10} {'Files':<8} {'Source Items'}")
+        lines.append(f"  {'-'*10} {'-'*8} {'-'*30}")
+
+        for lang in scan_result.get_languages():
+            files = scan_result.lang_files[lang]
+            # Show first few file names
+            if len(files) <= 2:
+                items = ", ".join(f.name for f in files)
+            else:
+                items = f"{files[0].name}, ... ({len(files)} total)"
+            lines.append(f"  {lang:<10} {len(files):<8} {items}")
+
+        lines.append(f"\n  Total: {scan_result.total_files} files in {scan_result.language_count} languages")
+    else:
+        lines.append("\n  No language-tagged items found!")
+
+    if scan_result.unrecognized:
+        lines.append(f"\n  UNRECOGNIZED ITEMS ({len(scan_result.unrecognized)}):")
+        for item in scan_result.unrecognized[:5]:
+            item_type = "folder" if item.is_dir() else "file"
+            lines.append(f"    - {item.name} ({item_type})")
+        if len(scan_result.unrecognized) > 5:
+            lines.append(f"    ... and {len(scan_result.unrecognized) - 5} more")
+
+    if validation:
+        lines.append(f"\n  VALIDATION:")
+        if validation.matched_languages:
+            lines.append(f"  [OK] Matched: {', '.join(validation.matched_languages)}")
+        if validation.source_only:
+            lines.append(f"  [!!] Source only: {', '.join(validation.source_only)}")
+        if validation.target_only:
+            lines.append(f"  [--] Target only: {', '.join(validation.target_only)}")
+
+    if scan_result.warnings or (validation and validation.warnings):
+        lines.append(f"\n  WARNINGS:")
+        for w in scan_result.warnings:
+            lines.append(f"    ! {w}")
+        if validation:
+            for w in validation.warnings:
+                lines.append(f"    ! {w}")
+
+    lines.append(H * width)
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# =============================================================================
+# Transfer Plan - Full Tree Table of Source → Target Mappings
+# =============================================================================
+
+@dataclass
+class FileMapping:
+    """Single source file → target file mapping."""
+    source_file: Path
+    target_file: Optional[Path]
+    language: str
+    status: str  # "OK", "NO_TARGET", "SKIPPED"
+    source_type: str  # "folder_child" or "direct_file"
+    source_origin: str  # Name of parent folder or direct file name
+    file_size_kb: float = 0.0
+
+
+@dataclass
+class LanguageTransferPlan:
+    """Transfer plan for a single language (updated: supports multiple target files)."""
+    language: str
+    source_files: List[Path]
+    target_file: Optional[Path]  # Primary target (backward compat)
+    target_files: List[Path] = field(default_factory=list)  # ALL target files
+    status: str = "READY"  # "READY", "NO_TARGET", "EMPTY"
+    file_count: int = 0
+    total_size_kb: float = 0.0
+
+
+@dataclass
+class TransferPlan:
+    """Complete transfer plan with full file mappings."""
+
+    source_folder: Path
+    target_folder: Path
+    language_plans: Dict[str, LanguageTransferPlan] = field(default_factory=dict)
+    file_mappings: List[FileMapping] = field(default_factory=list)
+    unrecognized: List[Path] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+
+    @property
+    def total_source_files(self) -> int:
+        return len(self.file_mappings)
+
+    @property
+    def total_ready(self) -> int:
+        return sum(1 for m in self.file_mappings if m.status == "OK")
+
+    @property
+    def total_skipped(self) -> int:
+        return sum(1 for m in self.file_mappings if m.status == "NO_TARGET")
+
+    @property
+    def languages_ready(self) -> List[str]:
+        return sorted([lang for lang, plan in self.language_plans.items() if plan.status == "READY"])
+
+    @property
+    def languages_skipped(self) -> List[str]:
+        return sorted([lang for lang, plan in self.language_plans.items() if plan.status == "NO_TARGET"])
+
+
+def generate_transfer_plan(
+    source_path: Path,
+    target_folder: Path,
+    scan_result: Optional[SourceScanResult] = None,
+    target_scan: Optional[TargetScanResult] = None,
+) -> TransferPlan:
+    """
+    Generate a complete transfer plan showing every source file → target mapping.
+
+    This is the FULL TREE TABLE that shows exactly what will be transferred where.
+    Uses flexible target scanning to support any XML/Excel target files.
+
+    Args:
+        source_path: Source folder or file
+        target_folder: Target folder containing language files (XML and/or Excel)
+        scan_result: Optional pre-computed source scan result (will scan if not provided)
+        target_scan: Optional pre-computed target scan result (will scan if not provided)
+
+    Returns:
+        TransferPlan with complete file mappings
+    """
+    plan = TransferPlan(source_folder=source_path, target_folder=target_folder)
+
+    # Scan source if not provided
+    if scan_result is None:
+        scan_result = scan_source_for_languages(source_path)
+
+    plan.unrecognized = scan_result.unrecognized.copy()
+    plan.warnings = scan_result.warnings.copy()
+
+    # Use flexible target scanner instead of hardcoded languagedata_*.xml
+    if target_scan is None:
+        target_scan = scan_target_for_languages(target_folder)
+
+    # Build target language → files lookup (case-insensitive)
+    target_files_by_lang: Dict[str, List[Path]] = {}
+    for lang_code, files in target_scan.lang_files.items():
+        target_files_by_lang[lang_code.upper()] = files
+
+    # Process each detected source language
+    for lang, source_files in scan_result.lang_files.items():
+        # Find matching target files (case-insensitive)
+        target_lang_files = target_files_by_lang.get(lang.upper(), [])
+
+        # Determine status
+        if not source_files:
+            status = "EMPTY"
+        elif not target_lang_files:
+            status = "NO_TARGET"
+            plan.warnings.append(f"No target files found for {lang} - {len(source_files)} source files will be SKIPPED")
+        else:
+            status = "READY"
+
+        # Calculate total size
+        total_size = 0.0
+        for f in source_files:
+            try:
+                total_size += f.stat().st_size / 1024
+            except OSError:
+                pass
+
+        # Create language plan (with all target files)
+        lang_plan = LanguageTransferPlan(
+            language=lang,
+            source_files=source_files,
+            target_file=target_lang_files[0] if target_lang_files else None,
+            target_files=target_lang_files,
+            status=status,
+            file_count=len(source_files),
+            total_size_kb=total_size,
+        )
+        plan.language_plans[lang] = lang_plan
+
+        # Create individual file mappings (primary target for backward compat)
+        primary_target = target_lang_files[0] if target_lang_files else None
+        for src_file in source_files:
+            rel_to_source = src_file.relative_to(source_path) if source_path.is_dir() else src_file.name
+            parts = str(rel_to_source).split("/") if "/" in str(rel_to_source) else str(rel_to_source).split("\\")
+
+            if len(parts) > 1:
+                source_type = "folder_child"
+                source_origin = parts[0]
+            else:
+                source_type = "direct_file"
+                source_origin = src_file.name
+
+            try:
+                file_size = src_file.stat().st_size / 1024
+            except OSError:
+                file_size = 0.0
+
+            mapping = FileMapping(
+                source_file=src_file,
+                target_file=primary_target,
+                language=lang,
+                status="OK" if target_lang_files else "NO_TARGET",
+                source_type=source_type,
+                source_origin=source_origin,
+                file_size_kb=file_size,
+            )
+            plan.file_mappings.append(mapping)
+
+    return plan
+
+
+def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str:
+    """
+    Format transfer plan as a FULL TREE TABLE.
+
+    Shows every source file and its destination target.
+
+    Args:
+        plan: TransferPlan from generate_transfer_plan()
+        show_all_files: If True, show every file. If False, show summary only.
+
+    Returns:
+        Formatted tree table string
+    """
+    lines = []
+    H = "═"
+    h = "─"
+    V = "║"  # Double vertical to match other box characters
+    TL, TR, BL, BR = "╔", "╗", "╚", "╝"
+    LT, RT = "╠", "╣"
+
+    width = 80
+
+    # Header
+    lines.append("")
+    lines.append(TL + H * (width - 2) + TR)
+    lines.append(V + "  FULL TRANSFER TREE".ljust(width - 2) + V)
+    lines.append(V + f"  Source: {plan.source_folder}".ljust(width - 2)[:width-2] + V)
+    lines.append(V + f"  Target: {plan.target_folder}".ljust(width - 2)[:width-2] + V)
+    lines.append(LT + H * (width - 2) + RT)
+
+    # Summary stats
+    lines.append(V + f"  Languages: {len(plan.language_plans)} detected, {len(plan.languages_ready)} ready, {len(plan.languages_skipped)} skipped".ljust(width - 2) + V)
+    lines.append(V + f"  Files: {plan.total_source_files} total, {plan.total_ready} will transfer, {plan.total_skipped} skipped".ljust(width - 2) + V)
+    lines.append(LT + H * (width - 2) + RT)
+
+    # Per-language breakdown with full file tree
+    for lang in sorted(plan.language_plans.keys()):
+        lang_plan = plan.language_plans[lang]
+
+        # Language header
+        status_icon = "[OK]" if lang_plan.status == "READY" else "[!!]" if lang_plan.status == "NO_TARGET" else "[--]"
+
+        # Show all target files (or NO TARGET)
+        target_files = lang_plan.target_files if lang_plan.target_files else []
+        if len(target_files) == 1:
+            target_desc = target_files[0].name
+        elif len(target_files) > 1:
+            target_desc = f"{len(target_files)} target files"
+        else:
+            target_desc = "(NO TARGET)"
+
+        lines.append(V + "".ljust(width - 2) + V)
+        lines.append(V + f"  {status_icon} {lang}: {lang_plan.file_count} source files → {target_desc}".ljust(width - 2) + V)
+
+        # Show individual target files when multiple
+        if len(target_files) > 1:
+            for tf in target_files:
+                lines.append(V + f"      → {tf.name}".ljust(width - 2) + V)
+
+        if lang_plan.status == "NO_TARGET":
+            lines.append(V + f"      SKIPPED - no target files found for {lang}".ljust(width - 2) + V)
+
+        if show_all_files and lang_plan.source_files:
+            # Get mappings for this language
+            lang_mappings = [m for m in plan.file_mappings if m.language == lang]
+
+            # Group by source origin (folder or direct)
+            by_origin: Dict[str, List[FileMapping]] = {}
+            for m in lang_mappings:
+                if m.source_origin not in by_origin:
+                    by_origin[m.source_origin] = []
+                by_origin[m.source_origin].append(m)
+
+            lines.append(V + f"      {'SOURCE FILE':<40} {'SIZE':<10} {'STATUS'}".ljust(width - 2) + V)
+            lines.append(V + f"      {h*40} {h*10} {h*10}".ljust(width - 2) + V)
+
+            for origin, mappings in sorted(by_origin.items()):
+                if mappings[0].source_type == "folder_child":
+                    # Show folder header
+                    lines.append(V + f"      {origin}/ ({len(mappings)} files)".ljust(width - 2) + V)
+                    for m in mappings:
+                        rel_path = m.source_file.name
+                        size_str = f"{m.file_size_kb:.0f} KB" if m.file_size_kb < 1024 else f"{m.file_size_kb/1024:.1f} MB"
+                        status_str = "→ OK" if m.status == "OK" else "→ SKIP"
+                        lines.append(V + f"        ├─ {rel_path:<36} {size_str:<10} {status_str}".ljust(width - 2) + V)
+                else:
+                    # Direct file
+                    m = mappings[0]
+                    size_str = f"{m.file_size_kb:.0f} KB" if m.file_size_kb < 1024 else f"{m.file_size_kb/1024:.1f} MB"
+                    status_str = "→ OK" if m.status == "OK" else "→ SKIP"
+                    lines.append(V + f"      {m.source_file.name:<40} {size_str:<10} {status_str}".ljust(width - 2) + V)
+
+    # Unrecognized items
+    if plan.unrecognized:
+        lines.append(LT + H * (width - 2) + RT)
+        lines.append(V + f"  UNRECOGNIZED ({len(plan.unrecognized)} items - no language suffix detected)".ljust(width - 2) + V)
+        for item in plan.unrecognized[:10]:
+            item_type = "folder" if item.is_dir() else "file"
+            lines.append(V + f"    - {item.name} ({item_type})".ljust(width - 2) + V)
+        if len(plan.unrecognized) > 10:
+            lines.append(V + f"    ... and {len(plan.unrecognized) - 10} more".ljust(width - 2) + V)
+
+    # Warnings
+    if plan.warnings:
+        lines.append(LT + H * (width - 2) + RT)
+        lines.append(V + "  WARNINGS:".ljust(width - 2) + V)
+        for w in plan.warnings:
+            lines.append(V + f"    ! {w}"[:width-2].ljust(width - 2) + V)
+
+    # Footer
+    lines.append(BL + H * (width - 2) + BR)
+
+    # Legend
+    lines.append("")
+    lines.append("Legend: [OK] = Ready to transfer  [!!] = No target (skipped)  [--] = Empty")
+    lines.append("")
+
+    return "\n".join(lines)
