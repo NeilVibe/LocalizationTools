@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.0
-milestone_name: milestone
-status: unknown
-stopped_at: Completed 64-01-PLAN.md
-last_updated: "2026-03-23T06:14:52.926Z"
+milestone: v7.1
+milestone_name: Security Hardening
+status: planning
+stopped_at: Roadmap created, ready to plan Phase 65
+last_updated: "2026-03-23T16:45:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,96 +18,54 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-23)
 
-**Core value:** Production-ready merge pipeline with performance monitoring, automatic TM-to-FAISS flow, and AI-audited UIUX
-**Current focus:** Phase 64 — uiux-quality-audit
+**Core value:** Fix all CRITICAL/HIGH security issues found in full-stack audit (28 issues across backend + frontend)
+**Current focus:** Phase 65 — Backend Auth Restoration
 
 ## Current Position
 
-Phase: 64
+Phase: 65
 Plan: Not started
 
-## Performance Metrics
+## Security Audit Summary (2026-03-23)
 
-**Velocity:**
+**Backend (28 issues):**
+- 8 CRITICAL: Auth disabled on telemetry/rankings/logs, merge has zero auth + arbitrary paths, path traversal in upload/download
+- 7 HIGH: Health leaks infra, IDOR on installations, path enumeration, log injection, stderr suppression
+- 6 MEDIUM: Bare except blocks, exception details in responses, manual role checks
+- 7 LOW: Info disclosure, unauthenticated health/version endpoints
 
-- Total plans completed: 0
-- Average duration: --
-- Total execution time: 0 hours
+**Frontend (10 issues):**
+- 5 CRITICAL: XSS via {@html}, missing auth headers, 3 divergent getAuthHeaders duplicates
+- 5 IMPORTANT: Silent 401/403, missing response.ok, console.error violations
 
-**By Phase:**
+## Phase Plan
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 61. Merge Internalization | 0/0 | -- | -- |
-| 62. TM Auto-Update Pipeline | 0/0 | -- | -- |
-| 63. Performance Instrumentation | 0/0 | -- | -- |
-| 64. UIUX Quality Audit | 0/0 | -- | -- |
-| Phase 61 P01 | 7min | 2 tasks | 15 files |
-| Phase 61 P02 | 4min | 2 tasks | 3 files |
-| Phase 62 P01 | 5min | 2 tasks | 3 files |
-| Phase 62 P02 | 4min | 2 tasks | 2 files |
-| Phase 62 P03 | 2min | 1 tasks | 1 files |
-| Phase 63 P01 | 5min | 2 tasks | 7 files |
-| Phase 63 P02 | 1min | 1 tasks | 2 files |
-| Phase 64 P01 | 2min | 2 tasks | 1 files |
+| Phase | Goal | Status |
+|-------|------|--------|
+| 65. Backend Auth Restoration | Re-enable auth on 17 endpoints | Not Started |
+| 66. Path Traversal & Validation | Fix 4 path traversal vulns | Not Started |
+| 67. Frontend Security | Fix XSS + auth consolidation | Not Started |
+| 68. Remote Logging & Misc | Fix IDOR + registration + injection | Not Started |
 
-## Accumulated Context
+All phases are independent — can parallelize.
 
-### v6.0 Execution History (reference)
+## Decisions
 
-| Phase 56 P01 | 3min | 2 tasks | 2 files |
-| Phase 56 P02 | 7min | 3 tasks | 9 files |
-| Phase 57 P01 | 3min | 1 tasks | 7 files |
-| Phase 57 P02 | 3min | 1 tasks | 2 files |
-| Phase 57 P03 | 5min | 1 tasks | 6 files |
-| Phase 58 P01 | 2min | 2 tasks | 3 files |
-| Phase 58 P02 | 4min | 2 tasks | 2 files |
-| Phase 59 P01 | 3min | 1 tasks | 1 files |
-| Phase 59 P03 | 2min | 2 tasks | 1 files |
-| Phase 59 P02 | 3min | 2 tasks | 2 files |
-| Phase 60 P01 | 2min | 1 tasks | 2 files |
-| Phase 60 P02 | 2min | 2 tasks | 5 files |
+- [v7.1 Roadmap]: All 4 phases independent — can execute in parallel with agent teams
+- [v7.1 Roadmap]: Priority order: auth (65) > paths (66) > frontend (67) > misc (68)
+- [Phase 63 carry-forward]: Performance endpoint now uses require_admin_async (fixed in pre-v7.1 review)
 
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [v7.0 Roadmap]: Internalize QT merge logic -- replace sys.path adapter with self-contained module under server/services/
-- [v7.0 Roadmap]: Phase 62 (TMAU) independent of Phase 61 (MARCH) -- can parallelize
-- [v7.0 Roadmap]: Phase 63 (PERF) after both 61+62 to instrument all new code paths
-- [v7.0 Roadmap]: Phase 64 (UIUX) last to audit final state after all functional changes
-- [Phase 61]: Direct function imports instead of lazy importlib -- simpler, PyInstaller-safe
-- [Phase 62]: Used IndexFlatIP instead of IndexHNSWFlat as IDMap2 sub-index because HNSW lacks remove_ids
-- [Phase 62]: Added _get_entry_by_id helper for pre-modification data capture rather than skipping old_source_text
-- [Phase 62]: TMSearcher consistency is automatic -- per-request disk load, no cache invalidation needed
-- [Phase 62]: Rebuild line.index from line_embeddings on each _persist() via FAISSManager.build_index() for positional consistency
-- [Phase 63]: Thread-safe ring buffer using deque(maxlen=1000) per operation for bounded perf metrics
-- [Phase 63]: No auth on performance endpoints -- dev diagnostic tool
-- [Phase 64]: AbortController.signal on fetch for SSE cancel pattern
-
-### Key v6.0 Decisions (carry forward)
-
-- Config shim uses types.ModuleType injected into sys.modules['config'] before QT import
-- fetch+ReadableStream for SSE (execute is POST, not EventSource)
-- passiveModal during execute phase prevents accidental close
-- Custom event (merge-folder-to-locdev) for cross-component communication
-
-### Pending Todos
-
-- [ ] Plan Phase 61
-
-### Deferred from v6.0
+## Deferred from v7.0
 
 - Split VirtualGrid.svelte (4299 lines) -- ARCH-01
 - Split mega_index.py (1310 lines) -- ARCH-02
 - Extract business logic from thick route handlers -- ARCH-03
 - Add unit test infrastructure -- ARCH-04
 - Fix right-click context menu on file explorer panel
+- LanguageData grid default colors (grey/yellow/blue-green)
 
 ## Session Continuity
 
-Last session: 2026-03-23T06:06:00.103Z
-Stopped at: Completed 64-01-PLAN.md
-Resume file: None
-Next action: /gsd:plan-phase 61
+Last session: 2026-03-23
+Stopped at: Roadmap created, ready to plan Phase 65
+Next action: /gsd:plan-phase 65

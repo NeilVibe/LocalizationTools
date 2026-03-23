@@ -1,15 +1,15 @@
-# Roadmap: LocaNext v7.0 Production-Ready Merge + Performance + UIUX
+# Roadmap: LocaNext v7.1 Security Hardening
 
 ## Overview
 
-Make the merge pipeline production-ready by internalizing QuickTranslate logic (replacing sys.path adapter with PyInstaller-safe module), enabling automatic TM-to-FAISS flow on every edit/add, adding performance instrumentation across all hot paths, and polishing UIUX via AI-powered visual critique.
+Fix all CRITICAL and HIGH security issues found in full-stack audit (28 issues: 8 CRITICAL, 7 HIGH across 21 API files + 52 Svelte components). Auth gaps, path traversal, XSS, IDOR, and frontend security consolidation.
 
 ## Phases
 
-- [x] **Phase 61: Merge Internalization** - Internalize QT merge logic into LocaNext's own module (no sys.path, PyInstaller-safe) with all 3 match types, postprocess, and SSE (completed 2026-03-23)
-- [x] **Phase 62: TM Auto-Update Pipeline** - Automatic embedding generation and incremental HNSW updates on every TM add/edit/batch import (gap closure in progress) (completed 2026-03-23)
-- [x] **Phase 63: Performance Instrumentation** - Duration logging across Model2Vec, FAISS, TM CRUD, merge, file upload, plus summary API endpoint (completed 2026-03-23)
-- [x] **Phase 64: UIUX Quality Audit** - AI visual audit of all 5 pages via Qwen Vision, fix critical issues, polish merge modal (completed 2026-03-23)
+- [ ] **Phase 65: Backend Auth Restoration** - Re-enable commented-out auth on telemetry/rankings/logs, add auth to merge/health endpoints
+- [ ] **Phase 66: Path Traversal & Input Validation** - Fix path traversal in file upload/download/merge/xlstransfer, add path validation helpers
+- [ ] **Phase 67: Frontend Security & Consolidation** - Fix XSS in ExplorerSearch, consolidate getAuthHeaders duplicates, fix missing auth in ProjectSettings
+- [ ] **Phase 68: Remote Logging & Misc Security** - Fix IDOR, open registration, log injection, stderr suppression
 
 ## Phase Details
 

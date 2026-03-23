@@ -1,5 +1,13 @@
 # Milestones
 
+## v7.1 Security Hardening (IN PROGRESS)
+
+**Phases:** 65-68 (4 phases)
+**Requirements:** 0/18 complete (4 categories: SEC-AUTH, SEC-PATH, SEC-FRONT, SEC-MISC)
+**Goal:** Fix all 28 security issues (8 CRITICAL, 7 HIGH) found in full-stack audit — auth gaps, path traversal, XSS, IDOR, frontend consolidation.
+
+---
+
 ## v7.0 Production-Ready Merge + Performance + UIUX (Shipped: 2026-03-23)
 
 **Phases completed:** 4 phases, 9 plans, 12 tasks
