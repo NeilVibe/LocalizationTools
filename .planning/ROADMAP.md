@@ -8,7 +8,7 @@ Make the merge pipeline production-ready by internalizing QuickTranslate logic (
 
 - [x] **Phase 61: Merge Internalization** - Internalize QT merge logic into LocaNext's own module (no sys.path, PyInstaller-safe) with all 3 match types, postprocess, and SSE (completed 2026-03-23)
 - [x] **Phase 62: TM Auto-Update Pipeline** - Automatic embedding generation and incremental HNSW updates on every TM add/edit/batch import (gap closure in progress) (completed 2026-03-23)
-- [ ] **Phase 63: Performance Instrumentation** - Duration logging across Model2Vec, FAISS, TM CRUD, merge, file upload, plus summary API endpoint
+- [x] **Phase 63: Performance Instrumentation** - Duration logging across Model2Vec, FAISS, TM CRUD, merge, file upload, plus summary API endpoint (completed 2026-03-23)
 - [ ] **Phase 64: UIUX Quality Audit** - AI visual audit of all 5 pages via Qwen Vision, fix critical issues, polish merge modal
 
 ## Phase Details
@@ -53,11 +53,11 @@ Plans:
   2. Merge preview and execute operations log duration per step (scan, match, postprocess, write) with step-level granularity
   3. File upload operations log duration and file size in a single structured log line
   4. GET /api/performance/summary returns a JSON response with p50/p95/max timings for each instrumented operation over the last N requests
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 63-01-PLAN.md -- Create PerfTimer utility + instrument all hot paths (embedding, FAISS, TM CRUD, merge, upload)
-- [ ] 63-02-PLAN.md -- Create GET /api/performance/summary endpoint with p50/p95/max stats
+- [x] 63-02-PLAN.md -- Create GET /api/performance/summary endpoint with p50/p95/max stats
 
 ### Phase 64: UIUX Quality Audit
 **Goal**: All 5 main pages pass AI-powered visual critique and the merge modal handles every edge case gracefully
@@ -78,5 +78,5 @@ Phase 61 first. Phase 62 can run in parallel with 61 (independent). Phase 63 aft
 |-------|-----------|----------------|--------|-----------|
 | 61. Merge Internalization | v7.0 | 2/2 | Complete    | 2026-03-23 |
 | 62. TM Auto-Update Pipeline | v7.0 | 3/3 | Complete    | 2026-03-23 |
-| 63. Performance Instrumentation | v7.0 | 1/2 | In Progress|  |
+| 63. Performance Instrumentation | v7.0 | 2/2 | Complete   | 2026-03-23 |
 | 64. UIUX Quality Audit | v7.0 | 0/0 | Not started | - |

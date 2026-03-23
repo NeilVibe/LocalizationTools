@@ -19,7 +19,7 @@
 - [x] **PERF-03**: TM entry add/edit logs duration including embedding + index update
 - [x] **PERF-04**: Merge preview/execute logs duration per step (scan, match, write)
 - [x] **PERF-05**: File upload logs duration and file size
-- [ ] **PERF-06**: Performance summary accessible via API endpoint
+- [x] **PERF-06**: Performance summary accessible via API endpoint
 
 ### TM Auto-Update
 
@@ -69,7 +69,7 @@
 | PERF-03 | Phase 63 | Complete |
 | PERF-04 | Phase 63 | Complete |
 | PERF-05 | Phase 63 | Complete |
-| PERF-06 | Phase 63 | Pending |
+| PERF-06 | Phase 63 | Complete |
 | TMAU-01 | Phase 62 | Complete |
 | TMAU-02 | Phase 62 | Complete |
 | TMAU-03 | Phase 62 | Complete |
