@@ -33,7 +33,7 @@
 
 - [ ] **UIUX-01**: AI visual audit of all 5 main pages via Qwen Vision screenshots
 - [ ] **UIUX-02**: Critical UIUX issues identified and fixed (alignment, spacing, contrast)
-- [ ] **UIUX-03**: Merge modal polished (loading states, error states, edge cases)
+- [x] **UIUX-03**: Merge modal polished (loading states, error states, edge cases)
 
 ## v2 Requirements
 
@@ -77,7 +77,7 @@
 | TMAU-05 | Phase 62 | Complete |
 | UIUX-01 | Phase 64 | Pending |
 | UIUX-02 | Phase 64 | Pending |
-| UIUX-03 | Phase 64 | Pending |
+| UIUX-03 | Phase 64 | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total
