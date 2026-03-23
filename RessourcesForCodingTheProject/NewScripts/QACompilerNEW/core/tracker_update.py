@@ -710,7 +710,7 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
     _tracker_log(f"    SHEET '{sheet_name}': max_row={qa_ws.max_row}, STATUS_col={status_col}, trans_col={trans_col}")
 
     # SCRIPT GRANULAR DEBUG
-    is_script = category.lower() in ("sequencer", "dialog")
+    is_script = category.lower() in ("sequencer", "dialog", "face")
     if is_script:
         _tracker_log(f"    *** SCRIPT TESTER STATS DEBUG ***")
 
@@ -821,7 +821,7 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
     _tracker_log(f"  TOTALS: total={total_stats['total']} done={done} issues={total_stats['issue']} words={total_stats['word_count']}")
 
     # SCRIPT GRANULAR DEBUG: Show the entry that will be written
-    is_script = category.lower() in ("sequencer", "dialog")
+    is_script = category.lower() in ("sequencer", "dialog", "face")
     if is_script:
         _tracker_log(f"")
         _tracker_log(f"  *** SCRIPT ENTRY TO BE WRITTEN ***")
@@ -830,6 +830,15 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
         _tracker_log(f"    blocked={total_stats['blocked']}, korean={total_stats['korean']}")
         _tracker_log(f"")
 
+    # Script categories (Sequencer, Dialog, Face): ignore pending.
+    # Set total = done so pending (total - done) = 0.
+    # These categories have rows without STATUS that are NOT pending work.
+    if is_script:
+        total_rows = done
+        _tracker_log(f"  SCRIPT: total overridden to done ({done}) — no pending for script types")
+    else:
+        total_rows = total_stats["total"]
+
     _tracker_log_flush(f"QA FOLDER: {username}_{category}")
 
     return {
@@ -837,7 +846,7 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
         "user": username,
         "category": category,
         "lang": lang,
-        "total_rows": total_stats["total"],
+        "total_rows": total_rows,
         "done": done,
         "issues": total_stats["issue"],
         "no_issue": total_stats["no_issue"],
