@@ -319,15 +319,16 @@ def write_workbook(
         indent = depth
 
         # Column A: Original (KR) — use str_origin from target language if available
+        # RAW format: keep <br/> as-is (no newline conversion) for testing
         kor_display = str_origin if str_origin else text
-        c1 = ws.cell(row_idx, 1, br_to_newline(kor_display))
+        c1 = ws.cell(row_idx, 1, kor_display)
         c1.fill = fill
         c1.font = font
         c1.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")
         c1.border = THIN_BORDER
 
         # Column B: English (ENG)
-        c2 = ws.cell(row_idx, 2, br_to_newline(eng_tr))
+        c2 = ws.cell(row_idx, 2, eng_tr)
         c2.fill = fill
         c2.font = font
         c2.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")
@@ -337,7 +338,7 @@ def write_workbook(
 
         # Column C: Translation (if not ENG)
         if not is_eng:
-            c3 = ws.cell(row_idx, 3, br_to_newline(loc_tr))
+            c3 = ws.cell(row_idx, 3, loc_tr)
             c3.fill = fill
             c3.font = font
             c3.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")

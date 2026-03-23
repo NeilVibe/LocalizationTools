@@ -61,14 +61,53 @@ QuickTranslate:  must convert \n → <br/> to match XML targets
 
 Changed files: `base.py` (language table + resolve functions) + all 9 generator files.
 
-## Future Consideration
+## Per-Generator Raw Mode (2026-03-23)
 
-The cleaner approach would be to **remove `br_to_newline()` entirely** and keep `<br/>` as-is in Excel cells. This preserves the canonical format throughout the pipeline and eliminates the need for re-conversion downstream.
+**GameAdvice (`help.py`) now outputs raw `<br/>` format** — no `br_to_newline()` conversion.
 
-Trade-off: `<br/>` won't visually wrap in Excel cells like `\n` does, but data correctness > display aesthetics.
+This was done so the Excel output matches the original language data exactly, which is needed for downstream matching (QuickTranslate, testing). The `<br/>` tags appear as literal text in cells instead of visual line breaks.
 
-This is a low-priority change since the QuickTranslate preprocess fix handles the mismatch.
+### How the change was made
+
+Removed `br_to_newline()` wrapper from all three text columns in `write_workbook()`:
+
+```python
+# BEFORE (converted):
+c1 = ws.cell(row_idx, 1, br_to_newline(kor_display))  # KR
+c2 = ws.cell(row_idx, 2, br_to_newline(eng_tr))        # ENG
+c3 = ws.cell(row_idx, 3, br_to_newline(loc_tr))        # Translation
+
+# AFTER (raw):
+c1 = ws.cell(row_idx, 1, kor_display)                   # KR
+c2 = ws.cell(row_idx, 2, eng_tr)                         # ENG
+c3 = ws.cell(row_idx, 3, loc_tr)                         # Translation
+```
+
+### How to apply to other generators
+
+Each generator has its own `write_workbook()` or equivalent writer function. To switch a generator to raw mode:
+
+1. Find the `ws.cell()` calls that write text columns (KR, ENG, Translation)
+2. Remove the `br_to_newline()` wrapper — just pass the text directly
+3. The `br_to_newline` import can be kept (other code may use it) or removed if unused
+
+| Generator | Writer function | Text cell lines to change |
+|-----------|----------------|--------------------------|
+| help.py (GameAdvice) | `write_workbook()` | **DONE** (2026-03-23) |
+| item.py | `write_workbook()` | Find `br_to_newline(kor_text)` / `br_to_newline(trans)` |
+| character.py | `write_workbook()` | Find `br_to_newline(kor_text)` / `br_to_newline(trans)` |
+| region.py | `write_workbook()` | Find `br_to_newline(text)` / `br_to_newline(trans_*)` |
+| quest.py | `write_workbook()` | Find `br_to_newline(orig)` / `br_to_newline(eng)` / `br_to_newline(loc)` |
+| gimmick.py | `write_workbook()` | Find `br_to_newline(text)` / `br_to_newline(trans_*)` |
+| knowledge.py | `write_workbook()` | Find `br_to_newline(text)` / `br_to_newline(*_tr)` |
+| itemknowledgecluster.py | `write_workbook()` | Find `br_to_newline(kor_text)` / `br_to_newline(trans)` |
+| skill.py | `write_workbook()` | Find `br_to_newline(kor_text)` / `br_to_newline(trans)` |
+| script.py | `write_workbook()` | Find `br_to_newline()` calls on text columns |
+
+### Trade-off
+
+`<br/>` won't visually wrap in Excel cells like `\n` does, but data correctness > display aesthetics. Raw format means Excel output matches XML source exactly, eliminating re-conversion in downstream tools.
 
 ---
 
-*Created 2026-03-20. Documents the linebreak conversion behavior across all QACompiler generators.*
+*Created 2026-03-20. Updated 2026-03-23 (GameAdvice raw mode).*
