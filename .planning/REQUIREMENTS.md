@@ -9,8 +9,8 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 ### Build Pipeline
 
-- [ ] **BUILD-01**: PyInstaller bundle includes internalized merge module (14 QT files)
-- [ ] **BUILD-02**: Bundled app runs merge workflow end-to-end without QT source tree
+- [x] **BUILD-01**: PyInstaller bundle includes internalized merge module (14 QT files)
+- [x] **BUILD-02**: Bundled app runs merge workflow end-to-end without QT source tree
 - [ ] **BUILD-03**: Light Build triggered on GitHub produces downloadable installer
 - [ ] **BUILD-04**: Downloaded installer installs and launches successfully on offline Windows PC
 
@@ -65,8 +65,8 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | Phase 75 | Pending |
-| BUILD-02 | Phase 75 | Pending |
+| BUILD-01 | Phase 75 | Complete |
+| BUILD-02 | Phase 75 | Complete |
 | BUILD-03 | Phase 75 | Pending |
 | BUILD-04 | Phase 75 | Pending |
 | MOCK-09 | Phase 74 | Complete |
