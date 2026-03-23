@@ -8,6 +8,18 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
+## Current Milestone: v9.0 Build Validation + Real-World Testing
+
+**Goal:** Verify the built app works on an offline PC with real-like data — language data upload, Perforce-path mock data (DDS/WEM/XML), full E2E testing, and Qwen3-VL visual audit of all pages.
+
+**Target features:**
+- Trigger Light Build on GitHub, download installer, verify it runs
+- Mock gamedata matching real Perforce paths (images, audio, XML structure)
+- Language data upload → edit → save round-trip in built app
+- PyInstaller bundle verification (merge module, offline mode)
+- AI visual audit of all 5 pages with Qwen3-VL
+- Fix critical UIUX issues found during audit
+
 ## Current State (v8.0 shipped — 12 milestones complete)
 
 - 12 milestones shipped (v1.0 through v8.0), 73 phases, ~150 plans
@@ -64,10 +76,15 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-- [ ] UIUX-01 — AI visual audit of all 5 pages (needs live servers)
-- [ ] UIUX-02 — Fix critical UIUX issues from visual audit
 - [ ] BUILD-01 — PyInstaller bundle includes internalized merge module
 - [ ] BUILD-02 — Bundled app runs merge workflow end-to-end without QT source tree
+- [ ] MOCK-09 — Mock gamedata matches real Perforce paths (DDS images, WEM audio, XML language data)
+- [ ] MOCK-10 — Mock data loadable from built app on offline PC
+- [ ] LDE2E-01 — Upload language data in built app, verify it loads correctly
+- [ ] LDE2E-02 — Edit language data and save, verify round-trip integrity
+- [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths
+- [ ] UIUX-01 — AI visual audit of all 5 pages with real-looking mock data
+- [ ] UIUX-02 — Fix critical UIUX issues from visual audit
 
 ### Out of Scope
 
@@ -88,6 +105,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **v3.1 shipped** — Pure Svelte 5 Runes, 12 bug fixes, 60 UIUX audit fixes, 834 API E2E tests, 7 post-review fixes
 - **v7.0 shipped** — Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer on all hot paths, merge modal hardened
 - **v8.0 shipped** — MemoQ-style tag pills (136 tests), 8 service classes extracted (net -2,173 LOC), Tribunal-driven architecture decisions
+- **v9.0 starting** — Build validation, real-world testing with Perforce-path mock data, language data E2E, Qwen3-VL visual audit
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -132,5 +150,22 @@ The platform delivers real, working localization workflows — real XML parsing,
 | Class-based services (Option A) | Tribunal unanimous: match SyncService pattern, testable, consistent | ✓ Good — 8 services extracted, route files 33-81% thinner |
 | Tag pills = display-only render transform | Tribunal: raw text in DB, pills are frontend-only, no backend changes | ✓ Good — 136 tests verify round-trip integrity |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-24 after v8.0 milestone completion*
+*Last updated: 2026-03-24 after v9.0 milestone start*
