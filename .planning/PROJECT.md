@@ -8,7 +8,7 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v6.0 Phase 60 complete 2026-03-23)
+## Current State (v7.0 started 2026-03-23, v6.0 complete)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
@@ -63,19 +63,18 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v6.0 Showcase Offline Transfer
+## Current Milestone: v7.0 Production-Ready Merge + Performance + UIUX
 
-**Goal:** Enable translators to open languagedata files, translate offline, and merge changes back into LOC/LOCDEV using QuickTranslate's proven transfer logic — with mock projects, settings UI, and a polished merge modal.
+**Goal:** Make the merge pipeline production-ready by internalizing QuickTranslate logic (PyInstaller-safe), adding performance instrumentation at every step, enabling incremental TM/HNSW auto-updates, and polishing UIUX via AI-powered visual critique.
 
 **Target features:**
-- Wipe DB + create mock platform with project_FRE / project_ENG
-- Settings UI for LOC PATH + EXPORT PATH (persistent, per-project)
-- Transfer service adapter importing QuickTranslate core modules directly
-- Merge to LOCDEV modal (3 match types, scope, category, dry-run preview)
-- SSE progress streaming during merge execution
-- 8-step postprocess pipeline (from QuickTranslate)
-- Language auto-detection from project name
-- Test with real data from C:\Users\MYCOM\Desktop\oldoldVold\test123
+- Internalize QT merge logic into LocaNext's own module (no sys.path/importlib, PyInstaller-safe)
+- Performance monitoring: Model2Vec, FAISS/HNSW, TM CRUD, merge, file upload — log duration at every step
+- Incremental HNSW auto-update on TM edit/add (add_items, no full rebuild)
+- Automatic embedding update on TM changes
+- UIUX quality audit via Qwen Vision + fal.ai + Tribunal critique
+- Build verification with PyInstaller bundle
+- Smooth, fully automatic TM flow: edit/add → embedding → FAISS update → search ready
 
 ### Out of Scope
 
@@ -133,4 +132,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-23 after Phase 60 (Integration Testing) complete — v6.0 milestone complete*
+*Last updated: 2026-03-23 after v7.0 milestone start*
