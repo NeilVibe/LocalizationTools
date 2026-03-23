@@ -1,10 +1,19 @@
 # Milestones
 
-## v7.1 Security Hardening (IN PROGRESS)
+## v7.1 Security Hardening (Shipped: 2026-03-23)
 
-**Phases:** 65-68 (4 phases)
-**Requirements:** 0/18 complete (4 categories: SEC-AUTH, SEC-PATH, SEC-FRONT, SEC-MISC)
-**Goal:** Fix all 28 security issues (8 CRITICAL, 7 HIGH) found in full-stack audit — auth gaps, path traversal, XSS, IDOR, frontend consolidation.
+**Phases:** 65-68 (4 phases, 4 commits)
+**Requirements:** 15/18 complete (3 MEDIUM/LOW deferred)
+**Goal:** Fix all CRITICAL/HIGH security issues from full-stack audit — auth gaps, path traversal, XSS, IDOR, frontend consolidation.
+
+**Key accomplishments:**
+- 17 API endpoints secured with proper authentication (8 had zero auth, 6 were commented out)
+- 3 path traversal vulnerabilities fixed (file upload, download, merge)
+- XSS fix in ExplorerSearch (HTML-escape before {@html})
+- 4 local getAuthHeaders duplicates consolidated to canonical api.js
+- IDOR fix in remote logging (installation scoped to own data)
+- Log injection endpoint now requires API key auth
+- stderr suppression removed from background task execution
 
 ---
 
