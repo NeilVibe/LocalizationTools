@@ -498,6 +498,14 @@
               Folder
             {:else if item.type === 'project'}
               Project
+            {:else if item.type === 'platform'}
+              Platform
+            {:else if item.type === 'offline-storage'}
+              Storage
+            {:else if item.type === 'recycle-bin'}
+              Recycle Bin
+            {:else if item.type === 'trash-item'}
+              Deleted {item.item_type || 'Item'}
             {:else}
               {(item.format || 'File').toUpperCase()}
             {/if}

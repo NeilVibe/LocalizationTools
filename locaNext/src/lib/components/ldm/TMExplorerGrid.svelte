@@ -1008,6 +1008,15 @@
     if (item.type === 'tm') {
       return item.is_active ? 'Active' : 'Inactive';
     }
+    if (item.type === 'platform') {
+      return item.project_count > 0 ? 'In Use' : 'Empty';
+    }
+    if (item.type === 'project' || item.type === 'folder') {
+      return item.tm_count > 0 ? 'Has TMs' : 'No TMs';
+    }
+    if (item.type === 'unassigned') {
+      return item.tm_count > 0 ? 'Unassigned' : 'Empty';
+    }
     return '';
   }
 
@@ -1155,6 +1164,10 @@
           <div class="grid-cell status-cell" role="gridcell">
             {#if item.type === 'tm'}
               <span class="status-badge" class:active={item.is_active}>
+                {formatStatus(item)}
+              </span>
+            {:else if formatStatus(item)}
+              <span class="status-text">
                 {formatStatus(item)}
               </span>
             {/if}
@@ -1503,6 +1516,11 @@
     background: var(--cds-layer-02);
     border-left: 2px solid var(--cds-support-success);
     color: var(--cds-support-success);
+  }
+
+  .status-text {
+    font-size: 0.75rem;
+    color: var(--cds-text-03);
   }
 
   /* Context menu */
