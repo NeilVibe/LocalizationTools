@@ -446,6 +446,10 @@ async def get_installation_status(
     db: AsyncSession = Depends(get_async_db)
 ):
     """Get status and recent activity for installation."""
+    # IDOR fix: installation can only query its own status
+    if installation.installation_id != installation_id:
+        raise HTTPException(status_code=403, detail="Cannot access other installation's status")
+
     logger.info("Installation status requested", {"installation_id": installation_id})
 
     # Get installation
@@ -491,24 +495,19 @@ async def list_installations(
     installation: Installation = Depends(get_verified_installation),
     db: AsyncSession = Depends(get_async_db)
 ):
-    """List all registered installations (admin only)."""
-    result = await db.execute(
-        select(Installation).order_by(Installation.last_seen.desc())
-    )
-    installations = result.scalars().all()
-
+    """List installations visible to the requesting installation (own data only)."""
+    # Only return the requesting installation's own data (not all installations)
     return {
-        "count": len(installations),
+        "count": 1,
         "installations": [
             {
-                "installation_id": inst.installation_id,
-                "installation_name": inst.installation_name,
-                "version": inst.last_version or inst.version,
-                "is_active": inst.is_active,
-                "last_seen": inst.last_seen.isoformat() if inst.last_seen else None,
-                "created_at": inst.created_at.isoformat() if inst.created_at else None
+                "installation_id": installation.installation_id,
+                "installation_name": installation.installation_name,
+                "version": installation.last_version or installation.version,
+                "is_active": installation.is_active,
+                "last_seen": installation.last_seen.isoformat() if installation.last_seen else None,
+                "created_at": installation.created_at.isoformat() if installation.created_at else None
             }
-            for inst in installations
         ]
     }
 
@@ -535,10 +534,13 @@ async def remote_logging_health(db: AsyncSession = Depends(get_async_db)):
 # ============================================================================
 
 @router.post("/frontend")
-async def log_frontend(request: Request):
+async def log_frontend(
+    request: Request,
+    installation: Installation = Depends(get_verified_installation),
+):
     """
     Receive logs from frontend browser and write to backend log file.
-    This gives us visibility into browser console.
+    This gives us visibility into browser console. Requires valid API key.
     """
     try:
         body = await request.json()
