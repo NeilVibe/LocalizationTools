@@ -40,7 +40,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 ### Visual Audit
 
-- [ ] **UIUX-01**: Qwen3-VL visual review of all 5 pages with mock data loaded (score 7+/10)
+- [x] **UIUX-01**: Qwen3-VL visual review of all 5 pages with mock data loaded (score 7+/10)
 - [ ] **UIUX-02**: Critical UIUX issues from visual audit fixed
 - [ ] **UIUX-03**: Screenshot evidence of all 5 pages with real-looking data
 
@@ -84,7 +84,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | FEAT-05 | Phase 78 | Pending |
 | FEAT-06 | Phase 78 | Pending |
 | FEAT-07 | Phase 78 | Complete |
-| UIUX-01 | Phase 79 | Pending |
+| UIUX-01 | Phase 79 | Complete |
 | UIUX-02 | Phase 79 | Pending |
 | UIUX-03 | Phase 79 | Pending |
 
