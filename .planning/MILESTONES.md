@@ -1,5 +1,13 @@
 # Milestones
 
+## v8.0 Service Layer Extraction (IN PROGRESS)
+
+**Phases:** 69-72 (4 phases)
+**Requirements:** 0/13 complete (4 categories: SVC-STATS, SVC-AUTH, SVC-TELEM, SVC-INFRA)
+**Goal:** Extract business logic from 6 thick API modules (4,032 lines) into service classes. Route→service→repository. Zero user-facing changes. Unblocks unit testing (ARCH-04).
+
+---
+
 ## v7.1 Security Hardening (Shipped: 2026-03-23)
 
 **Phases:** 65-68 (4 phases, 4 commits)

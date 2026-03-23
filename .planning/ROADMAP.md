@@ -1,15 +1,15 @@
-# Roadmap: LocaNext v7.1 Security Hardening
+# Roadmap: LocaNext v8.0 Service Layer Extraction (ARCH-03)
 
 ## Overview
 
-Fix all CRITICAL and HIGH security issues found in full-stack audit (28 issues: 8 CRITICAL, 7 HIGH across 21 API files + 52 Svelte components). Auth gaps, path traversal, XSS, IDOR, and frontend security consolidation.
+Extract business logic from 6 thick FastAPI route handlers (4,032 lines) into service classes. Creates route→service→repository architecture. Eliminates ~60% duplication. Enables unit testing. Zero user-facing changes.
 
 ## Phases
 
-- [ ] **Phase 65: Backend Auth Restoration** - Re-enable commented-out auth on telemetry/rankings/logs, add auth to merge/health endpoints
-- [ ] **Phase 66: Path Traversal & Input Validation** - Fix path traversal in file upload/download/merge/xlstransfer, add path validation helpers
-- [ ] **Phase 67: Frontend Security & Consolidation** - Fix XSS in ExplorerSearch, consolidate getAuthHeaders duplicates, fix missing auth in ProjectSettings
-- [ ] **Phase 68: Remote Logging & Misc Security** - Fix IDOR, open registration, log injection, stderr suppression
+- [ ] **Phase 69: Stats & Rankings Service** - Extract StatsService + RankingsService from stats.py (1371) + rankings.py (608)
+- [ ] **Phase 70: Auth Service** - Extract AuthService from auth_async.py (629)
+- [ ] **Phase 71: Telemetry & Remote Logging** - Extract TelemetryService + RemoteLoggingService (1185 lines)
+- [ ] **Phase 72: Infrastructure Services** - Extract DbHealth + Health + Progress services (1009 lines)
 
 ## Phase Details
 
