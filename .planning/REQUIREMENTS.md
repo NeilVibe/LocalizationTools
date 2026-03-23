@@ -26,8 +26,8 @@
 - [x] **TMAU-01**: TM entry add triggers automatic embedding generation
 - [x] **TMAU-02**: TM entry add triggers incremental HNSW add_items (no full rebuild)
 - [x] **TMAU-03**: TM entry edit triggers embedding re-computation + HNSW update
-- [ ] **TMAU-04**: TM batch import triggers bulk embedding + HNSW batch add
-- [ ] **TMAU-05**: Search returns updated results immediately after add/edit (no manual refresh)
+- [x] **TMAU-04**: TM batch import triggers bulk embedding + HNSW batch add
+- [x] **TMAU-05**: Search returns updated results immediately after add/edit (no manual refresh)
 
 ### UIUX Quality
 
@@ -73,8 +73,8 @@
 | TMAU-01 | Phase 62 | Complete |
 | TMAU-02 | Phase 62 | Complete |
 | TMAU-03 | Phase 62 | Complete |
-| TMAU-04 | Phase 62 | Pending |
-| TMAU-05 | Phase 62 | Pending |
+| TMAU-04 | Phase 62 | Complete |
+| TMAU-05 | Phase 62 | Complete |
 | UIUX-01 | Phase 64 | Pending |
 | UIUX-02 | Phase 64 | Pending |
 | UIUX-03 | Phase 64 | Pending |
