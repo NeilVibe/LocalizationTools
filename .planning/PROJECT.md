@@ -8,23 +8,16 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v8.0 in progress — Service Layer Extraction)
+## Current State (v8.0 shipped — 12 milestones complete)
 
-- v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
-- v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
-- v3.0: 7 phases, 14 plans, 45 requirements — game dev platform + AI intelligence
-- v3.1: 4 phases, 19 plans, 48 tasks — Svelte 5 migration + bug fixes + UIUX polish + API E2E testing
-- v3.2: 6 phases, 12 plans, 25 requirements — GameData Tree UI + Context Intelligence + Image Gen
-- v7.0: 4 phases, 9 plans, 18 requirements — merge internalization + TM auto-update + perf instrumentation + UIUX audit
+- 12 milestones shipped (v1.0 through v8.0), 73 phases, ~150 plans
+- v8.0: MemoQ-style tag pills (136 tests) + 8 service classes extracted (route files 33-81% thinner)
+- v7.0: Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer instrumentation
+- v7.1: Security hardening (17 endpoints secured, 3 path traversal fixes, XSS/IDOR patches)
+- 10 service classes in server/services/ (Stats, Rankings, Auth, Telemetry, RemoteLogging, DbStats, Health, Progress, Sync, Transfer)
 - 834 API test functions across 40 test files covering 275 endpoints
-- 36 Svelte components migrated to pure Svelte 5 Runes (zero createEventDispatcher)
-- 12 runtime bugs fixed, 60 UIUX audit issues resolved
-- 7 post-review bugs caught and fixed (FilePickerDialog, virtualGrid ref, audio onerror, Escape key, XML format, br-tag assertions)
-- Post-v3.1: 15 bugs found and fixed (11 from swarm audit + 4 Game Dev grid)
-- Game Dev grid now loads entities from XML files directly via POST /api/ldm/gamedata/rows
 - All 5 main pages verified working (Files, Game Dev, Codex, Map, TM)
-- 5676 mock entities across 10 StaticInfo directories
-- Full offline/online parity maintained across all four milestones
+- Full offline/online parity maintained across all milestones
 
 ## Requirements
 
@@ -66,11 +59,15 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ TMAU-01 through TMAU-05 — TM auto-update: inline embedding + HNSW on add/edit/delete, batch import, immediate search — v7.0
 - ✓ PERF-01 through PERF-06 — Performance instrumentation: PerfTimer on all hot paths, /api/performance/summary — v7.0
 - ✓ UIUX-03 — Merge modal edge case hardening (retry, cancel, zero-match, error recovery) — v7.0
+- ✓ TAG-01 through TAG-03 — Tag pills: 5-pattern detector, colored inline pills, display-only in VirtualGrid — v8.0
+- ✓ SVC-01 through SVC-04 — Service extraction: 8 service classes from 8 thick route files — v8.0
 
 ### Active
 
 - [ ] UIUX-01 — AI visual audit of all 5 pages (needs live servers)
 - [ ] UIUX-02 — Fix critical UIUX issues from visual audit
+- [ ] BUILD-01 — PyInstaller bundle includes internalized merge module
+- [ ] BUILD-02 — Bundled app runs merge workflow end-to-end without QT source tree
 
 ### Out of Scope
 
@@ -90,6 +87,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **v3.0 shipped** — Game Dev Platform, Codex, World Map, AI Suggestions, QA Pipeline, Category Clustering, Naming Coherence, Mock GameData
 - **v3.1 shipped** — Pure Svelte 5 Runes, 12 bug fixes, 60 UIUX audit fixes, 834 API E2E tests, 7 post-review fixes
 - **v7.0 shipped** — Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer on all hot paths, merge modal hardened
+- **v8.0 shipped** — MemoQ-style tag pills (136 tests), 8 service classes extracted (net -2,173 LOC), Tribunal-driven architecture decisions
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -131,6 +129,8 @@ The platform delivers real, working localization workflows — real XML parsing,
 | CodexService + FAISS for entity search | Reuse existing embedding infrastructure | ✓ Good — semantic search across all entity types |
 | Route-handler category filtering | Keep repo layer clean, filter in Python | ✓ Good — simpler than DB-side filtering |
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
+| Class-based services (Option A) | Tribunal unanimous: match SyncService pattern, testable, consistent | ✓ Good — 8 services extracted, route files 33-81% thinner |
+| Tag pills = display-only render transform | Tribunal: raw text in DB, pills are frontend-only, no backend changes | ✓ Good — 136 tests verify round-trip integrity |
 
 ---
-*Last updated: 2026-03-23 after v7.0 milestone start*
+*Last updated: 2026-03-24 after v8.0 milestone completion*
