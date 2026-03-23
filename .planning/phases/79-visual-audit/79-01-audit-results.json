@@ -1,0 +1,71 @@
+{
+  "audit_date": "2026-03-24",
+  "pages": {
+    "files": {
+      "score": 6,
+      "screenshot": "screenshots/files-page.webp",
+      "critical_issues": [
+        "Incorrect File Type Labels - Offline Storage, CD, Recycle Bin labeled as FILE instead of FOLDER",
+        "Ambiguous Size Descriptors - uses Empty, 3 projects, Deleted items instead of standard units"
+      ],
+      "minor_issues": [
+        "Right-click for actions hint in search bar lacks specificity"
+      ],
+      "raw_response": "### Rating  \n**Overall Score: 6/10**  \n- **Visual Quality (7/10)**: Clean, modern dark theme with consistent spacing and typography. The interface feels professional and aligned with contemporary design standards.  \n- **Data Presentation (4/10)**: Key issues include mislabeled file types and ambiguous size descriptors, which undermine clarity.  \n- **Layout (8/10)**: Standard file explorer layout with well-organized columns and alignment.  \n- **Professionalism (5/10)**: Functional for its purpose, but critical flaws in data representation reduce trustworthiness and usability.  \n\n---\n\n### Critical Issues (per specified criteria)  \n- **None** of the listed categories (broken layouts, missing data, misaligned elements, empty states, poor contrast, or truncated text) apply to this interface. The UI is structurally sound and visually consistent.  \n\n---\n\n### Key Flaws in Data Presentation (not in the specified list but critical to functionality)  \nWhile not explicitly in the user’s \"critical issues\" list, these **data presentation flaws** significantly impact usability and should be addressed:  \n1. **Incorrect File Type Labels**:  \n   - \"Offline Storage\", \"CD\", and \"Recycle Bin\" are clearly **folders or containers**, yet labeled as **\"FILE\"** under the TYPE column. This misleads users into treating them as individual files, causing confusion about navigation and functionality.  \n   - *Impact*: Users may attempt to interact with these as files (e.g., opening, downloading), leading to errors or frustration.  \n\n2. **Ambiguous Size Descriptors**:  \n   - The SIZE column uses non-standard values like **\"Empty\"**, **\"3 projects\"**, and **\"Deleted items\"** instead of numerical or contextual units (e.g., KB, GB, or item counts).  \n   - *Impact*: Users cannot intuitively gauge the storage or content volume, reducing the interface’s utility for tasks like resource allocation or cleanup.  \n\n---\n\n### Why This Matters  \nThe UI is visually and structurally sound but fails to **accurately represent data**, which is essential for a tool like this (e.g., a localization platform). These flaws—while not \"critical\" under the specified list—negatively impact **trust, usability, and task efficiency**, justifying the lower score (6/10). Fixing these would improve data clarity and align with industry standards for file management interfaces.  \n\n**Final Note**: Prioritize correcting file type labels and standardizing size descriptors to enhance data presentation and user experience."
+    },
+    "gamedev": {
+      "score": 7,
+      "screenshot": "screenshots/gamedev-page.webp",
+      "critical_issues": [
+        "Truncated text in top navigation bar (e.g., \"Localization Data\" partially displayed as \"Localizati\")",
+        "Truncated path text in breadcrumb bar (e.g., \"/home/neil1980/Localizati\" instead of full directory name)"
+      ],
+      "minor_issues": [
+        "None"
+      ],
+      "raw_response": "SCORE: 7/10  \nCRITICAL ISSUES:  \n- Truncated text in top navigation bar (e.g., \"Localization Data\" partially displayed as \"Localizati\")  \n- Truncated path text in breadcrumb bar (e.g., \"/home/neil1980/Localizati\" instead of full directory name)  \n\nMINOR ISSUES:  \n- None"
+    },
+    "codex": {
+      "score": 7,
+      "screenshot": "screenshots/codex-page.webp",
+      "critical_issues": [
+        "Truncated text in character descriptions (visible ellipses indicate content is cut off, critical for full data visibility)",
+        "Missing data presentation in truncated fields (descriptions are partially visible, preventing users from accessing complete entity information)"
+      ],
+      "minor_issues": [
+        "Small font size for \"refs\" count (reduces readability but not critical for functionality)",
+        "Slight vertical spacing inconsistency between grid cards (minor visual polish opportunity)",
+        "Navigation icons (e.g., \"TM\", \"App\") lack context for new users (not critical but could be enhanced with tooltips)"
+      ],
+      "raw_response": "SCORE: 7/10  \nCRITICAL ISSUES:  \n- Truncated text in character descriptions (visible ellipses indicate content is cut off, critical for full data visibility)  \n- Missing data presentation in truncated fields (descriptions are partially visible, preventing users from accessing complete entity information)  \n\nMINOR ISSUES:  \n- Small font size for \"refs\" count (reduces readability but not critical for functionality)  \n- Slight vertical spacing inconsistency between grid cards (minor visual polish opportunity)  \n- Navigation icons (e.g., \"TM\", \"App\") lack context for new users (not critical but could be enhanced with tooltips)"
+    },
+    "map": {
+      "score": 7,
+      "screenshot": "screenshots/map-page.webp",
+      "critical_issues": [
+        "Missing legend for colored node markers - users cannot interpret what each color represents"
+      ],
+      "minor_issues": [
+        "Korean text labels may be hard to read at smaller zoom levels"
+      ],
+      "raw_response": "The UI for the game localization tool's Interactive World Map page displays a fantasy map with 14 regions and 17 routes labeled in Korean text, using colored markers for points of interest. However, the most critical flaw is the **absence of a legend explaining the meaning of the colored markers**. Without clear guidance on what each color represents (e.g., starting point, destination, or special interest), users cannot effectively interpret or utilize the map. This directly hinders the primary function of the tool: facilitating accurate localization by providing context for the labels. While other elements like navigation options and language settings are functional, the missing legend undermines the usability of the map as a localized resource.\n\n$$\n\\boxed{\\text{Missing legend for colored markers}}\n$$"
+    },
+    "tm": {
+      "score": 6,
+      "screenshot": "screenshots/tm-page.webp",
+      "critical_issues": [
+        "Missing data in STATUS column for all translation memory entries"
+      ],
+      "minor_issues": [],
+      "raw_response": "**SCORE: 6/10**  \n\n**CRITICAL ISSUES:**  \n- **Missing data in the STATUS column** for all translation memory entries (e.g., \"Unassigned,\" \"Offline Storage,\" \"CD\"). The STATUS column is explicitly defined in the interface but lacks critical information (e.g., \"Active,\" \"Inactive,\" \"Syncing,\" \"Offline\"), which is essential for users to manage and interpret the state of translation memory databases. Without this context, the functionality of the tool is severely compromised.  \n\n**MINOR ISSUES:**  \n- None identified in the current analysis. The interface is visually clean and logically structured (e.g., consistent columns, dark theme, and iconography), but the absence of status data remains the primary limitation.  \n\n---\n\n**Rationale for the Score:**  \n- **Visual Quality (8/10):** The interface uses a modern dark theme, with appropriate spacing and iconography. It is aesthetically cohesive and professional.  \n- **Data Presentation (3/10):** The critical omission of status data renders the page incomplete and unusable for core tasks (e.g., monitoring TM health). This is a fundamental flaw in the design.  \n- **Layout (8/10):** Columns are aligned, and the structure is intuitive. However, the empty STATUS column undermines its utility.  \n- **Professionalism (6/10):** While the design aligns with industry standards, the missing status data reflects a lack of attention to core user needs, reducing its professional value.  \n\nThe score reflects a strong foundation in design but a critical gap in data completeness, which outweighs the visual merits. Users cannot effectively manage translation memories without status information, making the interface impractical for its intended purpose."
+    }
+  },
+  "summary": {
+    "avg_score": 6.6,
+    "all_pass": false,
+    "pages_needing_fixes": [
+      "files",
+      "tm"
+    ]
+  }
+}
