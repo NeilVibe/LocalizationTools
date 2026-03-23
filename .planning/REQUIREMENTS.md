@@ -14,11 +14,11 @@
 
 ### Performance Monitoring
 
-- [ ] **PERF-01**: Model2Vec embedding generation logs duration per batch
-- [ ] **PERF-02**: FAISS/HNSW search logs duration per query
-- [ ] **PERF-03**: TM entry add/edit logs duration including embedding + index update
-- [ ] **PERF-04**: Merge preview/execute logs duration per step (scan, match, write)
-- [ ] **PERF-05**: File upload logs duration and file size
+- [x] **PERF-01**: Model2Vec embedding generation logs duration per batch
+- [x] **PERF-02**: FAISS/HNSW search logs duration per query
+- [x] **PERF-03**: TM entry add/edit logs duration including embedding + index update
+- [x] **PERF-04**: Merge preview/execute logs duration per step (scan, match, write)
+- [x] **PERF-05**: File upload logs duration and file size
 - [ ] **PERF-06**: Performance summary accessible via API endpoint
 
 ### TM Auto-Update
@@ -64,11 +64,11 @@
 | MARCH-02 | Phase 61 | Complete |
 | MARCH-03 | Phase 61 | Complete |
 | MARCH-04 | Phase 61 | Complete |
-| PERF-01 | Phase 63 | Pending |
-| PERF-02 | Phase 63 | Pending |
-| PERF-03 | Phase 63 | Pending |
-| PERF-04 | Phase 63 | Pending |
-| PERF-05 | Phase 63 | Pending |
+| PERF-01 | Phase 63 | Complete |
+| PERF-02 | Phase 63 | Complete |
+| PERF-03 | Phase 63 | Complete |
+| PERF-04 | Phase 63 | Complete |
+| PERF-05 | Phase 63 | Complete |
 | PERF-06 | Phase 63 | Pending |
 | TMAU-01 | Phase 62 | Complete |
 | TMAU-02 | Phase 62 | Complete |
