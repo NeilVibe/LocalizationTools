@@ -985,6 +985,10 @@
 
   // ============== Context Menu ==============
 
+  // Guard: timestamp of last context menu open to prevent click-outside
+  // from immediately closing the menu on the same event cycle
+  let contextMenuOpenedAt = 0;
+
   function handleContextMenu(data) {
     const { event: e, item } = data;
     contextMenuItem = item;
@@ -992,6 +996,7 @@
     contextMenuY = e.clientY;
     showContextMenu = true;
     showBackgroundMenu = false;
+    contextMenuOpenedAt = Date.now();
     // Check if this item is subscribed for offline
     checkContextItemSubscription();
   }
@@ -1002,6 +1007,7 @@
     bgMenuY = e.clientY;
     showBackgroundMenu = true;
     showContextMenu = false;
+    contextMenuOpenedAt = Date.now();
   }
 
   function closeMenus() {
@@ -2436,7 +2442,11 @@
 
   // ============== Lifecycle ==============
 
-  function handleClickOutside() {
+  function handleClickOutside(e) {
+    // Don't close if clicking inside a context menu
+    if (e.target.closest('.context-menu')) return;
+    // Don't close if opened in the same event cycle (right-click also fires click)
+    if (Date.now() - contextMenuOpenedAt < 100) return;
     closeMenus();
   }
 
