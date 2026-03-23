@@ -13,12 +13,12 @@ The platform delivers real, working localization workflows — real XML parsing,
 **Goal:** Verify the built app works on an offline PC with real-like data — language data upload, Perforce-path mock data (DDS/WEM/XML), full E2E testing, and Qwen3-VL visual audit of all pages.
 
 **Target features:**
-- Trigger Light Build on GitHub, download installer, verify it runs
-- ✓ Mock gamedata matching real Perforce paths (images, audio, XML structure) — Phase 74 complete
-- Language data upload → edit → save round-trip in built app
-- PyInstaller bundle verification (merge module, offline mode)
-- AI visual audit of all 5 pages with Qwen3-VL
-- Fix critical UIUX issues found during audit
+- ✓ Mock gamedata matching real Perforce paths (images, audio, XML structure) — Phase 74
+- ✓ Light Build triggered + lxml + merge module verification — Phase 75
+- ✓ Language data upload/edit/save E2E tests (16 tests) — Phase 76
+- ✓ Feature pipeline verification: TM cascade, merge, QA, Aho-Corasick, context panel (34 tests) — Phase 78
+- ✓ Qwen3-VL visual audit all 5 pages — avg 8.6/10, all 7+/10 — Phase 79
+- ⏳ BUILD-04: Download installer and test on offline Windows PC (pending human verify)
 
 ## Current State (v8.0 shipped — 12 milestones complete)
 
@@ -168,4 +168,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after Phase 74 completion*
+*Last updated: 2026-03-24 after v9.0 Phase 79 (Visual Audit) completion — all phases done except BUILD-04 human verify*
