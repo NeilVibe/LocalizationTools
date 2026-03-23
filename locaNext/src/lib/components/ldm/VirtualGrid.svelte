@@ -16,6 +16,7 @@
   import { WarningAltFilled } from "carbon-icons-svelte";
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
+  import TagText from "./TagText.svelte";
   import CategoryFilter from "./CategoryFilter.svelte";
 
   // Category color map (synced with CategoryFilter)
@@ -2841,7 +2842,7 @@
                   style="flex: {sourceWidthPercent} 1 0;{fileType === 'gamedev' ? ` padding-left: ${(row.extra_data?.depth || 0) * 20 + 8}px` : ''}"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
-                  <span class="cell-content"><ColorText text={formatGridText(row.source) || ""} /></span>
+                  <span class="cell-content"><TagText text={row.source || ""} /></span>
                   <!-- CTX-07: Translation source badge (AI/TM indicator) -->
                   {#if row.translation_source === 'ai'}
                     <span class="translation-source-badge ai" title="AI Translated">
@@ -2891,7 +2892,7 @@
                     </div>
                   {:else}
                     <!-- Display mode -->
-                    <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
+                    <span class="cell-content"><TagText text={row.target || ""} /></span>
                     {#if tmAppliedRows.has(row.id)}
                       {@const tmInfo = tmAppliedRows.get(row.id)}
                       <span class="ai-badge" title="AI-matched ({tmInfo.match_type})">
@@ -2923,7 +2924,7 @@
                     {#if referenceLoading}
                       <span class="cell-loading">Loading...</span>
                     {:else if refText}
-                      <span class="cell-content ref-match">{formatGridText(refText)}</span>
+                      <span class="cell-content ref-match"><TagText text={refText || ""} /></span>
                     {:else}
                       <!-- UI-071: Clearer "No match" styling -->
                       <span class="cell-content no-match">No match</span>
