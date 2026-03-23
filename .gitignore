@@ -89,6 +89,7 @@ $RECYCLE.BIN/
 
 # Environment variables & Secrets
 .env
+.env
 .env.local
 .env.*.local
 .env.production
