@@ -679,14 +679,19 @@ def get_announcements(db: Session = Depends(get_db)):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler."""
+    """Global exception handler — includes CORS headers so errors aren't masked."""
     logger.exception(f"Unhandled exception: {exc}")
 
+    origin = request.headers.get("origin", "*")
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
             "message": str(exc) if config.DEBUG else "An error occurred",
+        },
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
         },
     )
 

@@ -96,7 +96,7 @@ if _cors_origins_env:
     CORS_ORIGINS = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
     CORS_ALLOW_ALL = False
 else:
-    # Development: allow common localhost origins
+    # Development: allow common localhost origins + Electron app:// protocol
     CORS_ORIGINS = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -108,6 +108,7 @@ else:
         "http://127.0.0.1:7860",
         "http://localhost:8885",
         "http://127.0.0.1:8885",
+        "app://.",  # Electron built app protocol
     ]
     CORS_ALLOW_ALL = True  # Allow all in development for convenience
 
