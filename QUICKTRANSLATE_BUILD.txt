@@ -1,1 +1,1 @@
-Build QuickTranslate — full validation, EventName resolution, cross-format TMX, GUI log bridge
+Build QuickTranslate — detailed validation warnings with StringID + reason
