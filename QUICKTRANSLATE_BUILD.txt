@@ -1,1 +1,1 @@
-Build QuickTranslate — TMX tools upgrade: 5-col Excel, desc detection, Excel→TMX
+Build QuickTranslate — fix desc detection double-encoding bug
