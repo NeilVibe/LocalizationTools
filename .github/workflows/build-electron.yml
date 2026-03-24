@@ -961,28 +961,30 @@ jobs:
           }
         shell: pwsh
 
+      - name: Release File Locks (Model2Vec)
+        run: |
+          # Kill any lingering embedded Python processes that may hold file locks
+          Get-Process -Name "python" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
+
+          # Pre-copy Model2Vec files to break EBUSY locks
+          # electron-builder copies from repo root → dist, which triggers EBUSY on Windows
+          # By pre-copying to a temp location and swapping, we avoid the lock
+          $src = "models\Model2Vec"
+          $tmp = "models\Model2Vec_tmp"
+          if (Test-Path $src) {
+            Copy-Item -Path $src -Destination $tmp -Recurse -Force
+            Remove-Item -Path $src -Recurse -Force
+            Rename-Item -Path $tmp -NewName "Model2Vec"
+            Write-Host "[OK] Model2Vec files refreshed (file locks cleared)"
+          }
+        shell: pwsh
+
       - name: Build Electron App
         run: |
           cd locaNext
           npm run build
-
-          # Retry electron-builder up to 3 times — EBUSY file locks from Windows Defender
-          $maxRetries = 3
-          for ($i = 1; $i -le $maxRetries; $i++) {
-            Write-Host "=== electron-builder attempt $i/$maxRetries ==="
-            npm run build:electron 2>&1
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "[OK] electron-builder succeeded on attempt $i"
-              break
-            }
-            if ($i -lt $maxRetries) {
-              Write-Host "[WARN] electron-builder failed (attempt $i), retrying in 15s..."
-              Start-Sleep -Seconds 15
-            } else {
-              Write-Error "electron-builder failed after $maxRetries attempts"
-              exit 1
-            }
-          }
+          npm run build:electron
         shell: pwsh
 
       - name: Verify Electron Build
