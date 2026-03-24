@@ -854,11 +854,13 @@ def _split_other_data(output_path: Path) -> None:
     wb = load_workbook(output_path)
     ws = wb["Skills"]
 
-    # Find first SkillTreeHeader row (skip row 1 = column headers)
+    # Find first SkillTreeHeader row with a character key (col B contains "|")
+    # Trees without character_key use raw keys — those are "unorganized"
     threshold_row = None
     for row_idx in range(2, ws.max_row + 1):
-        cell_val = ws.cell(row_idx, 1).value
-        if cell_val and re.match(r"SkillTreeHeader", str(cell_val)):
+        col_a = ws.cell(row_idx, 1).value
+        col_b = ws.cell(row_idx, 2).value or ""
+        if col_a and re.match(r"SkillTreeHeader", str(col_a)) and "|" in str(col_b):
             threshold_row = row_idx
             break
 
