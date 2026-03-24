@@ -649,7 +649,8 @@ jobs:
             PyJWT python-jose passlib python-dotenv bcrypt `
             pydantic pydantic-settings email-validator `
             pandas openpyxl xlrd lxml `
-            httpx requests loguru tqdm pyyaml
+            httpx requests loguru tqdm pyyaml `
+            sse-starlette
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
           Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
