@@ -794,10 +794,10 @@ jobs:
 
           # Transfer adapter (consumes merge module)
           try:
-              from server.services.transfer_adapter import TransferService
-              print('[OK] TransferService (merge consumer) imported')
+              from server.services.transfer_adapter import TransferAdapter
+              print('[OK] TransferAdapter (merge consumer) imported')
           except ImportError as e:
-              errors.append(f'TransferService import failed: {e}')
+              errors.append(f'TransferAdapter import failed: {e}')
 
           # lxml (critical dependency for merge XML operations)
           try:
