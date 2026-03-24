@@ -192,7 +192,7 @@ class TMXToolsTab(tk.Frame):
             self._scan_and_update_status(path)
 
     def _scan_and_update_status(self, path: str):
-        """Scan path for languages and update status label."""
+        """Scan path for languages, validate files, and log results to GUI."""
         try:
             from pathlib import Path as P
             from core.source_scanner import scan_source_for_languages
@@ -210,9 +210,116 @@ class TMXToolsTab(tk.Frame):
                     msg += f" ({len(scan.unrecognized)} unrecognized items)"
                 self._status_var.set(msg)
                 self._status_label.config(fg='#cc3333')
+
+            # Launch validation in background thread (like Tab 1)
+            self._validate_source_async(P(path), scan)
+
         except Exception as exc:
             self._status_var.set(f"Scan error: {exc}")
             self._status_label.config(fg='#cc3333')
+
+    def _validate_source_async(self, path, scan):
+        """Validate all source files and log results to GUI."""
+        def _validate():
+            self._attach_log_bridge()
+            try:
+                from core.xml_parser import parse_xml_file, validate_xml_load
+                from core.excel_io import read_corrections_from_excel
+
+                # Collect all files
+                files = []
+                for lang, flist in scan.lang_files.items():
+                    for f in flist:
+                        files.append((f, lang.upper()))
+                for item in scan.unrecognized:
+                    if item.is_file() and item.suffix.lower() in ('.xml', '.xlsx', '.xls'):
+                        files.append((item, '???'))
+
+                if not files:
+                    logger.info("[TMX Validate] No files to validate.")
+                    return
+
+                logger.info("=" * 50)
+                logger.info(f"[TMX Validate] Checking {len(files)} file(s)...")
+
+                total_ok = 0
+                total_fail = 0
+                total_entries = 0
+
+                for filepath, lang in files:
+                    suffix = filepath.suffix.lower() if hasattr(filepath, 'suffix') else os.path.splitext(str(filepath))[1].lower()
+                    fname = filepath.name if hasattr(filepath, 'name') else os.path.basename(str(filepath))
+
+                    if suffix == '.xml':
+                        # XML validation
+                        load_result = validate_xml_load(filepath)
+                        if not load_result["ok"]:
+                            logger.error(f"  FAIL [{lang}] {fname} — XML LOAD FAILED: {load_result['error']}")
+                            total_fail += 1
+                            continue
+
+                        root = parse_xml_file(str(filepath))
+                        if root is None:
+                            logger.error(f"  FAIL [{lang}] {fname} — XML parse returned None")
+                            total_fail += 1
+                            continue
+
+                        count = sum(1 for _ in root.iter("LocStr"))
+                        # Check required attributes
+                        missing_attrs = 0
+                        for loc in root.iter("LocStr"):
+                            sid = (loc.get("StringId") or "").strip()
+                            if not sid:
+                                missing_attrs += 1
+
+                        status = "OK"
+                        if missing_attrs:
+                            status += f" ({missing_attrs} missing StringId)"
+                        if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
+                            status = "RECOVERED " + status
+
+                        logger.info(f"  OK   [{lang}] {fname} — {count} LocStr entries {status}")
+                        total_ok += 1
+                        total_entries += count
+
+                    elif suffix in ('.xlsx', '.xls'):
+                        # Excel validation
+                        try:
+                            formula_report = []
+                            entries = read_corrections_from_excel(
+                                filepath, formula_report=formula_report)
+                            count = len(entries) if entries else 0
+
+                            status = "OK"
+                            if formula_report:
+                                status += f" ({len(formula_report)} formula warnings)"
+
+                            # Check for EventName-only (no StringID)
+                            has_eventname = any(e.get('_source_eventname') for e in entries) if entries else False
+                            has_stringid = any(e.get('string_id') for e in entries) if entries else False
+                            if has_eventname and not has_stringid:
+                                status += " [EventName→StringID resolution needed]"
+                            elif has_eventname and has_stringid:
+                                status += " [EventName+StringID]"
+
+                            logger.info(f"  OK   [{lang}] {fname} — {count} entries {status}")
+                            total_ok += 1
+                            total_entries += count
+
+                        except ValueError as e:
+                            logger.error(f"  FAIL [{lang}] {fname} — {e}")
+                            total_fail += 1
+                        except Exception as e:
+                            logger.error(f"  FAIL [{lang}] {fname} — {e}")
+                            total_fail += 1
+
+                logger.info("-" * 50)
+                logger.info(f"[TMX Validate] {total_ok} OK, {total_fail} FAILED, {total_entries} total entries")
+                logger.info("=" * 50)
+            finally:
+                self._detach_log_bridge()
+
+        threading.Thread(target=_validate, daemon=True).start()
 
     def _on_convert(self):
         path = self._path_var.get()

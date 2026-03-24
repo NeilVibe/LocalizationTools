@@ -488,11 +488,12 @@ def combine_xmls_to_tmx(
                     has_strorigin = 'strorigin' in headers_lower or 'str_origin' in headers_lower
                     has_correction = 'correction' in headers_lower or 'corrected' in headers_lower or 'str' in headers_lower
                     has_stringid = 'stringid' in headers_lower or 'string_id' in headers_lower
+                    has_eventname = 'eventname' in headers_lower or 'event_name' in headers_lower or 'soundeventname' in headers_lower
                     has_descorigin = 'descorigin' in headers_lower or 'desc_origin' in headers_lower
                     has_desc = 'desc' in headers_lower or 'desccorrection' in headers_lower or 'desctext' in headers_lower
 
-                    if not has_stringid:
-                        validation_errors.append(f"{doc_name}: Missing StringID column")
+                    if not has_stringid and not has_eventname:
+                        validation_errors.append(f"{doc_name}: Missing both StringID and EventName columns")
                         wb.close()
                         continue
                     if not has_correction and not has_strorigin:
@@ -504,11 +505,27 @@ def combine_xmls_to_tmx(
                     so_idx = headers_lower.get('strorigin', headers_lower.get('str_origin'))
                     corr_idx = headers_lower.get('correction', headers_lower.get('corrected', headers_lower.get('str')))
                     sid_idx = headers_lower.get('stringid', headers_lower.get('string_id'))
+                    en_idx = headers_lower.get('eventname', headers_lower.get('event_name', headers_lower.get('soundeventname')))
                     do_idx = headers_lower.get('descorigin', headers_lower.get('desc_origin'))
                     desc_idx = headers_lower.get('desc', headers_lower.get('desccorrection', headers_lower.get('desctext')))
 
+                    # EventName resolution: if no StringID column, resolve EventName→StringID
+                    eventname_mapping = None
+                    if has_eventname and not has_stringid:
+                        try:
+                            from .eventname_resolver import get_eventname_mapping
+                            # Look for target XML folder to build mapping
+                            parent = Path(file_path_str).parent
+                            eventname_mapping = get_eventname_mapping(parent)
+                            logger.info(f"    EventName resolution: {len(eventname_mapping)} mappings loaded")
+                        except Exception as e:
+                            logger.warning(f"    EventName resolution failed: {e} — entries without StringID will be skipped")
+
                     file_mtime = os.path.getmtime(file_path_str)
                     excel_entries = 0
+
+                    eventname_resolved = 0
+                    eventname_missed = 0
 
                     for row in ws.iter_rows(min_row=2, values_only=True):
                         src = str(row[so_idx]).strip() if so_idx is not None and so_idx < len(row) and row[so_idx] else ""
@@ -516,6 +533,19 @@ def combine_xmls_to_tmx(
                         sid = str(row[sid_idx]).strip() if sid_idx is not None and sid_idx < len(row) and row[sid_idx] else ""
                         desc_src = str(row[do_idx]).strip() if do_idx is not None and do_idx < len(row) and row[do_idx] else ""
                         desc_tgt = str(row[desc_idx]).strip() if desc_idx is not None and desc_idx < len(row) and row[desc_idx] else ""
+
+                        # EventName→StringID resolution (when no StringID column or empty StringID)
+                        if not sid and en_idx is not None:
+                            ename = str(row[en_idx]).strip() if en_idx < len(row) and row[en_idx] else ""
+                            if ename and eventname_mapping:
+                                match = eventname_mapping.get(ename.lower())
+                                if match:
+                                    sid = match.get('string_id', '')
+                                    if not src:
+                                        src = match.get('str_origin', '')
+                                    eventname_resolved += 1
+                                else:
+                                    eventname_missed += 1
 
                         # Main TU from Excel
                         if tgt and sid and not is_korean_text(tgt):
@@ -566,7 +596,12 @@ def combine_xmls_to_tmx(
                             total_desc += 1
 
                     wb.close()
-                    logger.info(f"    Excel: {excel_entries} entries read")
+                    parts = [f"{excel_entries} entries"]
+                    if eventname_resolved:
+                        parts.append(f"{eventname_resolved} EventName resolved")
+                    if eventname_missed:
+                        parts.append(f"{eventname_missed} EventName unresolved")
+                    logger.info(f"    Excel: {', '.join(parts)}")
                 except Exception as e:
                     validation_errors.append(f"{doc_name}: Excel read failed — {e}")
                     logger.error(f"    FAILED: {e}")
