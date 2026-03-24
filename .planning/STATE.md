@@ -86,7 +86,7 @@ No new decisions yet for v9.0.
 - Remove Light Mode gate from merge verification step
 - Add category_mapper to CI verification
 - Fix TMExplorerGrid.svelte formatStatus null guard
-- Fix GSD artifact inconsistencies (BUILD-03/04 status, stale STATE.md)
+- ~~Fix GSD artifact inconsistencies (BUILD-03/04 status, stale STATE.md)~~ DONE (79.1-02)
 
 ### Blockers/Concerns
 

@@ -51,7 +51,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 - [ ] **FIX-03**: CI merge verification runs for ALL build modes (remove Light Mode gate)
 - [ ] **FIX-04**: category_mapper.py included in CI merge module verification imports
 - [ ] **FIX-05**: TMExplorerGrid.svelte formatStatus handles null/undefined, uses correct field for platform
-- [ ] **FIX-06**: GSD artifacts consistent (BUILD-03/04 status corrected, STATE.md current, ROADMAP overview fixed)
+- [x] **FIX-06**: GSD artifacts consistent (BUILD-03/04 status corrected, STATE.md current, ROADMAP overview fixed)
 - [ ] **FIX-07**: Full E2E test suite passes — all tests green or justified xfail
 
 ## Future Requirements
