@@ -999,7 +999,8 @@
       return 'No TMs';
     }
     if (item.type === 'unassigned') {
-      return `${item.tm_count} TM${item.tm_count > 1 ? 's' : ''}`;
+      const count = item.tm_count || 0;
+      return `${count} TM${count > 1 ? 's' : ''}`;
     }
     return '';
   }
@@ -1009,7 +1010,7 @@
       return item.is_active ? 'Active' : 'Inactive';
     }
     if (item.type === 'platform') {
-      return item.project_count > 0 ? 'In Use' : 'Empty';
+      return (item.tm_count || 0) > 0 ? 'In Use' : 'Empty';
     }
     if (item.type === 'project' || item.type === 'folder') {
       return item.tm_count > 0 ? 'Has TMs' : 'No TMs';

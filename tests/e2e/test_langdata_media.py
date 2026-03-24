@@ -18,46 +18,9 @@ import pytest
 _project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_project_root))
 
-from fastapi.testclient import TestClient
-from server.main import app
-
 pytestmark = [pytest.mark.e2e, pytest.mark.media]
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(scope="module")
-def client() -> TestClient:
-    """TestClient for the FastAPI app."""
-    return TestClient(app)
-
-
-@pytest.fixture(scope="module")
-def auth_headers(client: TestClient) -> dict[str, str]:
-    """Authenticate as admin and return bearer-token headers."""
-    response = client.post(
-        "/api/v2/auth/login",
-        data={"username": "admin", "password": "admin123"},
-    )
-    if response.status_code == 200:
-        token = response.json().get("access_token")
-        if token:
-            return {"Authorization": f"Bearer {token}"}
-
-    response = client.post(
-        "/api/v2/auth/login",
-        json={"username": "admin", "password": "admin123"},
-    )
-    if response.status_code == 200:
-        token = response.json().get("access_token")
-        if token:
-            return {"Authorization": f"Bearer {token}"}
-
-    pytest.fail(
-        f"Admin login failed: {response.status_code} {response.text[:200]}"
-    )
+# Fixtures (client, auth_headers) provided by tests/e2e/conftest.py (session-scoped)
 
 
 # ---------------------------------------------------------------------------

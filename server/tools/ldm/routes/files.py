@@ -923,7 +923,7 @@ async def download_file(
 # File Merge (P3: MERGE System)
 # =============================================================================
 
-@router.post("/files/{file_id}/merge")
+@router.post("/files/{file_id}/export-merge")
 async def merge_file(
     file_id: int,
     original_file: UploadFile = File(..., description="Original file to merge into"),
@@ -931,7 +931,11 @@ async def merge_file(
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
-    Merge reviewed translations from LDM back into original file.
+    Export-merge: merge reviewed translations from LDM back into original file for download.
+
+    This is the "export merge" endpoint — it takes an uploaded original file,
+    applies reviewed LDM edits, and returns the merged file for download.
+    NOT the TranslatorMergeService endpoint (which is at /files/{file_id}/merge).
 
     P10: FULL ABSTRACT - Uses FileRepository (works for both PostgreSQL and SQLite).
     Permission checks are INSIDE repository.

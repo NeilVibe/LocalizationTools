@@ -84,18 +84,10 @@ def _upload_merge_files(api, test_project_id):
 class TestMergePipeline:
     """Verify merge endpoint works with multiple match modes.
 
-    NOTE: The TranslatorMergeService endpoint (merge.py) accepts JSON with
-    source_file_id + match_mode, but is SHADOWED by the older files.py
-    merge endpoint (which expects a multipart ``original_file`` upload).
-    Both register ``POST /files/{file_id}/merge``; FastAPI routes to
-    files.py first.  Tests are xfail until the route conflict is resolved.
+    TranslatorMergeService endpoint (merge.py) at POST /files/{file_id}/merge
+    accepts JSON with source_file_id + match_mode. The older files.py export
+    merge is now at POST /files/{file_id}/export-merge (no conflict).
     """
-
-    XFAIL_REASON = (
-        "TranslatorMergeService endpoint shadowed by files.py merge route -- "
-        "both register POST /files/{file_id}/merge; files.py wins and expects "
-        "multipart original_file upload, not JSON body"
-    )
 
     def _base_id(self) -> int:
         return _module_state["base_file_id"]
@@ -103,7 +95,6 @@ class TestMergePipeline:
     def _corr_id(self) -> int:
         return _module_state["correction_file_id"]
 
-    @pytest.mark.xfail(reason=XFAIL_REASON, strict=False)
     def test_merge_strict_mode(self, api):
         """Merge with strict mode returns 200 and match counts."""
         resp = api.merge_file(
@@ -120,7 +111,6 @@ class TestMergePipeline:
         assert data["matched"] >= 0
         assert data["total"] >= 0
 
-    @pytest.mark.xfail(reason=XFAIL_REASON, strict=False)
     def test_merge_stringid_mode(self, api):
         """Merge with stringid_only mode returns 200."""
         resp = api.merge_file(
@@ -134,7 +124,6 @@ class TestMergePipeline:
         data = resp.json()
         assert data["matched"] >= 0
 
-    @pytest.mark.xfail(reason=XFAIL_REASON, strict=False)
     def test_merge_cascade_mode(self, api):
         """Merge with cascade mode returns 200."""
         resp = api.merge_file(
@@ -148,7 +137,6 @@ class TestMergePipeline:
         data = resp.json()
         assert data["matched"] >= 0
 
-    @pytest.mark.xfail(reason=XFAIL_REASON, strict=False)
     def test_merge_response_has_counts(self, api):
         """Merge response contains all expected count fields."""
         resp = api.merge_file(
