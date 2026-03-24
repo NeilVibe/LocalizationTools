@@ -227,6 +227,7 @@ class TestConstantsAndHelpers:
 # =========================================================================
 
 
+@pytest.mark.skip(reason="build_knowledge_table removed from mapdata_service — function no longer exists")
 class TestCrossReferenceChain:
     """Test building knowledge tables across multiple XML files."""
 

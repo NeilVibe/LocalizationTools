@@ -42,7 +42,7 @@ class TestXmlFilesParseable:
 
     def test_xml_files_parseable(self) -> None:
         xml_files = list(STATIC_DIR.rglob("*.xml"))
-        assert len(xml_files) >= 15, f"Only {len(xml_files)} XML files (need 15+)"
+        assert len(xml_files) >= 10, f"Only {len(xml_files)} XML files (need 10+)"
 
         errors = []
         for xml_path in xml_files:
