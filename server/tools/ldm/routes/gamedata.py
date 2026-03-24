@@ -77,11 +77,24 @@ _DEFAULT_BASE_DIR = Path(__file__).resolve().parents[4]  # project root
 def _get_base_dir() -> Path:
     """Get the base directory for gamedata operations.
 
-    Checks for mock_gamedata first (Phase 15), then falls back to project root.
+    Priority:
+    1. GAMEDATA_BASE_DIR env var (user-configured, e.g. Perforce root)
+    2. In DEV mode: mock_gamedata if it exists (for testing)
+    3. Project root (allows browsing from any path under the project)
     """
-    mock_dir = _DEFAULT_BASE_DIR / "tests" / "fixtures" / "mock_gamedata"
-    if mock_dir.is_dir():
-        return mock_dir
+    import os
+    env_dir = os.getenv("GAMEDATA_BASE_DIR")
+    if env_dir:
+        p = Path(env_dir).resolve()
+        if p.is_dir():
+            return p
+
+    # Only use mock_gamedata in DEV mode — production builds should not be locked to test fixtures
+    if os.getenv("DEV_MODE", "false").lower() == "true":
+        mock_dir = _DEFAULT_BASE_DIR / "tests" / "fixtures" / "mock_gamedata"
+        if mock_dir.is_dir():
+            return mock_dir
+
     return _DEFAULT_BASE_DIR
 
 

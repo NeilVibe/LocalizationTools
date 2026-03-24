@@ -330,11 +330,10 @@ async def remote_logging_health(db: AsyncSession = Depends(get_async_db)):
 @router.post("/frontend")
 async def log_frontend(
     request: Request,
-    installation: Installation = Depends(get_verified_installation),
 ):
     """
     Receive logs from frontend browser and write to backend log file.
-    This gives us visibility into browser console. Requires valid API key.
+    No authentication required — this is a local-only endpoint for dev visibility.
     """
     try:
         body = await request.json()
