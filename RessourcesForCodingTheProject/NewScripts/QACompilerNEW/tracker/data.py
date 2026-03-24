@@ -160,6 +160,11 @@ def update_daily_data_sheet(
     lookup_hits = 0
     lookup_misses = []
 
+    # Track which (master_category, user) combos have already been written
+    # to prevent double-counting when multiple folder categories share a master
+    # (e.g., Sequencer+Dialog both map to Script)
+    written_manager_stats: set = set()
+
     for entry in daily_entries:
         key = (entry["date"], entry["user"], entry["category"])
         row = existing.get(key) or ws.max_row + 1
@@ -169,8 +174,16 @@ def update_daily_data_sheet(
         user = entry["user"]
         # Map folder category to target master category for lookup (e.g., Sequencer→Script, Help→System)
         lookup_category = get_target_master_category(category)
-        category_stats = manager_stats.get(lookup_category, {})
-        user_manager_stats = category_stats.get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+        manager_key = (lookup_category, user)
+
+        # Only apply manager stats to the FIRST folder category per master group
+        # Prevents double-counting: Script fixed=5 should appear once, not in both Sequencer AND Dialog
+        if manager_key not in written_manager_stats:
+            category_stats = manager_stats.get(lookup_category, {})
+            user_manager_stats = category_stats.get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+            written_manager_stats.add(manager_key)
+        else:
+            user_manager_stats = {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
 
         # GRANULAR: Log every Sequencer/Dialog lookup
         if category in ("Sequencer", "Dialog"):
@@ -270,6 +283,10 @@ def update_daily_data_sheet(
     # Build reverse map so we can find existing rows by their folder-level category name
     master_to_folder = _build_master_to_folder_map()
 
+    # Skip master categories already written by the first path (daily_entries loop)
+    # to avoid overwriting the correct single-folder allocation
+    already_written_masters = {(mc, u) for (mc, u) in written_manager_stats}
+
     rows_created = 0
     rows_updated = 0
     for master_category, users in manager_stats.items():
@@ -277,6 +294,10 @@ def update_daily_data_sheet(
         # e.g. master "Script" -> try ["Sequencer", "Dialog"] first, then "Script" itself
         folder_candidates = master_to_folder.get(master_category, [])
         for user, stats in users.items():
+            # Skip if first path already wrote this (master_category, user)
+            if (master_category, user) in already_written_masters:
+                continue
+
             file_date = manager_dates.get((master_category, user), today)
             date_str = str(file_date)
 
