@@ -1,1 +1,1 @@
-Build QuickTranslate — GUI log bridge for TMX tools + cross-format folder mode
+Build QuickTranslate — validation on path select, EventName resolution, GUI log bridge
