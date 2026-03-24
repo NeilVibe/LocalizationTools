@@ -482,17 +482,24 @@ def combine_xmls_to_tmx(
                     # EventName resolution (same pipeline as Tab 1)
                     eventname_resolved = 0
                     eventname_missed = 0
-                    has_unresolved_eventnames = any(c.get('_source_eventname') for c in corrections)
-                    if has_unresolved_eventnames:
+                    unresolved_count = sum(1 for c in corrections if c.get('_source_eventname'))
+                    if unresolved_count > 0:
                         try:
                             from .eventname_resolver import get_eventname_mapping, resolve_eventnames_in_corrections
                             parent = Path(file_path_str).parent
                             mapping = get_eventname_mapping(parent)
+                            logger.info(f"    EventName: {unresolved_count} to resolve, {len(mapping)} mappings loaded")
                             corrections, missing = resolve_eventnames_in_corrections(corrections, mapping)
-                            eventname_resolved = len(corrections) - len(missing) if missing else len([c for c in corrections if c.get('string_id')])
-                            eventname_missed = len(missing) if missing else 0
+                            # resolve returns (resolved_list, missing_list)
+                            # resolved_list has all entries WITH string_id
+                            # missing_list has entries where resolution failed
+                            eventname_resolved = unresolved_count - len(missing)
+                            eventname_missed = len(missing)
                             if missing:
-                                logger.warning(f"    {len(missing)} EventName(s) could not be resolved")
+                                for m in missing[:5]:
+                                    logger.warning(f"      Unresolved: {m.get('_source_eventname', '?')}")
+                                if len(missing) > 5:
+                                    logger.warning(f"      ...and {len(missing) - 5} more")
                         except Exception as e:
                             logger.warning(f"    EventName resolution failed: {e}")
 
