@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping, load_tester_type_mapping
+from config import TRACKER_STYLES, CATEGORIES, FACE_TYPE_CATEGORIES, load_tester_mapping, load_tester_type_mapping
 
 
 # =============================================================================
@@ -768,8 +768,8 @@ def build_category_breakdown_section(
             "count": data.get("word_count", 0)
         }
 
-    # Categories to show (use global CATEGORIES)
-    categories = CATEGORIES
+    # Categories to show — exclude Face (has its own dedicated Facial sheet)
+    categories = [c for c in CATEGORIES if c.lower() not in FACE_TYPE_CATEGORIES]
 
     # Calculate column count: User + (Done%/Count) * categories + Total
     count_label = "Words" if is_english else "Chars"

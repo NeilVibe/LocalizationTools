@@ -171,7 +171,7 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                         If None, loaded from file.
 
     Returns:
-        Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats)
+        Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats, manager_dates)
     """
     def _log(msg, tag='info'):
         if log_callback:
@@ -185,6 +185,7 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
+    manager_dates = {}  # (category, username) -> "YYYY-MM-DD" from master file mtime
 
     # LOG FILE for manager stats debug
     log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
@@ -236,6 +237,8 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                 print(f"    Opening: {master_path.name}...", end="", flush=True)
                 wb = safe_load_workbook(master_path, read_only=True, data_only=True)
                 print(f" {len(wb.sheetnames)} sheets")
+                # File date from mtime for manager_dates tracking
+                file_date = datetime.fromtimestamp(master_path.stat().st_mtime).strftime("%Y-%m-%d")
                 try:
                     log(f"")
                     log(f"{'~'*60}")
@@ -352,6 +355,12 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                         total_rows_scanned += row_count
                         print(f"      {sheet_name}: {row_count} rows, {status_entries_count} status entries")
 
+                        # manager_dates: keep latest mtime per (category, username)
+                        for username in status_cols.keys():
+                            existing_date = manager_dates.get((target_category, username))
+                            if existing_date is None or file_date > existing_date:
+                                manager_dates[(target_category, username)] = file_date
+
                     print(f"    Done: {sheets_processed} sheets, {total_rows_scanned} rows scanned")
 
                 finally:
@@ -394,7 +403,7 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
         print(f"[LOG ERROR] {e}")
 
     return (fixed_screenshots_en, fixed_screenshots_cn,
-            manager_stats_result)
+            manager_stats_result, manager_dates)
 
 
 # =============================================================================
@@ -1162,7 +1171,7 @@ def run_compiler(log_callback=None, progress_callback=None):
     _log("Collecting master data...")
     collect_start = time.time()
     (fixed_screenshots_en, fixed_screenshots_cn,
-     manager_stats) = collect_all_master_data(tester_mapping, log_callback=log_callback)
+     manager_stats, manager_dates) = collect_all_master_data(tester_mapping, log_callback=log_callback)
     collect_elapsed = time.time() - collect_start
 
     _log(f"Master data collected ({collect_elapsed:.1f}s)")
@@ -1590,7 +1599,7 @@ def run_compiler(log_callback=None, progress_callback=None):
 
         # Update standard tracker tabs
         if standard_entries:
-            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
+            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats, manager_dates)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
 

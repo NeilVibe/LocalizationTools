@@ -240,6 +240,10 @@ def build_manager_section(
     """
     Build manager stats section (aggregated across all users).
 
+    Fixed/Reported/NonIssue/Checking show daily deltas (what happened today).
+    Pending uses CUMULATIVE snapshots: cumulative_issues - cumulative_fixed
+    - cumulative_reported - cumulative_nonissue at each date.
+
     Args:
         ws: Worksheet to write to
         start_row: Starting row
@@ -277,6 +281,14 @@ def build_manager_section(
         cell.border = styles["border"]
     current_row += 1
 
+    # Pre-compute cumulative totals for Pending calculation.
+    # Pending = cumulative_issues - cumulative_fixed - cumulative_reported - cumulative_nonissue
+    # (CHECKING is still pending — being investigated, not resolved)
+    cum_issues = 0
+    cum_fixed = 0
+    cum_reported = 0
+    cum_nonissue = 0
+
     # Data rows
     for idx, date in enumerate(dates):
         if isinstance(date, str) and len(date) >= 10:
@@ -284,15 +296,21 @@ def build_manager_section(
         else:
             display_date = str(date)
 
-        # Aggregate manager stats across ALL users for this date
+        # Aggregate daily deltas across ALL users for this date
         day_fixed = sum(daily_delta.get(date, {}).get(u, default_data.copy())["fixed"] for u in users)
         day_reported = sum(daily_delta.get(date, {}).get(u, default_data.copy())["reported"] for u in users)
         day_checking = sum(daily_delta.get(date, {}).get(u, default_data.copy())["checking"] for u in users)
         day_nonissue = sum(daily_delta.get(date, {}).get(u, default_data.copy())["nonissue"] for u in users)
         day_issues = sum(daily_delta.get(date, {}).get(u, default_data.copy())["issues"] for u in users)
-        # Pending = Issues not yet resolved. CHECKING is still pending (being investigated).
-        # Only FIXED, REPORTED, and NON-ISSUE resolve an issue.
-        day_pending = max(0, day_issues - day_fixed - day_reported - day_nonissue)
+
+        # Accumulate running totals for Pending
+        cum_issues += day_issues
+        cum_fixed += day_fixed
+        cum_reported += day_reported
+        cum_nonissue += day_nonissue
+
+        # Pending = cumulative unresolved issues (running balance)
+        day_pending = max(0, cum_issues - cum_fixed - cum_reported - cum_nonissue)
 
         row_values = [display_date, day_fixed, day_reported, day_nonissue, day_checking, day_pending]
         for i, val in enumerate(row_values, 1):

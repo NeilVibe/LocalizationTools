@@ -478,7 +478,7 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
 
-    for (category, username, trans, comment), (mtime, status) in content_index.items():
+    for (category, username, _stringid, trans, comment), (mtime, status) in content_index.items():
         if status == "FIXED":
             manager_stats[category][username]["fixed"] += 1
         elif status == "REPORTED":

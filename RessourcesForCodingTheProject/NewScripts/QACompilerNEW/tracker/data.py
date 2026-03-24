@@ -10,8 +10,21 @@ from typing import Dict, List, Optional, Tuple
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_PATH, get_target_master_category
+from config import TRACKER_PATH, get_target_master_category, CATEGORY_TO_MASTER
 from core.excel_ops import safe_load_workbook
+
+
+def _build_master_to_folder_map() -> Dict[str, List[str]]:
+    """Build reverse mapping: master category -> list of folder categories.
+
+    E.g. "Script" -> ["Sequencer", "Dialog"], "System" -> ["Help", "System"].
+    Master categories that ARE folder categories map to themselves.
+    """
+    from collections import defaultdict
+    reverse: Dict[str, List[str]] = defaultdict(list)
+    for folder_cat, master_cat in CATEGORY_TO_MASTER.items():
+        reverse[master_cat].append(folder_cat)
+    return dict(reverse)
 
 
 # =============================================================================
@@ -252,15 +265,40 @@ def update_daily_data_sheet(
             actual_max_row = max(actual_max_row, row)
 
     # Process manager stats rows
+    # manager_stats is keyed by MASTER-level categories (e.g. "Script", "System", "Item")
+    # but daily_entries rows use FOLDER-level categories (e.g. "Sequencer", "Dialog", "Help")
+    # Build reverse map so we can find existing rows by their folder-level category name
+    master_to_folder = _build_master_to_folder_map()
+
     rows_created = 0
     rows_updated = 0
-    for category, users in manager_stats.items():
+    for master_category, users in manager_stats.items():
+        # Determine which folder-level categories to search for in existing rows
+        # e.g. master "Script" -> try ["Sequencer", "Dialog"] first, then "Script" itself
+        folder_candidates = master_to_folder.get(master_category, [])
         for user, stats in users.items():
-            file_date = manager_dates.get((category, user), today)
-            key = (str(file_date), user, category)
+            file_date = manager_dates.get((master_category, user), today)
+            date_str = str(file_date)
 
-            if key in existing_date_user_cat:
-                found_row = existing_date_user_cat[key]
+            # Try to find existing row using folder-level category names first
+            found_row = None
+            matched_key = None
+            for folder_cat in folder_candidates:
+                candidate_key = (date_str, user, folder_cat)
+                if candidate_key in existing_date_user_cat:
+                    found_row = existing_date_user_cat[candidate_key]
+                    matched_key = candidate_key
+                    break
+
+            # Fall back to master-level category name (for self-mapping categories
+            # like Quest->Quest, or legacy rows that already used master names)
+            if found_row is None:
+                master_key = (date_str, user, master_category)
+                if master_key in existing_date_user_cat:
+                    found_row = existing_date_user_cat[master_key]
+                    matched_key = master_key
+
+            if found_row is not None:
                 ws.cell(found_row, 9, stats["fixed"])
                 ws.cell(found_row, 10, stats["reported"])
                 ws.cell(found_row, 11, stats["checking"])
@@ -271,13 +309,14 @@ def update_daily_data_sheet(
                 new_row = actual_max_row
                 ws.cell(new_row, 1, file_date)
                 ws.cell(new_row, 2, user)
-                ws.cell(new_row, 3, category)
+                # Use master category for new rows (consistent with master file naming)
+                ws.cell(new_row, 3, master_category)
                 for c in [4,5,6,7,8,13,14]: ws.cell(new_row, c, 0)
                 ws.cell(new_row, 9, stats["fixed"])
                 ws.cell(new_row, 10, stats["reported"])
                 ws.cell(new_row, 11, stats["checking"])
                 ws.cell(new_row, 12, stats["nonissue"])
-                existing_date_user_cat[key] = new_row
+                existing_date_user_cat[(date_str, user, master_category)] = new_row
                 rows_created += 1
 
 
