@@ -155,218 +155,23 @@ VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED",
 # Now: ONE pass per master file with read_only=True for both data structures.
 # Manager status preservation is handled by System 1 (excel_ops.py) during rebuild.
 
-def _extract_category_from_filename(filename: str) -> str:
-    """Extract category from master filename (e.g., 'Master_Quest.xlsx' -> 'Quest').
-
-    Returns empty string if not a valid Master_*.xlsx filename.
-    """
-    stem = Path(filename).stem
-    if stem.startswith("Master_"):
-        return stem[7:]  # strip 'Master_'
-    return ""
-
-
-# Categories to EXCLUDE from manager stats aggregation (Script-type + Face)
-_MANAGER_STATS_EXCLUDED_CATEGORIES = (
-    SCRIPT_TYPE_CATEGORIES | FACE_TYPE_CATEGORIES |
-    {"Script", "Face"}  # Also exclude the master-level names
-)
-
-
-def _scan_master_file_streaming(
-    master_path: Path,
-    file_mtime: float,
-    content_index: dict,
-    fixed_screenshots: set,
-    tester_mapping: dict,
-    manager_dates: dict,
-    skip_manager_stats: bool,
-    log_lines: list,
-):
-    """Scan a single master file using read_only + iter_rows (streaming).
-
-    Extracts fixed_screenshots and populates content_index for manager stats.
-    Content dedup key: (StringID, Translation, Comment) per user.
-    If same key seen in multiple files, latest mtime wins.
-
-    Args:
-        master_path: Path to the .xlsx file.
-        file_mtime: File modification time (epoch).
-        content_index: Shared dict {(username, stringid, translation, comment): (mtime, status)}.
-        fixed_screenshots: Set to add FIXED screenshot names to.
-        tester_mapping: Tester -> language mapping.
-        manager_dates: Dict {(category, username) -> "YYYY-MM-DD"} (latest wins).
-        skip_manager_stats: If True, only collect screenshots (for Script/Face types).
-        log_lines: List to append debug log messages to.
-    """
-    category = _extract_category_from_filename(master_path.name)
-    file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
-
-    try:
-        wb = safe_load_workbook(master_path, read_only=True, data_only=True)
-    except Exception as e:
-        log_lines.append(f"[ERROR] Failed to open {master_path}: {e}")
-        print(f"\n  WARN: Error opening {master_path.name}: {e}")
-        return
-
-    try:
-        log_lines.append(f"")
-        log_lines.append(f"{'~'*60}")
-        log_lines.append(f"MASTER FILE: {master_path.name} (category={category}, skip_stats={skip_manager_stats})")
-        log_lines.append(f"{'~'*60}")
-        log_lines.append(f"Sheets: {wb.sheetnames}")
-
-        sheets_processed = 0
-        total_rows_scanned = 0
-
-        for sheet_name in wb.sheetnames:
-            if sheet_name == "STATUS":
-                continue
-
-            ws = wb[sheet_name]
-
-            # In read_only mode, max_row/max_column can be None for empty sheets
-            if ws.max_row is None or ws.max_row < 2:
-                continue
-            if ws.max_column is None or ws.max_column < 1:
-                continue
-
-            # === HEADER SCAN via iter_rows (streaming, not random access) ===
-            header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
-            header_tuple = next(header_iter, None)
-            if not header_tuple:
-                continue
-
-            stringid_idx = None     # 0-based index
-            translation_idx = None  # 0-based index
-            comment_cols = {}       # username -> 0-based idx
-            status_cols = {}        # username -> 0-based idx (STATUS_{User} = manager status)
-            screenshot_cols = {}    # username -> 0-based idx
-
-            for col_idx, header_val in enumerate(header_tuple):
-                if not header_val:
-                    continue
-                header_str = str(header_val)
-                header_upper = header_str.upper()
-
-                if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                    status_cols[header_str[7:]] = col_idx
-                elif header_upper.startswith("COMMENT_"):
-                    comment_cols[header_str[8:]] = col_idx
-                elif header_upper.startswith("SCREENSHOT_"):
-                    screenshot_cols[header_str[11:]] = col_idx
-                elif header_upper == "STRINGID":
-                    stringid_idx = col_idx
-                elif header_upper == "EVENTNAME" and stringid_idx is None:
-                    stringid_idx = col_idx
-                # Translation column detection: match common patterns
-                elif translation_idx is None:
-                    if (header_upper == "TEXT" or header_upper == "TRANSLATION"
-                            or header_upper.startswith("TRANSLATION (")
-                            or header_upper.startswith("ENGLISH")):
-                        translation_idx = col_idx
-
-            if not status_cols:
-                continue
-
-            log_lines.append(f"  [{sheet_name}] STATUS cols: {list(status_cols.keys())}, "
-                             f"stringid={stringid_idx}, trans={translation_idx}")
-
-            # === SINGLE-PASS ROW SCAN via iter_rows (streaming tuples) ===
-            status_entries_count = 0
-            row_count = 0
-
-            for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
-                row_count += 1
-
-                # Pre-extract shared row values (stringid, translation)
-                stringid_val = ""
-                if stringid_idx is not None and stringid_idx < len(row_tuple):
-                    raw = row_tuple[stringid_idx]
-                    if raw:
-                        stringid_val = str(raw).strip()
-
-                translation_val = ""
-                if translation_idx is not None and translation_idx < len(row_tuple):
-                    raw = row_tuple[translation_idx]
-                    if raw:
-                        translation_val = str(raw).strip()
-
-                for username, status_idx in status_cols.items():
-                    status_value = row_tuple[status_idx] if status_idx < len(row_tuple) else None
-                    status_str = str(status_value).strip() if status_value else ""
-                    status_upper = status_str.upper()
-
-                    has_status = status_upper in VALID_MANAGER_STATUS
-
-                    # --- DATA 1: fixed_screenshots (always collected) ---
-                    if status_upper == "FIXED":
-                        sc_idx = screenshot_cols.get(username)
-                        if sc_idx is not None and sc_idx < len(row_tuple):
-                            sc_val = row_tuple[sc_idx]
-                            if sc_val and str(sc_val).strip():
-                                fixed_screenshots.add(str(sc_val).strip())
-
-                    # --- DATA 2: manager_stats via content_index (skipped for Script/Face) ---
-                    if skip_manager_stats or not has_status:
-                        continue
-
-                    status_entries_count += 1
-
-                    # Extract comment for content dedup key
-                    c_idx = comment_cols.get(username)
-                    comment_val = ""
-                    if c_idx is not None and c_idx < len(row_tuple):
-                        raw_c = row_tuple[c_idx]
-                        if raw_c:
-                            comment_val = str(raw_c).strip()
-
-                    # Content dedup key: (username, stringid, translation, comment)
-                    content_key = (username, stringid_val, translation_val, comment_val)
-
-                    # Latest mtime wins
-                    existing = content_index.get(content_key)
-                    if existing is None or file_mtime > existing[0]:
-                        content_index[content_key] = (file_mtime, status_upper, category, tester_mapping.get(username, "EN"))
-
-            log_lines.append(f"    {status_entries_count} status entries, {row_count} rows")
-            sheets_processed += 1
-            total_rows_scanned += row_count
-
-            # manager_dates: keep latest mtime per (category, username)
-            if not skip_manager_stats:
-                for username in status_cols.keys():
-                    existing_date = manager_dates.get((category, username))
-                    if existing_date is None or file_date > existing_date:
-                        manager_dates[(category, username)] = file_date
-
-        print(f" {sheets_processed} sheets, {total_rows_scanned} rows")
-    finally:
-        wb.close()
-
-
 def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
     """
     Single-pass collection of master file data for compilation.
-
-    NEW STRATEGY (full rewrite):
-    - Glob ALL .xlsx files in each master folder (no category-based discovery)
-    - Content dedup key: (StringID, Translation, Comment) per user — identical = same entry
-    - Filter out Script types (Sequencer, Dialog, Face) from manager stats
-    - File mtime as date — latest mtime wins for duplicate content
-    - Per-user stats: count FIXED/REPORTED/CHECKING/NONISSUE from STATUS_{username} columns
 
     Opens each master file ONCE with read_only=True, extracting:
     1. fixed_screenshots (EN/CN) - for skipping FIXED images during copy
     2. manager_stats - for tracker (FIXED/REPORTED/CHECKING/NON-ISSUE counts)
 
+    Manager status preservation is handled by System 1 (extract_tester_data_from_master
+    + restore_tester_data_to_master in excel_ops.py) during get_or_create_master().
+
     Args:
         tester_mapping: Dict mapping tester names to language codes (EN/CN).
                         If None, loaded from file.
-        log_callback: Optional callback(message, tag) for GUI logging.
 
     Returns:
-        Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats, manager_dates)
+        Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats)
     """
     def _log(msg, tag='info'):
         if log_callback:
@@ -377,110 +182,208 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
 
     fixed_screenshots_en = set()
     fixed_screenshots_cn = set()
-    # Content index for dedup: {(username, stringid, translation, comment): (mtime, status_upper, category, lang)}
-    content_index = {}
-    manager_dates = {}  # (category, username) -> "YYYY-MM-DD" from master file mtime
+    manager_stats = defaultdict(lambda: defaultdict(
+        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
+    ))
 
     # LOG FILE for manager stats debug
     log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
     L = []
 
-    L.append(f"{'='*80}")
-    L.append(f"CONSOLIDATED MASTER DATA COLLECTION (glob-all strategy)")
-    L.append(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    L.append(f"{'='*80}")
-    L.append(f"")
-    L.append(f"[CONFIG] MASTER_FOLDER_EN: {MASTER_FOLDER_EN}")
-    L.append(f"[CONFIG] MASTER_FOLDER_CN: {MASTER_FOLDER_CN}")
-    L.append(f"[CONFIG] Tester mapping: {len(tester_mapping)} entries")
-    L.append(f"[CONFIG] Excluded categories for stats: {_MANAGER_STATS_EXCLUDED_CATEGORIES}")
-    L.append(f"")
+    def log(msg, indent=0):
+        L.append("  " * indent + msg)
+
+    log(f"{'='*80}")
+    log(f"CONSOLIDATED MASTER DATA COLLECTION (Phase A optimization)")
+    log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    log(f"{'='*80}")
+    log("")
+    log(f"[CONFIG] MASTER_FOLDER_EN: {MASTER_FOLDER_EN}")
+    log(f"[CONFIG] MASTER_FOLDER_CN: {MASTER_FOLDER_CN}")
+    log(f"[CONFIG] Tester mapping: {len(tester_mapping)} entries")
+    log("")
 
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
         is_en = "EN" in str(master_folder)
         folder_label = "EN" if is_en else "CN"
         fixed_screenshots = fixed_screenshots_en if is_en else fixed_screenshots_cn
+        processed_masters = set()  # Avoid re-scanning clustered categories
 
         print(f"  [{folder_label}] Scanning master folder: {master_folder}")
-        L.append(f"{'='*80}")
-        L.append(f"PROCESSING FOLDER: {master_folder} [{folder_label}]")
-        L.append(f"{'='*80}")
+        log(f"{'='*80}")
+        log(f"PROCESSING FOLDER: {master_folder} [{folder_label}]")
+        log(f"{'='*80}")
 
         if not master_folder.exists():
             print(f"  [{folder_label}] Folder does not exist - skipping")
-            L.append(f"Folder does not exist - skipping")
+            log(f"Folder does not exist - skipping")
             continue
 
-        # Glob ALL .xlsx files recursively — includes subfolders like foldernameX0101/
-        all_xlsx = sorted([
-            f for f in master_folder.rglob("*.xlsx")
-            if not f.name.startswith("~")
-        ])
+        for category in CATEGORIES:
+            target_category = get_target_master_category(category)
+            master_path = master_folder / f"Master_{target_category}.xlsx"
 
-        L.append(f"Found {len(all_xlsx)} .xlsx files")
-        print(f"  [{folder_label}] Found {len(all_xlsx)} .xlsx files")
+            if master_path in processed_masters:
+                continue
 
-        for master_path in all_xlsx:
-            category = _extract_category_from_filename(master_path.name)
-            # Determine if this category should be excluded from manager stats
-            skip_stats = category.lower() in {c.lower() for c in _MANAGER_STATS_EXCLUDED_CATEGORIES}
+            if not master_path.exists():
+                continue
 
-            file_mtime = master_path.stat().st_mtime
-            print(f"    Opening: {master_path.name}...", end="", flush=True)
+            processed_masters.add(master_path)
 
-            _scan_master_file_streaming(
-                master_path=master_path,
-                file_mtime=file_mtime,
-                content_index=content_index,
-                fixed_screenshots=fixed_screenshots,
-                tester_mapping=tester_mapping,
-                manager_dates=manager_dates,
-                skip_manager_stats=skip_stats,
-                log_lines=L,
-            )
+            try:
+                # read_only=True is 3-5x faster per open (Phase A optimization)
+                print(f"    Opening: {master_path.name}...", end="", flush=True)
+                wb = safe_load_workbook(master_path, read_only=True, data_only=True)
+                print(f" {len(wb.sheetnames)} sheets")
+                try:
+                    log(f"")
+                    log(f"{'~'*60}")
+                    log(f"MASTER FILE: {master_path.name} [{folder_label}]")
+                    log(f"{'~'*60}")
+                    log(f"Sheets: {wb.sheetnames}")
 
-    # Phase 2: Aggregate counts from content_index
-    L.append(f"")
-    L.append(f"{'='*80}")
-    L.append(f"CONTENT INDEX AGGREGATION")
-    L.append(f"{'='*80}")
-    L.append(f"Unique content entries: {len(content_index)}")
+                    sheets_processed = 0
+                    total_rows_scanned = 0
+                    for sheet_name in wb.sheetnames:
+                        if sheet_name == "STATUS":
+                            continue
 
-    manager_stats_agg = defaultdict(lambda: defaultdict(
-        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
-    ))
+                        ws = wb[sheet_name]
 
-    for (username, _sid, _trans, _comment), (mtime, status_upper, category, lang) in content_index.items():
-        if status_upper == "FIXED":
-            manager_stats_agg[category][username]["fixed"] += 1
-        elif status_upper == "REPORTED":
-            manager_stats_agg[category][username]["reported"] += 1
-        elif status_upper == "CHECKING":
-            manager_stats_agg[category][username]["checking"] += 1
-        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-            manager_stats_agg[category][username]["nonissue"] += 1
-        manager_stats_agg[category][username]["lang"] = lang
+                        # In read_only mode, max_row/max_column can be None for empty sheets
+                        if ws.max_row is None or ws.max_row < 2:
+                            continue
+                        if ws.max_column is None or ws.max_column < 1:
+                            continue
 
-    # Convert to regular dicts
+                        # === HEADER SCAN via iter_rows (streaming, not random access) ===
+                        stringid_col = None
+                        comment_cols = {}          # username -> 0-based idx
+                        status_cols = {}           # username -> 0-based idx (STATUS_{User} = manager status)
+                        screenshot_cols = {}       # username -> 0-based idx
+
+                        # Read header row as tuple (single streaming read, not cell-by-cell)
+                        header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
+                        header_tuple = next(header_iter, None)
+                        if not header_tuple:
+                            continue
+
+                        stringid_idx = None  # 0-based index
+                        for col_idx, header_val in enumerate(header_tuple):
+                            if not header_val:
+                                continue
+                            header_str = str(header_val)
+                            header_upper = header_str.upper()
+
+                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                                status_cols[header_str[7:]] = col_idx
+                            elif header_upper.startswith("COMMENT_"):
+                                comment_cols[header_str[8:]] = col_idx
+                            elif header_upper.startswith("SCREENSHOT_"):
+                                screenshot_cols[header_str[11:]] = col_idx
+                            elif header_upper == "STRINGID":
+                                stringid_idx = col_idx
+                            elif header_upper == "EVENTNAME" and stringid_idx is None:
+                                stringid_idx = col_idx
+
+                        # DEBUG: Script category logging
+                        is_script_cat = category.lower() in ("sequencer", "dialog")
+                        if is_script_cat:
+                            _script_debug_log(f"")
+                            _script_debug_log(f"{'='*60}")
+                            _script_debug_log(f"[COLLECT] {category}/{sheet_name}")
+                            _script_debug_log(f"{'='*60}")
+                            _script_debug_log(f"  STATUS_ columns: {list(status_cols.items())}")
+                            _script_debug_log(f"  COMMENT_ columns: {list(comment_cols.items())}")
+                            _script_debug_log(f"  STRINGID/EventName idx: {stringid_idx}")
+
+                        if not status_cols:
+                            if is_script_cat:
+                                _script_debug_log(f"  [SKIP] No STATUS_ columns found")
+                            continue
+
+                        log(f"  [{sheet_name}] STATUS cols: {list(status_cols.keys())}")
+
+                        # === SINGLE-PASS ROW SCAN via iter_rows (streaming tuples) ===
+                        # CRITICAL: iter_rows is O(n) streaming vs ws.cell() which is O(n²) in read_only mode
+                        status_entries_count = 0
+                        row_count = 0
+
+                        for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                            row_count += 1
+                            for username, status_idx in status_cols.items():
+                                status_value = row_tuple[status_idx] if status_idx < len(row_tuple) else None
+                                status_str = str(status_value).strip() if status_value else ""
+                                status_upper = status_str.upper()
+
+                                has_status = status_upper in VALID_MANAGER_STATUS
+
+                                # --- DATA 1: fixed_screenshots ---
+                                if status_upper == "FIXED":
+                                    sc_idx = screenshot_cols.get(username)
+                                    if sc_idx is not None and sc_idx < len(row_tuple):
+                                        sc_val = row_tuple[sc_idx]
+                                        if sc_val and str(sc_val).strip():
+                                            fixed_screenshots.add(str(sc_val).strip())
+
+                                # --- DATA 2: manager_stats (tracker counts) ---
+                                c_stats_idx = comment_cols.get(username)
+                                comment_val = row_tuple[c_stats_idx] if c_stats_idx is not None and c_stats_idx < len(row_tuple) else None
+                                comment_str_val = str(comment_val).strip() if comment_val else ""
+                                has_comment = bool(comment_str_val)
+
+                                if has_status or has_comment:
+                                    if has_status:
+                                        status_entries_count += 1
+                                        if status_upper == "FIXED":
+                                            manager_stats[target_category][username]["fixed"] += 1
+                                        elif status_upper == "REPORTED":
+                                            manager_stats[target_category][username]["reported"] += 1
+                                        elif status_upper == "CHECKING":
+                                            manager_stats[target_category][username]["checking"] += 1
+                                        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                                            manager_stats[target_category][username]["nonissue"] += 1
+
+                                    manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
+
+                        log(f"    {status_entries_count} status entries")
+                        sheets_processed += 1
+                        total_rows_scanned += row_count
+                        print(f"      {sheet_name}: {row_count} rows, {status_entries_count} status entries")
+
+                    print(f"    Done: {sheets_processed} sheets, {total_rows_scanned} rows scanned")
+
+                finally:
+                    wb.close()
+
+            except Exception as e:
+                import traceback as tb
+                log(f"[ERROR] Failed to process {master_path}: {e}")
+                log(f"[TRACEBACK] {tb.format_exc()}")
+                print(f"\n  WARN: Error reading {master_path.name}: {e}")
+                _log(f"WARN: Error reading {master_path.name}: {e}", 'warning')
+
+    # Convert manager_stats defaultdicts to regular dicts
     manager_stats_result = {}
-    for cat, users_dd in manager_stats_agg.items():
+    for cat, users_dd in manager_stats.items():
         manager_stats_result[cat] = {}
         for user, stats_dd in users_dd.items():
             manager_stats_result[cat][user] = dict(stats_dd)
 
     # Log final summary
-    L.append(f"")
-    L.append(f"{'='*80}")
-    L.append(f"FINAL SUMMARY")
-    L.append(f"{'='*80}")
-    L.append(f"fixed_screenshots_en: {len(fixed_screenshots_en)}")
-    L.append(f"fixed_screenshots_cn: {len(fixed_screenshots_cn)}")
-    L.append(f"manager_stats categories: {list(manager_stats_result.keys())}")
+    log("")
+    log(f"{'='*80}")
+    log(f"FINAL SUMMARY")
+    log(f"{'='*80}")
+    log(f"fixed_screenshots_en: {len(fixed_screenshots_en)}")
+    log(f"fixed_screenshots_cn: {len(fixed_screenshots_cn)}")
+    log(f"manager_stats categories: {list(manager_stats_result.keys())}")
     for cat, users in manager_stats_result.items():
-        L.append(f"  {cat}:")
+        log(f"  {cat}:")
         for user, stats in users.items():
-            L.append(f"    {user}: F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']} lang={stats['lang']}")
-    L.append(f"{'='*80}")
+            log(f"    {user}: F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']} lang={stats['lang']}")
+    log(f"{'='*80}")
 
     # Write log file
     try:
@@ -491,7 +394,7 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
         print(f"[LOG ERROR] {e}")
 
     return (fixed_screenshots_en, fixed_screenshots_cn,
-            manager_stats_result, manager_dates)
+            manager_stats_result)
 
 
 # =============================================================================
@@ -1259,7 +1162,7 @@ def run_compiler(log_callback=None, progress_callback=None):
     _log("Collecting master data...")
     collect_start = time.time()
     (fixed_screenshots_en, fixed_screenshots_cn,
-     manager_stats, manager_dates) = collect_all_master_data(tester_mapping, log_callback=log_callback)
+     manager_stats) = collect_all_master_data(tester_mapping, log_callback=log_callback)
     collect_elapsed = time.time() - collect_start
 
     _log(f"Master data collected ({collect_elapsed:.1f}s)")
@@ -1687,7 +1590,7 @@ def run_compiler(log_callback=None, progress_callback=None):
 
         # Update standard tracker tabs
         if standard_entries:
-            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats, manager_dates)
+            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
 
