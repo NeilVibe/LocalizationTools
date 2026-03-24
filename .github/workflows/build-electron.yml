@@ -758,7 +758,6 @@ jobs:
         shell: pwsh
 
       - name: Verify Merge Module Imports
-        if: env.LIGHT_MODE == 'yes'
         run: |
           Write-Host "=== Verifying internalized merge module ==="
           $env:PYTHONPATH = Get-Location
@@ -784,6 +783,13 @@ jobs:
               print('[OK] All merge module exports imported')
           except ImportError as e:
               errors.append(f'Merge module import failed: {e}')
+
+          # Category mapper (used by merge export pipeline)
+          try:
+              from server.services.merge.category_mapper import categorize_file, build_stringid_category_index
+              print('[OK] category_mapper imported')
+          except ImportError as e:
+              errors.append(f'category_mapper import failed: {e}')
 
           # Transfer adapter (consumes merge module)
           try:
