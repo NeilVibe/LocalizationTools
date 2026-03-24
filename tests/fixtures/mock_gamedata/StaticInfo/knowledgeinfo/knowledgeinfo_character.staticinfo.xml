@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KnowledgeInfoList>
+  <KnowledgeInfo StrKey="KNOW_CHAR_001" KnowledgeKey="KI_Varon" Category="Character" Title="Varon" Description="A legendary hero known as Varon." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_002" KnowledgeKey="KI_Kira" Category="Character" Title="Kira" Description="A legendary hero known as Kira." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_003" KnowledgeKey="KI_Grimjaw" Category="Character" Title="Grimjaw" Description="A legendary hero known as Grimjaw." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_004" KnowledgeKey="KI_Lune" Category="Character" Title="Lune" Description="A legendary hero known as Lune." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_005" KnowledgeKey="KI_Drakmar" Category="Character" Title="Drakmar" Description="A legendary hero known as Drakmar." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_006" KnowledgeKey="KI_Sage" Category="Character" Title="Sage" Description="A legendary hero known as Sage." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_007" KnowledgeKey="KI_Shadow" Category="Character" Title="Shadow" Description="A legendary hero known as Shadow." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_008" KnowledgeKey="KI_Ember" Category="Character" Title="Ember" Description="A legendary hero known as Ember." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_009" KnowledgeKey="KI_Frost" Category="Character" Title="Frost" Description="A legendary hero known as Frost." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_010" KnowledgeKey="KI_Storm" Category="Character" Title="Storm" Description="A legendary hero known as Storm." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_011" KnowledgeKey="KI_Blade" Category="Character" Title="Blade" Description="A legendary hero known as Blade." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_012" KnowledgeKey="KI_Moon" Category="Character" Title="Moon" Description="A legendary hero known as Moon." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_013" KnowledgeKey="KI_Sun" Category="Character" Title="Sun" Description="A legendary hero known as Sun." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_014" KnowledgeKey="KI_Star" Category="Character" Title="Star" Description="A legendary hero known as Star." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_015" KnowledgeKey="KI_Wolf" Category="Character" Title="Wolf" Description="A legendary hero known as Wolf." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_016" KnowledgeKey="KI_Hawk" Category="Character" Title="Hawk" Description="A legendary hero known as Hawk." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_017" KnowledgeKey="KI_Bear" Category="Character" Title="Bear" Description="A legendary hero known as Bear." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_018" KnowledgeKey="KI_Fox" Category="Character" Title="Fox" Description="A legendary hero known as Fox." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_019" KnowledgeKey="KI_Raven" Category="Character" Title="Raven" Description="A legendary hero known as Raven." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_020" KnowledgeKey="KI_Serpent" Category="Character" Title="Serpent" Description="A legendary hero known as Serpent." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_021" KnowledgeKey="KI_Iron" Category="Character" Title="Iron" Description="A legendary hero known as Iron." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_022" KnowledgeKey="KI_Silver" Category="Character" Title="Silver" Description="A legendary hero known as Silver." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_023" KnowledgeKey="KI_Gold" Category="Character" Title="Gold" Description="A legendary hero known as Gold." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_024" KnowledgeKey="KI_Ruby" Category="Character" Title="Ruby" Description="A legendary hero known as Ruby." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_025" KnowledgeKey="KI_Jade" Category="Character" Title="Jade" Description="A legendary hero known as Jade." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_026" KnowledgeKey="KI_Onyx" Category="Character" Title="Onyx" Description="A legendary hero known as Onyx." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_027" KnowledgeKey="KI_Pearl" Category="Character" Title="Pearl" Description="A legendary hero known as Pearl." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_028" KnowledgeKey="KI_Amber" Category="Character" Title="Amber" Description="A legendary hero known as Amber." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_029" KnowledgeKey="KI_Coral" Category="Character" Title="Coral" Description="A legendary hero known as Coral." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_030" KnowledgeKey="KI_Crystal" Category="Character" Title="Crystal" Description="A legendary hero known as Crystal." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_031" KnowledgeKey="KI_Dawn" Category="Character" Title="Dawn" Description="A legendary hero known as Dawn." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_032" KnowledgeKey="KI_Dusk" Category="Character" Title="Dusk" Description="A legendary hero known as Dusk." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_033" KnowledgeKey="KI_Night" Category="Character" Title="Night" Description="A legendary hero known as Night." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_034" KnowledgeKey="KI_Flame" Category="Character" Title="Flame" Description="A legendary hero known as Flame." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_035" KnowledgeKey="KI_Ice" Category="Character" Title="Ice" Description="A legendary hero known as Ice." />
+  <KnowledgeInfo StrKey="KNOW_CHAR_036" KnowledgeKey="KI_Thunder" Category="Character" Title="Thunder" Description="A legendary hero known as Thunder." />
+</KnowledgeInfoList>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GimmickGroupInfoList>
+  <GimmickGroupInfo StrKey="GG_CHEST_001" GroupName="Treasure Chest 1" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_001" GimmickName="Chest Loot 1" DropRate="0.1">
+      <SealData SealLevel="1" RequiredKey="KEY_001" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_002" GroupName="Treasure Chest 2" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_002" GimmickName="Chest Loot 2" DropRate="0.2">
+      <SealData SealLevel="2" RequiredKey="KEY_002" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_003" GroupName="Treasure Chest 3" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_003" GimmickName="Chest Loot 3" DropRate="0.3">
+      <SealData SealLevel="3" RequiredKey="KEY_003" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_004" GroupName="Treasure Chest 4" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_004" GimmickName="Chest Loot 4" DropRate="0.4">
+      <SealData SealLevel="4" RequiredKey="KEY_004" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_005" GroupName="Treasure Chest 5" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_005" GimmickName="Chest Loot 5" DropRate="0.5">
+      <SealData SealLevel="5" RequiredKey="KEY_005" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_006" GroupName="Treasure Chest 6" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_006" GimmickName="Chest Loot 6" DropRate="0.6">
+      <SealData SealLevel="6" RequiredKey="KEY_006" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_007" GroupName="Treasure Chest 7" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_007" GimmickName="Chest Loot 7" DropRate="0.7">
+      <SealData SealLevel="7" RequiredKey="KEY_007" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_008" GroupName="Treasure Chest 8" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_008" GimmickName="Chest Loot 8" DropRate="0.8">
+      <SealData SealLevel="8" RequiredKey="KEY_008" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GG_CHEST_009" GroupName="Treasure Chest 9" GroupType="Item">
+    <GimmickInfo GimmickKey="GIMMICK_009" GimmickName="Chest Loot 9" DropRate="0.9">
+      <SealData SealLevel="9" RequiredKey="KEY_009" />
+    </GimmickInfo>
+  </GimmickGroupInfo>
+</GimmickGroupInfoList>
