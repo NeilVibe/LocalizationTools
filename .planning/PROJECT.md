@@ -76,15 +76,16 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-- [ ] BUILD-01 — PyInstaller bundle includes internalized merge module
-- [ ] BUILD-02 — Bundled app runs merge workflow end-to-end without QT source tree
-- [ ] MOCK-09 — Mock gamedata matches real Perforce paths (DDS images, WEM audio, XML language data)
-- [ ] MOCK-10 — Mock data loadable from built app on offline PC
-- [ ] LDE2E-01 — Upload language data in built app, verify it loads correctly
-- [ ] LDE2E-02 — Edit language data and save, verify round-trip integrity
+- [x] BUILD-01 — PyInstaller bundle includes internalized merge module (Phase 75)
+- [x] BUILD-02 — Bundled app runs merge workflow end-to-end without QT source tree (Phase 75)
+- [x] MOCK-09 — Mock gamedata matches real Perforce paths (DDS images, WEM audio, XML language data) (Phase 74)
+- [x] MOCK-10 — Mock data loadable from built app on offline PC (Phase 74)
+- [x] LDE2E-01 — Upload language data in built app, verify it loads correctly (Phase 76)
+- [x] LDE2E-02 — Edit language data and save, verify round-trip integrity (Phase 76)
 - [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths
-- [ ] UIUX-01 — AI visual audit of all 5 pages with real-looking mock data
-- [ ] UIUX-02 — Fix critical UIUX issues from visual audit
+- [x] UIUX-01 — AI visual audit of all 5 pages with real-looking mock data (Phase 79)
+- [x] UIUX-02 — Fix critical UIUX issues from visual audit (Phase 79)
+- [ ] BUILD-04 — Download installer and test on offline Windows PC (pending human verification)
 
 ### Out of Scope
 

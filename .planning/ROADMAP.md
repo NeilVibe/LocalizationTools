@@ -2,7 +2,7 @@
 
 ## Overview
 
-v9.0 validates that the built LocaNext app works end-to-end on an offline Windows PC with real-looking data. Starting from mock gamedata that mirrors actual Perforce paths, through build pipeline verification, to language data round-trip testing in the installed app, and finishing with AI-powered visual audit of all pages. Four phases, each delivering a verifiable layer of confidence.
+v9.0 validates that the built LocaNext app works end-to-end on an offline Windows PC with real-looking data. Starting from mock gamedata that mirrors actual Perforce paths, through build pipeline verification, to language data round-trip testing in the installed app, and finishing with AI-powered visual audit of all pages. Five phases (plus a review-fix phase), each delivering a verifiable layer of confidence.
 
 ## Phases
 
