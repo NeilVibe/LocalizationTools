@@ -91,6 +91,7 @@ from .tmx_tools import (
     batch_tmx_from_folders,
     clean_and_convert_to_excel,
     convert_to_memoq_tmx,
+    excel_to_memoq_tmx,
     SUFFIX_TO_BCP47,
 )
 from .eventname_resolver import (
@@ -191,5 +192,6 @@ __all__ = [
     "batch_tmx_from_folders",
     "clean_and_convert_to_excel",
     "convert_to_memoq_tmx",
+    "excel_to_memoq_tmx",
     "SUFFIX_TO_BCP47",
 ]

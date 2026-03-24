@@ -750,6 +750,7 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
             'ko_seg': '',
             'tgt_seg': '',
             'tgt_lang': '',
+            'is_desc': False,
         }
 
         for prop in tu.findall('prop'):
@@ -785,7 +786,23 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
 
             cleaned = clean_segment(seg_text)
 
-            if lang == 'ko':
+            # Detect &desc; prefix — marks this TU as a description.
+            # clean_segment() converts MemoQ <ph> tags to their val= content,
+            # so &desc; prefix survives cleaning in text form.
+            chk = cleaned.lstrip().lower()
+            is_desc_seg = (
+                chk.startswith('&desc;')
+                or chk.startswith('&amp;desc;')
+            )
+
+            if is_desc_seg:
+                row['is_desc'] = True
+                # Strip &desc; prefix for clean display
+                cleaned = re.sub(
+                    r'^(&amp;desc;|&desc;)', '', cleaned, flags=re.IGNORECASE
+                ).strip()
+
+            if lang.startswith('ko'):
                 row['ko_seg'] = cleaned
             else:
                 row['tgt_seg'] = cleaned
@@ -798,16 +815,22 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
 
 def dedup_rows(rows: list[dict]) -> list[dict]:
     """
-    Deduplicate by (x_context, ko_seg).
-    Keep the row with the LATEST changedate.
+    Deduplicate by (x_context, ko_seg) and merge main + desc TUs by context.
+
+    Main TUs: dedup by (x_context, ko_seg), keep latest.
+    Desc TUs: merged into same row via desc_origin/desc_text fields.
     """
     empty_ctx = sum(1 for r in rows if not r['x_context'])
     if rows and empty_ctx > len(rows) * 0.5:
         logger.warning(f"{empty_ctx}/{len(rows)} rows have no x-context — dedup is by KO text only")
 
-    seen: dict[tuple, dict] = {}
+    # Separate main and desc TUs
+    main_rows = [r for r in rows if not r.get('is_desc')]
+    desc_rows = [r for r in rows if r.get('is_desc')]
 
-    for row in rows:
+    # Dedup main TUs by (x_context, ko_seg), keep latest
+    seen: dict[tuple, dict] = {}
+    for row in main_rows:
         key = (row['x_context'], row['ko_seg'])
         if key in seen:
             if row['changedate'] > seen[key]['changedate']:
@@ -815,39 +838,75 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
         else:
             seen[key] = row
 
-    return list(seen.values())
+    # Initialize desc fields on all main rows
+    result = list(seen.values())
+    for r in result:
+        r.setdefault('desc_origin', '')
+        r.setdefault('desc_text', '')
+
+    # Build context→row lookup for merging desc into main
+    ctx_lookup: dict[str, dict] = {}
+    for r in result:
+        ctx = r['x_context']
+        if ctx:
+            ctx_lookup[ctx] = r
+
+    # Merge desc TUs into their matching main row by x_context
+    merged_desc = 0
+    orphan_desc = 0
+    for d in desc_rows:
+        ctx = d['x_context']
+        if ctx and ctx in ctx_lookup:
+            ctx_lookup[ctx]['desc_origin'] = d['ko_seg']
+            ctx_lookup[ctx]['desc_text'] = d['tgt_seg']
+            merged_desc += 1
+        else:
+            orphan_desc += 1
+
+    if merged_desc:
+        logger.info(f"  Merged {merged_desc} description(s) into main rows")
+    if orphan_desc:
+        logger.warning(f"  {orphan_desc} orphan description(s) with no matching main TU")
+
+    return result
 
 
 def write_excel(rows: list[dict], output_path: str) -> None:
-    """Write rows to Excel using xlsxwriter — 3 merge-ready columns only."""
+    """Write rows to Excel using xlsxwriter — 5-column format with Desc support."""
     import xlsxwriter
 
     wb = xlsxwriter.Workbook(output_path)
     ws = wb.add_worksheet('TMX Clean')
 
-    # Simplified 3-column output for merge
-    headers = ['StrOrigin', 'Correction', 'StringID']
-    keys = ['ko_seg', 'tgt_seg', 'x_context']
+    # 5-column format matching tmxconvert41 legacy pattern
+    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'DescText']
+    keys = ['ko_seg', 'tgt_seg', 'x_context', 'desc_origin', 'desc_text']
 
     hdr_fmt = wb.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1})
     cell_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
+    stringid_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1, 'num_format': '@'})
 
     for col, h in enumerate(headers):
         ws.write(0, col, h, hdr_fmt)
 
     for row_idx, row in enumerate(rows, 1):
         for col, key in enumerate(keys):
-            ws.write(row_idx, col, row.get(key, ''), cell_fmt)
+            fmt = stringid_fmt if key == 'x_context' else cell_fmt
+            ws.write(row_idx, col, str(row.get(key, '')), fmt)
 
     # Column widths
     ws.set_column(0, 0, 60)   # StrOrigin
     ws.set_column(1, 1, 60)   # Correction
     ws.set_column(2, 2, 30)   # StringID
+    ws.set_column(3, 3, 50)   # DescOrigin
+    ws.set_column(4, 4, 50)   # DescText
 
     ws.autofilter(0, 0, len(rows), len(headers) - 1)
 
+    # Count desc rows for logging
+    desc_count = sum(1 for r in rows if r.get('desc_origin'))
     wb.close()
-    logger.info(f"[EXCEL] Written {len(rows)} rows to: {output_path}")
+    logger.info(f"[EXCEL] Written {len(rows)} rows ({desc_count} with descriptions) to: {output_path}")
 
 
 def clean_and_convert_to_excel(fpath: str) -> str:
@@ -883,9 +942,152 @@ def clean_and_convert_to_excel(fpath: str) -> str:
     base = os.path.splitext(fpath)[0]
     output_path = f"{base}_clean.xlsx"
 
-    logger.info("[3/3] Writing Excel (3 columns: StrOrigin, Correction, StringID)...")
+    logger.info("[3/3] Writing Excel (5 columns: StrOrigin, Correction, StringID, DescOrigin, DescText)...")
     write_excel(rows, output_path)
 
     logger.info("=" * 60)
     logger.info("[TMX Cleaner] Done -> %s (%d rows)", os.path.basename(output_path), len(rows))
+    return output_path
+
+
+# =============================================================================
+# EXCEL → TMX PIPELINE (cross-format: reads 5-column Excel, creates MemoQ TMX)
+# =============================================================================
+
+def excel_to_memoq_tmx(
+    excel_path: str,
+    output_path: str | None = None,
+    target_language: str = "en-us",
+    postprocess: bool = True,
+    creation_id: str | None = None,
+) -> str:
+    """
+    Convert a 5-column Excel file to MemoQ-compatible TMX.
+
+    Excel format (matching tmxconvert41 legacy):
+        Col 0: StrOrigin    — Korean source text
+        Col 1: Correction   — Translation (Str)
+        Col 2: StringID     — Context ID (x-context)
+        Col 3: DescOrigin   — Korean description (optional)
+        Col 4: DescText     — Translated description (optional)
+
+    Also supports 3-column format (StrOrigin, Correction, StringID) — no desc.
+
+    Returns the output TMX path.
+    """
+    import openpyxl
+
+    logger.info("=" * 60)
+    logger.info("[Excel→TMX] %s", os.path.basename(excel_path))
+    logger.info("-" * 40)
+
+    wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
+    try:
+        ws = wb.active
+        rows_data = list(ws.iter_rows(min_row=2, values_only=True))
+    finally:
+        wb.close()
+
+    if not rows_data:
+        raise ValueError(f"No data rows in {os.path.basename(excel_path)}")
+
+    logger.info(f"  Read {len(rows_data)} data rows")
+
+    # Detect column count (3 or 5)
+    sample_cols = max(len(r) for r in rows_data if r)
+    has_desc = sample_cols >= 5
+    if has_desc:
+        logger.info("  5-column format detected (with DescOrigin/DescText)")
+    else:
+        logger.info("  3-column format detected (no descriptions)")
+
+    # Build TMX skeleton
+    XML_NS = "http://www.w3.org/XML/1998/namespace"
+    tmx = etree.Element("tmx", version="1.4")
+    header_attr = {
+        "creationtool":        "Excel2TMX",
+        "creationtoolversion": "2.1",
+        "segtype":             "sentence",
+        "o-tmf":               "UTF-8",
+        "adminlang":           "en",
+        "srclang":             "ko",
+        "datatype":            "PlainText",
+    }
+    etree.SubElement(tmx, "header", **header_attr)
+    body = etree.SubElement(tmx, "body")
+
+    cid = creation_id or f"Excel2TMX_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    basename = os.path.basename(excel_path)
+    target_lang_code = target_language.lower()
+
+    memoq_ph = '<mq:rxt-req displaytext="desc" val="&amp;desc;" />'
+    total_main = 0
+    total_desc = 0
+
+    for row in rows_data:
+        src = str(row[0]).strip() if row[0] else ""
+        tgt = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        ctx = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+        desc_src = str(row[3]).strip() if has_desc and len(row) > 3 and row[3] else ""
+        desc_tgt = str(row[4]).strip() if has_desc and len(row) > 4 and row[4] else ""
+
+        # Main translation TU
+        normal_ok = bool(tgt and ctx and not is_korean_text(tgt))
+        if normal_ok:
+            tu = etree.SubElement(body, "tu", creationid=cid, changeid=cid)
+            tuv_ko = etree.SubElement(tu, "tuv", **{f"{{{XML_NS}}}lang": "ko"})
+            etree.SubElement(tuv_ko, "seg").text = src
+            tuv_tgt = etree.SubElement(tu, "tuv", **{f"{{{XML_NS}}}lang": target_lang_code})
+            etree.SubElement(tuv_tgt, "seg").text = tgt
+            etree.SubElement(tu, "prop", type="x-document").text = basename
+            etree.SubElement(tu, "prop", type="x-context").text = ctx
+            total_main += 1
+
+        # Description TU
+        desc_ok = bool(desc_src and desc_tgt and ctx and not is_korean_text(desc_tgt))
+        if desc_ok:
+            tu_d = etree.SubElement(body, "tu", creationid=cid, changeid=cid)
+            tuv_ko_d = etree.SubElement(tu_d, "tuv", **{f"{{{XML_NS}}}lang": "ko"})
+            tuv_tgt_d = etree.SubElement(tu_d, "tuv", **{f"{{{XML_NS}}}lang": target_lang_code})
+
+            if postprocess:
+                # MemoQ format: <ph> tag for &desc; marker
+                seg_ko = etree.SubElement(tuv_ko_d, "seg")
+                ph_ko = etree.SubElement(seg_ko, "ph")
+                ph_ko.text = memoq_ph
+                ph_ko.tail = desc_src
+
+                seg_tgt = etree.SubElement(tuv_tgt_d, "seg")
+                ph_tgt = etree.SubElement(seg_tgt, "ph")
+                ph_tgt.text = memoq_ph
+                ph_tgt.tail = desc_tgt
+            else:
+                # Plain format: &desc; prefix
+                etree.SubElement(tuv_ko_d, "seg").text = "&desc;" + desc_src
+                etree.SubElement(tuv_tgt_d, "seg").text = "&desc;" + desc_tgt
+
+            etree.SubElement(tu_d, "prop", type="x-document").text = basename
+            etree.SubElement(tu_d, "prop", type="x-context").text = ctx
+            total_desc += 1
+
+    total_tus = total_main + total_desc
+    logger.info(f"  Created {total_tus} TU(s): {total_main} main + {total_desc} desc")
+
+    # Serialize
+    xml_bytes = etree.tostring(tmx, pretty_print=True, encoding='UTF-8', xml_declaration=True)
+    xml_str = xml_bytes.decode('utf-8')
+
+    if postprocess:
+        logger.info("  Postprocessing: adding MemoQ bpt/ept/ph markup...")
+        xml_str = postprocess_tmx_string(xml_str)
+
+    # Output path
+    if output_path is None:
+        output_path = os.path.splitext(excel_path)[0] + ".tmx"
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(xml_str)
+
+    logger.info("=" * 60)
+    logger.info("[Excel→TMX] Done -> %s (%d TUs)", os.path.basename(output_path), total_tus)
     return output_path

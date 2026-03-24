@@ -12,7 +12,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from core.tmx_tools import convert_to_memoq_tmx, clean_and_convert_to_excel
+from core.tmx_tools import convert_to_memoq_tmx, clean_and_convert_to_excel, excel_to_memoq_tmx
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class TMXToolsTab(tk.Frame):
         desc = tk.Label(
             clean_frame,
             text="Select a TMX file to clean all CAT tool markup and export "
-                 "to Excel (3 columns: StrOrigin, Correction, StringID).",
+                 "to Excel (5 columns: StrOrigin, Correction, StringID, DescOrigin, DescText).",
             font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
             wraplength=500, justify='left',
         )
@@ -97,6 +97,31 @@ class TMXToolsTab(tk.Frame):
         tk.Button(clean_frame, text="Select TMX -> Clean & Export to Excel",
                   command=self._on_clean_to_excel,
                   font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
+                  relief='flat', padx=14, pady=4,
+                  cursor='hand2').pack(anchor='w')
+
+        # ============================================================
+        # Section 3: Excel -> MemoQ-TMX
+        # ============================================================
+        excel_frame = tk.LabelFrame(
+            self, text="Excel -> MemoQ-TMX",
+            font=('Segoe UI', 10, 'bold'),
+            bg='#f0f0f0', fg='#555', padx=15, pady=8,
+        )
+        excel_frame.pack(fill=tk.X, pady=(0, 8), padx=5)
+
+        desc3 = tk.Label(
+            excel_frame,
+            text="Select an Excel file (5-col: StrOrigin, Correction, StringID, "
+                 "DescOrigin, DescText) or 3-col format to create MemoQ-compatible TMX.",
+            font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+            wraplength=500, justify='left',
+        )
+        desc3.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Button(excel_frame, text="Select Excel -> Create MemoQ-TMX",
+                  command=self._on_excel_to_tmx,
+                  font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
                   relief='flat', padx=14, pady=4,
                   cursor='hand2').pack(anchor='w')
 
@@ -202,5 +227,30 @@ class TMXToolsTab(tk.Frame):
                              exc_info=True)
                 self.after(0, lambda em=err_msg: messagebox.showerror(
                     "TMX Cleaner Error", f"Failed: {em}"))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # Section 3: Excel -> MemoQ-TMX
+    # ------------------------------------------------------------------
+    def _on_excel_to_tmx(self):
+        fpath = filedialog.askopenfilename(
+            title="Select Excel file to convert to MemoQ-TMX",
+            filetypes=[("Excel files", "*.xlsx;*.xls"), ("All files", "*.*")]
+        )
+        if not fpath:
+            return
+
+        def _run():
+            try:
+                out = excel_to_memoq_tmx(fpath)
+                self.after(0, lambda: messagebox.showinfo(
+                    "Excel to TMX", f"MemoQ-TMX created:\n{out}"))
+            except Exception as exc:
+                err_msg = str(exc)
+                logger.error("[Excel to TMX] Failed: %s", err_msg,
+                             exc_info=True)
+                self.after(0, lambda em=err_msg: messagebox.showerror(
+                    "Excel to TMX Error", f"Failed: {em}"))
 
         threading.Thread(target=_run, daemon=True).start()
