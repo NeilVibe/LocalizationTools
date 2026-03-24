@@ -23,11 +23,12 @@ Key features:
 """
 
 import re
+from copy import copy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
@@ -842,6 +843,67 @@ def _write_header_row(ws, excel_row: int, data_type: str, group_info: str, kor_t
     return excel_row + 1
 
 
+def _split_other_data(output_path: Path) -> None:
+    """Post-process: move rows above the first SkillTreeHeader to 'Other Data' sheet.
+
+    Regex rule: scan col A (DataType) for the first cell matching 'SkillTreeHeader'.
+    All data rows between the header row (row 1) and that threshold row are moved
+    to a new 'Other Data' sheet.  If no rows exist before the first SkillTreeHeader,
+    nothing happens.
+    """
+    wb = load_workbook(output_path)
+    ws = wb["Skills"]
+
+    # Find first SkillTreeHeader row (skip row 1 = column headers)
+    threshold_row = None
+    for row_idx in range(2, ws.max_row + 1):
+        cell_val = ws.cell(row_idx, 1).value
+        if cell_val and re.match(r"SkillTreeHeader", str(cell_val)):
+            threshold_row = row_idx
+            break
+
+    if threshold_row is None or threshold_row <= 2:
+        # No SkillTreeHeader found, or it's already at row 2 — nothing to split
+        wb.close()
+        return
+
+    num_cols = ws.max_column
+
+    # Use existing "Other Data" sheet (from orphans) or create new one
+    if "Other Data" in wb.sheetnames:
+        ws_other = wb["Other Data"]
+        other_row = ws_other.max_row + 1
+    else:
+        ws_other = wb.create_sheet("Other Data")
+        for col in range(1, num_cols + 1):
+            src = ws.cell(1, col)
+            dst = ws_other.cell(1, col, src.value)
+            dst.font = copy(src.font)
+            dst.fill = copy(src.fill)
+            dst.alignment = copy(src.alignment)
+            dst.border = copy(src.border)
+        other_row = 2
+    for row_idx in range(2, threshold_row):
+        for col in range(1, num_cols + 1):
+            src = ws.cell(row_idx, col)
+            dst = ws_other.cell(other_row, col, src.value)
+            dst.font = copy(src.font)
+            dst.fill = copy(src.fill)
+            dst.alignment = copy(src.alignment)
+            dst.border = copy(src.border)
+            if src.number_format:
+                dst.number_format = src.number_format
+        other_row += 1
+
+    # Delete those rows from the Skills sheet (delete from top down shifts rows)
+    ws.delete_rows(2, threshold_row - 2)
+
+    log.info("  Post-process: moved %d rows to 'Other Data' sheet", threshold_row - 2)
+
+    wb.save(output_path)
+    wb.close()
+
+
 def write_skill_excel(
     skill_lookup: Dict[str, SkillEntry],
     skill_trees: List[SkillTreeEntry],
@@ -1036,8 +1098,12 @@ def write_skill_excel(
             )
             written_skills.add(sk_lower)
 
-    # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
-    # Also exclude skills that appear as knowledge sub-skills of another
+    _finalize_sheet(ws, excel_row)
+    log.info("  Sheet 'Skills': %d rows written", excel_row - 2)
+
+    # ------------------------------------------------------------------
+    # "Other Data" sheet: orphan skills (not in any tree)
+    # ------------------------------------------------------------------
     orphans = [
         entry for sk, entry in skill_lookup.items()
         if entry.learn_knowledge_key
@@ -1046,21 +1112,32 @@ def write_skill_excel(
     ]
 
     if orphans:
-        excel_row = _write_header_row(
-            ws, excel_row, "SkillTreeHeader", "Other Skills", "기타 스킬")
+        ws_other = wb.create_sheet("Other Data")
+        _write_column_headers(ws_other)
+        other_row = 2
 
+        other_row = _write_header_row(
+            ws_other, other_row, "SkillTreeHeader", "Other Skills", "기타 스킬")
+        other_fill = _fill_a
         for entry in orphans:
-            current_fill = _fill_b if current_fill == _fill_a else _fill_a
-            excel_row = _write_skill_rows(
-                ws, excel_row, entry, current_fill, pre, "Other Skills",
+            other_fill = _fill_b if other_fill == _fill_a else _fill_a
+            other_row = _write_skill_rows(
+                ws_other, other_row, entry, other_fill, pre, "Other Skills",
                 kcm, skill_by_knowledge, skill_lookup,
                 None, 0, weapon_variants_map,
             )
-
-    _finalize_sheet(ws, excel_row)
-    log.info("  Sheet 'Skills': %d rows written", excel_row - 2)
+        _finalize_sheet(ws_other, other_row)
+        log.info("  Sheet 'Other Data': %d orphan rows written", other_row - 2)
 
     wb.save(output_path)
+
+    # ------------------------------------------------------------------
+    # POST-PROCESS: Split rows above first SkillTreeHeader to "Other Data"
+    # (appends to existing "Other Data" sheet if orphans created it,
+    #  or creates it fresh if there are pre-header rows to move)
+    # ------------------------------------------------------------------
+    _split_other_data(output_path)
+
     log.info("Skill Excel saved: %s", output_path.name)
 
 
