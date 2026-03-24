@@ -32,6 +32,7 @@ from config import (
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
     TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
     CATEGORIES, CATEGORY_TO_MASTER,
+    SCRIPT_TYPE_CATEGORIES, FACE_TYPE_CATEGORIES,
     load_tester_mapping
 )
 
@@ -333,13 +334,11 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
     """
     Aggregate manager stats with content-based dedup across ALL master files.
 
-    Processes ALL master files (not just latest). For each row with a
-    STATUS_{username} value, extracts a content key (translation + cleaned comment)
-    and the manager status. If the same content key appears in multiple files,
-    the latest mtime file's status wins.
-
-    Final counts are derived from the deduped index — each unique issue
-    is counted exactly once.
+    NEW STRATEGY (consistent with compiler.py collect_all_master_data):
+    - Content dedup key: (StringID, Translation, Comment) per user
+    - Filter out Script types (Sequencer, Dialog, Face) from manager stats
+    - Latest mtime wins for duplicate content across files
+    - Uses read_only=True + iter_rows for streaming (no ws.cell())
 
     Args:
         master_files: List of Path objects to Master_*.xlsx files.
@@ -349,136 +348,154 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
     Returns:
         Tuple of (manager_stats, manager_dates).
     """
-    from core.processing import extract_comment_text
-    from core.matching import find_translation_col_in_ws
+    # Categories to EXCLUDE from manager stats (Script-type + Face)
+    excluded_categories = (
+        SCRIPT_TYPE_CATEGORIES | FACE_TYPE_CATEGORIES |
+        {"Script", "Face"}
+    )
+    excluded_lower = {c.lower() for c in excluded_categories}
 
-    # Content index: {(category, username, translation, cleaned_comment): (mtime, status)}
-    # Latest mtime wins for duplicate content keys.
+    # Content index: {(username, stringid, translation, comment): (mtime, status, category, lang)}
     content_index = {}
     manager_dates = {}
     total_rows_scanned = 0
     total_status_found = 0
 
-    _tracker_log("MANAGER STATS (content-dedup): Starting aggregation")
+    _tracker_log("MANAGER STATS (glob-all strategy): Starting aggregation")
+    _tracker_log(f"  Excluded categories: {excluded_categories}")
 
     for master_path in master_files:
         if master_path.name.startswith("~"):
             continue
 
         target_category = master_path.stem.replace("Master_", "", 1)
+        skip_stats = target_category.lower() in excluded_lower
         file_mtime = master_path.stat().st_mtime
         file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
 
-        _tracker_log(f"MASTER FILE: {target_category} date={file_date} path={master_path}")
+        _tracker_log(f"MASTER FILE: {target_category} date={file_date} skip_stats={skip_stats} path={master_path}")
 
         try:
-            wb = safe_load_workbook(master_path)
-            for sheet_name in wb.sheetnames:
-                if sheet_name == "STATUS":
-                    continue
-
-                category = target_category
-                ws = wb[sheet_name]
-                max_col = ws.max_column or 0
-
-                # Scan headers: find STATUS_{user}, COMMENT_{user}, and translation column
-                status_cols = {}   # username -> col
-                comment_cols = {}  # username -> col
-                for col in range(1, max_col + 1):
-                    header = ws.cell(row=1, column=col).value
-                    if not header:
+            wb = safe_load_workbook(master_path, read_only=True, data_only=True)
+            try:
+                for sheet_name in wb.sheetnames:
+                    if sheet_name == "STATUS":
                         continue
-                    header_str = str(header).strip()
-                    header_upper = header_str.upper()
 
-                    if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                        status_cols[header_str[7:]] = col
-                    elif header_upper.startswith("COMMENT_"):
-                        comment_cols[header_str[8:]] = col
+                    ws = wb[sheet_name]
 
-                if not status_cols:
-                    continue
+                    # In read_only mode, max_row/max_column can be None for empty sheets
+                    if ws.max_row is None or ws.max_row < 2:
+                        continue
+                    if ws.max_column is None or ws.max_column < 1:
+                        continue
 
-                # Find translation column
-                trans_col = find_translation_col_in_ws(ws, True)  # Try EN first
-                if trans_col is None:
-                    trans_col = find_translation_col_in_ws(ws, False)  # Try non-EN
-                if trans_col is None:
-                    _tracker_log(f"  SHEET '{sheet_name}': No translation column found! Content keys will be weak.", "WARN")
+                    # === HEADER SCAN via iter_rows (streaming, read_only safe) ===
+                    header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
+                    header_tuple = next(header_iter, None)
+                    if not header_tuple:
+                        continue
 
-                # Find STRINGID column for stronger content keys
-                stringid_col = find_column_by_header(ws, "STRINGID")
+                    stringid_idx = None      # 0-based
+                    translation_idx = None   # 0-based
+                    status_cols = {}         # username -> 0-based idx
+                    comment_cols = {}        # username -> 0-based idx
 
-                _tracker_log(f"  SHEET '{sheet_name}': {len(status_cols)} STATUS cols, trans_col={trans_col}, stringid_col={stringid_col}")
-
-                for row in range(2, ws.max_row + 1):
-                    total_rows_scanned += 1
-
-                    # Get translation + stringid for content key
-                    trans_value = ""
-                    if trans_col:
-                        raw = ws.cell(row=row, column=trans_col).value
-                        if raw:
-                            trans_value = str(raw).strip()
-
-                    stringid_value = ""
-                    if stringid_col:
-                        raw_sid = ws.cell(row=row, column=stringid_col).value
-                        if raw_sid:
-                            stringid_value = str(raw_sid).strip()
-
-                    for username, status_col in status_cols.items():
-                        status_value = ws.cell(row=row, column=status_col).value
-                        if not status_value:
+                    for col_idx, header_val in enumerate(header_tuple):
+                        if not header_val:
                             continue
+                        header_str = str(header_val).strip()
+                        header_upper = header_str.upper()
 
-                        v = str(status_value).strip().upper()
-                        if v not in ("FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"):
-                            continue
+                        if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            status_cols[header_str[7:]] = col_idx
+                        elif header_upper.startswith("COMMENT_"):
+                            comment_cols[header_str[8:]] = col_idx
+                        elif header_upper == "STRINGID":
+                            stringid_idx = col_idx
+                        elif header_upper == "EVENTNAME" and stringid_idx is None:
+                            stringid_idx = col_idx
+                        elif translation_idx is None:
+                            if (header_upper == "TEXT" or header_upper == "TRANSLATION"
+                                    or header_upper.startswith("TRANSLATION (")
+                                    or header_upper.startswith("ENGLISH")):
+                                translation_idx = col_idx
 
-                        total_status_found += 1
+                    if not status_cols:
+                        continue
 
-                        # Get tester comment for this user (for content key)
-                        comment_value = ""
-                        comment_col = comment_cols.get(username)
-                        if comment_col:
-                            raw_comment = ws.cell(row=row, column=comment_col).value
-                            if raw_comment:
-                                comment_value = extract_comment_text(str(raw_comment))
+                    _tracker_log(f"  SHEET '{sheet_name}': {len(status_cols)} STATUS cols, "
+                                 f"stringid={stringid_idx}, trans={translation_idx}")
 
-                        # Content key: unique issue identity
-                        # (category, username, stringid, translation, cleaned_comment)
-                        content_key = (category, username, stringid_value, trans_value, comment_value)
+                    if skip_stats:
+                        _tracker_log(f"  SHEET '{sheet_name}': Skipping stats (excluded category)")
+                        continue
 
-                        # Latest mtime wins
-                        existing = content_index.get(content_key)
-                        if existing is None or file_mtime > existing[0]:
-                            content_index[content_key] = (file_mtime, v)
+                    # === ROW SCAN via iter_rows (streaming, read_only safe) ===
+                    for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                        total_rows_scanned += 1
 
-                # manager_dates: keep latest mtime per (category, username)
-                for username in status_cols.keys():
-                    existing_date = manager_dates.get((category, username))
-                    if existing_date is None or file_date > existing_date:
-                        manager_dates[(category, username)] = file_date
+                        # Pre-extract shared row values
+                        stringid_val = ""
+                        if stringid_idx is not None and stringid_idx < len(row_tuple):
+                            raw = row_tuple[stringid_idx]
+                            if raw:
+                                stringid_val = str(raw).strip()
 
-            wb.close()
+                        translation_val = ""
+                        if translation_idx is not None and translation_idx < len(row_tuple):
+                            raw = row_tuple[translation_idx]
+                            if raw:
+                                translation_val = str(raw).strip()
+
+                        for username, status_idx in status_cols.items():
+                            status_value = row_tuple[status_idx] if status_idx < len(row_tuple) else None
+                            if not status_value:
+                                continue
+
+                            v = str(status_value).strip().upper()
+                            if v not in ("FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"):
+                                continue
+
+                            total_status_found += 1
+
+                            # Extract comment for content dedup key
+                            c_idx = comment_cols.get(username)
+                            comment_val = ""
+                            if c_idx is not None and c_idx < len(row_tuple):
+                                raw_c = row_tuple[c_idx]
+                                if raw_c:
+                                    comment_val = str(raw_c).strip()
+
+                            # Content dedup key: (username, stringid, translation, comment)
+                            content_key = (username, stringid_val, translation_val, comment_val)
+
+                            # Latest mtime wins
+                            existing = content_index.get(content_key)
+                            if existing is None or file_mtime > existing[0]:
+                                content_index[content_key] = (file_mtime, v, target_category, tester_mapping.get(username, "EN"))
+
+                    # manager_dates: keep latest mtime per (category, username)
+                    for username in status_cols.keys():
+                        existing_date = manager_dates.get((target_category, username))
+                        if existing_date is None or file_date > existing_date:
+                            manager_dates[(target_category, username)] = file_date
+
+            finally:
+                wb.close()
         except Exception as e:
             _tracker_log(f"  ERROR: {e}", "ERROR")
             if log_callback:
                 log_callback(f"  ERROR reading {master_path.name}: {e}", 'error')
-            try:
-                wb.close()
-            except Exception:
-                pass
 
-    # Phase 2: Count final statuses from deduped index
+    # Phase 2: Count final statuses from deduped content index
     _tracker_log(f"CONTENT INDEX: {total_rows_scanned} rows scanned, {total_status_found} status values found, {len(content_index)} unique entries after dedup")
 
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
 
-    for (category, username, _stringid, trans, comment), (mtime, status) in content_index.items():
+    for (username, _sid, _trans, _comment), (_mtime, status, category, lang) in content_index.items():
         if status == "FIXED":
             manager_stats[category][username]["fixed"] += 1
         elif status == "REPORTED":
@@ -487,11 +504,7 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
             manager_stats[category][username]["checking"] += 1
         elif status in ("NON-ISSUE", "NON ISSUE"):
             manager_stats[category][username]["nonissue"] += 1
-
-    # Set language mapping
-    for category in manager_stats:
-        for username in manager_stats[category]:
-            manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
+        manager_stats[category][username]["lang"] = lang
 
     # Convert to regular dicts
     result_stats = {}
@@ -502,8 +515,8 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
             total = sum(stats_dd[k] for k in ["fixed", "reported", "checking", "nonissue"])
             _tracker_log(f"  {category}/{user}: F={stats_dd['fixed']} R={stats_dd['reported']} C={stats_dd['checking']} N={stats_dd['nonissue']} (total={total})")
 
-    _tracker_log(f"MANAGER STATS (content-dedup): Done. Categories={list(result_stats.keys())}")
-    _tracker_log_flush("MANAGER STATS (content-dedup)")
+    _tracker_log(f"MANAGER STATS (glob-all strategy): Done. Categories={list(result_stats.keys())}")
+    _tracker_log_flush("MANAGER STATS (glob-all strategy)")
     return result_stats, manager_dates
 
 
