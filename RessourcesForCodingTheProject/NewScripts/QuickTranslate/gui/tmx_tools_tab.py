@@ -219,14 +219,16 @@ class TMXToolsTab(tk.Frame):
             self._status_label.config(fg='#cc3333')
 
     def _validate_source_async(self, path, scan):
-        """Validate all source files and log results to GUI."""
+        """Validate all source files — same checks as Tab 1's _validate_source_files_async."""
         def _validate():
             self._attach_log_bridge()
             try:
                 from core.xml_parser import parse_xml_file, validate_xml_load
+                from core.xml_io import parse_corrections_from_xml
                 from core.excel_io import read_corrections_from_excel
+                from core.checker import check_broken_xml_in_file
 
-                # Collect all files
+                # Collect all files (same as Tab 1)
                 files = []
                 for lang, flist in scan.lang_files.items():
                     for f in flist:
@@ -245,64 +247,109 @@ class TMXToolsTab(tk.Frame):
                 total_ok = 0
                 total_fail = 0
                 total_entries = 0
+                all_formula_warnings = []
+                all_integrity_warnings = []
 
                 for filepath, lang in files:
                     suffix = filepath.suffix.lower() if hasattr(filepath, 'suffix') else os.path.splitext(str(filepath))[1].lower()
                     fname = filepath.name if hasattr(filepath, 'name') else os.path.basename(str(filepath))
 
                     if suffix == '.xml':
-                        # XML validation
+                        # ── XML validation (same as Tab 1) ──
+                        # Step 1: XML load test
                         load_result = validate_xml_load(filepath)
                         if not load_result["ok"]:
                             logger.error(f"  FAIL [{lang}] {fname} — XML LOAD FAILED: {load_result['error']}")
                             total_fail += 1
                             continue
 
-                        root = parse_xml_file(str(filepath))
-                        if root is None:
-                            logger.error(f"  FAIL [{lang}] {fname} — XML parse returned None")
+                        if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
+                            logger.warning(f"  WARN [{lang}] {fname} — loaded with recovery mode")
+
+                        # Step 2: Parse corrections with full reports
+                        xml_formula_report = []
+                        xml_integrity_report = []
+                        xml_no_translation_report = []
+                        try:
+                            entries = parse_corrections_from_xml(
+                                filepath,
+                                formula_report=xml_formula_report,
+                                integrity_report=xml_integrity_report,
+                                no_translation_report=xml_no_translation_report,
+                            )
+                            count = len(entries) if entries else 0
+                        except Exception as e:
+                            logger.error(f"  FAIL [{lang}] {fname} — parse error: {e}")
                             total_fail += 1
                             continue
 
-                        count = sum(1 for _ in root.iter("LocStr"))
-                        # Check required attributes
-                        missing_attrs = 0
-                        for loc in root.iter("LocStr"):
-                            sid = (loc.get("StringId") or "").strip()
-                            if not sid:
-                                missing_attrs += 1
+                        # Step 3: Broken XML check
+                        broken = check_broken_xml_in_file(filepath)
+                        if broken:
+                            logger.warning(f"  WARN [{lang}] {fname} — {len(broken)} broken LocStr node(s)")
+                            for sid, _frag, _fn in broken[:3]:
+                                logger.warning(f"    Broken: StringID={sid}")
 
-                        status = "OK"
-                        if missing_attrs:
-                            status += f" ({missing_attrs} missing StringId)"
-                        if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
-                            status = "RECOVERED " + status
+                        # Step 4: Report issues
+                        issues = []
+                        if xml_formula_report:
+                            issues.append(f"{len(xml_formula_report)} formula")
+                            all_formula_warnings.extend(xml_formula_report)
+                        if xml_integrity_report:
+                            critical = [r for r in xml_integrity_report if not r.get('reason', '').startswith('Warning:')]
+                            if critical:
+                                issues.append(f"{len(critical)} integrity")
+                            all_integrity_warnings.extend(xml_integrity_report)
+                        if xml_no_translation_report:
+                            issues.append(f"{len(xml_no_translation_report)} no-translation")
 
-                        logger.info(f"  OK   [{lang}] {fname} — {count} LocStr entries {status}")
+                        status = f"{count} entries"
+                        if issues:
+                            status += f" ({', '.join(issues)})"
+
+                        logger.info(f"  OK   [{lang}] {fname} — {status}")
                         total_ok += 1
                         total_entries += count
 
                     elif suffix in ('.xlsx', '.xls'):
-                        # Excel validation
+                        # ── Excel validation (same as Tab 1) ──
                         try:
                             formula_report = []
+                            integrity_report = []
+                            no_translation_report = []
                             entries = read_corrections_from_excel(
-                                filepath, formula_report=formula_report)
+                                filepath,
+                                formula_report=formula_report,
+                                integrity_report=integrity_report,
+                                no_translation_report=no_translation_report,
+                            )
                             count = len(entries) if entries else 0
 
-                            status = "OK"
+                            issues = []
                             if formula_report:
-                                status += f" ({len(formula_report)} formula warnings)"
+                                issues.append(f"{len(formula_report)} formula")
+                                all_formula_warnings.extend(formula_report)
+                            if integrity_report:
+                                critical = [r for r in integrity_report if not r.get('reason', '').startswith('Warning:')]
+                                if critical:
+                                    issues.append(f"{len(critical)} integrity")
+                                all_integrity_warnings.extend(integrity_report)
+                            if no_translation_report:
+                                issues.append(f"{len(no_translation_report)} no-translation")
 
-                            # Check for EventName-only (no StringID)
+                            # EventName detection
                             has_eventname = any(e.get('_source_eventname') for e in entries) if entries else False
                             has_stringid = any(e.get('string_id') for e in entries) if entries else False
                             if has_eventname and not has_stringid:
-                                status += " [EventName→StringID resolution needed]"
-                            elif has_eventname and has_stringid:
-                                status += " [EventName+StringID]"
+                                issues.append("EventName only — resolution needed")
+                            elif has_eventname:
+                                issues.append("EventName+StringID")
 
-                            logger.info(f"  OK   [{lang}] {fname} — {count} entries {status}")
+                            status = f"{count} entries"
+                            if issues:
+                                status += f" ({', '.join(issues)})"
+
+                            logger.info(f"  OK   [{lang}] {fname} — {status}")
                             total_ok += 1
                             total_entries += count
 
@@ -313,8 +360,15 @@ class TMXToolsTab(tk.Frame):
                             logger.error(f"  FAIL [{lang}] {fname} — {e}")
                             total_fail += 1
 
+                # Summary
                 logger.info("-" * 50)
                 logger.info(f"[TMX Validate] {total_ok} OK, {total_fail} FAILED, {total_entries} total entries")
+                if all_formula_warnings:
+                    logger.warning(f"  Total formula warnings: {len(all_formula_warnings)}")
+                if all_integrity_warnings:
+                    critical_total = sum(1 for r in all_integrity_warnings if not r.get('reason', '').startswith('Warning:'))
+                    if critical_total:
+                        logger.warning(f"  Total integrity issues: {critical_total}")
                 logger.info("=" * 50)
             finally:
                 self._detach_log_bridge()
