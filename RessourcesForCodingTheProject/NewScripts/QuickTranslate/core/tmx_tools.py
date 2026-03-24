@@ -511,7 +511,7 @@ def combine_xmls_to_tmx(
                         tgt = c.get('corrected', '')
                         sid = c.get('string_id', '')
                         desc_src = c.get('desc_origin', '')
-                        desc_tgt = c.get('desc_corrected', '')
+                        desc_tgt = c.get('desc_value', '') or c.get('desc_corrected', '')
 
                         # Main TU from Excel
                         if tgt and sid and not is_korean_text(tgt):

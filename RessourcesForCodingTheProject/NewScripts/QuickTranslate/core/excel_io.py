@@ -209,9 +209,14 @@ def read_corrections_from_excel(
                             col_indices.get("soundeventname", None)))
             dialogvoice_col = col_indices.get("dialogvoice", col_indices.get("dialog_voice", None))
             # Desc/DescOrigin columns (optional — voice direction descriptions)
+            # IMPORTANT: Only "DescCorrection" triggers transfer. "Desc"/"DescText" are
+            # TM references (read-only display) — they must NOT overwrite XML Desc values.
             descorigin_col = col_indices.get("descorigin", col_indices.get("desc_origin", None))
-            desc_col = col_indices.get("desc", col_indices.get("desctext",
-                       col_indices.get("desc_text", col_indices.get("desccorrection", None))))
+            desccorrection_col = col_indices.get("desccorrection", None)
+            desc_col = desccorrection_col or col_indices.get("desc", col_indices.get("desctext",
+                       col_indices.get("desc_text", None)))
+            # Flag: only transfer Desc when column is explicitly "DescCorrection"
+            _desc_is_correction = desccorrection_col is not None
 
             # ── Column validation: fail fast with clear errors ──
             if correction_col is None:
@@ -374,7 +379,11 @@ def read_corrections_from_excel(
                     if d_val is not None and str(d_val).strip():
                         desc_str = str(d_val).strip()
                         if not is_korean_text(desc_str) and ' '.join(desc_str.split()).lower() != 'no translation':
-                            entry["desc_corrected"] = desc_str
+                            if _desc_is_correction:
+                                # Only DescCorrection column triggers transfer to XML Desc
+                                entry["desc_corrected"] = desc_str
+                            # Always store for TMX creation (non-transfer use)
+                            entry["desc_value"] = desc_str
 
                 # Per-row priority: StringID takes precedence over EventName
                 # EventName is fallback when StringID is empty for that row
