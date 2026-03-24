@@ -103,3 +103,18 @@ Plans:
 | 76. Language Data E2E | 2/2 | Complete    | 2026-03-23 |
 | 78. Feature Pipeline Verification | 3/3 | Complete    | 2026-03-23 |
 | 79. Visual Audit | 2/2 | Complete    | 2026-03-23 |
+
+### Phase 79.1: Review Fixes + Full E2E Verification (INSERTED)
+
+**Goal:** Fix all critical/high issues from 4-expert review, then run full E2E test suite to verify everything works
+**Depends on:** Phase 79
+**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07
+**Success Criteria** (what must be TRUE):
+  1. Merge route conflict resolved — TranslatorMergeService endpoint reachable without shadowing
+  2. test_langdata_media.py uses shared conftest fixtures (no duplicate TestClient)
+  3. CI merge verification step runs for ALL build modes (not just Light)
+  4. category_mapper included in CI verification imports
+  5. TMExplorerGrid.svelte formatStatus handles null/undefined safely
+  6. GSD artifacts consistent (BUILD status, STATE.md, ROADMAP overview)
+  7. Full E2E test suite passes (all 63+ tests green or justified xfail)
+**Plans**: TBD

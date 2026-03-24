@@ -71,13 +71,22 @@ No new decisions yet for v9.0.
 - [Phase 79]: Tab-click navigation for Playwright screenshots; WebP at q85 for storage
 - [Phase 79]: Added descriptive type labels and contextual status for all explorer item types
 
+### Roadmap Evolution
+
+- Phase 79.1 inserted after Phase 79: Review Fixes + Full E2E Verification (URGENT)
+
 ### Pending Todos
 
-None yet.
+- Fix merge route conflict (files.py shadows TranslatorMergeService)
+- Fix test_langdata_media.py fixture duplication
+- Remove Light Mode gate from merge verification step
+- Add category_mapper to CI verification
+- Fix TMExplorerGrid.svelte formatStatus null guard
+- Fix GSD artifact inconsistencies (BUILD-03/04 status, stale STATE.md)
 
 ### Blockers/Concerns
 
-None yet.
+- sse-starlette was missing — fixed and build re-triggered
 
 ## Deferred
 
