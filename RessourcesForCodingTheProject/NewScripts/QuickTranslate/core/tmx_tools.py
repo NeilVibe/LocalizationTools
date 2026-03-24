@@ -779,6 +779,29 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
             if seg is None:
                 continue
 
+            # ── Step 1: Detect &desc; BEFORE serialization ──
+            # Use seg.text (Python string, already unescaped by lxml)
+            # like tmxtransfer11.py does. This avoids double-encoding
+            # issues from etree.tostring().
+            raw_text = (seg.text or '').strip()
+            is_desc_seg = (
+                raw_text.lower().startswith('&desc;')
+                or raw_text.lower().startswith('&amp;desc;')
+            )
+
+            # Also check for MemoQ <ph> desc tag (seg.text is empty,
+            # desc marker is inside <ph> child)
+            if not is_desc_seg and len(seg) > 0:
+                ph = seg.find('ph')
+                if ph is not None:
+                    ph_text = (ph.text or '').strip().lower()
+                    if 'desc' in ph_text and 'rxt-req' in ph_text:
+                        is_desc_seg = True
+
+            if is_desc_seg:
+                row['is_desc'] = True
+
+            # ── Step 2: Clean CAT markup (uses tostring for full content) ──
             seg_text = etree.tostring(seg, encoding='unicode', method='xml')
             seg_text = re.sub(r'^<seg[^>]*>', '', seg_text)
             seg_text = re.sub(r'</seg>$', '', seg_text)
@@ -786,20 +809,11 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
 
             cleaned = clean_segment(seg_text)
 
-            # Detect &desc; prefix — marks this TU as a description.
-            # clean_segment() converts MemoQ <ph> tags to their val= content,
-            # so &desc; prefix survives cleaning in text form.
-            chk = cleaned.lstrip().lower()
-            is_desc_seg = (
-                chk.startswith('&desc;')
-                or chk.startswith('&amp;desc;')
-            )
-
+            # ── Step 3: Strip &desc; prefix from cleaned text ──
             if is_desc_seg:
-                row['is_desc'] = True
-                # Strip &desc; prefix for clean display
                 cleaned = re.sub(
-                    r'^(&amp;desc;|&desc;)', '', cleaned, flags=re.IGNORECASE
+                    r'^(&amp;amp;desc;|&amp;desc;|&desc;)', '',
+                    cleaned, flags=re.IGNORECASE
                 ).strip()
 
             if lang.startswith('ko'):
