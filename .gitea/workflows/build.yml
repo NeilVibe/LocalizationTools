@@ -848,7 +848,7 @@ jobs:
               if ! curl -sf http://localhost:8888/health > /dev/null 2>&1; then
                 echo "[WARN] Server died — restarting for Stage 3..."
                 if [ -f /tmp/server.pid ]; then kill $(cat /tmp/server.pid) 2>/dev/null || true; fi
-                DEV_MODE=true DATABASE_MODE=auto nohup python3.11 server/main.py > /tmp/server_stage3.log 2>&1 &
+                DEV_MODE=true DATABASE_MODE=auto setsid python3.11 server/main.py > /tmp/server_stage3.log 2>&1 &
                 echo $! > /tmp/server.pid
                 for i in $(seq 1 30); do
                   if curl -sf http://localhost:8888/health > /dev/null 2>&1; then echo "[OK] Server restarted"; break; fi
@@ -870,7 +870,7 @@ jobs:
               if ! curl -sf http://localhost:8888/health > /dev/null 2>&1; then
                 echo "[WARN] Server died — restarting for Stage 4..."
                 if [ -f /tmp/server.pid ]; then kill $(cat /tmp/server.pid) 2>/dev/null || true; fi
-                DEV_MODE=true DATABASE_MODE=auto nohup python3.11 server/main.py > /tmp/server_stage4.log 2>&1 &
+                DEV_MODE=true DATABASE_MODE=auto setsid python3.11 server/main.py > /tmp/server_stage4.log 2>&1 &
                 echo $! > /tmp/server.pid
                 for i in $(seq 1 30); do
                   if curl -sf http://localhost:8888/health > /dev/null 2>&1; then echo "[OK] Server restarted"; break; fi
