@@ -13,8 +13,23 @@ import pytest
 # ---------------------------------------------------------------------------
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "mock_gamedata"
-DDS_FIXTURE = FIXTURES_DIR / "textures" / "character_kira.dds"
-WEM_FIXTURE = FIXTURES_DIR / "audio" / "varon_greeting.wem"
+DDS_FIXTURE = FIXTURES_DIR / "texture" / "image" / "character_kira.dds"
+WEM_FIXTURE = FIXTURES_DIR / "sound" / "windows" / "English(US)" / "play_kira_taunt_01.wem"
+
+# Check if Pillow can read DDS (not available on all platforms)
+_CAN_READ_DDS = False
+try:
+    from PIL import Image
+    import io
+    if DDS_FIXTURE.exists():
+        with open(DDS_FIXTURE, 'rb') as f:
+            try:
+                Image.open(io.BytesIO(f.read()))
+                _CAN_READ_DDS = True
+            except Exception:
+                pass
+except ImportError:
+    pass
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +45,7 @@ def _reset_singleton():
 # TestDdsConversion
 # ===========================================================================
 
+@pytest.mark.skipif(not _CAN_READ_DDS, reason="Pillow cannot read DDS on this platform (needs pillow-dds plugin)")
 class TestDdsConversion:
     """Tests for DDS-to-PNG conversion."""
 
@@ -37,8 +53,7 @@ class TestDdsConversion:
         from server.tools.ldm.services.media_converter import MediaConverter
         converter = MediaConverter()
         result = converter.convert_dds_to_png(DDS_FIXTURE)
-        if result is None:
-            pytest.skip("Pillow cannot read DDS on this platform (needs pillow-dds or Pillow 10.1+ with DDS plugin)")
+        assert result is not None
         assert result[:4] == b"\x89PNG", "Should start with PNG magic bytes"
 
     def test_nonexistent_path_returns_none(self):
@@ -72,11 +87,11 @@ class TestDdsConversion:
         # Fill cache with 2 entries (use different paths via symlink/copy trick)
         converter.convert_dds_to_png(DDS_FIXTURE)
         # Use another DDS fixture
-        other_dds = FIXTURES_DIR / "textures" / "character_varon.dds"
+        other_dds = FIXTURES_DIR / "texture" / "image" / "character_varon.dds"
         converter.convert_dds_to_png(other_dds)
         assert len(converter._png_cache) == 2
         # Add a third -- should evict oldest
-        third_dds = FIXTURES_DIR / "textures" / "character_drakmar.dds"
+        third_dds = FIXTURES_DIR / "texture" / "image" / "character_drakmar.dds"
         converter.convert_dds_to_png(third_dds)
         assert len(converter._png_cache) <= 2
 
