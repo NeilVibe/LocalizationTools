@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SkillTreeInfoList>
+  <SkillTreeInfo StrKey="TREE_001" UIPageName="Warrior Skills" TreeType="Combat">
+    <SkillNode NodeId="100" ParentNodeId="0" SkillName="Slash" Level="1" />
+    <SkillNode NodeId="101" ParentNodeId="100" SkillName="PowerSlash" Level="2" />
+    <SkillNode NodeId="102" ParentNodeId="100" SkillName="WhirlwindSlash" Level="2" />
+  </SkillTreeInfo>
+  <SkillTreeInfo StrKey="TREE_002" UIPageName="Mage Skills" TreeType="Magic">
+    <SkillNode NodeId="200" ParentNodeId="0" SkillName="Fireball" Level="1" />
+    <SkillNode NodeId="201" ParentNodeId="200" SkillName="Meteor" Level="3" />
+  </SkillTreeInfo>
+  <SkillTreeInfo StrKey="TREE_003" UIPageName="Rogue Skills" TreeType="Stealth">
+    <SkillNode NodeId="300" ParentNodeId="0" SkillName="Fireball" Level="1" />
+    <SkillNode NodeId="301" ParentNodeId="300" SkillName="IceArrow" Level="2" />
+    <SkillNode NodeId="302" ParentNodeId="301" SkillName="Lightning" Level="3" />
+  </SkillTreeInfo>
+</SkillTreeInfoList>
