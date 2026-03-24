@@ -355,7 +355,7 @@ class QuickTranslateApp:
 
         # Instantiate TMX Tools tab content
         from gui.tmx_tools_tab import TMXToolsTab
-        self._tmx_tools_tab = TMXToolsTab(self._tab3_inner)
+        self._tmx_tools_tab = TMXToolsTab(self._tab3_inner, log_fn=self._log)
         self._tmx_tools_tab.pack(fill=tk.BOTH, expand=True)
 
         # --- Right pane: log + progress ---

@@ -17,14 +17,50 @@ from core.tmx_tools import convert_to_memoq_tmx, clean_and_convert_to_excel, exc
 logger = logging.getLogger(__name__)
 
 
+class _TMXLogBridge(logging.Handler):
+    """Bridges logger calls from TMX tools threads to the app's GUI log.
+
+    Uses widget.after() for thread-safe delivery — no queue polling needed.
+    Only active during TMX operations (attached/detached per operation).
+    """
+
+    _LEVEL_TO_TAG = {
+        logging.DEBUG: 'info',
+        logging.INFO: 'info',
+        logging.WARNING: 'warning',
+        logging.ERROR: 'error',
+    }
+
+    def __init__(self, widget: tk.Widget, log_fn):
+        super().__init__()
+        self._widget = widget
+        self._log_fn = log_fn
+
+    def emit(self, record: logging.LogRecord):
+        try:
+            msg = self.format(record)
+            tag = self._LEVEL_TO_TAG.get(record.levelno, 'info')
+            for line in msg.split('\n'):
+                if line.strip():
+                    self._widget.after(0, lambda m=line, t=tag: self._log_fn(m, t))
+        except Exception:
+            self.handleError(record)
+
+
 class TMXToolsTab(tk.Frame):
     """TMX Tools tab with conversion and cleaning sections."""
 
-    def __init__(self, parent: tk.Widget):
+    def __init__(self, parent: tk.Widget, log_fn=None):
         super().__init__(parent, bg='#f0f0f0')
         self._mode = tk.StringVar(value="folder")
         self._path_var = tk.StringVar()
         self._status_var = tk.StringVar(value="No path selected")
+        self._log_fn = log_fn
+        # Log bridge: pipes logger output from TMX threads to GUI log
+        self._log_bridge = None
+        if log_fn:
+            self._log_bridge = _TMXLogBridge(self, log_fn)
+            self._log_bridge.setFormatter(logging.Formatter('%(message)s'))
         self._build_ui()
 
     def _build_ui(self):
@@ -126,6 +162,19 @@ class TMXToolsTab(tk.Frame):
                   cursor='hand2').pack(anchor='w')
 
     # ------------------------------------------------------------------
+    # Log bridge: attach/detach around TMX operations
+    # ------------------------------------------------------------------
+    def _attach_log_bridge(self):
+        """Attach log bridge so logger output appears in GUI during operation."""
+        if self._log_bridge:
+            logging.getLogger().addHandler(self._log_bridge)
+
+    def _detach_log_bridge(self):
+        """Detach log bridge after operation completes."""
+        if self._log_bridge:
+            logging.getLogger().removeHandler(self._log_bridge)
+
+    # ------------------------------------------------------------------
     # Section 1: Browse + Convert
     # ------------------------------------------------------------------
     def _browse_path(self):
@@ -173,6 +222,7 @@ class TMXToolsTab(tk.Frame):
             return
 
         def _run():
+            self._attach_log_bridge()
             try:
                 results = convert_to_memoq_tmx(path)
                 if not results:
@@ -202,6 +252,8 @@ class TMXToolsTab(tk.Frame):
                              exc_info=True)
                 self.after(0, lambda em=err_msg: messagebox.showerror(
                     "TMX Error", f"Failed: {em}"))
+            finally:
+                self._detach_log_bridge()
 
         threading.Thread(target=_run, daemon=True).start()
 
@@ -217,6 +269,7 @@ class TMXToolsTab(tk.Frame):
             return
 
         def _run():
+            self._attach_log_bridge()
             try:
                 out = clean_and_convert_to_excel(fpath)
                 self.after(0, lambda: messagebox.showinfo(
@@ -227,6 +280,8 @@ class TMXToolsTab(tk.Frame):
                              exc_info=True)
                 self.after(0, lambda em=err_msg: messagebox.showerror(
                     "TMX Cleaner Error", f"Failed: {em}"))
+            finally:
+                self._detach_log_bridge()
 
         threading.Thread(target=_run, daemon=True).start()
 
@@ -242,6 +297,7 @@ class TMXToolsTab(tk.Frame):
             return
 
         def _run():
+            self._attach_log_bridge()
             try:
                 out = excel_to_memoq_tmx(fpath)
                 self.after(0, lambda: messagebox.showinfo(
@@ -252,5 +308,7 @@ class TMXToolsTab(tk.Frame):
                              exc_info=True)
                 self.after(0, lambda em=err_msg: messagebox.showerror(
                     "Excel to TMX Error", f"Failed: {em}"))
+            finally:
+                self._detach_log_bridge()
 
         threading.Thread(target=_run, daemon=True).start()
