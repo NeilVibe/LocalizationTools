@@ -290,16 +290,33 @@ class TMXToolsTab(tk.Frame):
                             for sid, _frag, _fn in broken[:3]:
                                 logger.warning(f"    Broken: StringID={sid}")
 
-                        # Step 4: Report issues
+                        # Step 4: Report issues with StringID + reason (same as Tab 1)
                         issues = []
                         if xml_formula_report:
+                            logger.warning(f"  WARNING: {len(xml_formula_report)} formula-like entry(ies) in {fname}")
+                            for r in xml_formula_report[:10]:
+                                sid = r.get('string_id') or '(empty)'
+                                logger.warning(f"    [{r.get('column', '?')}] StringID={sid}: {r.get('reason', '?')}")
+                            if len(xml_formula_report) > 10:
+                                logger.warning(f"    ...and {len(xml_formula_report) - 10} more")
                             issues.append(f"{len(xml_formula_report)} formula")
                             all_formula_warnings.extend(xml_formula_report)
+
                         if xml_integrity_report:
+                            # Split: critical (real) vs non-impactful (source matches translation)
                             critical = [r for r in xml_integrity_report if not r.get('reason', '').startswith('Warning:')]
+                            non_impact = [r for r in xml_integrity_report if r.get('reason', '').startswith('Warning:')]
                             if critical:
+                                logger.warning(f"  WARNING: {len(critical)} integrity issue(s) in {fname}")
+                                for r in critical[:10]:
+                                    sid = r.get('string_id') or '(empty)'
+                                    logger.warning(f"    [{r.get('column', '?')}] StringID={sid}: {r.get('reason', '?')}")
+                                if len(critical) > 10:
+                                    logger.warning(f"    ...and {len(critical) - 10} more")
                                 issues.append(f"{len(critical)} integrity")
+                            # non-impact: tracked but not logged per-file (source=translation, not real issue)
                             all_integrity_warnings.extend(xml_integrity_report)
+
                         if xml_no_translation_report:
                             issues.append(f"{len(xml_no_translation_report)} no-translation")
 
@@ -327,11 +344,23 @@ class TMXToolsTab(tk.Frame):
 
                             issues = []
                             if formula_report:
+                                logger.warning(f"  WARNING: {len(formula_report)} formula cell(s) in {fname}")
+                                for r in formula_report[:10]:
+                                    sid = r.get('string_id') or '(empty)'
+                                    logger.warning(f"    Row {r.get('row', '?')} [{r.get('column', '?')}] StringID={sid}: {r.get('reason', '?')}")
+                                if len(formula_report) > 10:
+                                    logger.warning(f"    ...and {len(formula_report) - 10} more")
                                 issues.append(f"{len(formula_report)} formula")
                                 all_formula_warnings.extend(formula_report)
                             if integrity_report:
                                 critical = [r for r in integrity_report if not r.get('reason', '').startswith('Warning:')]
                                 if critical:
+                                    logger.warning(f"  WARNING: {len(critical)} integrity issue(s) in {fname}")
+                                    for r in critical[:10]:
+                                        sid = r.get('string_id') or '(empty)'
+                                        logger.warning(f"    Row {r.get('row', '?')} [{r.get('column', '?')}] StringID={sid}: {r.get('reason', '?')}")
+                                    if len(critical) > 10:
+                                        logger.warning(f"    ...and {len(critical) - 10} more")
                                     issues.append(f"{len(critical)} integrity")
                                 all_integrity_warnings.extend(integrity_report)
                             if no_translation_report:
