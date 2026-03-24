@@ -34,7 +34,7 @@ def _mock_ollama_response(summary: str, entity_type: str = "character") -> httpx
     """Build a mock httpx.Response with Ollama-style JSON body."""
     inner_json = json.dumps({"summary": summary, "entity_type": entity_type})
     body = json.dumps({
-        "model": "qwen3:4b",
+        "model": "qwen3:8b",
         "response": inner_json,
         "done": True,
     })
@@ -129,7 +129,7 @@ class TestGenerateSummary:
         """AISUM-05: Valid HTTP but invalid JSON response -> ai_status='error'."""
         bad_response = httpx.Response(
             status_code=200,
-            text=json.dumps({"model": "qwen3:4b", "response": "not valid json{{{", "done": True}),
+            text=json.dumps({"model": "qwen3:8b", "response": "not valid json{{{", "done": True}),
         )
 
         with patch("server.tools.ldm.services.ai_summary_service.httpx.AsyncClient") as MockClient:
@@ -207,7 +207,7 @@ class TestCacheManagement:
         assert "cache_size" in status
         assert "model" in status
         assert status["cache_size"] == 0
-        assert status["model"] == "qwen3:4b"
+        assert status["model"] == "qwen3:8b"
 
 
 # =============================================================================
