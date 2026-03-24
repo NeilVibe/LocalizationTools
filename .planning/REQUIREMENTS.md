@@ -97,12 +97,19 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 | UIUX-01 | Phase 79 | Complete |
 | UIUX-02 | Phase 79 | Complete |
 | UIUX-03 | Phase 79 | Pending |
+| FIX-01 | Phase 79.1 | Complete |
+| FIX-02 | Phase 79.1 | Complete |
+| FIX-03 | Phase 79.1 | Complete |
+| FIX-04 | Phase 79.1 | Complete |
+| FIX-05 | Phase 79.1 | Complete |
+| FIX-06 | Phase 79.1 | Complete |
+| FIX-07 | Phase 79.1 | Complete |
 
 **Coverage:**
-- v9.0 requirements: 22 total
+- v9.0 requirements: 29 total (22 original + 7 FIX)
 - Mapped to phases: 22
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after scope expansion (FEAT-01..07 added, Phase 78 added, Phase 77→79 renumbered)*
+*Last updated: 2026-03-24 after Phase 79.1 completion + GSD health check*

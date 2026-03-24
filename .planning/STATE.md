@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: milestone
-status: unknown
-stopped_at: Completed 79.1-03-PLAN.md (all Phase 79.1 plans done)
+status: completed
+stopped_at: All 6 phases complete — awaiting BUILD-04 human verify + build success
 last_updated: "2026-03-24T03:39:37.636Z"
 progress:
   total_phases: 6
@@ -19,12 +19,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 79.1 — Review Fixes + Full E2E Verification
+**Current focus:** v9.0 complete — awaiting build success + BUILD-04 human verify
 
 ## Current Position
 
-Phase: 79.1
-Plan: Not started
+All 6 phases complete (14/14 plans). Waiting for:
+1. GitHub Actions Light Build to succeed
+2. Human verification of installer on offline Windows PC (BUILD-04)
 
 ## Performance Metrics
 
@@ -85,16 +86,20 @@ No new decisions yet for v9.0.
 
 ### Pending Todos
 
-- Fix merge route conflict (files.py shadows TranslatorMergeService)
-- Fix test_langdata_media.py fixture duplication
-- Remove Light Mode gate from merge verification step
-- Add category_mapper to CI verification
-- Fix TMExplorerGrid.svelte formatStatus null guard
-- ~~Fix GSD artifact inconsistencies (BUILD-03/04 status, stale STATE.md)~~ DONE (79.1-02)
+- ~~Fix merge route conflict~~ DONE (79.1-01, renamed to /export-merge)
+- ~~Fix test_langdata_media.py fixture duplication~~ DONE (79.1-01)
+- ~~Remove Light Mode gate from merge verification step~~ DONE (79.1-01)
+- ~~Add category_mapper to CI verification~~ DONE (79.1-01)
+- ~~Fix TMExplorerGrid.svelte formatStatus null guard~~ DONE (79.1-01)
+- ~~Fix GSD artifact inconsistencies~~ DONE (79.1-02)
+- ~~sse-starlette missing~~ DONE (added to requirements)
+- ~~pyahocorasick missing~~ DONE (added to requirements + graceful fallback)
+- ~~qwen3:4b→8b test mismatch~~ DONE (updated test)
+- BUILD-04: Download installer + test on offline PC (PENDING HUMAN)
 
 ### Blockers/Concerns
 
-- sse-starlette was missing — fixed and build re-triggered
+- Build #4 running on GitHub Actions — previous 3 failed due to missing deps (all fixed now)
 
 ## Deferred
 
