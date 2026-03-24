@@ -20,7 +20,10 @@ from tests.integration.conftest_merge import BASE_URL, TEST123_PATH
 # Register fixtures from conftest_merge (pytest only auto-discovers conftest.py)
 pytest_plugins = ["tests.integration.conftest_merge"]
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skip(reason="Requires local mock data setup (setup_mock_data.py) — not available in CI"),
+]
 
 
 # ============================================================================
