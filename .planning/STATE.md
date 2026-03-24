@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v9.0
-milestone_name: Build Validation + Real-World Testing
-status: in_progress
-stopped_at: Starting Phase 79.1 (review fixes)
-last_updated: "2026-03-24T03:16:00.000Z"
+milestone_name: milestone
+status: unknown
+stopped_at: Completed 79.1-01-PLAN.md
+last_updated: "2026-03-24T03:20:21.162Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 13
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 ## Current Position
 
 Phase: 79.1 (Review Fixes + Full E2E Verification) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Plan: 1 of 3
 | 76 | 2 | 5min | 2.5min |
 | 78 | 3 | 13min | 4.3min |
 | 79 | 2 | 21min | 10.5min |
+| Phase 79.1 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ No new decisions yet for v9.0.
 - [Phase 78]: Used Form data for TM entry endpoint; xfail for FAISS-dependent search tests
 - [Phase 79]: Tab-click navigation for Playwright screenshots; WebP at q85 for storage
 - [Phase 79]: Added descriptive type labels and contextual status for all explorer item types
+- [Phase 79.1]: Renamed files.py merge route to /export-merge to resolve TranslatorMergeService shadowing
 
 ### Roadmap Evolution
 
@@ -100,6 +102,6 @@ No new decisions yet for v9.0.
 
 ## Session Continuity
 
-Last session: 2026-03-24T03:16:00.000Z
-Stopped at: Executing Phase 79.1 plans (review fixes + E2E verification)
+Last session: 2026-03-24T03:20:21.159Z
+Stopped at: Completed 79.1-01-PLAN.md
 Next action: Execute Phase 79.1 plans (code fixes + artifact cleanup + E2E verification)

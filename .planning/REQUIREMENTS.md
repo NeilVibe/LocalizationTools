@@ -46,11 +46,11 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 
 ### Review Fixes (Phase 79.1 — INSERTED)
 
-- [ ] **FIX-01**: Merge route conflict resolved — TranslatorMergeService not shadowed by files.py
-- [ ] **FIX-02**: test_langdata_media.py uses shared conftest fixtures, no duplicate TestClient
-- [ ] **FIX-03**: CI merge verification runs for ALL build modes (remove Light Mode gate)
-- [ ] **FIX-04**: category_mapper.py included in CI merge module verification imports
-- [ ] **FIX-05**: TMExplorerGrid.svelte formatStatus handles null/undefined, uses correct field for platform
+- [x] **FIX-01**: Merge route conflict resolved — TranslatorMergeService not shadowed by files.py
+- [x] **FIX-02**: test_langdata_media.py uses shared conftest fixtures, no duplicate TestClient
+- [x] **FIX-03**: CI merge verification runs for ALL build modes (remove Light Mode gate)
+- [x] **FIX-04**: category_mapper.py included in CI merge module verification imports
+- [x] **FIX-05**: TMExplorerGrid.svelte formatStatus handles null/undefined, uses correct field for platform
 - [x] **FIX-06**: GSD artifacts consistent (BUILD-03/04 status corrected, STATE.md current, ROADMAP overview fixed)
 - [ ] **FIX-07**: Full E2E test suite passes — all tests green or justified xfail
 
