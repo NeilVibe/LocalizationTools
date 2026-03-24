@@ -1,1 +1,1 @@
-Build QuickTranslate — validation on path select, EventName resolution, GUI log bridge
+Build QuickTranslate — battle-tested EventName resolution for TMX creation
