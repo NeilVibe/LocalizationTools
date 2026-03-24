@@ -892,8 +892,9 @@ def write_excel(rows: list[dict], output_path: str) -> None:
     wb = xlsxwriter.Workbook(output_path)
     ws = wb.add_worksheet('TMX Clean')
 
-    # 5-column format matching tmxconvert41 legacy pattern
-    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'DescText']
+    # 5-column format: DescOrigin + Desc (TM reference, not correction)
+    # User manually adds DescCorrection column when they want to correct descriptions
+    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'Desc']
     keys = ['ko_seg', 'tgt_seg', 'x_context', 'desc_origin', 'desc_text']
 
     hdr_fmt = wb.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1})

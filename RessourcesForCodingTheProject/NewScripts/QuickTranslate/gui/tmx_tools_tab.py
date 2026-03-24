@@ -88,7 +88,7 @@ class TMXToolsTab(tk.Frame):
         desc = tk.Label(
             clean_frame,
             text="Select a TMX file to clean all CAT tool markup and export "
-                 "to Excel (5 columns: StrOrigin, Correction, StringID, DescOrigin, DescText).",
+                 "to Excel (5 columns: StrOrigin, Correction, StringID, DescOrigin, Desc).",
             font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
             wraplength=500, justify='left',
         )
