@@ -328,7 +328,7 @@ class GlossaryService:
         Returns:
             True if initialization succeeded.
         """
-        from server.tools.ldm.services.mapdata_service import convert_to_wsl_path
+        from server.tools.ldm.services.perforce_path_service import convert_to_wsl_path
 
         all_entities: List[Tuple[str, EntityInfo]] = []
 
