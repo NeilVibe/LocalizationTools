@@ -55,8 +55,9 @@ def mock_embedding_engine():
 # =============================================================================
 
 
+@pytest.mark.skip(reason="_scan_entities was replaced by MegaIndex population — method no longer exists")
 class TestScanEntities:
-    """Tests for _scan_entities method."""
+    """Tests for _scan_entities method (DEPRECATED — method removed, replaced by MegaIndex)."""
 
     def test_scan_finds_all_entity_types(self, codex_service):
         """_scan_entities parses mock_gamedata and finds all 6 entity types."""
