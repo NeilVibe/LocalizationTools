@@ -411,9 +411,9 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
             L.append(f"Folder does not exist - skipping")
             continue
 
-        # Glob ALL .xlsx files — no category filtering at discovery time
+        # Glob ALL .xlsx files recursively — includes subfolders like foldernameX0101/
         all_xlsx = sorted([
-            f for f in master_folder.glob("*.xlsx")
+            f for f in master_folder.rglob("*.xlsx")
             if not f.name.startswith("~")
         ])
 

@@ -143,7 +143,7 @@ def discover_tracker_qa_folders() -> List[Dict]:
             continue
 
         # Find xlsx file (skip temp files starting with ~)
-        xlsx_files = [f for f in folder.glob("*.xlsx") if not f.name.startswith("~")]
+        xlsx_files = [f for f in folder.rglob("*.xlsx") if not f.name.startswith("~")]
         if not xlsx_files:
             _tracker_log(f"  SKIP: {folder_name} (no xlsx)", "WARN")
             print(f"  WARN: No xlsx in folder: {folder_name}")
@@ -252,7 +252,7 @@ def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict]
         # Check if this is a Master folder (Masterfolder_EN or Masterfolder_CN)
         if dir_name in ("Masterfolder_EN", "Masterfolder_CN"):
             lang = "EN" if "EN" in dir_name else "CN"
-            master_xlsx = [f for f in dirpath.glob("Master_*.xlsx")
+            master_xlsx = [f for f in dirpath.rglob("Master_*.xlsx")
                            if not f.name.startswith("~")]
             if master_xlsx:
                 total_master_dirs += 1
@@ -893,7 +893,7 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
         folder_label = "EN" if "EN" in str(master_folder) else "CN"
         _tracker_log(f"SCAN FOLDER: {folder_label} ({master_folder})")
 
-        for master_path in master_folder.glob("Master_*.xlsx"):
+        for master_path in master_folder.rglob("Master_*.xlsx"):
             if master_path.name.startswith("~"):
                 _tracker_log(f"  SKIP: {master_path.name} (temp file)")
                 continue
@@ -1070,11 +1070,11 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
 
     # Check for master files
     has_master_files = (
-        any(TRACKER_UPDATE_MASTER_EN.glob("Master_*.xlsx")) or
-        any(TRACKER_UPDATE_MASTER_CN.glob("Master_*.xlsx"))
+        any(TRACKER_UPDATE_MASTER_EN.rglob("Master_*.xlsx")) or
+        any(TRACKER_UPDATE_MASTER_CN.rglob("Master_*.xlsx"))
     )
-    master_en_count = len(list(TRACKER_UPDATE_MASTER_EN.glob("Master_*.xlsx")))
-    master_cn_count = len(list(TRACKER_UPDATE_MASTER_CN.glob("Master_*.xlsx")))
+    master_en_count = len(list(TRACKER_UPDATE_MASTER_EN.rglob("Master_*.xlsx")))
+    master_cn_count = len(list(TRACKER_UPDATE_MASTER_CN.rglob("Master_*.xlsx")))
     _log(f"Master files: {master_en_count} EN, {master_cn_count} CN")
     _tracker_log(f"Master files found: EN={master_en_count}, CN={master_cn_count}")
 
@@ -1114,8 +1114,8 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
     manager_stats = {}
     manager_dates = {}
     has_master_files = (
-        any(TRACKER_UPDATE_MASTER_EN.glob("Master_*.xlsx")) or
-        any(TRACKER_UPDATE_MASTER_CN.glob("Master_*.xlsx"))
+        any(TRACKER_UPDATE_MASTER_EN.rglob("Master_*.xlsx")) or
+        any(TRACKER_UPDATE_MASTER_CN.rglob("Master_*.xlsx"))
     )
     if has_master_files:
         _log("Processing master files (manager stats)...")
