@@ -375,7 +375,7 @@ def generate_wordcount_report(log_callback=None) -> Optional[Path]:
     for category_dir in sorted(DATASHEET_OUTPUT.iterdir()):
         if not category_dir.is_dir():
             continue
-        for f in sorted(category_dir.glob("*.xlsx")):
+        for f in sorted(category_dir.rglob("*.xlsx")):
             if f.name.startswith("~$") or f.name == "WordCount_Report.xlsx":
                 continue
             xlsx_files.append((category_dir.name, f))

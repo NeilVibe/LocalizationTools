@@ -61,7 +61,7 @@ def discover_qa_folders(base_folder: Path = None) -> List[Dict]:
             continue
 
         # Find xlsx file (pick most recent if multiple)
-        xlsx_files = list(folder.glob("*.xlsx"))
+        xlsx_files = list(folder.rglob("*.xlsx"))
         xlsx_files = [f for f in xlsx_files if not f.name.startswith("~$")]
 
         if len(xlsx_files) == 0:
@@ -129,7 +129,7 @@ def discover_qa_folders_in(base_folder: Path) -> List[Dict]:
             continue
 
         # Find xlsx file (skip temp files starting with ~)
-        xlsx_files = [f for f in folder.glob("*.xlsx") if not f.name.startswith("~")]
+        xlsx_files = [f for f in folder.rglob("*.xlsx") if not f.name.startswith("~")]
         if not xlsx_files:
             continue
 

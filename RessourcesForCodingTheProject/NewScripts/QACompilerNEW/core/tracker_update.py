@@ -273,7 +273,7 @@ def discover_flat_dump(base_folder: Path, log_callback=None) -> Tuple[List[Dict]
             continue  # Just a wrapper folder, keep walking
 
         # Found a QA folder — grab all xlsx files inside (NOT recursive, just this folder)
-        xlsx_files = [f for f in dirpath.glob("*.xlsx") if not f.name.startswith("~")]
+        xlsx_files = [f for f in dirpath.rglob("*.xlsx") if not f.name.startswith("~")]
         if not xlsx_files:
             _tracker_log(f"  QA DIR: {dir_name} — no xlsx files inside", "WARN")
             continue

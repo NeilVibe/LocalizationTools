@@ -86,7 +86,7 @@ def main():
             continue
 
         # Find xlsx file
-        xlsx_files = list(folder.glob("*.xlsx"))
+        xlsx_files = list(folder.rglob("*.xlsx"))
         if not xlsx_files:
             continue
 

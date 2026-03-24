@@ -113,7 +113,7 @@ class App:
         self.log_msg("-" * 50)
 
         folder_path = Path(folder)
-        xlsx_files = list(folder_path.glob("*.xlsx"))
+        xlsx_files = list(folder_path.rglob("*.xlsx"))
 
         if not xlsx_files:
             self.log_msg("No .xlsx files found in this folder.")

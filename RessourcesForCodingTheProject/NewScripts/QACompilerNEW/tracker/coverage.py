@@ -283,7 +283,7 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
         _clog(f"  WARNING: VoiceRecordingSheet folder not found", 'warning')
         return voice_strings
 
-    excel_files = sorted(folder.glob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+    excel_files = sorted(folder.rglob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
     if not excel_files:
         _clog(f"  WARNING: No Excel files found", 'warning')
         return voice_strings
