@@ -52,7 +52,7 @@ Requirements for Build Validation + Real-World Testing milestone. Each maps to r
 - [x] **FIX-04**: category_mapper.py included in CI merge module verification imports
 - [x] **FIX-05**: TMExplorerGrid.svelte formatStatus handles null/undefined, uses correct field for platform
 - [x] **FIX-06**: GSD artifacts consistent (BUILD-03/04 status corrected, STATE.md current, ROADMAP overview fixed)
-- [ ] **FIX-07**: Full E2E test suite passes — all tests green or justified xfail
+- [x] **FIX-07**: Full E2E test suite passes — all tests green or justified xfail
 
 ## Future Requirements
 
