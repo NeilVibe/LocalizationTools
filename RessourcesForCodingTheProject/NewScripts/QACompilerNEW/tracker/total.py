@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_STYLES, CATEGORIES, FACE_TYPE_CATEGORIES, load_tester_mapping, load_tester_type_mapping
+from config import TRACKER_STYLES, CATEGORIES, FACE_TYPE_CATEGORIES, load_tester_mapping, load_tester_type_mapping, get_target_master_category
 
 
 # =============================================================================
@@ -293,17 +293,27 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
     # GRANULAR: Track all category data per user for debugging
     user_category_breakdown = defaultdict(list)
 
+    # Track which (user, master_category) manager stats have been counted
+    # to prevent double-counting when Sequencer+Dialog both map to Script
+    counted_manager_stats: set = set()
+
     for (user, category), data in latest_data.items():
         user_data[user]["total_rows"] += data["total_rows"]
         user_data[user]["done"] += data["done"]
         user_data[user]["issues"] += data["issues"]
         user_data[user]["no_issue"] += data["no_issue"]
         user_data[user]["blocked"] += data["blocked"]
-        user_data[user]["fixed"] += data["fixed"]
-        user_data[user]["reported"] += data["reported"]
-        user_data[user]["checking"] += data["checking"]
-        user_data[user]["nonissue"] += data["nonissue"]
         user_data[user]["korean"] += data.get("korean", 0)
+
+        # Manager stats: only count once per master category group
+        master_cat = get_target_master_category(category) if category else category
+        manager_key = (user, master_cat)
+        if manager_key not in counted_manager_stats:
+            user_data[user]["fixed"] += data["fixed"]
+            user_data[user]["reported"] += data["reported"]
+            user_data[user]["checking"] += data["checking"]
+            user_data[user]["nonissue"] += data["nonissue"]
+            counted_manager_stats.add(manager_key)
 
         # GRANULAR: Track ALL categories for each user
         pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["nonissue"])
