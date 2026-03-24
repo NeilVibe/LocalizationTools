@@ -965,7 +965,24 @@ jobs:
         run: |
           cd locaNext
           npm run build
-          npm run build:electron
+
+          # Retry electron-builder up to 3 times — EBUSY file locks from Windows Defender
+          $maxRetries = 3
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            Write-Host "=== electron-builder attempt $i/$maxRetries ==="
+            npm run build:electron 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "[OK] electron-builder succeeded on attempt $i"
+              break
+            }
+            if ($i -lt $maxRetries) {
+              Write-Host "[WARN] electron-builder failed (attempt $i), retrying in 15s..."
+              Start-Sleep -Seconds 15
+            } else {
+              Write-Error "electron-builder failed after $maxRetries attempts"
+              exit 1
+            }
+          }
         shell: pwsh
 
       - name: Verify Electron Build
