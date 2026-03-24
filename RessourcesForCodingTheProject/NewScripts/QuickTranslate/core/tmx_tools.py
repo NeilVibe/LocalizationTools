@@ -399,18 +399,37 @@ def combine_xmls_to_tmx(
     creation_id: str | None = None,
 ) -> bool:
     """
-    Combine all XML files in input_folder into a single TMX file.
+    Combine XML and Excel files into a single MemoQ TMX file.
+
+    Cross-format: reads both .xml and .xlsx/.xls files.
+    XML: reads LocStr attributes (StrOrigin, Str, StringId, DescOrigin, Desc).
+    Excel: reads corrections with header detection (StrOrigin/Correction/StringID/DescOrigin/Desc).
 
     Main string TUs: dedup by (StrOrigin, StringId), keep newest.
     Description TUs: keep all (no dedup).
+
+    Validation: XML load check, Excel header check, Korean-only skip.
     """
     try:
-        xml_files = file_list if file_list else get_all_xml_files(input_folder)
-        total_files = len(xml_files)
-        logger.info(f"[TMX] Found {total_files} XML file(s) to process")
+        if file_list:
+            all_files = file_list
+        else:
+            xml_files = get_all_xml_files(input_folder)
+            # Also find Excel files in the folder
+            excel_files = []
+            for dp, _, fns in os.walk(input_folder):
+                for fn in fns:
+                    if fn.lower().endswith(('.xlsx', '.xls')) and not fn.startswith('~$'):
+                        excel_files.append(os.path.join(dp, fn))
+            all_files = xml_files + excel_files
 
-        if not xml_files:
-            logger.warning("[TMX] No XML files found — nothing to convert")
+        total_files = len(all_files)
+        xml_count = sum(1 for f in all_files if str(f).lower().endswith('.xml'))
+        excel_count = total_files - xml_count
+        logger.info(f"[TMX] Found {total_files} file(s) to process ({xml_count} XML, {excel_count} Excel)")
+
+        if not all_files:
+            logger.warning("[TMX] No XML or Excel files found — nothing to convert")
             return False
 
         # Build TMX skeleton
@@ -436,22 +455,130 @@ def combine_xmls_to_tmx(
         total_entries = 0
         total_desc = 0
         skipped_korean = 0
+        validation_errors = []
 
-        for idx, xml_file_path in enumerate(xml_files, 1):
-            logger.info(f"  [{idx}/{total_files}] {os.path.basename(xml_file_path)}")
+        for idx, file_path in enumerate(all_files, 1):
+            file_path_str = str(file_path)
+            suffix = os.path.splitext(file_path_str)[1].lower()
+            doc_name = os.path.basename(file_path_str)
+            logger.info(f"  [{idx}/{total_files}] {doc_name}")
 
             try:
-                if os.path.getsize(xml_file_path) == 0:
+                if os.path.getsize(file_path_str) == 0:
+                    logger.warning(f"    Skipped: empty file")
                     continue
             except OSError:
                 continue
 
-            xml_root = parse_xml_file(xml_file_path)
-            if xml_root is None:
+            # ── EXCEL FILE ──
+            if suffix in ('.xlsx', '.xls'):
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(file_path_str, read_only=True, data_only=True)
+                    ws = wb.active
+
+                    # Validate headers
+                    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+                    if not header_row:
+                        validation_errors.append(f"{doc_name}: No header row")
+                        wb.close()
+                        continue
+
+                    headers_lower = {str(h).strip().lower(): i for i, h in enumerate(header_row) if h}
+                    has_strorigin = 'strorigin' in headers_lower or 'str_origin' in headers_lower
+                    has_correction = 'correction' in headers_lower or 'corrected' in headers_lower or 'str' in headers_lower
+                    has_stringid = 'stringid' in headers_lower or 'string_id' in headers_lower
+                    has_descorigin = 'descorigin' in headers_lower or 'desc_origin' in headers_lower
+                    has_desc = 'desc' in headers_lower or 'desccorrection' in headers_lower or 'desctext' in headers_lower
+
+                    if not has_stringid:
+                        validation_errors.append(f"{doc_name}: Missing StringID column")
+                        wb.close()
+                        continue
+                    if not has_correction and not has_strorigin:
+                        validation_errors.append(f"{doc_name}: Missing StrOrigin/Correction columns")
+                        wb.close()
+                        continue
+
+                    # Detect column indices
+                    so_idx = headers_lower.get('strorigin', headers_lower.get('str_origin'))
+                    corr_idx = headers_lower.get('correction', headers_lower.get('corrected', headers_lower.get('str')))
+                    sid_idx = headers_lower.get('stringid', headers_lower.get('string_id'))
+                    do_idx = headers_lower.get('descorigin', headers_lower.get('desc_origin'))
+                    desc_idx = headers_lower.get('desc', headers_lower.get('desccorrection', headers_lower.get('desctext')))
+
+                    file_mtime = os.path.getmtime(file_path_str)
+                    excel_entries = 0
+
+                    for row in ws.iter_rows(min_row=2, values_only=True):
+                        src = str(row[so_idx]).strip() if so_idx is not None and so_idx < len(row) and row[so_idx] else ""
+                        tgt = str(row[corr_idx]).strip() if corr_idx is not None and corr_idx < len(row) and row[corr_idx] else ""
+                        sid = str(row[sid_idx]).strip() if sid_idx is not None and sid_idx < len(row) and row[sid_idx] else ""
+                        desc_src = str(row[do_idx]).strip() if do_idx is not None and do_idx < len(row) and row[do_idx] else ""
+                        desc_tgt = str(row[desc_idx]).strip() if desc_idx is not None and desc_idx < len(row) and row[desc_idx] else ""
+
+                        # Main TU from Excel
+                        if tgt and sid and not is_korean_text(tgt):
+                            total_entries += 1
+                            excel_entries += 1
+                            tu = etree.Element("tu",
+                                creationid=creation_id or "Excel2TMX",
+                                changeid=creation_id or "Excel2TMX")
+                            tuv_ko = etree.SubElement(tu, "tuv", **{f"{{{XML_NS}}}lang": "ko"})
+                            etree.SubElement(tuv_ko, "seg").text = src or ""
+                            tuv_tgt = etree.SubElement(tu, "tuv", **{f"{{{XML_NS}}}lang": target_lang_code})
+                            etree.SubElement(tuv_tgt, "seg").text = tgt
+                            etree.SubElement(tu, "prop", type="x-document").text = doc_name
+                            etree.SubElement(tu, "prop", type="x-context").text = sid
+
+                            key = (src, sid)
+                            if key not in main_tu_map or file_mtime > main_tu_map[key][0]:
+                                main_tu_map[key] = (file_mtime, tu)
+
+                        elif tgt and is_korean_text(tgt):
+                            skipped_korean += 1
+
+                        # Desc TU from Excel
+                        if (sid and desc_src and desc_tgt
+                                and not is_korean_text(desc_tgt)):
+                            if not desc_src.startswith("&desc;"):
+                                desc_src = "&desc;" + desc_src
+                            desc_tu = etree.Element("tu",
+                                creationid=creation_id or "Excel2TMX",
+                                changeid=creation_id or "Excel2TMX")
+                            tuv_ko_d = etree.SubElement(desc_tu, "tuv", **{f"{{{XML_NS}}}lang": "ko"})
+                            tuv_tgt_d = etree.SubElement(desc_tu, "tuv", **{f"{{{XML_NS}}}lang": target_lang_code})
+                            if postprocess:
+                                seg_ko = etree.SubElement(tuv_ko_d, "seg")
+                                ph_ko = etree.SubElement(seg_ko, "ph")
+                                ph_ko.text = '<mq:rxt-req displaytext="desc" val="&amp;desc;" />'
+                                ph_ko.tail = desc_src.replace("&amp;desc;", "").replace("&desc;", "")
+                                seg_tgt = etree.SubElement(tuv_tgt_d, "seg")
+                                ph_tgt = etree.SubElement(seg_tgt, "ph")
+                                ph_tgt.text = '<mq:rxt-req displaytext="desc" val="&amp;desc;" />'
+                                ph_tgt.tail = desc_tgt
+                            else:
+                                etree.SubElement(tuv_ko_d, "seg").text = desc_src
+                                etree.SubElement(tuv_tgt_d, "seg").text = "&desc;" + desc_tgt
+                            etree.SubElement(desc_tu, "prop", type="x-document").text = doc_name
+                            etree.SubElement(desc_tu, "prop", type="x-context").text = sid
+                            desc_tu_list.append(desc_tu)
+                            total_desc += 1
+
+                    wb.close()
+                    logger.info(f"    Excel: {excel_entries} entries read")
+                except Exception as e:
+                    validation_errors.append(f"{doc_name}: Excel read failed — {e}")
+                    logger.error(f"    FAILED: {e}")
                 continue
 
-            doc_name = os.path.basename(xml_file_path)
-            file_mtime = os.path.getmtime(xml_file_path)
+            # ── XML FILE ──
+            xml_root = parse_xml_file(file_path_str)
+            if xml_root is None:
+                validation_errors.append(f"{doc_name}: XML parse failed")
+                continue
+
+            file_mtime = os.path.getmtime(file_path_str)
 
             for loc in xml_root.iter("LocStr"):
                 string_id   = (loc.get("StringId") or "").strip()
@@ -540,6 +667,12 @@ def combine_xmls_to_tmx(
                     etree.SubElement(desc_tu, "prop", type="x-context").text  = string_id
                     desc_tu_list.append(desc_tu)
                     total_desc += 1
+
+        # Validation errors summary
+        if validation_errors:
+            logger.warning(f"[TMX] {len(validation_errors)} file(s) had validation issues:")
+            for err in validation_errors:
+                logger.warning(f"  {err}")
 
         # Dedup summary
         deduped = total_entries - len(main_tu_map)
