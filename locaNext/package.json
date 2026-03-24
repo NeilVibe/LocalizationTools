@@ -95,13 +95,6 @@
         "to": "version.py"
       },
       {
-        "from": "../models/Model2Vec",
-        "to": "models/Model2Vec",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
         "from": "../bin/vgmstream",
         "to": "bin/vgmstream",
         "filter": [

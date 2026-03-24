@@ -961,30 +961,26 @@ jobs:
           }
         shell: pwsh
 
-      - name: Release File Locks (Model2Vec)
-        run: |
-          # Kill any lingering embedded Python processes that may hold file locks
-          Get-Process -Name "python" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 3
-
-          # Pre-copy Model2Vec files to break EBUSY locks
-          # electron-builder copies from repo root → dist, which triggers EBUSY on Windows
-          # By pre-copying to a temp location and swapping, we avoid the lock
-          $src = "models\Model2Vec"
-          $tmp = "models\Model2Vec_tmp"
-          if (Test-Path $src) {
-            Copy-Item -Path $src -Destination $tmp -Recurse -Force
-            Remove-Item -Path $src -Recurse -Force
-            Rename-Item -Path $tmp -NewName "Model2Vec"
-            Write-Host "[OK] Model2Vec files refreshed (file locks cleared)"
-          }
-        shell: pwsh
-
       - name: Build Electron App
         run: |
           cd locaNext
           npm run build
           npm run build:electron
+        shell: pwsh
+
+      - name: Copy Model2Vec to Build Output
+        run: |
+          # Model2Vec removed from electron-builder extraResources to avoid EBUSY file locks
+          # Copy manually after electron-builder completes
+          $src = "models\Model2Vec"
+          $dst = "locaNext\dist-electron\win-unpacked\resources\models\Model2Vec"
+          if (Test-Path $src) {
+            New-Item -ItemType Directory -Path $dst -Force | Out-Null
+            Copy-Item -Path "$src\*" -Destination $dst -Recurse -Force
+            Write-Host "[OK] Model2Vec copied to build output ($((Get-ChildItem $dst -Recurse | Measure-Object).Count) files)"
+          } else {
+            Write-Host "[WARN] Model2Vec source not found — AI embeddings will download on first launch"
+          }
         shell: pwsh
 
       - name: Verify Electron Build
