@@ -1,1 +1,1 @@
-Build QuickTranslate — detailed validation warnings with StringID + reason
+Build QuickTranslate — fix desc transfer overwrite, detailed validation
