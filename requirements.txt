@@ -38,6 +38,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart>=0.0.18  # CVE-2024-53981 fix
 sse-starlette>=1.6.0  # SSE streaming for merge progress events
+pyahocorasick>=2.0.0  # Fast multi-pattern matching for entity detection + QA term check
 python-socketio>=5.14.0  # CVE-2025-61765 fix
 
 # Database

@@ -15,7 +15,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import ahocorasick
+try:
+    import ahocorasick
+    HAS_AHOCORASICK = True
+except ImportError:
+    HAS_AHOCORASICK = False
 from loguru import logger
 
 from server.utils.qa_helpers import is_isolated, is_sentence, has_punctuation
@@ -68,7 +72,7 @@ class GlossaryService:
     """
 
     def __init__(self):
-        self._automaton: Optional[ahocorasick.Automaton] = None
+        self._automaton = None  # Optional[ahocorasick.Automaton]
         self._entity_index: Dict[str, EntityInfo] = {}
         self._loaded: bool = False
 
@@ -82,6 +86,12 @@ class GlossaryService:
         Args:
             entities: List of (entity_name, EntityInfo) pairs.
         """
+        if not HAS_AHOCORASICK:
+            logger.warning("ahocorasick not available — glossary entity detection disabled (install pyahocorasick)")
+            self._entity_index = {}
+            self._loaded = True
+            return
+
         self._automaton = ahocorasick.Automaton()
         self._entity_index = {}
 
