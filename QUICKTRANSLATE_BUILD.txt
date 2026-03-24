@@ -1,1 +1,1 @@
-Build QuickTranslate — DescText renamed to Desc in TMX Excel output
+Build QuickTranslate — cross-format TMX creation (XML + Excel folder mode)
