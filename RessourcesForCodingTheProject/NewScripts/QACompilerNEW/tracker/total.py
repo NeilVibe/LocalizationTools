@@ -321,10 +321,9 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["no_issue"] += data["no_issue"]
         user_data[user]["blocked"] += data["blocked"]
         user_data[user]["korean"] += data.get("korean", 0)
-        user_data[user]["active_issues"] += data.get("active_issues", 0)
-        user_data[user]["active_pending"] += data.get("active_pending", 0)
 
-        # Manager stats: only count once per master category group
+        # Manager + active stats: only count once per master category group
+        # (Item+Gimmick both map to Master_Item → count only once)
         master_cat = get_target_master_category(category) if category else category
         manager_key = (user, master_cat)
         if manager_key not in counted_manager_stats:
@@ -332,6 +331,8 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
             user_data[user]["reported"] += data["reported"]
             user_data[user]["checking"] += data["checking"]
             user_data[user]["nonissue"] += data["nonissue"]
+            user_data[user]["active_issues"] += data.get("active_issues", 0)
+            user_data[user]["active_pending"] += data.get("active_pending", 0)
             counted_manager_stats.add(manager_key)
 
         # GRANULAR: Track ALL categories for each user
