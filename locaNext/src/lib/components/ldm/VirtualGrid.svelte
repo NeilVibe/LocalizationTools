@@ -18,6 +18,7 @@
   import ColorText from "./ColorText.svelte";
   import TagText from "./TagText.svelte";
   import CategoryFilter from "./CategoryFilter.svelte";
+  import { getStatusKind } from '$lib/utils/statusColors';
 
   // Category color map (synced with CategoryFilter)
   const CATEGORY_COLORS = {
@@ -2166,15 +2167,7 @@
     logger.info("Real-time updates applied", { count: updates.length });
   }
 
-  // Get status tag type (3-state: teal=confirmed, yellow=draft, gray=empty)
-  function getStatusKind(status) {
-    switch (status) {
-      case 'approved': return 'teal';
-      case 'reviewed': return 'teal';
-      case 'translated': return 'warm-gray';
-      default: return 'gray';
-    }
-  }
+  // getStatusKind imported from $lib/utils/statusColors
 
   // Format text for grid display - show actual line breaks
   // Text is displayed with pre-wrap, so \n shows as real line breaks
