@@ -15,7 +15,7 @@ Full details in `.planning/milestones/`:
 ## Phases
 
 - [x] **Phase 83: Test Infrastructure** - Stand up Vitest + @testing-library/svelte, write unit tests for tagDetector.js, TagText.svelte, and status color logic (completed 2026-03-25)
-- [ ] **Phase 84: VirtualGrid Decomposition** - Extract 5 composable modules from VirtualGrid.svelte (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors)
+- [ ] **Phase 84: VirtualGrid Decomposition** - Extract 6 composable modules from VirtualGrid.svelte (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine)
 - [ ] **Phase 85: Regression Verification** - Confirm all existing E2E/Playwright tests pass after decomposition with zero behavior changes
 
 ## Phase Details
@@ -36,7 +36,7 @@ Plans:
 - [x] 83-02-PLAN.md — StatusColors extraction + tests, TagText component tests, full coverage verification
 
 ### Phase 84: VirtualGrid Decomposition
-**Goal**: VirtualGrid.svelte is decomposed into 5 focused modules, each testable in isolation
+**Goal**: VirtualGrid.svelte is decomposed into 6 focused modules + thin orchestrator, each testable in isolation
 **Depends on**: Phase 83
 **Requirements**: GRID-02, GRID-03, GRID-04, GRID-05, GRID-06, GRID-07
 **Success Criteria** (what must be TRUE):
@@ -46,7 +46,11 @@ Plans:
   4. SelectionManager module handles cell selection, keyboard navigation, and multi-select
   5. InlineEditor module handles textarea editing, save/cancel, and keyboard shortcuts
   6. StatusColors module encapsulates the 3-state status scheme, hover states, and QA badge styling
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 84-01-PLAN.md — Batch 1: gridState.svelte.ts + ScrollEngine + StatusColors extraction
+- [ ] 84-02-PLAN.md — Batch 2: CellRenderer + SelectionManager extraction
+- [ ] 84-03-PLAN.md — Batch 3: InlineEditor + SearchEngine extraction, parent slim-down, final verification
 
 ### Phase 85: Regression Verification
 **Goal**: The decomposed grid behaves identically to the original VirtualGrid with zero user-visible changes
@@ -63,5 +67,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 83. Test Infrastructure | 2/2 | Complete   | 2026-03-25 |
-| 84. VirtualGrid Decomposition | 0/? | Not started | - |
+| 84. VirtualGrid Decomposition | 0/3 | Not started | - |
 | 85. Regression Verification | 0/? | Not started | - |
