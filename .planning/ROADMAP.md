@@ -55,6 +55,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 80. Tag Pill Overhaul | 1/1 | Complete   | 2026-03-25 |
+| 80. Tag Pill Overhaul | 1/1 | Complete    | 2026-03-25 |
 | 81. Grid Polish | 0/TBD | Not started | - |
 | 82. Visual Verification | 0/TBD | Not started | - |
