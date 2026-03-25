@@ -1,1 +1,1 @@
-Build QuickTranslate — fix desc transfer overwrite, detailed validation
+Build QuickTranslate — fix lone bracket SECONDARY WARNING for source-matching entries
