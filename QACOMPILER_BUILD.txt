@@ -1,1 +1,1 @@
-Build QACompiler — Issues/Pending now masterfile-based, old formula removed
+Build QACompiler — fix double-counted pending from clustered categories
