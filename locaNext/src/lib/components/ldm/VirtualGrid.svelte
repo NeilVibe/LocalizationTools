@@ -32,6 +32,7 @@
   import ScrollEngine from './grid/ScrollEngine.svelte';
   import StatusColors from './grid/StatusColors.svelte';
   import CellRenderer from './grid/CellRenderer.svelte';
+  import SelectionManager from './grid/SelectionManager.svelte';
 
   // Phase 84 Batch 2: CATEGORY_COLORS, getCategoryColor moved to CellRenderer.svelte
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
@@ -174,10 +175,8 @@
 
   // Phase 84: tmSuggestions, tmLoading, qaLoading, lastQaResult moved to StatusColors
 
-  // UX-002: Cell context menu state
-  let showContextMenu = $state(false);
-  let contextMenuPosition = $state({ x: 0, y: 0 });
-  let contextMenuRowId = $state(null);
+  // Phase 84 Batch 2: Context menu state moved to SelectionManager.svelte
+  let selectionManager = $state(null);
 
   // Phase 84 Batch 2: Column definitions, resize system, getVisibleColumns all moved to CellRenderer.svelte
   // Phase 84: referenceData and referenceLoading moved to StatusColors
@@ -701,119 +700,13 @@
     textSelection = { start: 0, end: 0, text: "" };
   }
 
-  /**
-   * Handle keyboard events at grid level (selection mode - single click on row)
-   * Works when a row is selected but NOT being edited
-   */
+  // Phase 84 Batch 2: handleGridKeydown moved to SelectionManager.handleKeyDown
+  // Delegate to selectionManager
   function handleGridKeydown(e) {
-    // Skip if in edit mode (textarea handles its own keys)
-    if (grid.inlineEditingRowId) return;
-
-    // Skip if no row selected
-    if (!grid.selectedRowId) return;
-
-    // Skip if focus is in search/filter inputs
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    const row = getRowById(grid.selectedRowId);
-    if (!row) return;
-
-    // Ctrl+S: Confirm selected row
-    if (e.ctrlKey && e.key === 's') {
-      e.preventDefault();
-      confirmSelectedRow(row);
-      return;
-    }
-
-    // Ctrl+D: Dismiss QA for selected row
-    if (e.ctrlKey && e.key === 'd') {
-      e.preventDefault();
-      dismissQAIssues();
-      return;
-    }
-
-    // Enter: Start editing selected row
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const lock = isRowLocked(parseInt(row.id));
-      if (!lock) {
-        startInlineEdit(row);
-      }
-      return;
-    }
-
-    // Escape: Clear selection
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      grid.selectedRowId = null;
-      return;
-    }
-
-    // Arrow Down: Move to next row
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const currentIndex = getRowIndexById(grid.selectedRowId);
-      if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
-        grid.selectedRowId = grid.rows[currentIndex + 1].id;
-        onRowSelect?.({ row: grid.rows[currentIndex + 1] });
-      }
-      return;
-    }
-
-    // Arrow Up: Move to previous row
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const currentIndex = getRowIndexById(grid.selectedRowId);
-      if (currentIndex !== undefined && currentIndex > 0 && grid.rows[currentIndex - 1]) {
-        grid.selectedRowId = grid.rows[currentIndex - 1].id;
-        onRowSelect?.({ row: grid.rows[currentIndex - 1] });
-      }
-      return;
-    }
+    selectionManager?.handleKeyDown(e);
   }
 
-  /**
-   * Confirm selected row (mark as reviewed + add to TM) without editing
-   */
-  async function confirmSelectedRow(row) {
-    if (!row) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-        method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: 'reviewed'
-        })
-      });
-
-      if (response.ok) {
-        row.status = 'reviewed';
-        logger.success("Row confirmed (selection mode)", { rowId: row.id });
-
-        // Dispatch event to add to linked TM
-        onConfirmTranslation?.({
-          rowId: row.id,
-          source: row.source,
-          target: row.target
-        });
-
-        onRowUpdate?.({ rowId: row.id });
-
-        // Move to next row
-        const currentIndex = getRowIndexById(row.id);
-        if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
-          grid.selectedRowId = rows[currentIndex + 1].id;
-          onRowSelect?.({ row: rows[currentIndex + 1] });
-        }
-      }
-    } catch (err) {
-      logger.error("Error confirming row", { error: err.message });
-    }
-  }
+  // Phase 84 Batch 2: confirmSelectedRow moved to SelectionManager
 
   /**
    * Handle keyboard events during inline edit
@@ -1017,20 +910,9 @@
     }, 0);
   }
 
-  /**
-   * Dismiss QA issues for current row
-   */
-  function dismissQAIssues() {
-    // Works in both edit mode and selection mode
-    const targetRowId = grid.inlineEditingRowId || grid.selectedRowId;
-    if (!targetRowId) return;
-
-    const row = getRowById(targetRowId);
-    if (!row) return;
-
-    onDismissQA?.({ rowId: row.id });
-    logger.userAction("QA issues dismissed", { rowId: row.id });
-  }
+  // Phase 84 Batch 2: dismissQAIssues moved to SelectionManager
+  // Keep local delegate for inline edit keyboard handler (Ctrl+D)
+  function dismissQAIssues() { selectionManager?.dismissQAIssues?.(); }
 
   /**
    * Revert row status to untranslated (Ctrl+U)
@@ -1073,135 +955,12 @@
     }
   }
 
-  // ============================================================
-  // UX-002: CELL CONTEXT MENU
-  // ============================================================
-
-  /**
-   * Handle right-click on cell row
-   */
-  function handleCellContextMenu(e, rowId) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    contextMenuRowId = rowId;
-    contextMenuPosition = { x: e.clientX, y: e.clientY };
-    showContextMenu = true;
-
-    // Also select the row
-    grid.selectedRowId = rowId;
-    const row = getRowById(rowId);
-    if (row) {
-      onRowSelect?.({ row });
-    }
-  }
-
-  /**
-   * Close context menu
-   */
-  function closeContextMenu() {
-    showContextMenu = false;
-    contextMenuRowId = null;
-  }
-
-  /**
-   * Set row status via context menu
-   */
-  async function setRowStatus(status) {
-    closeContextMenu();
-    if (!contextMenuRowId) return;
-
-    const row = getRowById(contextMenuRowId);
-    if (!row || row.status === status) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-        method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status })
-      });
-
-      if (response.ok) {
-        row.status = status;
-        logger.success(`Row status set to ${status}`, { rowId: row.id });
-        onRowUpdate?.({ rowId: row.id });
-
-        // If confirming, also dispatch for TM auto-add
-        if (status === 'reviewed') {
-          onConfirmTranslation?.({
-            rowId: row.id,
-            source: row.source,
-            target: row.target
-          });
-        }
-      }
-    } catch (err) {
-      logger.error("Error setting row status", { error: err.message });
-    }
-  }
-
-  /**
-   * Copy text to clipboard
-   */
-  async function copyToClipboard(text, label) {
-    closeContextMenu();
-    try {
-      await navigator.clipboard.writeText(text);
-      logger.success(`${label} copied to clipboard`);
-    } catch (err) {
-      logger.error("Failed to copy to clipboard", { error: err.message });
-    }
-  }
-
-  /**
-   * Run QA on row via context menu
-   */
-  function runQAOnRow() {
-    closeContextMenu();
-    if (!contextMenuRowId) return;
-
-    const row = getRowById(contextMenuRowId);
-    if (!row) return;
-
-    // Dispatch QA request event
-    onRunQA?.({ rowId: row.id, source: row.source, target: row.target });
-    logger.userAction("QA check requested from context menu", { rowId: row.id });
-  }
-
-  /**
-   * Dismiss QA via context menu
-   */
-  function dismissQAFromContextMenu() {
-    closeContextMenu();
-    if (!contextMenuRowId) return;
-
-    onDismissQA?.({ rowId: contextMenuRowId });
-    logger.userAction("QA dismissed from context menu", { rowId: contextMenuRowId });
-  }
-
-  /**
-   * Add row to TM via context menu
-   */
-  function addToTMFromContextMenu() {
-    closeContextMenu();
-    if (!contextMenuRowId) return;
-
-    const row = getRowById(contextMenuRowId);
-    if (!row) return;
-
-    onAddToTM?.({ rowId: row.id, source: row.source, target: row.target });
-    logger.userAction("Add to TM requested from context menu", { rowId: row.id });
-  }
-
-  // Close context menu on click outside
-  function handleGlobalClick(e) {
-    if (showContextMenu) {
-      closeContextMenu();
-    }
-  }
+  // Phase 84 Batch 2: Context menu functions (handleCellContextMenu, closeContextMenu,
+  // setRowStatus, copyToClipboard, runQAOnRow, dismissQAFromContextMenu, addToTMFromContextMenu,
+  // handleGlobalClick) all moved to SelectionManager.svelte
+  // Delegate context menu and cell click to selectionManager
+  function handleCellContextMenu(e, rowId) { selectionManager?.handleContextMenu(e, rowId); }
+  function handleGlobalClick(e) { selectionManager?.handleGlobalClick(e); }
 
   // Undo/Redo state
   let undoStack = $state([]);
@@ -1351,42 +1110,12 @@
 
   // UI-029: downloadFile removed - users download via right-click on FileExplorer
 
-  // Pre-fetch TM on cell click
-  let prefetchedRowId = null;
-
-  function handleCellClick(row, event) {
-    if (!row || row.placeholder) return;
-
-    // Select the row
-    grid.selectedRowId = row.id;
-
-    // Phase 1: Dispatch rowSelect event for side panel
-    onRowSelect?.({ row });
-
-    // Pre-fetch TM suggestions if not already fetched
-    if (prefetchedRowId !== row.id && row.source) {
-      prefetchedRowId = row.id;
-      fetchTMSuggestions(row.source, row.id);
-      logger.info("Pre-fetching TM for row", { rowId: row.id });
-    }
-  }
-
-  // HOVER SYSTEM: Track mouse enter/leave on cells
-  function handleCellMouseEnter(row, cellType) {
-    if (!row || row.placeholder) return;
-    grid.hoveredRowId = row.id;
-    grid.hoveredCell = cellType; // 'source' or 'target'
-  }
-
-  function handleCellMouseLeave() {
-    grid.hoveredRowId = null;
-    grid.hoveredCell = null;
-  }
-
-  function handleRowMouseLeave() {
-    grid.hoveredRowId = null;
-    grid.hoveredCell = null;
-  }
+  // Phase 84 Batch 2: handleCellClick, hover handlers, prefetchedRowId moved to SelectionManager
+  // Delegate cell click to selectionManager
+  function handleCellClick(row, event) { selectionManager?.handleRowClick(row, event); }
+  function handleCellMouseEnter(row, cellType) { selectionManager?.handleCellMouseEnter(row, cellType); }
+  function handleCellMouseLeave() { selectionManager?.handleCellMouseLeave(); }
+  function handleRowMouseLeave() { selectionManager?.handleRowMouseLeave(); }
 
   // Phase 84 Batch 2: Resize handlers moved to CellRenderer.svelte
   // Phase 84: visibleRows moved to gridState.svelte.ts (cross-module derived)
@@ -1511,6 +1240,18 @@
       bind:this={statusColors}
       {fileId}
       {activeTMs}
+    />
+    <!-- Phase 84 Batch 2: SelectionManager handles row selection, keyboard nav, hover, context menu -->
+    <SelectionManager
+      bind:this={selectionManager}
+      {onRowSelect}
+      onEditRequest={(row) => startInlineEdit(row)}
+      {onRowUpdate}
+      {onConfirmTranslation}
+      {onDismissQA}
+      {onRunQA}
+      {onAddToTM}
+      onTMPrefetch={fetchTMSuggestions}
     />
     <div class="grid-header">
       <div class="header-left">
@@ -1772,81 +1513,7 @@
     </div>
   {/if}
 
-  <!-- UX-002: Cell Context Menu -->
-  {#if showContextMenu}
-    {@const contextRow = getRowById(contextMenuRowId)}
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="context-menu"
-      style="left: {contextMenuPosition.x}px; top: {contextMenuPosition.y}px;"
-      onclick={(e) => e.stopPropagation()}
-    >
-      <div class="context-menu-section">
-        <button
-          class="context-item"
-          onclick={() => setRowStatus('reviewed')}
-          disabled={contextRow?.status === 'reviewed'}
-        >
-          <span class="context-icon">✓</span>
-          <span>Confirm</span>
-          <span class="context-shortcut">Ctrl+S</span>
-        </button>
-        <button
-          class="context-item"
-          onclick={() => setRowStatus('translated')}
-          disabled={contextRow?.status === 'translated'}
-        >
-          <span class="context-icon">📝</span>
-          <span>Set as Translated</span>
-        </button>
-        <button
-          class="context-item"
-          onclick={() => setRowStatus('untranslated')}
-          disabled={contextRow?.status === 'untranslated'}
-        >
-          <span class="context-icon">↩</span>
-          <span>Set as Untranslated</span>
-          <span class="context-shortcut">Ctrl+U</span>
-        </button>
-      </div>
-      <div class="context-menu-divider"></div>
-      <div class="context-menu-section">
-        <button class="context-item" onclick={runQAOnRow}>
-          <span class="context-icon">⚠</span>
-          <span>Run QA on Row</span>
-        </button>
-        <button
-          class="context-item"
-          onclick={dismissQAFromContextMenu}
-          disabled={!contextRow?.qa_flag_count}
-        >
-          <span class="context-icon">✗</span>
-          <span>Dismiss QA Issues</span>
-          <span class="context-shortcut">Ctrl+D</span>
-        </button>
-        <button class="context-item" onclick={addToTMFromContextMenu}>
-          <span class="context-icon">+</span>
-          <span>Add to TM</span>
-        </button>
-      </div>
-      <div class="context-menu-divider"></div>
-      <div class="context-menu-section">
-        <button class="context-item" onclick={() => copyToClipboard(contextRow?.source || '', 'Source')}>
-          <span class="context-icon">📋</span>
-          <span>Copy Source</span>
-        </button>
-        <button class="context-item" onclick={() => copyToClipboard(contextRow?.target || '', 'Target')}>
-          <span class="context-icon">📋</span>
-          <span>Copy Target</span>
-        </button>
-        <button class="context-item" onclick={() => copyToClipboard(`${contextRow?.source || ''}\t${contextRow?.target || ''}`, 'Row')}>
-          <span class="context-icon">📋</span>
-          <span>Copy Row</span>
-        </button>
-      </div>
-    </div>
-  {/if}
+  <!-- Phase 84 Batch 2: Context menu markup moved to SelectionManager.svelte -->
 </div>
 
 <!-- svelte:window for closing context menu -->
@@ -2382,66 +2049,7 @@
      - TMQAPanel.svelte (side panel for TM/QA)
      ======================================== */
 
-  /* ========================================
-     UX-002: Cell Context Menu
-     ======================================== */
-  .context-menu {
-    position: fixed;
-    z-index: 1000;
-    min-width: 200px;
-    background: var(--cds-layer-02, #262626);
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    padding: 0.25rem 0;
-  }
-
-  .context-menu-section {
-    padding: 0.25rem 0;
-  }
-
-  .context-menu-divider {
-    height: 1px;
-    background: var(--cds-border-subtle-01);
-    margin: 0.25rem 0;
-  }
-
-  .context-item {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: none;
-    text-align: left;
-    color: var(--cds-text-01);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: background 0.1s ease;
-    gap: 0.75rem;
-  }
-
-  .context-item:hover:not(:disabled) {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .context-item:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .context-icon {
-    width: 1rem;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .context-shortcut {
-    margin-left: auto;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    opacity: 0.7;
-  }
+  /* Phase 84 Batch 2: Context menu CSS moved to SelectionManager.svelte */
 
   /* Phase 84 Batch 2: ai-badge, translation-source-badge CSS moved to CellRenderer.svelte */
 
