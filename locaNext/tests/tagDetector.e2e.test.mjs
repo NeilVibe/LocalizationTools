@@ -1,18 +1,17 @@
 /**
  * Tag Detector E2E Mock Tests
  *
- * Tests the FULL data flow: DB raw text → detect → display → edit → save → merge
+ * Tests the FULL data flow: DB raw text -> detect -> display -> edit -> save -> merge
  * Proves tag pills are display-only and never corrupt stored/merged data.
  *
- * Run: node --test tests/tagDetector.e2e.test.mjs
+ * Run: npx vitest run tests/tagDetector.e2e.test.mjs
  */
 
-import assert from 'node:assert';
-import { describe, it } from 'node:test';
+import { describe, it, expect } from 'vitest';
 import { detectTags, hasTags } from '../src/lib/utils/tagDetector.js';
 
 // ============================================================
-// MOCK DATA — realistic game localization strings
+// MOCK DATA -- realistic game localization strings
 // ============================================================
 
 const MOCK_DB_ROWS = [
@@ -108,30 +107,30 @@ function mockXmlAttribute(row) {
 
 describe('E2E: Tag pill display does NOT corrupt data', () => {
 
-  describe('1. DB → Display: pills render on both source and target', () => {
+  describe('1. DB -> Display: pills render on both source and target', () => {
     for (const row of MOCK_DB_ROWS) {
       it(`row ${row.id} (${row.stringid}): source has tags=${hasTags(row.source)}`, () => {
         const sourceSegs = detectTags(row.source);
         const targetSegs = detectTags(row.target);
         // Both produce valid segment arrays
-        assert.ok(Array.isArray(sourceSegs), 'source segments is array');
-        assert.ok(Array.isArray(targetSegs), 'target segments is array');
-        assert.ok(sourceSegs.length > 0, 'source has segments');
-        assert.ok(targetSegs.length > 0, 'target has segments');
+        expect(Array.isArray(sourceSegs)).toBeTruthy();
+        expect(Array.isArray(targetSegs)).toBeTruthy();
+        expect(sourceSegs.length > 0).toBeTruthy();
+        expect(targetSegs.length > 0).toBeTruthy();
       });
     }
   });
 
-  describe('2. Display → Raw: round-trip integrity for ALL columns', () => {
+  describe('2. Display -> Raw: round-trip integrity for ALL columns', () => {
     for (const row of MOCK_DB_ROWS) {
       it(`row ${row.id}: source round-trips perfectly`, () => {
         const segs = detectTags(row.source);
-        assert.strictEqual(reconstructRaw(segs), row.source);
+        expect(reconstructRaw(segs)).toBe(row.source);
       });
 
       it(`row ${row.id}: target round-trips perfectly`, () => {
         const segs = detectTags(row.target);
-        assert.strictEqual(reconstructRaw(segs), row.target);
+        expect(reconstructRaw(segs)).toBe(row.target);
       });
     }
   });
@@ -142,8 +141,7 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
         // Merge compares DB source text against XML file source text
         // This MUST use raw text, never pill-rendered HTML
         const xmlText = mockXmlAttribute(row);
-        assert.strictEqual(row.source, xmlText,
-          `StrOrigin mismatch! DB: "${row.source}" vs XML: "${xmlText}"`);
+        expect(row.source).toBe(xmlText);
       });
 
       it(`row ${row.id}: detectTags output preserves merge-matchable text`, () => {
@@ -151,8 +149,7 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
         const segs = detectTags(row.source);
         const reconstructed = reconstructRaw(segs);
         const xmlText = mockXmlAttribute(row);
-        assert.strictEqual(reconstructed, xmlText,
-          'Reconstructed text must match XML for merge');
+        expect(reconstructed).toBe(xmlText);
       });
     }
   });
@@ -161,22 +158,22 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
     for (const row of MOCK_DB_ROWS) {
       it(`row ${row.id}: simulated edit-save preserves raw text`, () => {
         // Simulate the VirtualGrid flow:
-        // 1. Display mode: detectTags(row.target) → pills
+        // 1. Display mode: detectTags(row.target) -> pills
         const displaySegs = detectTags(row.target);
 
-        // 2. User double-clicks → edit mode shows RAW text
+        // 2. User double-clicks -> edit mode shows RAW text
         const editModeText = row.target; // contenteditable gets raw text
 
-        // 3. User saves without changes → raw text goes to API
+        // 3. User saves without changes -> raw text goes to API
         const savedText = editModeText;
 
         // 4. After save: display re-renders with pills
         const afterSaveSegs = detectTags(savedText);
 
         // Verify: saved text === original (no corruption)
-        assert.strictEqual(savedText, row.target);
+        expect(savedText).toBe(row.target);
         // Verify: pill rendering is identical before and after
-        assert.deepStrictEqual(afterSaveSegs, displaySegs);
+        expect(afterSaveSegs).toEqual(displaySegs);
       });
     }
   });
@@ -190,15 +187,12 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
         ];
         for (const seg of allSegs) {
           if (seg.text) {
-            assert.ok(!seg.text.includes('<span'),
-              `HTML found in plain text segment: "${seg.text}"`);
-            assert.ok(!seg.text.includes('tag-pill'),
-              `Pill class found in plain text: "${seg.text}"`);
+            expect(seg.text.includes('<span')).toBe(false);
+            expect(seg.text.includes('tag-pill')).toBe(false);
           }
           if (seg.tag) {
             // tag.raw must be the original text, not HTML
-            assert.ok(!seg.tag.raw.includes('<span'),
-              `HTML found in tag raw: "${seg.tag.raw}"`);
+            expect(seg.tag.raw.includes('<span')).toBe(false);
           }
         }
       });
@@ -211,10 +205,8 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
         // TM embeddings use the raw DB text, not pill-rendered
         // This test proves the text we'd send to Model2Vec is clean
         const textForEmbedding = row.source; // always raw from DB
-        assert.ok(!textForEmbedding.includes('<span'),
-          'Embedding text must not contain HTML');
-        assert.ok(!textForEmbedding.includes('tag-pill'),
-          'Embedding text must not contain pill markup');
+        expect(textForEmbedding.includes('<span')).toBe(false);
+        expect(textForEmbedding.includes('tag-pill')).toBe(false);
       });
     }
   });
@@ -224,9 +216,9 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
       it(`row ${row.id}: export text === DB raw text`, () => {
         const exportText = row.target; // export reads raw from DB
         // Verify it can be written directly to XML attribute
-        assert.ok(typeof exportText === 'string');
-        assert.ok(!exportText.includes('tag-pill'));
-        assert.ok(!exportText.includes('<span class'));
+        expect(typeof exportText).toBe('string');
+        expect(exportText.includes('tag-pill')).toBe(false);
+        expect(exportText.includes('<span class')).toBe(false);
       });
     }
   });
@@ -236,26 +228,26 @@ describe('E2E: Tag pill display does NOT corrupt data', () => {
       const row = MOCK_DB_ROWS[4]; // UI_COMPLEX
       const segs = detectTags(row.source);
       const tagTypes = segs.filter(s => s.tag).map(s => s.tag.type);
-      assert.deepStrictEqual(tagTypes, ['staticinfo', 'braced', 'param', 'escape', 'desc']);
+      expect(tagTypes).toEqual(['staticinfo', 'braced', 'param', 'escape', 'desc']);
     });
 
     it('target (English) gets same tag types', () => {
       const row = MOCK_DB_ROWS[4]; // UI_COMPLEX
       const segs = detectTags(row.target);
       const tagTypes = segs.filter(s => s.tag).map(s => s.tag.type);
-      assert.deepStrictEqual(tagTypes, ['staticinfo', 'braced', 'param', 'escape', 'desc']);
+      expect(tagTypes).toEqual(['staticinfo', 'braced', 'param', 'escape', 'desc']);
     });
   });
 
   describe('9. Performance: hasTags fast-path skips regex for plain text', () => {
     it('plain text (no tags) skips full detection', () => {
       const plain = MOCK_DB_ROWS[5]; // UI_PLAIN_TEXT
-      assert.strictEqual(hasTags(plain.source), false);
-      assert.strictEqual(hasTags(plain.target), false);
+      expect(hasTags(plain.source)).toBe(false);
+      expect(hasTags(plain.target)).toBe(false);
       // detectTags still works but returns single text segment
       const segs = detectTags(plain.source);
-      assert.strictEqual(segs.length, 1);
-      assert.ok(segs[0].text);
+      expect(segs).toHaveLength(1);
+      expect(segs[0].text).toBeTruthy();
     });
   });
 });
