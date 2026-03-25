@@ -46,17 +46,17 @@ Requirements for UI Polish + Tag Pill Redesign milestone. Fixes 4 issues found d
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TAG-04 | TBD | Pending |
-| TAG-05 | TBD | Pending |
-| TAG-06 | TBD | Pending |
-| GRID-01 | TBD | Pending |
-| VIS-01 | TBD | Pending |
+| TAG-04 | Phase 80 | Pending |
+| TAG-05 | Phase 80 | Pending |
+| TAG-06 | Phase 80 | Pending |
+| GRID-01 | Phase 81 | Pending |
+| VIS-01 | Phase 82 | Pending |
 
 **Coverage:**
 - v10.0 requirements: 5 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 5
+- Mapped to phases: 5
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation*
