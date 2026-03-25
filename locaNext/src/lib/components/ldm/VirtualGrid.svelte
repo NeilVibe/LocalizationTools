@@ -50,6 +50,7 @@
     PREFETCH_PAGES,
   } from './grid/gridState.svelte.ts';
   import ScrollEngine from './grid/ScrollEngine.svelte';
+  import StatusColors from './grid/StatusColors.svelte';
 
   // Category color map (synced with CategoryFilter)
   const CATEGORY_COLORS = {
@@ -206,13 +207,7 @@
 
   // Phase 84: grid.selectedRowId, grid.hoveredRowId, grid.hoveredCell moved to grid state object
 
-  // TM suggestions state
-  let tmSuggestions = $state([]);
-  let tmLoading = $state(false);
-
-  // P2: QA state
-  let qaLoading = $state(false);
-  let lastQaResult = $state(null); // Latest QA check result (for QA badge updates)
+  // Phase 84: tmSuggestions, tmLoading, qaLoading, lastQaResult moved to StatusColors
 
   // UX-002: Cell context menu state
   let showContextMenu = $state(false);
@@ -344,11 +339,11 @@
       : translatorColumns
   );
 
-  // Phase 84: referenceData moved to gridState (gridReferenceData). referenceLoading stays local.
-  let referenceLoading = $state(false);
+  // Phase 84: referenceData and referenceLoading moved to StatusColors
+  // Local derived for template access
+  let referenceLoading = $derived(statusColors?.isReferenceLoading() ?? false);
 
-  // TM results cache (per row)
-  let tmResults = $state(new Map()); // row_id -> { target, similarity, source }
+  // Phase 84: tmResults moved to StatusColors
 
   // Svelte 5: Derived - visible columns based on preferences
   // Dual UI Mode: visibleColumns reacts to fileType changes via allColumns dependency
@@ -418,6 +413,7 @@
   // scrollToRowById, scrollToRowNum all moved to ScrollEngine.svelte
   // ScrollEngine component ref for delegation
   let scrollEngine = $state(null);
+  let statusColors = $state(null);
 
   // Re-export scroll functions via delegation
   export function scrollToRowById(rowId) { return scrollEngine?.scrollToRowById(rowId) ?? false; }
@@ -439,34 +435,9 @@
     }
   }
 
-  // Phase 2: Export function to update a row's QA flag count (for Ctrl+D dismiss)
-  export function updateRowQAFlag(rowId, flagCount) {
-    const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && grid.rows[rowIndex]) {
-      grid.rows[rowIndex] = {
-        ...grid.rows[rowIndex],
-        qa_flag_count: flagCount
-      };
-      grid.rows = [...grid.rows]; // Trigger reactivity
-      logger.info('Updated row QA flag', { rowId, flagCount });
-    } else {
-      logger.warning("Row not found for QA flag update", { rowId });
-    }
-  }
-
-  // P16-02: Handle QA dismiss from inline badge (optimistic UI)
-  function handleQADismiss(rowId) {
-    const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && grid.rows[rowIndex]) {
-      const currentCount = grid.rows[rowIndex].qa_flag_count || 0;
-      grid.rows[rowIndex] = {
-        ...grid.rows[rowIndex],
-        qa_flag_count: Math.max(0, currentCount - 1)
-      };
-      grid.rows = [...grid.rows]; // Trigger reactivity
-      logger.info('QA inline dismiss', { rowId, newCount: grid.rows[rowIndex].qa_flag_count });
-    }
-  }
+  // Phase 84: updateRowQAFlag and handleQADismiss delegated to StatusColors
+  export function updateRowQAFlag(rowId, flagCount) { return statusColors?.updateRowQAFlag(rowId, flagCount); }
+  function handleQADismiss(rowId) { return statusColors?.handleQADismiss(rowId); }
 
   // Phase 84: loadRows delegates to ScrollEngine with pre-reset of interaction state
   export async function loadRows() {
@@ -477,12 +448,11 @@
     grid.selectedRowId = null;
     grid.hoveredRowId = null;
     grid.hoveredCell = null;
-    tmResults = new Map();
-    gridReferenceData.clear();
     semanticResults = [];
     grid.activeFilter = "all";
     grid.selectedCategories = [];
     tmAppliedRows.clear();
+    gridReferenceData.clear();
     searchTerm = "";
     const inputEl = document.getElementById('ldm-search-input');
     if (inputEl) inputEl.value = "";
@@ -602,12 +572,8 @@
     logger.userAction("Applied TM to row", { lineNumber, target: targetText?.substring(0, 30) });
   }
 
-  // P4: Export function to mark a row as TM-applied (called from parent)
-  export function markRowAsTMApplied(rowId, matchType = 'fuzzy') {
-    tmAppliedRows.set(rowId.toString(), { match_type: matchType });
-    // Note: $state(Map) tracks .set() calls reactively in Svelte 5
-    logger.info("Row marked as TM-applied", { rowId, matchType });
-  }
+  // Phase 84: markRowAsTMApplied delegated to StatusColors
+  export function markRowAsTMApplied(rowId, matchType = 'fuzzy') { return statusColors?.markRowAsTMApplied(rowId, matchType); }
 
   // P2: Handle filter change
   function handleFilterChange(event) {
@@ -629,287 +595,19 @@
 
   // Go to specific row - REMOVED (BUG-001 - not useful)
 
-  // Fetch TM suggestions for a source text - USES HIERARCHY TMs, falls back to project-row search
-  async function fetchTMSuggestions(sourceText, rowId) {
-    if (!sourceText || !sourceText.trim()) {
-      tmSuggestions = [];
-      return;
-    }
+  // Phase 84: fetchTMSuggestions moved to StatusColors.svelte
+  function fetchTMSuggestions(sourceText, rowId) { return statusColors?.fetchTMSuggestions(sourceText, rowId); }
 
-    tmLoading = true;
-    tmSuggestions = [];
+  // Phase 84: runQACheck, fetchQAResults moved to StatusColors.svelte
 
-    try {
-      const params = new URLSearchParams({
-        source: sourceText,
-        threshold: $preferences.tmThreshold.toString(),
-        max_results: '5'
-      });
-
-      // If active TMs from hierarchy, search TM entries; otherwise fall back to file-based row search
-      if (activeTMs && activeTMs.length > 0) {
-        params.append('tm_id', activeTMs[0].tm_id.toString());
-      }
-      if (fileId) params.append('file_id', fileId.toString());
-      if (rowId) params.append('exclude_row_id', rowId.toString());
-
-      const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        tmSuggestions = data.suggestions || [];
-        const tmId = activeTMs?.[0]?.tm_id || 'project-rows';
-        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId });
-      }
-    } catch (err) {
-      logger.error("Failed to fetch TM suggestions", { error: err.message });
-    } finally {
-      tmLoading = false;
-    }
-  }
-
-  // Phase 2: applyTMSuggestion REMOVED - TM application now handled via
-  // TMQAPanel.svelte 'applyTM' event -> LDM.svelte -> applyTMToRow()
-
-  // P2: Run QA check on a row
-  async function runQACheck(rowId) {
-    if (!rowId) return null;
-
-    qaLoading = true;
-    lastQaResult = null;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}/check-qa`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          checks: ["line", "pattern", "term"],
-          force: true
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        lastQaResult = result;
-
-        // Update row's qa_flag_count in cache
-        // SMART INDEXING: O(1) lookup instead of O(n) findIndex
-        const rowIndex = getRowIndexById(rowId);
-        if (rowIndex !== undefined && grid.rows[rowIndex]) {
-          grid.rows[rowIndex] = {
-            ...grid.rows[rowIndex],
-            qa_flag_count: result.issue_count,
-            qa_checked_at: result.checked_at
-          };
-          grid.rows = [...grid.rows];
-        }
-
-        if (result.issue_count > 0) {
-          logger.warning("QA issues found", { rowId, count: result.issue_count });
-        } else {
-          logger.success("QA check passed", { rowId });
-        }
-
-        return result;
-      }
-    } catch (err) {
-      logger.error("QA check failed", { rowId, error: err.message });
-    } finally {
-      qaLoading = false;
-    }
-
-    return null;
-  }
-
-  // P2: Get QA results for a row (for edit modal)
-  async function fetchQAResults(rowId) {
-    if (!rowId) return [];
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/rows/${rowId}/qa-results`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.issues || [];
-      }
-    } catch (err) {
-      logger.error("Failed to fetch QA results", { rowId, error: err.message });
-    }
-
-    return [];
-  }
-
-  // =========================================================================
-  // Reference Column Functions (Phase 8)
-  // =========================================================================
-
-  /**
-   * Load reference file data for matching
-   */
-  async function loadReferenceData(refFileId) {
-    if (!refFileId) {
-      gridReferenceData.clear();
-      return;
-    }
-
-    referenceLoading = true;
-    logger.info("Loading reference file", { fileId: refFileId });
-
-    try {
-      const response = await fetch(`${API_BASE}/api/ldm/files/${refFileId}/rows?limit=10000`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const refRows = data.rows || [];
-
-        gridReferenceData.clear();
-        for (const row of refRows) {
-          if (row.string_id) {
-            gridReferenceData.set(row.string_id, {
-              target: row.target,
-              source: row.source
-            });
-          }
-        }
-
-        logger.success("Reference data loaded", { entries: gridReferenceData.size });
-      } else {
-        logger.error("Failed to load reference file", { status: response.status });
-      }
-    } catch (err) {
-      logger.error("Error loading reference", { error: err.message });
-    } finally {
-      referenceLoading = false;
-    }
-  }
-
-  /**
-   * Get reference translation for a row
-   */
+  // Phase 84: Reference functions (loadReferenceData, getReferenceForRow) moved to StatusColors.svelte
+  // getReferenceForRow is still needed in template -- delegate to statusColors
   function getReferenceForRow(row, matchMode) {
-    if (!row.string_id || gridReferenceData.size === 0) return null;
-
-    const ref = gridReferenceData.get(row.string_id);
-    if (!ref) return null;
-
-    // If matching by string_id + source, verify source matches too
-    if (matchMode === 'stringIdAndSource') {
-      if (ref.source !== row.source) return null;
-    }
-
-    return ref.target;
+    return statusColors?.getReferenceForRow(row, matchMode) ?? null;
   }
 
-  // Svelte 5: Effect - load reference when preference changes
-  $effect(() => {
-    if ($preferences.referenceFileId) {
-      loadReferenceData($preferences.referenceFileId);
-    } else {
-      gridReferenceData.clear();
-    }
-  });
-
-  // =========================================================================
-  // TM Results Column Functions (Phase 9)
-  // =========================================================================
-
-  /**
-   * Get best TM match for a row (cached)
-   */
-  function getTMResultForRow(row) {
-    if (!row.id) return null;
-    return tmResults.get(row.id) || null;
-  }
-
-  /**
-   * Fetch TM result for a row and cache it - USES HIERARCHY TMs
-   */
-  async function fetchTMResultForRow(row) {
-    // DEBUG: Enhanced logging for TM fetch
-    if (!row.source) {
-      logger.debug("[TM-FETCH] Skip: no source text", { rowId: row.id });
-      return;
-    }
-    // Use hierarchy TMs, not preferences
-    if (!activeTMs || activeTMs.length === 0) {
-      logger.debug("[TM-FETCH] Skip: no active TM in hierarchy");
-      return;
-    }
-
-    const rowId = row.id;
-    if (tmResults.has(rowId)) {
-      logger.debug("[TM-FETCH] Skip: cached", { rowId });
-      return;
-    }
-
-    const tmId = activeTMs[0].tm_id;
-    logger.info("[TM-FETCH] START", {
-      rowId,
-      tmId,
-      source: row.source.substring(0, 30) + "..."
-    });
-
-    try {
-      const params = new URLSearchParams({
-        source: row.source,
-        threshold: $preferences.tmThreshold.toString(),
-        max_results: '1',
-        tm_id: tmId.toString()  // Use hierarchy TM
-      });
-
-      const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        logger.info("[TM-FETCH] RESPONSE", {
-          rowId,
-          count: data.count,
-          hasMatches: data.suggestions?.length > 0
-        });
-        if (data.suggestions && data.suggestions.length > 0) {
-          const best = data.suggestions[0];
-          logger.debug("[TM-FETCH] Best match", {
-            similarity: best.similarity,
-            source: best.source?.substring(0, 30)
-          });
-          tmResults.set(rowId, {
-            target: best.target,
-            similarity: best.similarity,
-            source: best.source
-          });
-          tmResults = tmResults; // Trigger reactivity
-        }
-      } else {
-        logger.warning("[TM-FETCH] HTTP error", {
-          rowId,
-          status: response.status
-        });
-      }
-    } catch (err) {
-      logger.error("[TM-FETCH] Exception", { rowId, error: err.message });
-    }
-  }
-
-  // Svelte 5: Effect - Clear TM cache when activeTMs changes
-  let prevActiveTMId = $state(null);
-  $effect(() => {
-    const currentTMId = activeTMs?.[0]?.tm_id || null;
-    if (currentTMId !== prevActiveTMId) {
-      prevActiveTMId = currentTMId;
-      tmResults = new Map();
-    }
-  });
+  // Phase 84: TM Results (getTMResultForRow, fetchTMResultForRow, fetchTMSuggestions)
+  // and TM cache management moved to StatusColors.svelte
 
   // ============================================
   // Phase 2: Inline Editing (MemoQ-style)
@@ -2099,6 +1797,12 @@
       activeFilter={grid.activeFilter}
       selectedCategories={grid.selectedCategories}
       {containerEl}
+    />
+    <!-- Phase 84: StatusColors (renderless) handles QA, TM, reference data -->
+    <StatusColors
+      bind:this={statusColors}
+      {fileId}
+      {activeTMs}
     />
     <div class="grid-header">
       <div class="header-left">
