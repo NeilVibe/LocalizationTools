@@ -13,9 +13,8 @@ export default defineConfig({
       provider: 'v8',
       include: [
         'src/lib/utils/tagDetector.js',
-        // Future plans will add:
-        // 'src/lib/utils/statusColors.ts',
-        // 'src/lib/components/ldm/TagText.svelte',
+        'src/lib/utils/statusColors.ts',
+        'src/lib/components/ldm/TagText.svelte',
       ],
       reporter: ['text', 'html'],
       thresholds: {
