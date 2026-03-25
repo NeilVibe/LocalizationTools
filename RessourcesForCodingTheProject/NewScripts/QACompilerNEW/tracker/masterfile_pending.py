@@ -339,14 +339,15 @@ def build_pending_from_masterfiles(
     debug_log.append(f"\n  {'=== GRAND TOTAL ===':20s} | {'ALL':25s} | issues={grand_active:4d} pending={grand_pending:4d}")
     debug_log.append("=" * 80)
 
-    # Write to file AND print
-    log_path = Path(__file__).parent.parent / "MASTERFILE_PENDING_DEBUG.log"
+    # Write to file AND print — use SCRIPT_DIR for PyInstaller compat
+    from config import SCRIPT_DIR
+    log_path = SCRIPT_DIR / "MASTERFILE_PENDING_DEBUG.log"
     try:
         with open(log_path, "w", encoding="utf-8") as f:
             f.write("\n".join(debug_log))
         print(f"\n[DEBUG] Full log written to: {log_path}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"\n[DEBUG] Could not write log to {log_path}: {e}")
     # Also print to console
     print("\n".join(debug_log))
 
