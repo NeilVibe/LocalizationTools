@@ -37,7 +37,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Grid cells with no special status display a white or neutral background (not yellow)
   2. Status-colored cells (teal for translated, etc.) still display their correct status colors unchanged
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 81-01-PLAN.md -- neutralize .virtual-row default background + increase amber contrast
 
 ### Phase 82: Visual Verification
 **Goal**: Qwen3-VL confirms all UI changes look correct across all 5 LocaNext pages
@@ -56,5 +58,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 80. Tag Pill Overhaul | 1/1 | Complete    | 2026-03-25 |
-| 81. Grid Polish | 0/TBD | Not started | - |
+| 81. Grid Polish | 0/1 | Planned | - |
 | 82. Visual Verification | 0/TBD | Not started | - |
