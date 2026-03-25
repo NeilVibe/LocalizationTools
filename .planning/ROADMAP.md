@@ -11,7 +11,7 @@ Fix 4 UI issues found during v9.0 Windows testing: hide br-tags from grid, combi
 
 ## Phases
 
-- [ ] **Phase 80: Tag Pill Overhaul** - Hide br-tags, combine color+format codes, redesign pill styling
+- [x] **Phase 80: Tag Pill Overhaul** - Hide br-tags, combine color+format codes, redesign pill styling (completed 2026-03-25)
 - [ ] **Phase 81: Grid Polish** - Default background from yellow to neutral/white
 - [ ] **Phase 82: Visual Verification** - Qwen3-VL review all 5 pages, confirm 7+/10
 
@@ -26,9 +26,9 @@ Fix 4 UI issues found during v9.0 Windows testing: hide br-tags from grid, combi
   2. A cell containing both a color code and a format code shows ONE combined tag pill (not two separate pills)
   3. Combined tag pills display the actual color from the color code (e.g., red text color code produces a red-tinted pill)
   4. Tag pills render as tight inline elements that sit naturally within the text flow, not as block-level or oversized badges
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 80-01-PLAN.md -- br-tag exclusion + combined color+code pills + CSS redesign
+- [x] 80-01-PLAN.md -- br-tag exclusion + combined color+code pills + CSS redesign
 
 ### Phase 81: Grid Polish
 **Goal**: Grid cells use a neutral/white default background instead of yellow
@@ -55,6 +55,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 80. Tag Pill Overhaul | 0/1 | Planned | - |
+| 80. Tag Pill Overhaul | 1/1 | Complete   | 2026-03-25 |
 | 81. Grid Polish | 0/TBD | Not started | - |
 | 82. Visual Verification | 0/TBD | Not started | - |

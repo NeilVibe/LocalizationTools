@@ -9,9 +9,9 @@ Requirements for UI Polish + Tag Pill Redesign milestone. Fixes 4 issues found d
 
 ### Tag Display
 
-- [ ] **TAG-04**: br-tag linebreaks hidden from grid display — merge auto-handles them, only color/format tags shown as pills
-- [ ] **TAG-05**: Color code + format code combined into single tag pill with the actual color applied to the pill
-- [ ] **TAG-06**: Tag pill redesign — color-coded combined formatter tags as tight inline elements
+- [x] **TAG-04**: br-tag linebreaks hidden from grid display — merge auto-handles them, only color/format tags shown as pills
+- [x] **TAG-05**: Color code + format code combined into single tag pill with the actual color applied to the pill
+- [x] **TAG-06**: Tag pill redesign — color-coded combined formatter tags as tight inline elements
 
 ### Grid Polish
 
@@ -46,9 +46,9 @@ Requirements for UI Polish + Tag Pill Redesign milestone. Fixes 4 issues found d
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TAG-04 | Phase 80 | Pending |
-| TAG-05 | Phase 80 | Pending |
-| TAG-06 | Phase 80 | Pending |
+| TAG-04 | Phase 80 | Complete |
+| TAG-05 | Phase 80 | Complete |
+| TAG-06 | Phase 80 | Complete |
 | GRID-01 | Phase 81 | Pending |
 | VIS-01 | Phase 82 | Pending |
 
