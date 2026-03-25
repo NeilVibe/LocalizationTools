@@ -604,6 +604,23 @@ def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tup
                     date = manager_dates.get((category, username), "unknown")
                     _log(f"  {username} ({category}, {date}): F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']}")
 
+    # Phase 4b: Build active pending from discovered masterfiles
+    from tracker.masterfile_pending import build_pending_from_masterfiles
+
+    en_folders = set()
+    cn_folders = set()
+    for mpath in master_files:
+        parent_name = mpath.parent.name
+        if "EN" in parent_name:
+            en_folders.add(mpath.parent)
+        elif "CN" in parent_name:
+            cn_folders.add(mpath.parent)
+
+    en_folder = next(iter(en_folders), Path("/nonexistent"))
+    cn_folder = next(iter(cn_folders), Path("/nonexistent"))
+    active_pending_data = build_pending_from_masterfiles(en_folder, cn_folder)
+    _log(f"Active pending: {len(active_pending_data)} testers with active issues")
+
     # Phase 5: Update tracker (same pipeline as update_tracker_only)
     _log("Updating Progress Tracker...")
 
@@ -616,7 +633,8 @@ def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tup
         dd_ws = tracker_wb["_DAILY_DATA"]
         _tracker_log(f"_DAILY_DATA BEFORE: rows={dd_ws.max_row}, cols={dd_ws.max_column}")
 
-        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates)
+        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates,
+                               active_pending_data=active_pending_data)
 
         _tracker_log(f"_DAILY_DATA AFTER: rows={dd_ws.max_row}, cols={dd_ws.max_column}")
 
@@ -1128,6 +1146,20 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
                     date = manager_dates.get((category, username), "unknown")
                     _log(f"  {username} ({category}, {date}): F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']}")
 
+    # Build active pending from compilation output masterfiles
+    from tracker.masterfile_pending import build_pending_from_masterfiles
+    active_pending_data = build_pending_from_masterfiles(
+        TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN
+    )
+    _log(f"Active pending: {len(active_pending_data)} testers with active issues")
+
+    # Fallback: also check main Masterfolder if TrackerUpdate folders are empty
+    if not active_pending_data:
+        from config import MASTER_FOLDER_EN, MASTER_FOLDER_CN
+        active_pending_data = build_pending_from_masterfiles(MASTER_FOLDER_EN, MASTER_FOLDER_CN)
+        if active_pending_data:
+            _log(f"Active pending (from Masterfolder): {len(active_pending_data)} testers")
+
     # Update tracker
     _log("Updating Progress Tracker...")
 
@@ -1152,7 +1184,8 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
             for u, s in users.items():
                 _tracker_log(f"    {cat}/{u}: F={s.get('fixed')} R={s.get('reported')} C={s.get('checking')} N={s.get('nonissue')}")
 
-        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates)
+        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates,
+                               active_pending_data=active_pending_data)
 
         # STEP C: Check state after update
         _tracker_log("STEP C: After update_daily_data_sheet()")
