@@ -12,8 +12,8 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 - [x] **TEST-01**: Vitest configured for Svelte 5 component testing with jsdom environment
 - [x] **TEST-02**: @testing-library/svelte installed and working with Svelte 5 runes ($state, $derived, $effect)
 - [x] **TEST-03**: Unit tests for tagDetector.js — all 6 patterns (combinedcolor, braced, color, memoq, placeholder, br-exclusion)
-- [ ] **TEST-04**: Unit tests for TagText.svelte — pill rendering, combined pills, inline styles
-- [ ] **TEST-05**: Unit tests for status color logic — 3-state scheme (empty/translated/confirmed)
+- [x] **TEST-04**: Unit tests for TagText.svelte — pill rendering, combined pills, inline styles
+- [x] **TEST-05**: Unit tests for status color logic — 3-state scheme (empty/translated/confirmed)
 - [x] **TEST-06**: npm run test:unit script runs all component tests with coverage report
 
 ### VirtualGrid Decomposition
@@ -59,8 +59,8 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 | TEST-01 | Phase 83 | Complete |
 | TEST-02 | Phase 83 | Complete |
 | TEST-03 | Phase 83 | Complete |
-| TEST-04 | Phase 83 | Pending |
-| TEST-05 | Phase 83 | Pending |
+| TEST-04 | Phase 83 | Complete |
+| TEST-05 | Phase 83 | Complete |
 | TEST-06 | Phase 83 | Complete |
 | GRID-02 | Phase 84 | Pending |
 | GRID-03 | Phase 84 | Pending |

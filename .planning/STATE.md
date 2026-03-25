@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 83-01-PLAN.md
-last_updated: "2026-03-25T17:22:57.488Z"
+stopped_at: Completed 83-02-PLAN.md
+last_updated: "2026-03-25T17:33:12.358Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -41,6 +41,8 @@ Plan: 2 of 2
 - Roadmap sequencing: tests first (safety net), split second (leverage safety net)
 - [Phase 83]: Coverage scope limited to tagDetector.js for plan 01; future plans add their files
 - [Phase 83]: Svelte 5 rune .svelte.test.ts canary kept as permanent regression guard
+- [Phase 83]: TMManager getStatusKind NOT extracted — maps TM indexing status (different domain from translation status)
+- [Phase 83]: Svelte 5 jsdom style limitation — template style expressions not rendered, assert on classes per D-13
 
 ### Phase Structure
 
@@ -59,6 +61,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-25T17:22:57.485Z
-Stopped at: Completed 83-01-PLAN.md
+Last session: 2026-03-25T17:33:12.355Z
+Stopped at: Completed 83-02-PLAN.md
 Next action: `/gsd:plan-phase 83` — plan Test Infrastructure phase
