@@ -1,1 +1,1 @@
-Build QACompiler — active pending feature + 8 review fixes + proof tests
+Build QACompiler — fix loguru to stdlib logging for PyInstaller compat
