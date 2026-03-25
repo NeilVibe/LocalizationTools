@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 through v9.0** — Phases 01-79.1 (shipped)
 - ✅ **v10.0 UI Polish + Tag Pill Redesign** — Phases 80-82 (shipped 2026-03-25)
-- 🔄 **v11.0 Architecture & Test Infrastructure** — Phases 83-85 (in progress)
+- ✅ **v11.0 Architecture & Test Infrastructure** — Phases 83-85 (shipped 2026-03-26)
 
 ## Archived Milestones
 
@@ -16,7 +16,7 @@ Full details in `.planning/milestones/`:
 
 - [x] **Phase 83: Test Infrastructure** - Stand up Vitest + @testing-library/svelte, write unit tests for tagDetector.js, TagText.svelte, and status color logic (completed 2026-03-25)
 - [x] **Phase 84: VirtualGrid Decomposition** - Extract 6 composable modules from VirtualGrid.svelte (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine) (completed 2026-03-25)
-- [ ] **Phase 85: Regression Verification** - Confirm all existing E2E/Playwright tests pass after decomposition with zero behavior changes
+- [x] **Phase 85: Regression Verification** - Confirm all existing E2E/Playwright tests pass after decomposition with zero behavior changes (completed 2026-03-26)
 
 ## Phase Details
 
@@ -68,4 +68,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 83. Test Infrastructure | 2/2 | Complete   | 2026-03-25 |
 | 84. VirtualGrid Decomposition | 3/3 | Complete    | 2026-03-25 |
-| 85. Regression Verification | 0/? | Not started | - |
+| 85. Regression Verification | 1/1 | Complete | 2026-03-26 |
