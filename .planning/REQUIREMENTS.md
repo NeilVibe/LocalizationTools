@@ -15,7 +15,7 @@ Requirements for UI Polish + Tag Pill Redesign milestone. Fixes 4 issues found d
 
 ### Grid Polish
 
-- [ ] **GRID-01**: Grid default background changed from yellow to neutral/white
+- [x] **GRID-01**: Grid default background changed from yellow to neutral/white
 
 ### Visual Verification
 
