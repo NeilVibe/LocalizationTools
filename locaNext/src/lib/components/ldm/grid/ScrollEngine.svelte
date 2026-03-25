@@ -32,12 +32,7 @@
   let {
     fileId = null,
     fileType = 'translator',
-    searchTerm = '',
-    searchMode = 'contain',
-    searchFields = ['source', 'target'],
     activeTMs = [],
-    activeFilter = 'all',
-    selectedCategories = [],
     containerEl = null,
   } = $props();
 
@@ -146,16 +141,16 @@
         page: page.toString(),
         limit: PAGE_SIZE.toString()
       });
-      if (searchTerm) {
-        params.append('search', searchTerm);
-        params.append('search_mode', searchMode);
-        params.append('search_fields', searchFields.join(','));
+      if (grid.searchTerm) {
+        params.append('search', grid.searchTerm);
+        params.append('search_mode', grid.searchMode);
+        params.append('search_fields', grid.searchFields.join(','));
       }
-      if (activeFilter && activeFilter !== 'all') {
-        params.append('filter', activeFilter);
+      if (grid.activeFilter && grid.activeFilter !== 'all') {
+        params.append('filter', grid.activeFilter);
       }
-      if (selectedCategories.length > 0) {
-        params.append('category', selectedCategories.join(','));
+      if (grid.selectedCategories.length > 0) {
+        params.append('category', grid.selectedCategories.join(','));
       }
 
       let response;
@@ -164,17 +159,17 @@
           xml_path: fileId,
           page: page,
           limit: PAGE_SIZE,
-          search: searchTerm || ""
+          search: grid.searchTerm || ""
         };
-        if (searchTerm) {
-          body.search_mode = searchMode;
-          body.search_fields = searchFields.join(',');
+        if (grid.searchTerm) {
+          body.search_mode = grid.searchMode;
+          body.search_fields = grid.searchFields.join(',');
         }
-        if (activeFilter && activeFilter !== 'all') {
-          body.filter = activeFilter;
+        if (grid.activeFilter && grid.activeFilter !== 'all') {
+          body.filter = grid.activeFilter;
         }
-        if (selectedCategories.length > 0) {
-          body.category = selectedCategories.join(',');
+        if (grid.selectedCategories.length > 0) {
+          body.category = grid.selectedCategories.join(',');
         }
         response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
           method: 'POST',
@@ -191,7 +186,7 @@
         const data = await response.json();
         grid.total = data.total;
 
-        const isSearching = searchTerm && searchTerm.trim();
+        const isSearching = grid.searchTerm && grid.searchTerm.trim();
         const pageStartIndex = (page - 1) * PAGE_SIZE;
         data.rows.forEach((row, pageIndex) => {
           const index = isSearching ? (pageStartIndex + pageIndex) : (row.row_num - 1);
@@ -255,11 +250,11 @@
         limit: PAGE_SIZE.toString()
       });
 
-      if (searchTerm && searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
-        params.append('search_mode', searchMode);
-        params.append('search_fields', searchFields.join(','));
-        logger.info("loadRows with search", { searchTerm, searchMode, searchFields });
+      if (grid.searchTerm && grid.searchTerm.trim()) {
+        params.append('search', grid.searchTerm.trim());
+        params.append('search_mode', grid.searchMode);
+        params.append('search_fields', grid.searchFields.join(','));
+        logger.info("loadRows with search", { grid.searchTerm, grid.searchMode, grid.searchFields });
       }
 
       let response;
@@ -270,10 +265,10 @@
           limit: PAGE_SIZE,
           search: ""
         };
-        if (searchTerm && searchTerm.trim()) {
-          body.search = searchTerm.trim();
-          body.search_mode = searchMode;
-          body.search_fields = searchFields.join(',');
+        if (grid.searchTerm && grid.searchTerm.trim()) {
+          body.search = grid.searchTerm.trim();
+          body.search_mode = grid.searchMode;
+          body.search_fields = grid.searchFields.join(',');
         }
         response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
           method: 'POST',
@@ -290,7 +285,7 @@
         const data = await response.json();
         grid.total = data.total;
 
-        const isSearching = searchTerm && searchTerm.trim();
+        const isSearching = grid.searchTerm && grid.searchTerm.trim();
         data.rows.forEach((row, pageIndex) => {
           const index = isSearching ? pageIndex : (row.row_num - 1);
           const rowData = {

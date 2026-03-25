@@ -18,6 +18,9 @@
  * inlineEditingRowId:  InlineEditor
  * activeFilter:        SearchEngine
  * selectedCategories:  SearchEngine
+ * searchTerm:          SearchEngine
+ * searchMode:          SearchEngine
+ * searchFields:        SearchEngine
  * tmAppliedRows:       StatusColors
  * referenceData:       StatusColors
  * qaFlags:             StatusColors
@@ -38,6 +41,9 @@ export const grid = $state({
   inlineEditingRowId: null as string | null,
   activeFilter: 'all' as string,
   selectedCategories: [] as string[],
+  searchTerm: '' as string,
+  searchMode: 'contain' as string,
+  searchFields: ['source', 'target'] as string[],
 });
 
 // --- Mutable Maps/Sets (exported as $state, mutated in place) ---
@@ -227,6 +233,9 @@ export function resetGridState(): void {
   grid.inlineEditingRowId = null;
   grid.activeFilter = 'all';
   grid.selectedCategories = [];
+  grid.searchTerm = '';
+  grid.searchMode = 'contain';
+  grid.searchFields = ['source', 'target'];
   rowIndexById.clear();
   rowHeightCache.clear();
   loadedPages.clear();
