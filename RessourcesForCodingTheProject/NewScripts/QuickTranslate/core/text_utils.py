@@ -234,6 +234,9 @@ def is_markup_contamination(text: str, *, from_xml: bool = False,
     # --- Group A: Lone angle brackets (QA warning) ---
     # Escaping handles these technically, but a lone < or > in a translation
     # is suspicious — likely a broken tag or translator error. Flag for review.
+    # If the source text has the same lone brackets, it's intentional — downgrade
+    # to 'Warning:' prefix so Check Patterns shows it as LowImpact info only.
+    # Transfer code skips 'Warning:' entries entirely (no warning, no skip).
     # Strip valid <br/> variants first to avoid false positives.
     stripped_br = _VALID_BR_RE.sub('', text)
     if '<' in stripped_br or '>' in stripped_br:

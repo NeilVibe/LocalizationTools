@@ -1592,10 +1592,10 @@ class QuickTranslateApp:
                     self._log(f"  ...and {len(secondary_integrity) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
 
-            # Low-impact: lone angle brackets matching source — one-liner, not cluttering
+            # Low-impact: lone angle brackets matching source — quiet one-liner
             if low_impact:
                 self._log("", 'info')
-                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match source — transferred as-is.", 'info')
+                self._log(f"INFO: {len(low_impact)} lone angle bracket(s) match source — will transfer as-is.", 'info')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             other_total = len(all_no_translation_warnings)
@@ -3882,11 +3882,12 @@ class QuickTranslateApp:
                 summary_lines.append(f"  Script Skipped:   {skipped_script:,}  (Non-Script filter)")
             summary_lines.append(f"\nTarget: {target}")
 
-            # Split transfer integrity warnings into critical vs secondary
+            # Split transfer integrity warnings into critical / secondary / low-impact
             fw = results.get("formula_warnings", [])
             iw = results.get("integrity_warnings", [])
             critical_iw = [w for w in iw if w[3].startswith('Broken') or w[3].startswith('Truncated')]
-            secondary_iw = [w for w in iw if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
+            low_impact_iw = [w for w in iw if w[3].startswith('Warning:')]
+            secondary_iw = [w for w in iw if not (w[3].startswith('Broken') or w[3].startswith('Truncated') or w[3].startswith('Warning:'))]
 
             # End-of-log CRITICAL warning summary (formulas + broken linebreaks)
             if fw or critical_iw:
@@ -3922,6 +3923,11 @@ class QuickTranslateApp:
                     self._log(f"  ...and {len(secondary_iw) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
                 summary_lines.append(f"\nWARNING: {len(secondary_iw)} entries skipped (secondary: encoding/invisible chars)")
+
+            # Low-impact: lone angle brackets matching source — quiet one-liner
+            if low_impact_iw:
+                self._log("", 'info')
+                self._log(f"INFO: {len(low_impact_iw)} lone angle bracket(s) match source — transferred as-is.", 'info')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
             no_trans_warnings = results.get("no_translation_warnings", [])
