@@ -1,0 +1,62 @@
+# Requirements: LocaNext
+
+**Defined:** 2026-03-25
+**Core Value:** Real, working localization workflows with zero cloud dependency
+
+## v10.0 Requirements
+
+Requirements for UI Polish + Tag Pill Redesign milestone. Fixes 4 issues found during v9.0 Windows testing.
+
+### Tag Display
+
+- [ ] **TAG-04**: br-tag linebreaks hidden from grid display — merge auto-handles them, only color/format tags shown as pills
+- [ ] **TAG-05**: Color code + format code combined into single tag pill with the actual color applied to the pill
+- [ ] **TAG-06**: Tag pill redesign — color-coded combined formatter tags as tight inline elements
+
+### Grid Polish
+
+- [ ] **GRID-01**: Grid default background changed from yellow to neutral/white
+
+### Visual Verification
+
+- [ ] **VIS-01**: Qwen3-VL visual review confirms all 5 pages score 7+/10 after changes
+
+## Future Requirements
+
+### Architecture (Deferred from v9.0)
+
+- **ARCH-01**: Split VirtualGrid.svelte (4299 lines) into composable modules
+- **ARCH-02**: Split mega_index.py (1310 lines) into domain services
+- **ARCH-04**: Unit test infrastructure (unblocked by service extraction)
+
+### Media Resolution (Deferred from v9.0)
+
+- **LDE2E-03**: Language data with images/audio resolves from Perforce-like paths
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Tag editing in grid | Display-only transform — raw text in DB, pills are frontend render |
+| New tag pattern types | Current 5-pattern detector sufficient for known game XML formats |
+| Performance optimization | v9.0 confirmed sub-second performance, not a concern |
+| Backend changes | Pure frontend UI work — no API or server modifications |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TAG-04 | TBD | Pending |
+| TAG-05 | TBD | Pending |
+| TAG-06 | TBD | Pending |
+| GRID-01 | TBD | Pending |
+| VIS-01 | TBD | Pending |
+
+**Coverage:**
+- v10.0 requirements: 5 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 5
+
+---
+*Requirements defined: 2026-03-25*
+*Last updated: 2026-03-25 after initial definition*
