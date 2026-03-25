@@ -1,21 +1,45 @@
 /**
  * Tag Detector
  *
- * Detects 5 inline tag types used in game localization data and returns
+ * Detects 6 inline tag types used in game localization data and returns
  * ordered segments for pill rendering. Patterns sourced from
  * server/services/merge/tmx_tools.py lines 248-314.
  *
  * Tag types (priority order):
- *   1. staticinfo  {StaticInfo:Category:ID#inner}  -> green pill
- *   2. param       %N#                              -> purple pill
- *   3. braced      {placeholder}                    -> blue pill
- *   4. escape      \n \t \1 etc.                    -> grey pill
- *   5. desc        &desc; or &amp;desc;             -> orange pill
+ *   0. combinedcolor  <PAColor0xHEX>{code}<PAOldColor>  -> dynamic color pill
+ *   1. staticinfo     {StaticInfo:Category:ID#inner}     -> green pill
+ *   2. param          %N#                                -> purple pill
+ *   3. braced         {placeholder}                      -> blue pill
+ *   4. escape         \n \t \1 etc.                      -> grey pill
+ *   5. desc           &desc; or &amp;desc;               -> orange pill
  */
+
+import { hexToCSS } from './colorParser.js';
 
 // Tag patterns in priority order — higher priority patterns are checked first
 // to prevent lower-priority patterns from claiming the same text range.
 const TAG_PATTERNS = [
+  {
+    name: 'combinedcolor',
+    // Priority 0: PAColor wrapping a format code — HTML-escaped angle brackets
+    // Matches: &lt;PAColor0xHEX&gt;{code}&lt;PAOldColor&gt;
+    // Also matches param inside: &lt;PAColor0xHEX&gt;%N#&lt;PAOldColor&gt;
+    regex: /&lt;PAColor(0x[0-9a-fA-F]{6,8})&gt;(?:(\{[^}]+\})|(%\d#))&lt;PAOldColor&gt;/g,
+    format: (m) => {
+      const hexCode = m[1];
+      const cssColor = hexToCSS(hexCode);
+      let label;
+      if (m[2]) {
+        // Braced: extract content between { }
+        label = m[2].slice(1, -1);
+      } else {
+        // Param: %N# -> ParamN
+        label = 'Param' + m[3].charAt(1);
+      }
+      return { label, type: 'combinedcolor', cssColor };
+    },
+    color: 'combined'
+  },
   {
     name: 'staticinfo',
     // Priority 1: Must match BEFORE generic braced
@@ -106,7 +130,8 @@ export function detectTags(text) {
         type: match.type,
         color: match.color,
         raw: match.raw,
-        ...(match.inner !== undefined ? { inner: match.inner } : {})
+        ...(match.inner !== undefined ? { inner: match.inner } : {}),
+        ...(match.cssColor !== undefined ? { cssColor: match.cssColor } : {})
       }
     });
     lastEnd = match.end;
@@ -127,7 +152,8 @@ export function detectTags(text) {
  */
 export function hasTags(text) {
   if (!text || typeof text !== 'string') return false;
-  return /%\d#/.test(text) ||
+  return /&lt;PAColor0x[0-9a-fA-F]{6,8}&gt;/.test(text) ||
+         /%\d#/.test(text) ||
          /\{[^}]+\}/.test(text) ||
          /\\[\w]/.test(text) ||
          /&(?:amp;)?desc;/.test(text);
