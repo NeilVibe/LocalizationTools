@@ -1588,9 +1588,15 @@ def run_compiler(log_callback=None, progress_callback=None):
         standard_entries = [e for e in all_daily_entries if e.get("category") != "Face"]
         face_entries = [e for e in all_daily_entries if e.get("category") == "Face"]
 
+        # Build active pending from freshly compiled masterfiles
+        from tracker.masterfile_pending import build_pending_from_masterfiles
+        active_pending_data = build_pending_from_masterfiles(MASTER_FOLDER_EN, MASTER_FOLDER_CN)
+        _log(f"Active pending: {len(active_pending_data)} testers with active issues")
+
         # Update standard tracker tabs
         if standard_entries:
-            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
+            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats,
+                                   active_pending_data=active_pending_data)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
 

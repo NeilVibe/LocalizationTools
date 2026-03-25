@@ -200,10 +200,10 @@ def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
     if days_worked_col is None and assessment_col is None:
         return existing_data
 
-    for row in range(1, ws.max_row + 1):
+    for row in range(2, ws.max_row + 1):  # Start at row 2 (skip header row)
         user_value = ws.cell(row, user_col).value
 
-        # Skip headers, section titles, totals, empty rows
+        # Skip section titles, totals, empty rows
         if not user_value:
             continue
         user_str = str(user_value).strip()
