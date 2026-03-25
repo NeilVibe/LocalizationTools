@@ -153,7 +153,7 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 
 # Headers for tester stats
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
-MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending", "Active Issues", "Active Pending"]
+MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
 # Workload Analysis headers (light orange section)
 # Order: Actual Done (auto) | Days Worked (manual) | Daily Avg (auto) | Type (auto) | Comment (manual)
 WORKLOAD_HEADERS = ["Actual Done", "Days Worked", "Daily Avg", "Type", "Comment"]
@@ -335,54 +335,51 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
             counted_manager_stats.add(manager_key)
 
         # GRANULAR: Track ALL categories for each user
-        pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["nonissue"])
+        # Issues and Pending are from masterfile (active = living in current masterfile)
         user_category_breakdown[user].append({
             "category": category,
             "date": data["date"],
-            "issues": data["issues"],
+            "issues": data.get("active_issues", 0),
+            "pending": data.get("active_pending", 0),
             "fixed": data["fixed"],
             "reported": data["reported"],
             "checking": data["checking"],
             "nonissue": data["nonissue"],
-            "pending": pending,
-            "active_issues": data.get("active_issues", 0),
-            "active_pending": data.get("active_pending", 0)
         })
 
-    # GRANULAR: Log ALL user category breakdowns with PENDING calculation
+    # GRANULAR: Log ALL user category breakdowns
     print(f"\n[DEBUG TOTAL] ===== USER CATEGORY BREAKDOWN (from _DAILY_DATA) =====")
     for user in sorted(user_category_breakdown.keys()):
         categories = user_category_breakdown[user]
         total_issues = sum(c["issues"] for c in categories)
+        total_pending = sum(c["pending"] for c in categories)
         total_fixed = sum(c["fixed"] for c in categories)
         total_reported = sum(c["reported"] for c in categories)
         total_checking = sum(c["checking"] for c in categories)
         total_nonissue = sum(c["nonissue"] for c in categories)
-        total_pending = sum(c["pending"] for c in categories)
 
-        total_active_issues = sum(c["active_issues"] for c in categories)
-        total_active_pending = sum(c["active_pending"] for c in categories)
-        print(f"\n  [{user}] TOTAL: issues={total_issues}, fixed={total_fixed}, reported={total_reported}, checking={total_checking}, nonissue={total_nonissue} => PENDING={total_pending}, active_issues={total_active_issues}, active_pending={total_active_pending}")
+        print(f"\n  [{user}] TOTAL: issues={total_issues}, pending={total_pending}, fixed={total_fixed}, reported={total_reported}, checking={total_checking}, nonissue={total_nonissue}")
         for cat_data in categories:
-            print(f"    - {cat_data['category']}: issues={cat_data['issues']}, fixed={cat_data['fixed']}, reported={cat_data['reported']}, checking={cat_data['checking']}, nonissue={cat_data['nonissue']} => PENDING={cat_data['pending']}, active_issues={cat_data['active_issues']}, active_pending={cat_data['active_pending']}")
+            print(f"    - {cat_data['category']}: issues={cat_data['issues']}, pending={cat_data['pending']}, fixed={cat_data['fixed']}, reported={cat_data['reported']}, checking={cat_data['checking']}, nonissue={cat_data['nonissue']}")
 
     print(f"\n[DEBUG TOTAL] ===== AGGREGATED USER DATA =====")
     print(f"  Total users: {len(user_data)}")
 
-    # Show users with PENDING=0 but issues > 0 (potential problems)
+    # Show users with PENDING=0 but active issues > 0 (potential problems)
     problem_users = []
     for user, data in user_data.items():
-        agg_pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["nonissue"])
-        if data["issues"] > 0 and agg_pending == 0:
-            problem_users.append((user, data["issues"], agg_pending))
+        ai = data.get("active_issues", 0)
+        ap = data.get("active_pending", 0)
+        if ai > 0 and ap == 0:
+            problem_users.append((user, ai, ap))
 
     if problem_users:
-        print(f"\n  [WARN] Users with issues > 0 but PENDING = 0:")
+        print(f"\n  [WARN] Users with active issues > 0 but PENDING = 0:")
         for user, issues, pending in problem_users:
             print(f"    {user}: issues={issues}, PENDING={pending}")
 
-    # Show users with 0 issues (expected to have PENDING=0)
-    zero_issue_users = [u for u, d in user_data.items() if d["issues"] == 0]
+    # Show users with 0 active issues
+    zero_issue_users = [u for u, d in user_data.items() if d.get("active_issues", 0) == 0]
     if zero_issue_users:
         print(f"\n  [INFO] Users with issues=0: {zero_issue_users}")
 
@@ -481,7 +478,7 @@ def build_tester_section(
     section_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
         "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0,
-        "actual_done": 0, "active_issues": 0, "active_pending": 0
+        "actual_done": 0
     }
 
     print(f"\n[DEBUG TOTAL] ===== WRITING TO TOTAL SHEET: {section_title} =====")
@@ -498,13 +495,13 @@ def build_tester_section(
         reported = data["reported"]
         checking = data["checking"]
         nonissue = data["nonissue"]
-        active_issues_val = data.get("active_issues", 0)
-        active_pending_val = data.get("active_pending", 0)
-        # Pending = Issues not yet resolved. CHECKING is still pending.
-        pending = max(0, issues - fixed - reported - nonissue)
+        # Issues and Pending come from masterfile (active = living in current masterfile)
+        # QA file issues stored in _DAILY_DATA col 6 for historical record only
+        issues = data.get("active_issues", 0)
+        pending = data.get("active_pending", 0)
 
         # GRANULAR: Log every row being written to TOTAL sheet
-        print(f"  [{user}] issues={issues}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue} => PENDING={pending}, active_issues={active_issues_val}, active_pending={active_pending_val}")
+        print(f"  [{user}] issues={issues}, pending={pending}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue}")
 
         # Workload Analysis calculations
         actual_done = done - blocked - korean  # Actual productive work
@@ -535,13 +532,11 @@ def build_tester_section(
         section_total["pending"] += pending
         section_total["nonissue"] += nonissue
         section_total["actual_done"] += actual_done
-        section_total["active_issues"] += active_issues_val
-        section_total["active_pending"] += active_pending_val
 
         # Row data: Tester Stats + Manager Stats
+        # Issues = active issues from masterfile, Pending = active pending from masterfile
         row_data = [user, done, issues, no_issue, blocked, korean,
-                    fixed, reported, nonissue, checking, pending,
-                    active_issues_val, active_pending_val]
+                    fixed, reported, nonissue, checking, pending]
 
         # Write Tester + Manager columns
         for col, value in enumerate(row_data, 1):
@@ -576,8 +571,7 @@ def build_tester_section(
     st = section_total
     subtotal_data = [
         "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"], st["korean"],
-        st["fixed"], st["reported"], st["nonissue"], st["checking"], st["pending"],
-        st["active_issues"], st["active_pending"]
+        st["fixed"], st["reported"], st["nonissue"], st["checking"], st["pending"]
     ]
 
     for col, value in enumerate(subtotal_data, 1):
@@ -1012,8 +1006,7 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + len(WORKLOAD_HEADERS)
     grand_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "actual_done": 0,
-        "active_issues": 0, "active_pending": 0
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "actual_done": 0
     }
     for t in [en_total, cn_total]:
         if t:
@@ -1032,8 +1025,7 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
         gt = grand_total
         total_row_data = [
             "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"], gt["korean"],
-            gt["fixed"], gt["reported"], gt["nonissue"], gt["checking"], gt["pending"],
-            gt["active_issues"], gt["active_pending"]
+            gt["fixed"], gt["reported"], gt["nonissue"], gt["checking"], gt["pending"]
         ]
 
         for col, value in enumerate(total_row_data, 1):
