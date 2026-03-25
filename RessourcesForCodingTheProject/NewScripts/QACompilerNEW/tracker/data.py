@@ -68,20 +68,26 @@ def get_or_create_tracker(tracker_path: Path = None) -> Tuple[openpyxl.Workbook,
 
 # Schema for _DAILY_DATA sheet
 DAILY_DATA_HEADERS = [
-    "Date",        # 1
-    "User",        # 2
-    "Category",    # 3
-    "TotalRows",   # 4
-    "Done",        # 5
-    "Issues",      # 6
-    "NoIssue",     # 7
-    "Blocked",     # 8
-    "Fixed",       # 9
-    "Reported",    # 10
-    "Checking",    # 11
-    "NonIssue",    # 12
-    "WordCount",   # 13
-    "Korean",      # 14
+    "Date",            # 1
+    "User",            # 2
+    "Category",        # 3
+    "TotalRows",       # 4
+    "Done",            # 5
+    "Issues",          # 6  (OVERALL — from QA files, unchanged)
+    "NoIssue",         # 7
+    "Blocked",         # 8
+    "Fixed",           # 9
+    "Reported",        # 10
+    "Checking",        # 11
+    "NonIssue",        # 12
+    "WordCount",       # 13
+    "Korean",          # 14
+    "ActiveIssues",    # 15  (NEW — from masterfile)
+    "ActivePending",   # 16  (NEW — from masterfile)
+    "ActiveFixed",     # 17  (NEW — from masterfile)
+    "ActiveReported",  # 18  (NEW — from masterfile)
+    "ActiveChecking",  # 19  (NEW — from masterfile)
+    "ActiveNonIssue",  # 20  (NEW — from masterfile)
 ]
 
 
@@ -89,7 +95,8 @@ def update_daily_data_sheet(
     wb: openpyxl.Workbook,
     daily_entries: List[Dict],
     manager_stats: Dict = None,
-    manager_dates: Dict = None
+    manager_dates: Dict = None,
+    active_pending_data: Dict = None,
 ) -> None:
     """
     Update hidden _DAILY_DATA sheet with new entries including manager stats.
@@ -114,7 +121,7 @@ def update_daily_data_sheet(
     ws = wb["_DAILY_DATA"]
 
     # Ensure headers exist (14 columns total)
-    if ws.cell(1, 1).value != "Date" or ws.max_column < 14:
+    if ws.cell(1, 1).value != "Date" or ws.max_column < 20:
         for col, header in enumerate(DAILY_DATA_HEADERS, 1):
             ws.cell(1, col, header)
 
@@ -207,6 +214,22 @@ def update_daily_data_sheet(
         ws.cell(row, 12, user_manager_stats["nonissue"]) # NonIssue
         ws.cell(row, 13, entry.get("word_count", 0))     # WordCount
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
+
+        # Active issue data from masterfile (cols 15-20)
+        if active_pending_data:
+            user_active = active_pending_data.get(user, {})
+            # Map folder category to master category for lookup
+            active_cat = get_target_master_category(category)
+            cat_active = user_active.get(active_cat, {})
+            ws.cell(row, 15, cat_active.get("active_issues", 0))
+            ws.cell(row, 16, cat_active.get("pending", 0))
+            ws.cell(row, 17, cat_active.get("fixed", 0))
+            ws.cell(row, 18, cat_active.get("reported", 0))
+            ws.cell(row, 19, cat_active.get("checking", 0))
+            ws.cell(row, 20, cat_active.get("nonissue", 0))
+        else:
+            for col in range(15, 21):
+                ws.cell(row, col, 0)
 
         # GRANULAR: Log what was written for Script-type categories
         if category in ("Sequencer", "Dialog"):
