@@ -1,1 +1,1 @@
-Build QuickTranslate — fix lone bracket SECONDARY WARNING for source-matching entries
+Build QuickTranslate v2 — fix lone bracket SECONDARY WARNING for source-matching entries
