@@ -56,25 +56,25 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| GRID-02 | TBD | Pending |
-| GRID-03 | TBD | Pending |
-| GRID-04 | TBD | Pending |
-| GRID-05 | TBD | Pending |
-| GRID-06 | TBD | Pending |
-| GRID-07 | TBD | Pending |
-| GRID-08 | TBD | Pending |
+| TEST-01 | Phase 83 | Pending |
+| TEST-02 | Phase 83 | Pending |
+| TEST-03 | Phase 83 | Pending |
+| TEST-04 | Phase 83 | Pending |
+| TEST-05 | Phase 83 | Pending |
+| TEST-06 | Phase 83 | Pending |
+| GRID-02 | Phase 84 | Pending |
+| GRID-03 | Phase 84 | Pending |
+| GRID-04 | Phase 84 | Pending |
+| GRID-05 | Phase 84 | Pending |
+| GRID-06 | Phase 84 | Pending |
+| GRID-07 | Phase 84 | Pending |
+| GRID-08 | Phase 85 | Pending |
 
 **Coverage:**
 - v11.0 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 (pending roadmap)
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation (Phase 83-85)*
