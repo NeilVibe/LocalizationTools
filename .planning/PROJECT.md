@@ -8,11 +8,16 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current Milestone: v11.0 (Planning)
+## Current Milestone: v11.0 Architecture & Test Infrastructure
 
-**Goal:** TBD — Tribunal recommends: unit test infrastructure (ARCH-04) + VirtualGrid decomposition (ARCH-01), followed by TM Intelligence in v12.0.
+**Goal:** Stand up Svelte component unit testing with Vitest, then decompose VirtualGrid.svelte (4299 lines) into composable modules — enabling safe future feature work.
 
-**Next step:** `/gsd:new-milestone`
+**Target features:**
+- [ ] ARCH-04: Vitest + @testing-library/svelte infrastructure for Svelte 5 components
+- [ ] ARCH-01: VirtualGrid.svelte decomposed into 5-6 focused modules (scroll, cells, selection, editing, shortcuts, status)
+- [ ] Unit tests for each extracted module verifying behavior parity
+
+**Tribunal decision (2026-03-25):** 3 experts unanimous — tests first (safety net), split second (leverage). TM Intelligence deferred to v12.0.
 
 **Critical env note:** Remove WSL2 portproxy on 8888 before Playground testing (`netsh interface portproxy delete v4tov4 listenport=8888 listenaddress=0.0.0.0`)
 
@@ -202,4 +207,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after v10.0 milestone completion — archived, v11.0 planned*
+*Last updated: 2026-03-25 after v11.0 milestone initialization*

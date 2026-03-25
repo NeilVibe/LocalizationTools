@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v11.0
-milestone_name: pending
-status: planning
-stopped_at: v10.0 archived, v11.0 next
-last_updated: "2026-03-25T16:45:00.000Z"
+milestone_name: Architecture & Test Infrastructure
+status: defining_requirements
+stopped_at: Milestone started
+last_updated: "2026-03-25T17:00:00.000Z"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -19,12 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Planning v11.0 — ARCH-04 (unit tests) + ARCH-01 (split VirtualGrid)
+**Current focus:** v11.0 — Defining requirements
 
 ## Current Position
 
-Phase: None (milestone boundary)
-Plan: Start /gsd:new-milestone for v11.0
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-25 — Milestone v11.0 started
 
 ## Accumulated Context
 
@@ -35,9 +37,7 @@ Plan: Start /gsd:new-milestone for v11.0
 
 ### Deferred
 
-- ARCH-01: Split VirtualGrid.svelte (4299 lines) — v11.0 target
 - ARCH-02: Split mega_index.py (1310 lines)
-- ARCH-04: Unit test infrastructure — v11.0 target
 - LDE2E-03: Language data with images/audio resolves from Perforce-like paths
 
 ### Blockers/Concerns
@@ -46,6 +46,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-25T16:45:00.000Z
-Stopped at: v10.0 milestone archived
-Next action: /gsd:new-milestone
+Last session: 2026-03-25T17:00:00.000Z
+Stopped at: Milestone v11.0 started
+Next action: Define requirements and create roadmap
