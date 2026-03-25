@@ -46,10 +46,10 @@ Plans:
   4. SelectionManager module handles cell selection, keyboard navigation, and multi-select
   5. InlineEditor module handles textarea editing, save/cancel, and keyboard shortcuts
   6. StatusColors module encapsulates the 3-state status scheme, hover states, and QA badge styling
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 - [x] 84-01-PLAN.md — Batch 1: gridState.svelte.ts + ScrollEngine + StatusColors extraction
-- [ ] 84-02-PLAN.md — Batch 2: CellRenderer + SelectionManager extraction
+- [x] 84-02-PLAN.md — Batch 2: CellRenderer + SelectionManager extraction
 - [ ] 84-03-PLAN.md — Batch 3: InlineEditor + SearchEngine extraction, parent slim-down, final verification
 
 ### Phase 85: Regression Verification
@@ -67,5 +67,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 83. Test Infrastructure | 2/2 | Complete   | 2026-03-25 |
-| 84. VirtualGrid Decomposition | 1/3 | In Progress|  |
+| 84. VirtualGrid Decomposition | 2/3 | In Progress|  |
 | 85. Regression Verification | 0/? | Not started | - |
