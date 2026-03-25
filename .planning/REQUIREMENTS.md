@@ -18,12 +18,12 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 
 ### VirtualGrid Decomposition
 
-- [ ] **GRID-02**: VirtualGrid.svelte split into composable modules (target: no module > 800 lines)
-- [ ] **GRID-03**: ScrollEngine module extracted — virtual scroll, row height calculation, viewport management
+- [x] **GRID-02**: VirtualGrid.svelte split into composable modules (target: no module > 800 lines)
+- [x] **GRID-03**: ScrollEngine module extracted — virtual scroll, row height calculation, viewport management
 - [ ] **GRID-04**: CellRenderer module extracted — source/target/reference cell rendering, TagText integration
 - [ ] **GRID-05**: SelectionManager module extracted — cell selection, keyboard navigation, multi-select
 - [ ] **GRID-06**: InlineEditor module extracted — textarea editing, save/cancel, keyboard shortcuts
-- [ ] **GRID-07**: StatusColors module extracted — 3-state status scheme, hover states, QA badge styling
+- [x] **GRID-07**: StatusColors module extracted — 3-state status scheme, hover states, QA badge styling
 - [ ] **GRID-08**: All existing E2E/Playwright tests pass after decomposition (zero regressions)
 
 ## Future Requirements
@@ -74,12 +74,12 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 | TEST-04 | Phase 83 | Complete |
 | TEST-05 | Phase 83 | Complete |
 | TEST-06 | Phase 83 | Complete |
-| GRID-02 | Phase 84 | Pending |
-| GRID-03 | Phase 84 | Pending |
+| GRID-02 | Phase 84 | Complete |
+| GRID-03 | Phase 84 | Complete |
 | GRID-04 | Phase 84 | Pending |
 | GRID-05 | Phase 84 | Pending |
 | GRID-06 | Phase 84 | Pending |
-| GRID-07 | Phase 84 | Pending |
+| GRID-07 | Phase 84 | Complete |
 | GRID-08 | Phase 85 | Pending |
 
 **Coverage:**
