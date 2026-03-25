@@ -153,7 +153,7 @@ def autofit_row_heights(ws, default_height: int = 15, line_height: int = 15):
 
 # Headers for tester stats
 TESTER_HEADERS = ["User", "Done", "Issues", "No Issue", "Blocked", "Korean"]
-MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending"]
+MANAGER_HEADERS = ["Fixed", "Reported", "NonIssue", "Checking", "Pending", "Active Issues", "Active Pending"]
 # Workload Analysis headers (light orange section)
 # Order: Actual Done (auto) | Days Worked (manual) | Daily Avg (auto) | Type (auto) | Comment (manual)
 WORKLOAD_HEADERS = ["Actual Done", "Days Worked", "Daily Avg", "Type", "Comment"]
@@ -284,13 +284,16 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
                 "checking": data_ws.cell(row, 11).value or 0,
                 "nonissue": data_ws.cell(row, 12).value or 0,
                 "word_count": data_ws.cell(row, 13).value or 0,
-                "korean": data_ws.cell(row, 14).value or 0
+                "korean": data_ws.cell(row, 14).value or 0,
+                "active_issues": data_ws.cell(row, 15).value or 0,
+                "active_pending": data_ws.cell(row, 16).value or 0
             }
 
     # Second pass: aggregate latest data by user (sum across categories)
     user_data = defaultdict(lambda: {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "korean": 0
+        "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "korean": 0,
+        "active_issues": 0, "active_pending": 0
     })
 
     # GRANULAR: Track all category data per user for debugging
@@ -307,6 +310,8 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["no_issue"] += data["no_issue"]
         user_data[user]["blocked"] += data["blocked"]
         user_data[user]["korean"] += data.get("korean", 0)
+        user_data[user]["active_issues"] += data.get("active_issues", 0)
+        user_data[user]["active_pending"] += data.get("active_pending", 0)
 
         # Manager stats: only count once per master category group
         master_cat = get_target_master_category(category) if category else category
@@ -328,7 +333,9 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
             "reported": data["reported"],
             "checking": data["checking"],
             "nonissue": data["nonissue"],
-            "pending": pending
+            "pending": pending,
+            "active_issues": data.get("active_issues", 0),
+            "active_pending": data.get("active_pending", 0)
         })
 
     # GRANULAR: Log ALL user category breakdowns with PENDING calculation
@@ -461,7 +468,7 @@ def build_tester_section(
     section_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
         "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0,
-        "actual_done": 0
+        "actual_done": 0, "active_issues": 0, "active_pending": 0
     }
 
     print(f"\n[DEBUG TOTAL] ===== WRITING TO TOTAL SHEET: {section_title} =====")
@@ -478,6 +485,8 @@ def build_tester_section(
         reported = data["reported"]
         checking = data["checking"]
         nonissue = data["nonissue"]
+        active_issues_val = data.get("active_issues", 0)
+        active_pending_val = data.get("active_pending", 0)
         # Pending = Issues not yet resolved. CHECKING is still pending.
         pending = max(0, issues - fixed - reported - nonissue)
 
@@ -513,9 +522,13 @@ def build_tester_section(
         section_total["pending"] += pending
         section_total["nonissue"] += nonissue
         section_total["actual_done"] += actual_done
+        section_total["active_issues"] += active_issues_val
+        section_total["active_pending"] += active_pending_val
 
         # Row data: Tester Stats + Manager Stats
-        row_data = [user, done, issues, no_issue, blocked, korean, fixed, reported, nonissue, checking, pending]
+        row_data = [user, done, issues, no_issue, blocked, korean,
+                    fixed, reported, nonissue, checking, pending,
+                    active_issues_val, active_pending_val]
 
         # Write Tester + Manager columns
         for col, value in enumerate(row_data, 1):
@@ -550,7 +563,8 @@ def build_tester_section(
     st = section_total
     subtotal_data = [
         "SUBTOTAL", st["done"], st["issues"], st["no_issue"], st["blocked"], st["korean"],
-        st["fixed"], st["reported"], st["nonissue"], st["checking"], st["pending"]
+        st["fixed"], st["reported"], st["nonissue"], st["checking"], st["pending"],
+        st["active_issues"], st["active_pending"]
     ]
 
     for col, value in enumerate(subtotal_data, 1):
@@ -985,7 +999,8 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
     total_cols = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + len(WORKLOAD_HEADERS)
     grand_total = {
         "total_rows": 0, "done": 0, "issues": 0, "no_issue": 0, "blocked": 0, "korean": 0,
-        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "actual_done": 0
+        "fixed": 0, "reported": 0, "checking": 0, "pending": 0, "nonissue": 0, "actual_done": 0,
+        "active_issues": 0, "active_pending": 0
     }
     for t in [en_total, cn_total]:
         if t:
@@ -1004,7 +1019,8 @@ def build_total_sheet(wb: openpyxl.Workbook) -> None:
         gt = grand_total
         total_row_data = [
             "TOTAL", gt["done"], gt["issues"], gt["no_issue"], gt["blocked"], gt["korean"],
-            gt["fixed"], gt["reported"], gt["nonissue"], gt["checking"], gt["pending"]
+            gt["fixed"], gt["reported"], gt["nonissue"], gt["checking"], gt["pending"],
+            gt["active_issues"], gt["active_pending"]
         ]
 
         for col, value in enumerate(total_row_data, 1):
