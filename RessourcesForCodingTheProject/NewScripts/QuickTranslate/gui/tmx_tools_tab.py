@@ -226,7 +226,6 @@ class TMXToolsTab(tk.Frame):
                 from core.xml_parser import parse_xml_file, validate_xml_load
                 from core.xml_io import parse_corrections_from_xml
                 from core.excel_io import read_corrections_from_excel
-                from core.checker import check_broken_xml_in_file
 
                 # Collect all files (same as Tab 1)
                 files = []
@@ -283,14 +282,7 @@ class TMXToolsTab(tk.Frame):
                             total_fail += 1
                             continue
 
-                        # Step 3: Broken XML check
-                        broken = check_broken_xml_in_file(filepath)
-                        if broken:
-                            logger.warning(f"  WARN [{lang}] {fname} — {len(broken)} broken LocStr node(s)")
-                            for sid, _frag, _fn in broken[:3]:
-                                logger.warning(f"    Broken: StringID={sid}")
-
-                        # Step 4: Report issues with StringID + reason (same as Tab 1)
+                        # Step 3: Report issues with StringID + reason (same as Tab 1)
                         issues = []
                         if xml_formula_report:
                             logger.warning(f"  WARNING: {len(xml_formula_report)} formula-like entry(ies) in {fname}")

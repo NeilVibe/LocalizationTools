@@ -15,8 +15,6 @@ import threading
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
-from lxml import etree as ET
-
 from .xml_parser import (
     parse_xml_file, iter_locstr_elements,
     get_attr as _get_attr,
@@ -109,110 +107,7 @@ def _has_unbalanced_brackets(text: str) -> bool:
     return depth != 0  # unclosed opening brackets
 
 
-# Regex to extract self-closing LocStr elements from raw XML text
-_LOCSTR_RE = re.compile(r'<LocStr\b[^>]*/\s*>', re.DOTALL | re.IGNORECASE)
-# Regex to extract StringId from raw (possibly broken) LocStr text
-_RAW_STRINGID_RE = re.compile(r'StringId\s*=\s*"([^"]*?)"', re.IGNORECASE)
 
-# Detect premature close: <LocStr ...> where tag closes with > instead of />
-# followed by orphaned attributes (word="...") that should have been inside.
-# LocStr is ALWAYS self-closing in game XML, so <LocStr ...> is always broken.
-# [^/]> ensures the > is NOT preceded by / (i.e. not self-closing).
-_PREMATURE_CLOSE_RE = re.compile(
-    r'<LocStr\b[^>]*[^/]>(?:\s*\w+\s*=\s*"[^"]*")*\s*/>',
-    re.DOTALL | re.IGNORECASE
-)
-
-# Detect "naked close": <LocStr attrs> where tag ends with > but NOT />
-# LocStr is ALWAYS self-closing in game XML, so this is always broken.
-# Requires at least one attr="val" pair to avoid false positives on bare <LocStr>.
-_NAKED_CLOSE_RE = re.compile(
-    r'<LocStr\b(?:\s+\w+\s*=\s*"[^"]*")+\s*>',
-    re.DOTALL | re.IGNORECASE
-)
-
-
-def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
-    """
-    Detect malformed LocStr elements by strict-parsing each one individually.
-
-    Three detection passes:
-      1. Self-closing LocStr (<LocStr .../>) — extract and strict-parse each one.
-         Catches: garbled attributes, bad escaping, missing quotes, etc.
-      2. Premature close (<LocStr ...> attr="..."/>) — the tag closes with >
-         instead of />, leaving attributes orphaned outside the element.
-         Catches: the specific corruption where > appears mid-tag.
-      3. Naked close (<LocStr attrs>) — tag ends with > instead of /> with
-         NO following orphaned attributes. The simplest broken case.
-
-    Args:
-        xml_path: Path to XML file
-
-    Returns:
-        List of (string_id, raw_fragment, filename) tuples for each broken LocStr.
-    """
-    broken = []
-    try:
-        raw = xml_path.read_text(encoding='utf-8')
-    except Exception as e:
-        logger.warning("Failed to read %s: %s", xml_path.name, e)
-        return broken
-
-    filename = xml_path.name
-
-    # Track positions already reported (avoid duplicate reports)
-    reported_positions = set()
-
-    # Pass 1: Self-closing LocStr fragments — strict XML parse test
-    for m in _LOCSTR_RE.finditer(raw):
-        fragment = m.group()
-        test_xml = f'<r>{fragment}</r>'
-        try:
-            ET.fromstring(test_xml.encode('utf-8'))
-        except ET.XMLSyntaxError:
-            sid_match = _RAW_STRINGID_RE.search(fragment)
-            sid = sid_match.group(1) if sid_match else '(unknown)'
-            broken.append((sid, fragment, filename))
-            reported_positions.add(m.start())
-
-    # Pass 2: Premature close — <LocStr ...> followed by orphaned attributes
-    for m in _PREMATURE_CLOSE_RE.finditer(raw):
-        if m.start() in reported_positions:
-            continue  # Already caught by Pass 1
-        fragment = m.group()
-        sid_match = _RAW_STRINGID_RE.search(fragment)
-        sid = sid_match.group(1) if sid_match else '(unknown)'
-        broken.append((sid, fragment, filename))
-        reported_positions.add(m.start())
-
-    # Pass 3: Naked close — <LocStr attrs> with NO following orphaned attrs
-    # Catches the simplest broken case that Pass 2 misses.
-    for m in _NAKED_CLOSE_RE.finditer(raw):
-        if m.start() in reported_positions:
-            continue  # Already caught by Pass 1 or 2
-        fragment = m.group()
-        sid_match = _RAW_STRINGID_RE.search(fragment)
-        sid = sid_match.group(1) if sid_match else '(unknown)'
-        broken.append((sid, fragment, filename))
-        reported_positions.add(m.start())
-
-    return broken
-
-
-def _write_broken_xml_report(output_path: Path, entries: List[Tuple[str, str, str]]):
-    """
-    Write broken XML report as plain text (broken XML can't be embedded in XML).
-
-    Each entry is a (string_id, raw_fragment, filename) tuple.
-    """
-    lines = ["Broken XML Report", "=" * 60, ""]
-    for sid, raw, fname in entries:
-        lines.append(f"File:     {fname}")
-        lines.append(f"StringId: {sid}")
-        lines.append(f"Raw:      {raw}")
-        lines.append("")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
 def _escape_attr_value(value: str) -> str:
@@ -434,7 +329,6 @@ def check_patterns_in_excel(
 
     Same checks as check_patterns_in_file but reads from Excel columns:
     StringID, StrOrigin, Str/Correction, Desc.
-    Broken XML check is skipped (not applicable to Excel).
 
     Returns:
         Tuple of (pattern_errors, bracket_errors,
@@ -726,9 +620,9 @@ def run_pattern_check(
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
     cancel_event: Optional[threading.Event] = None,
-) -> Dict[str, Tuple[int, int, int, int, int, int, int]]:
+) -> Dict[str, Tuple[int, int, int, int, int, int]]:
     """
-    Run pattern mismatch + bracket + broken XML + empty Str + formula + integrity check.
+    Run pattern mismatch + bracket + empty Str + formula + integrity check.
 
     Only flags issues that CANNOT be auto-fixed by transfer + postprocess.
     Wrong newlines are NOT checked — all newline variants are auto-fixable.
@@ -736,17 +630,19 @@ def run_pattern_check(
     Checks:
     - Pattern code mismatch between StrOrigin and Str
     - Unbalanced curly brackets (critical)
-    - Malformed/broken LocStr elements at raw text level (critical, XML only)
     - Empty Str with StrOrigin (untranslated)
     - Formula-like text in Str/Desc (leaked Excel formulas/errors)
     - Text integrity (broken linebreaks, encoding artifacts, unfixable entities)
 
+    Lone bracket warnings (matching source) are counted separately and only
+    appear in the LowImpactWarnings Excel tab, not in the TextIntegrity folder.
+
     Writes per-language result XMLs to:
     - output_folder/PatternErrors/pattern_errors_{LANG}.xml  (all issues combined)
     - output_folder/MissingBrackets/MissingBrackets_{LANG}.xml  (critical bracket issues only)
-    - output_folder/BrokenXML/BrokenXML_{LANG}.txt  (critical broken XML report)
     - output_folder/EmptyStr/EmptyStr_{LANG}.xml  (empty Str with StrOrigin)
     - output_folder/FormulaText/FormulaText_{LANG}.xml  (formula-like text in Str/Desc)
+    - output_folder/TextIntegrity/TextIntegrity_{LANG}.xml  (real integrity issues only)
 
     Args:
         source_folder: Path to Source folder with language subfolders
@@ -756,7 +652,7 @@ def run_pattern_check(
         cancel_event: Optional threading.Event to support cancellation
 
     Returns:
-        Summary dict: {"FRE": (pattern, bracket, broken_xml, empty_str, formula_text, integrity), ...}
+        Summary dict: {"FRE": (pattern, bracket, empty_str, formula_text, integrity, warnings), ...}
     """
     xml_by_lang, xlsx_by_lang = iter_source_files(source_folder)
     all_langs = sorted(set(list(xml_by_lang.keys()) + list(xlsx_by_lang.keys())))
@@ -769,8 +665,6 @@ def run_pattern_check(
     pattern_dir.mkdir(parents=True, exist_ok=True)
     bracket_dir = output_folder / "MissingBrackets"
     bracket_dir.mkdir(parents=True, exist_ok=True)
-    broken_dir = output_folder / "BrokenXML"
-    broken_dir.mkdir(parents=True, exist_ok=True)
     empty_dir = output_folder / "EmptyStr"
     empty_dir.mkdir(parents=True, exist_ok=True)
     formula_dir = output_folder / "FormulaText"
@@ -792,7 +686,6 @@ def run_pattern_check(
 
         all_pattern_errors = []
         all_bracket_errors = []
-        all_broken_xml = []
         all_empty_str = []
         all_formula_text = []
         all_integrity = []
@@ -805,10 +698,6 @@ def run_pattern_check(
             all_pattern_errors.extend(p_errors)
             all_bracket_errors.extend(b_errors)
             all_empty_str.extend(e_errors)
-
-            # Broken XML check — raw text level, always runs on ALL entries
-            broken = check_broken_xml_in_file(xml_path)
-            all_broken_xml.extend(broken)
 
             # Formula text check — catches leaked Excel formulas/errors in Str/Desc
             formula = check_formula_text_in_file(xml_path)
@@ -830,14 +719,31 @@ def run_pattern_check(
             all_formula_text.extend(xl_formula)
             all_integrity.extend(xl_integrity)
 
+        # Split integrity into real issues vs low-impact warnings (lone brackets matching source)
+        real_integrity = []
+        warning_integrity = []
+        for elem in all_integrity:
+            str_val = _get_attr(elem, _STR_ATTRS)
+            desc_val = _get_attr(elem, _DESC_ATTRS)
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS)
+            reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
+                      or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
+                      or "")
+            if reason.startswith('Warning:'):
+                warning_integrity.append(elem)
+            else:
+                real_integrity.append(elem)
+
+        # Summary: (pattern, bracket, empty_str, formula_text, integrity, warnings)
         summary[lang] = (len(all_pattern_errors), len(all_bracket_errors),
-                         len(all_broken_xml), len(all_empty_str),
-                         len(all_formula_text), len(all_integrity))
+                         len(all_empty_str), len(all_formula_text),
+                         len(real_integrity), len(warning_integrity))
 
         # Combine all error lists for main XML output (deduplicate by element identity)
         seen = set()
         combined = []
-        for elem in all_pattern_errors + all_bracket_errors + all_empty_str + all_formula_text + all_integrity:
+        for elem in all_pattern_errors + all_bracket_errors + all_empty_str + all_formula_text + real_integrity:
             eid = id(elem)
             if eid not in seen:
                 seen.add(eid)
@@ -850,7 +756,7 @@ def run_pattern_check(
             b_count = len(all_bracket_errors)
             e_count = len(all_empty_str)
             f_count = len(all_formula_text)
-            i_count = len(all_integrity)
+            i_count = len(real_integrity)
             logger.info(f"Pattern check {lang}: {p_count} pattern + {b_count} bracket + {e_count} empty + {f_count} formula + {i_count} integrity errors in {file_count} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({file_count} files)")
@@ -860,12 +766,6 @@ def run_pattern_check(
             bracket_path = bracket_dir / f"MissingBrackets_{lang}.xml"
             _write_results_xml(bracket_path, all_bracket_errors)
             logger.info(f"Bracket check {lang}: {len(all_bracket_errors)} CRITICAL entries -> {bracket_path.name}")
-
-        # Write separate critical broken XML report
-        if all_broken_xml:
-            broken_path = broken_dir / f"BrokenXML_{lang}.txt"
-            _write_broken_xml_report(broken_path, all_broken_xml)
-            logger.info(f"Broken XML {lang}: {len(all_broken_xml)} CRITICAL entries -> {broken_path.name}")
 
         # Write separate empty Str file
         if all_empty_str:
@@ -879,11 +779,11 @@ def run_pattern_check(
             _write_results_xml(formula_path, all_formula_text)
             logger.info(f"Formula text {lang}: {len(all_formula_text)} CRITICAL entries -> {formula_path.name}")
 
-        # Write separate text integrity XML
-        if all_integrity:
+        # Write separate text integrity XML (real issues only, no lone bracket warnings)
+        if real_integrity:
             integrity_path = integrity_dir / f"TextIntegrity_{lang}.xml"
-            _write_results_xml(integrity_path, all_integrity)
-            logger.info(f"Text integrity {lang}: {len(all_integrity)} entries -> {integrity_path.name}")
+            _write_results_xml(integrity_path, real_integrity)
+            logger.info(f"Text integrity {lang}: {len(real_integrity)} entries -> {integrity_path.name}")
 
         # --- Unified Excel report: one file per language, tabs only if findings ---
         elem_headers = ("StringID", "StrOrigin", "Str", "Reason")
@@ -891,6 +791,7 @@ def run_pattern_check(
 
         # Tab 1: Critical — formula text + broken/truncated linebreak integrity
         critical_rows = []
+        secondary_rows = []
         for elem in all_formula_text:
             sid = _get_attr(elem, _STRINGID_ATTRS)
             str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
@@ -898,7 +799,7 @@ def run_pattern_check(
             desc_val = _get_attr(elem, _DESC_ATTRS)
             reason = is_formula_text(str_val) or is_formula_text(desc_val) or "Unknown"
             critical_rows.append((sid, str_origin, str_val, reason))
-        for elem in all_integrity:
+        for elem in real_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
             str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
@@ -906,34 +807,31 @@ def run_pattern_check(
             reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
                       or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
                       or "Unknown")
+            sid = _get_attr(elem, _STRINGID_ATTRS)
             if reason.startswith('Broken') or reason.startswith('Truncated'):
-                sid = _get_attr(elem, _STRINGID_ATTRS)
                 critical_rows.append((sid, str_origin, str_val, reason))
+            else:
+                secondary_rows.append((sid, str_origin, str_val, reason))
         if critical_rows:
             sheets.append(("Critical", elem_headers, critical_rows))
 
         # Tab 2: Secondary — encoding artifacts, invisible chars, control chars
-        # Tab 2b: LowImpactWarnings — lone brackets matching source (low-impact)
-        secondary_rows = []
-        lone_bracket_rows = []
-        for elem in all_integrity:
-            str_val = _get_attr(elem, _STR_ATTRS)
-            desc_val = _get_attr(elem, _DESC_ATTRS)
-            str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
-            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS)
-            reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
-                      or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
-                      or "Unknown")
-            if reason.startswith('Broken') or reason.startswith('Truncated'):
-                continue  # already in Critical tab
-            sid = _get_attr(elem, _STRINGID_ATTRS)
-            if reason.startswith('Warning:'):
-                lone_bracket_rows.append((sid, str_origin, str_val, reason))
-            else:
-                secondary_rows.append((sid, str_origin, str_val, reason))
         if secondary_rows:
             sheets.append(("Secondary", elem_headers, secondary_rows))
-        if lone_bracket_rows:
+
+        # Tab 2b: LowImpactWarnings — lone brackets matching source (low-impact)
+        if warning_integrity:
+            lone_bracket_rows = []
+            for elem in warning_integrity:
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                str_val = _get_attr(elem, _STR_ATTRS)
+                desc_val = _get_attr(elem, _DESC_ATTRS)
+                desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS)
+                reason = (is_text_integrity_issue(str_val, from_xml=True, source_text=str_origin)
+                          or is_text_integrity_issue(desc_val, from_xml=True, source_text=desc_origin)
+                          or "Warning: Unknown")
+                lone_bracket_rows.append((sid, str_origin, str_val, reason))
             sheets.append(("LowImpactWarnings", elem_headers, lone_bracket_rows))
 
         # Tab 3: PatternErrors
@@ -969,11 +867,6 @@ def run_pattern_check(
                 rows.append((sid, str_origin, str_val, "Empty translation"))
             sheets.append(("EmptyStr", elem_headers, rows))
 
-        # Tab 7: BrokenXML — tuple data, not lxml elements
-        if all_broken_xml:
-            broken_headers = ("StringID", "Fragment", "Filename")
-            broken_rows = list(all_broken_xml)
-            sheets.append(("BrokenXML", broken_headers, broken_rows))
 
         if sheets:
             excel_path = output_folder / f"CodeFormatIssue_{lang}.xlsx"
