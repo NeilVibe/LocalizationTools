@@ -30,9 +30,9 @@ Full details in `.planning/milestones/`:
   3. TagText.svelte pill rendering, combined pills, and inline hex-tinted styles each have passing tests
   4. Status color logic for all 3 states (empty, translated, confirmed) has passing tests
   5. Svelte 5 rune patterns ($state, $derived, $effect) work correctly in the test environment
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 83-01-PLAN.md — Vitest setup, config, existing tagDetector test migration with mutation-killing assertions
+- [x] 83-01-PLAN.md — Vitest setup, config, existing tagDetector test migration with mutation-killing assertions
 - [ ] 83-02-PLAN.md — StatusColors extraction + tests, TagText component tests, full coverage verification
 
 ### Phase 84: VirtualGrid Decomposition
@@ -62,6 +62,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 83. Test Infrastructure | 0/2 | Planned | - |
+| 83. Test Infrastructure | 1/2 | In Progress|  |
 | 84. VirtualGrid Decomposition | 0/? | Not started | - |
 | 85. Regression Verification | 0/? | Not started | - |
