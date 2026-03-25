@@ -1,1 +1,1 @@
-Build QACompiler — diagnostic dump for pending bloat
+Build QACompiler — full pending debug log
