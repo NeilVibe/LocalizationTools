@@ -51,7 +51,8 @@
   let inlineEditor = $state(null);
   let searchEngine = $state(null);
 
-  let containerEl = $state(null);
+  // containerEl is now in gridState for cross-module reactivity
+  // CellRenderer sets grid.containerEl via bind:this
   let resizeObserver = null;
   // Textarea element bridged between CellRenderer (owns DOM) and InlineEditor (owns logic)
   let inlineEditTextarea = $state(null);
@@ -163,8 +164,8 @@
   });
 
   $effect(() => {
-    if (containerEl) {
-      containerEl.addEventListener('scroll', handleScroll);
+    if (grid.containerEl) {
+      grid.containerEl.addEventListener('scroll', handleScroll);
       scrollEngine?.calculateVisibleRange();
       if (!resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
@@ -172,16 +173,16 @@
           cellRenderer?.updateContainerWidth();
         });
       }
-      resizeObserver.observe(containerEl);
+      resizeObserver.observe(grid.containerEl);
       cellRenderer?.updateContainerWidth();
       return () => {
-        containerEl.removeEventListener('scroll', handleScroll);
+        grid.containerEl.removeEventListener('scroll', handleScroll);
         if (resizeObserver) resizeObserver.disconnect();
       };
     }
   });
 
-  onMount(() => { if (containerEl) scrollEngine?.calculateVisibleRange(); });
+  onMount(() => { if (grid.containerEl) scrollEngine?.calculateVisibleRange(); });
   onDestroy(() => {
     if (fileId) leaveFile(fileId);
     if (cellUpdateUnsubscribe) cellUpdateUnsubscribe();
@@ -200,7 +201,6 @@
       {fileId}
       {fileType}
       {activeTMs}
-      {containerEl}
     />
     <StatusColors
       bind:this={statusColors}
@@ -269,7 +269,6 @@
       <CellRenderer
         bind:this={cellRenderer}
         {fileType}
-        bind:containerEl={containerEl}
         {gamedevDynamicColumns}
         inlineEditingRowId={grid.inlineEditingRowId}
         bind:inlineEditTextarea={inlineEditTextarea}

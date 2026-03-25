@@ -32,7 +32,7 @@
   // Props via $props() (per D-05)
   let {
     fileType = "translator",
-    containerEl = $bindable(null),
+    // containerEl is now in gridState — set directly via bind:this on scroll-container
     gamedevDynamicColumns = null,
     // Inline editing state passed from parent (InlineEditor owns these, Batch 3)
     inlineEditingRowId = null,
@@ -148,8 +148,8 @@
 
   // Update container width when it changes
   export function updateContainerWidth() {
-    if (containerEl) {
-      containerWidth = containerEl.clientWidth;
+    if (grid.containerEl) {
+      containerWidth = grid.containerEl.clientWidth;
     }
   }
 
@@ -225,14 +225,14 @@
   }
 
   function handleResize(event) {
-    if (!isResizing || !containerEl) return;
+    if (!isResizing || !grid.containerEl) return;
 
     const deltaX = event.clientX - resizeStartX;
     const limits = COLUMN_LIMITS[resizeColumn];
     if (!limits) return;
 
     if (resizeColumn === 'source') {
-      const cw = containerEl.clientWidth;
+      const cw = grid.containerEl.clientWidth;
       const fixedTotal = getFixedWidthBefore() + getFixedWidthAfter();
       const flexWidth = cw - fixedTotal;
       if (flexWidth <= 0) return;
@@ -289,8 +289,8 @@
   ></div>
 {/each}
 
-<!-- Scroll Container: owns the scrollbar, parent binds containerEl from here -->
-<div class="scroll-container" bind:this={containerEl}>
+<!-- Scroll Container: owns the scrollbar, parent binds grid.containerEl from here -->
+<div class="scroll-container" bind:this={grid.grid.containerEl}>
 {#if grid.initialLoading}
   <div class="loading-overlay">
     <InlineLoading description="Loading rows..." />

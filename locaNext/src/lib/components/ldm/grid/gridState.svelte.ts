@@ -44,6 +44,7 @@ export const grid = $state({
   searchTerm: '' as string,
   searchMode: 'contain' as string,
   searchFields: ['source', 'target'] as string[],
+  containerEl: null as HTMLElement | null,
 });
 
 // --- Mutable Maps/Sets (exported as $state, mutated in place) ---
@@ -54,8 +55,8 @@ export const tmAppliedRows = $state(new Map<string, { match_type: string }>());
 export const referenceData = $state(new Map<string, { target: string; source: string }>());
 export const qaFlags = $state(new Map<string, number>());
 
-// --- Variable height virtualization ---
-export let cumulativeHeights = $state<number[]>([0]);
+// --- Variable height virtualization (property on $state wrapper for cross-module reactivity) ---
+export const heightData = $state({ cumulativeHeights: [0] as number[] });
 
 // Virtual scrolling constants
 export const MIN_ROW_HEIGHT = 48;
@@ -152,13 +153,13 @@ export function rebuildCumulativeHeights(stripColorTags: (text: string) => strin
     const height = row ? estimateRowHeight(row, i, stripColorTags) : MIN_ROW_HEIGHT;
     newCumulative[i + 1] = newCumulative[i] + height;
   }
-  cumulativeHeights = newCumulative;
+  heightData.cumulativeHeights = newCumulative;
 }
 
 /** Get row position using cumulative heights */
 export function getRowTop(index: number): number {
-  if (cumulativeHeights.length > index) {
-    return cumulativeHeights[index];
+  if (heightData.cumulativeHeights.length > index) {
+    return heightData.cumulativeHeights[index];
   }
   return index * MIN_ROW_HEIGHT;
 }
@@ -171,15 +172,15 @@ export function getRowHeight(index: number, stripColorTags: (text: string) => st
 
 /** Total height is last cumulative value */
 export function getTotalHeight(): number {
-  if (cumulativeHeights.length > grid.total) {
-    return cumulativeHeights[grid.total];
+  if (heightData.cumulativeHeights.length > grid.total) {
+    return heightData.cumulativeHeights[grid.total];
   }
   return grid.total * MIN_ROW_HEIGHT;
 }
 
 /** Binary search to find row at scroll position */
 export function findRowAtPosition(scrollPos: number): number {
-  if (cumulativeHeights.length === 0) {
+  if (heightData.cumulativeHeights.length === 0) {
     return Math.floor(scrollPos / MIN_ROW_HEIGHT);
   }
 
@@ -188,7 +189,7 @@ export function findRowAtPosition(scrollPos: number): number {
 
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
-    if (cumulativeHeights[mid + 1] <= scrollPos) {
+    if (heightData.cumulativeHeights[mid + 1] <= scrollPos) {
       low = mid + 1;
     } else {
       high = mid;
@@ -242,5 +243,5 @@ export function resetGridState(): void {
   tmAppliedRows.clear();
   referenceData.clear();
   qaFlags.clear();
-  cumulativeHeights = [0];
+  heightData.cumulativeHeights = [0];
 }

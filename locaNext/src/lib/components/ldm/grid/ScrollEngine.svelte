@@ -14,7 +14,7 @@
     rowIndexById,
     rowHeightCache,
     loadedPages,
-    cumulativeHeights,
+    heightData,
     rebuildCumulativeHeights,
     findRowAtPosition,
     getRowTop,
@@ -33,8 +33,11 @@
     fileId = null,
     fileType = 'translator',
     activeTMs = [],
-    containerEl = null,
   } = $props();
+
+  // containerEl comes from gridState (set by CellRenderer via bind:this)
+  // Using $derived ensures we always have the latest reference
+  let containerEl = $derived(grid.containerEl);
 
   // API base URL
   let API_BASE = $derived(getApiBase());
@@ -254,7 +257,7 @@
         params.append('search', grid.searchTerm.trim());
         params.append('search_mode', grid.searchMode);
         params.append('search_fields', grid.searchFields.join(','));
-        logger.info("loadRows with search", { grid.searchTerm, grid.searchMode, grid.searchFields });
+        logger.info("loadRows with search", { searchTerm: grid.searchTerm, searchMode: grid.searchMode, searchFields: grid.searchFields });
       }
 
       let response;
