@@ -15,7 +15,7 @@ Full details in `.planning/milestones/`:
 ## Phases
 
 - [x] **Phase 83: Test Infrastructure** - Stand up Vitest + @testing-library/svelte, write unit tests for tagDetector.js, TagText.svelte, and status color logic (completed 2026-03-25)
-- [ ] **Phase 84: VirtualGrid Decomposition** - Extract 6 composable modules from VirtualGrid.svelte (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine)
+- [x] **Phase 84: VirtualGrid Decomposition** - Extract 6 composable modules from VirtualGrid.svelte (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine) (completed 2026-03-25)
 - [ ] **Phase 85: Regression Verification** - Confirm all existing E2E/Playwright tests pass after decomposition with zero behavior changes
 
 ## Phase Details
@@ -46,11 +46,11 @@ Plans:
   4. SelectionManager module handles cell selection, keyboard navigation, and multi-select
   5. InlineEditor module handles textarea editing, save/cancel, and keyboard shortcuts
   6. StatusColors module encapsulates the 3-state status scheme, hover states, and QA badge styling
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 84-01-PLAN.md — Batch 1: gridState.svelte.ts + ScrollEngine + StatusColors extraction
 - [x] 84-02-PLAN.md — Batch 2: CellRenderer + SelectionManager extraction
-- [ ] 84-03-PLAN.md — Batch 3: InlineEditor + SearchEngine extraction, parent slim-down, final verification
+- [x] 84-03-PLAN.md — Batch 3: InlineEditor + SearchEngine extraction, parent slim-down, final verification
 
 ### Phase 85: Regression Verification
 **Goal**: The decomposed grid behaves identically to the original VirtualGrid with zero user-visible changes
@@ -67,5 +67,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 83. Test Infrastructure | 2/2 | Complete   | 2026-03-25 |
-| 84. VirtualGrid Decomposition | 2/3 | In Progress|  |
+| 84. VirtualGrid Decomposition | 3/3 | Complete   | 2026-03-25 |
 | 85. Regression Verification | 0/? | Not started | - |

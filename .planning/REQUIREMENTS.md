@@ -22,7 +22,7 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 - [x] **GRID-03**: ScrollEngine module extracted — virtual scroll, row height calculation, viewport management
 - [x] **GRID-04**: CellRenderer module extracted — source/target/reference cell rendering, TagText integration
 - [x] **GRID-05**: SelectionManager module extracted — cell selection, keyboard navigation, multi-select
-- [ ] **GRID-06**: InlineEditor module extracted — textarea editing, save/cancel, keyboard shortcuts
+- [x] **GRID-06**: InlineEditor module extracted — textarea editing, save/cancel, keyboard shortcuts
 - [x] **GRID-07**: StatusColors module extracted — 3-state status scheme, hover states, QA badge styling
 - [ ] **GRID-08**: All existing E2E/Playwright tests pass after decomposition (zero regressions)
 
@@ -78,7 +78,7 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 | GRID-03 | Phase 84 | Complete |
 | GRID-04 | Phase 84 | Complete |
 | GRID-05 | Phase 84 | Complete |
-| GRID-06 | Phase 84 | Pending |
+| GRID-06 | Phase 84 | Complete |
 | GRID-07 | Phase 84 | Complete |
 | GRID-08 | Phase 85 | Pending |
 
