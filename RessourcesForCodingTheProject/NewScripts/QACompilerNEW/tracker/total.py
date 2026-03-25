@@ -183,11 +183,22 @@ def read_existing_workload_data(wb: openpyxl.Workbook) -> Dict[str, Dict]:
     # and there are workload columns (Days Worked at offset, Assessment after)
     # The structure is: User | Tester Stats... | Manager Stats... | Workload Analysis...
 
-    # Calculate column positions
-    # New order: Actual Done (1) | Days Worked (2) | Daily Avg (3) | Type (4) | Tester Assessment (5)
+    # Find columns by header name (robust to schema changes like adding/removing MANAGER_HEADERS)
     user_col = 1
-    days_worked_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 2  # "Days Worked" is 2nd in WORKLOAD_HEADERS
-    assessment_col = len(TESTER_HEADERS) + len(MANAGER_HEADERS) + 5   # "Comment" is 5th in WORKLOAD_HEADERS
+    days_worked_col = None
+    assessment_col = None
+
+    for col in range(1, (ws.max_column or 0) + 1):
+        header = ws.cell(1, col).value  # Header row — ws.cell is fine (not read_only)
+        if header:
+            h = str(header).strip()
+            if h == "Days Worked":
+                days_worked_col = col
+            elif h in ("Tester Assessment", "Comment"):
+                assessment_col = col
+
+    if days_worked_col is None and assessment_col is None:
+        return existing_data
 
     for row in range(1, ws.max_row + 1):
         user_value = ws.cell(row, user_col).value
@@ -349,9 +360,11 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         total_nonissue = sum(c["nonissue"] for c in categories)
         total_pending = sum(c["pending"] for c in categories)
 
-        print(f"\n  [{user}] TOTAL: issues={total_issues}, fixed={total_fixed}, reported={total_reported}, checking={total_checking}, nonissue={total_nonissue} => PENDING={total_pending}")
+        total_active_issues = sum(c["active_issues"] for c in categories)
+        total_active_pending = sum(c["active_pending"] for c in categories)
+        print(f"\n  [{user}] TOTAL: issues={total_issues}, fixed={total_fixed}, reported={total_reported}, checking={total_checking}, nonissue={total_nonissue} => PENDING={total_pending}, active_issues={total_active_issues}, active_pending={total_active_pending}")
         for cat_data in categories:
-            print(f"    - {cat_data['category']}: issues={cat_data['issues']}, fixed={cat_data['fixed']}, reported={cat_data['reported']}, checking={cat_data['checking']}, nonissue={cat_data['nonissue']} => PENDING={cat_data['pending']}")
+            print(f"    - {cat_data['category']}: issues={cat_data['issues']}, fixed={cat_data['fixed']}, reported={cat_data['reported']}, checking={cat_data['checking']}, nonissue={cat_data['nonissue']} => PENDING={cat_data['pending']}, active_issues={cat_data['active_issues']}, active_pending={cat_data['active_pending']}")
 
     print(f"\n[DEBUG TOTAL] ===== AGGREGATED USER DATA =====")
     print(f"  Total users: {len(user_data)}")
@@ -491,7 +504,7 @@ def build_tester_section(
         pending = max(0, issues - fixed - reported - nonissue)
 
         # GRANULAR: Log every row being written to TOTAL sheet
-        print(f"  [{user}] issues={issues}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue} => PENDING={pending}")
+        print(f"  [{user}] issues={issues}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue} => PENDING={pending}, active_issues={active_issues_val}, active_pending={active_pending_val}")
 
         # Workload Analysis calculations
         actual_done = done - blocked - korean  # Actual productive work

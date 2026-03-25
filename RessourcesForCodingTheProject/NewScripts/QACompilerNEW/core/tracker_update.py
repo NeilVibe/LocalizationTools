@@ -607,19 +607,26 @@ def update_tracker_flat_dump(base_folder: Path = None, log_callback=None) -> Tup
     # Phase 4b: Build active pending from discovered masterfiles
     from tracker.masterfile_pending import build_pending_from_masterfiles
 
-    en_folders = set()
-    cn_folders = set()
+    # Find Masterfolder_EN and CN by walking ancestors of each master file
+    en_folder = None
+    cn_folder = None
     for mpath in master_files:
-        parent_name = mpath.parent.name
-        if "EN" in parent_name:
-            en_folders.add(mpath.parent)
-        elif "CN" in parent_name:
-            cn_folders.add(mpath.parent)
+        for ancestor in mpath.parents:
+            if ancestor.name == "Masterfolder_EN":
+                en_folder = ancestor
+                break
+            elif ancestor.name == "Masterfolder_CN":
+                cn_folder = ancestor
+                break
 
-    en_folder = next(iter(en_folders), Path("/nonexistent"))
-    cn_folder = next(iter(cn_folders), Path("/nonexistent"))
-    active_pending_data = build_pending_from_masterfiles(en_folder, cn_folder)
-    _log(f"Active pending: {len(active_pending_data)} testers with active issues")
+    if en_folder or cn_folder:
+        active_pending_data = build_pending_from_masterfiles(
+            en_folder or Path("/nonexistent"),
+            cn_folder or Path("/nonexistent")
+        )
+        _log(f"Active pending: {len(active_pending_data)} testers with active issues")
+    else:
+        active_pending_data = {}
 
     # Phase 5: Update tracker (same pipeline as update_tracker_only)
     _log("Updating Progress Tracker...")
@@ -1153,8 +1160,8 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
     )
     _log(f"Active pending: {len(active_pending_data)} testers with active issues")
 
-    # Fallback: also check main Masterfolder if TrackerUpdate folders are empty
-    if not active_pending_data:
+    # Fallback: only if TrackerUpdate master folders have no master files at all
+    if not active_pending_data and not has_master_files:
         from config import MASTER_FOLDER_EN, MASTER_FOLDER_CN
         active_pending_data = build_pending_from_masterfiles(MASTER_FOLDER_EN, MASTER_FOLDER_CN)
         if active_pending_data:

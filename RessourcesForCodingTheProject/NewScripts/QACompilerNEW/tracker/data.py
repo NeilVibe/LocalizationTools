@@ -120,7 +120,7 @@ def update_daily_data_sheet(
 
     ws = wb["_DAILY_DATA"]
 
-    # Ensure headers exist (14 columns total)
+    # Ensure headers exist (20 columns total)
     if ws.cell(1, 1).value != "Date" or ws.max_column < 20:
         for col, header in enumerate(DAILY_DATA_HEADERS, 1):
             ws.cell(1, col, header)
@@ -334,7 +334,7 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 2, user)
                 # Use master category for new rows (consistent with master file naming)
                 ws.cell(new_row, 3, master_category)
-                for c in [4,5,6,7,8,13,14]: ws.cell(new_row, c, 0)
+                for c in [4,5,6,7,8,13,14,15,16,17,18,19,20]: ws.cell(new_row, c, 0)
                 ws.cell(new_row, 9, stats["fixed"])
                 ws.cell(new_row, 10, stats["reported"])
                 ws.cell(new_row, 11, stats["checking"])

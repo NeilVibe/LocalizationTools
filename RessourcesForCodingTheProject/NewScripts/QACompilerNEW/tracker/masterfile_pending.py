@@ -159,7 +159,7 @@ def _read_master_statuses(
             for idx, hdr in enumerate(headers):
                 hdr_upper = hdr.upper()
                 if hdr_upper.startswith(_TESTER_STATUS_PREFIX.upper()):
-                    username = hdr[len(_TESTER_STATUS_PREFIX):]
+                    username = hdr[len(_TESTER_STATUS_PREFIX):].strip()
                     if username:
                         # Find matching STATUS_{username}
                         status_col_name = f"{_STATUS_PREFIX}{username}"
@@ -175,7 +175,7 @@ def _read_master_statuses(
 
             # Process data rows
             for row in ws.iter_rows(min_row=2, values_only=True):
-                if row is None:
+                if not any(row):
                     continue
 
                 for username, (ts_idx, s_idx) in user_columns.items():
@@ -201,7 +201,10 @@ def _read_master_statuses(
                     classification = _classify_status(manager_status)
 
                     if classification == "checking":
-                        # CHECKING counts as both checking AND pending
+                        # CHECKING = manager is reviewing but hasn't resolved.
+                        # Counts as BOTH checking AND pending (pending = unresolved).
+                        # NOTE: This means active_issues != pending + fixed + reported + checking + nonissue
+                        # because checking rows are in both pending and checking.
                         counts["checking"] += 1
                         counts["pending"] += 1
                     else:
