@@ -1,5 +1,27 @@
 # Milestones
 
+## v9.0 Build Validation + Real-World Testing (Shipped: 2026-03-25)
+
+**Phases completed:** 6 phases, 14 plans, 22 tasks
+
+**Key accomplishments:**
+
+- Pillow-valid 64x64 DDS textures and WAV-content WEM audio stubs across 3 language folders (English, Korean, Chinese)
+- Japanese XML with 100 StringIds + 13 tests validating DDS/WEM/XML at correct Perforce-mapped paths
+- Added lxml to embedded Python pip install and merge module import verification step to GitHub Actions build workflow
+- Triggered GitHub Actions Light Build to validate lxml + merge module CI pipeline end-to-end; installer verification pending human testing on offline PC
+- 7 E2E tests verifying language data upload, row listing with Korean text, edit persistence, and full SQLite round-trip using showcase_dialogue.loc.xml fixture
+- 9 E2E tests verifying DDS thumbnail, WEM audio stream, image/audio context endpoints against Phase 74 mock gamedata
+- 11 E2E tests verifying TM lifecycle: populate 10 game localization entries, CRUD operations, FAISS index build, and 5-tier cascade search
+- E2E tests for merge (5 tests, 4 xfail due to route shadow) and QA pipeline (6 tests passing, pattern mismatch detected in DLG_003)
+- Aho-Corasick detection endpoint and context panel verified with 12 E2E tests (10 pass, 2 xfail for gamedata dependency)
+- Qwen3-VL scored all 5 LocaNext pages (avg 6.6/10): Files 6, GameDev 7, Codex 7, Map 7, TM 6 -- 2 pages need fixes
+- Fixed Files type labels and TM status column, re-verified all 5 pages with Qwen3-VL -- avg score improved from 6.6 to 8.6/10, all pass 7+
+- FIX-01 (Critical): Merge route conflict resolved.
+- Corrected BUILD-04 to pending, checked off 7 completed Active items in PROJECT.md, populated STATE.md metrics, fixed ROADMAP phase count
+
+---
+
 ## v8.0 Tag Visualizer + Service Layer Extraction (Shipped: 2026-03-24)
 
 **Phases:** 73, 69-72 (5 phases)

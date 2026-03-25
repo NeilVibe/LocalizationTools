@@ -1,98 +1,145 @@
-# Tribunal MCP — Decision Engine
+# Tribunal — Multi-Expert Decision Engine
 
-**Status:** Production v2.0 (2026-03-22)
-**Code:** `~/.claude/mcp-servers/tribunal/server.py` (780 lines)
-**Skills:** 111 auto-discovered from `~/.claude/skills/`
-
----
-
-## What It Does
-
-Tribunal = multi-expert decision engine. Ask a question → it picks the best expert personas → runs them in parallel → queen synthesizes a verdict → optionally creates tasks.
-
-```
-Question → Viking + TF-IDF persona selection (3-5 experts)
-    → Parallel claude -p calls (haiku/sonnet, 60-90s)
-    → Queen synthesis (sonnet/opus)
-    → Parse ACTIONS block → Ruflo tasks (optional)
-    → Hive-mind consensus (optional)
-```
+**Status:** Production v3.0 (2026-03-25)
+**MCP Server:** `~/.claude/mcp-servers/tribunal/server.py`
+**Skill:** `~/.claude/skills/decision-tribunal/SKILL.md`
+**Skills indexed:** 111 auto-discovered from `~/.claude/skills/`
 
 ---
 
-## 4 Tools
+## Architecture (v3 — Agent-Based)
+
+v3 split Tribunal into two complementary layers:
+
+| Layer | What | Purpose |
+|-------|------|---------|
+| **MCP** (`tribunal_match`, `tribunal_personas`) | Instant persona matching engine | Find the RIGHT experts |
+| **Skill** (`/decision-tribunal`) | 5-step orchestration workflow | Run the experts, synthesize verdict |
+
+**Why two layers?** MCP is fast but dumb (matching only). The Skill teaches Claude HOW to use the matches — spawn agents, synthesize, store. Neither works at full power alone.
+
+```
+                  ┌─────────────────────────────────────────┐
+                  │         /decision-tribunal SKILL         │
+                  │         (orchestration workflow)          │
+                  │                                          │
+                  │  Step 1: tribunal_match ──→ MCP (instant)│
+                  │  Step 2: Validate picks  ──→ Claude brain│
+                  │  Step 3: Fan out agents  ──→ Agent tool  │
+                  │  Step 4: Queen synthesis ──→ Claude brain│
+                  │  Step 5: Store verdict   ──→ Ruflo MCP   │
+                  └─────────────────────────────────────────┘
+```
+
+---
+
+## MCP Tools (2 tools)
 
 | Tool | Purpose | Speed | Cost |
 |------|---------|-------|------|
-| `tribunal_match` | Dry-run: preview persona selection with scores | <1s | Free |
+| `tribunal_match` | Find best expert personas for a question (Viking + TF-IDF) | <1s | Free |
 | `tribunal_personas` | List all 111 available personas | <1s | Free |
-| `tribunal_decide` | Decision only (experts → queen → verdict) | 60-90s | ~$0.10 |
-| `tribunal_automaton` | Full pipeline (decide → tasks → consensus) | 60-90s | ~$0.05 |
+
+These are **matching tools only** — they find experts but don't run them.
+
+### tribunal_match
+
+```
+tribunal_match(question="Should we use SQLite or PostgreSQL?", max_personas=5)
+```
+
+Returns ranked personas with scores:
+- **Viking score** — semantic similarity (understands meaning)
+- **KW-IDF score** — keyword term frequency (matches domain words)
+- **Combined score** — merged ranking with dual-match bonus
+
+### tribunal_personas
+
+```
+tribunal_personas()
+```
+
+Returns all 111 skill personas with keyword counts and descriptions.
 
 ---
 
-## Recommended Defaults
+## Skill: /decision-tribunal (Full Pipeline)
 
-| Parameter | Automaton | Decide |
-|-----------|-----------|--------|
-| `model_personas` | `haiku` | `sonnet` |
-| `model_queen` | `sonnet` | `opus` |
-| `max_personas` | 3-5 | 3-5 |
-| `full_knowledge` | `false` | `false` (or `true` for deep analysis) |
+The skill orchestrates the complete decision workflow. Invoke with:
+- User says "tribunal", "ask experts", "get opinions"
+- Claude hits a design fork with 2+ valid options
+- During `/grill-me` when hard tradeoffs surface
 
-**Why:** Automaton has queen refinement, so cheap personas suffice. Decide is standalone — invest in persona quality.
+### The 5 Steps
 
----
+**Step 1 — Match Personas** (MCP)
+```
+tribunal_match(question="...", max_personas=5)
+```
+Instant. Returns ranked personas with scores.
 
-## Usage Examples
+**Step 2 — Validate Picks** (Claude brain)
+- Do the matched skills actually have relevant expertise?
+- Are there S-tier/A-tier skills that were MISSED?
+- Override bad picks — `tribunal_match` uses keywords, it can miss skills where expertise is in the content, not the name.
 
-### Quick Decision
-```python
-tribunal_decide(
-    question="Should we use SQLite or PostgreSQL for offline-first desktop?",
-    max_personas=3
-)
+**Step 3 — Fan Out Parallel Agents** (Agent tool)
+Spawn 3-5 parallel Agent calls, one per expert. ALL in one message:
+```
+Agent(prompt="You are a [SKILL] expert. Answer from YOUR perspective.
+Be specific, opinionated, concrete. Under 200 words. Lead with recommendation.
+QUESTION: [question]
+DO NOT write code or edit files. Just give your expert opinion.")
 ```
 
-### Architecture Decision (Deep)
-```python
-tribunal_decide(
-    question="Design the real-time sync protocol for multi-user editing",
-    model_personas="sonnet",
-    model_queen="opus",
-    full_knowledge=True  # sends complete SKILL.md to personas
-)
-```
+**Step 4 — Queen Synthesis** (Claude brain)
+Claude IS the queen. Synthesize:
+1. Tally — who agrees, who dissents
+2. Resolve disagreements — explain why one side wins
+3. VERDICT — one clear recommendation with WHY
+4. Format as a table for scanability
 
-### Full Pipeline (Decision → Tasks)
-```python
-tribunal_automaton(
-    question="How should we implement the particle morphing system?",
-    max_personas=4
-)
-# Returns: verdict + parsed actions + Ruflo task IDs
+**Step 5 — Bridge to Ruflo** (Ruflo MCP)
 ```
-
-### Dry Run (Free, Fast)
-```python
-tribunal_match(
-    question="WebSocket real-time sync",
-    max_personas=5
-)
-# Returns: scored persona ranking (Viking + keyword TF-IDF)
-```
-
-### Force Specific Experts
-```python
-tribunal_decide(
-    question="Should we use GSAP or CSS animations?",
-    personas="gsap-master,awwwards-animations,frontend-design"
+ruflo memory_store(
+  key: "tribunal-20260325-topic",
+  value: "VERDICT: [condensed, max 500 chars]",
+  tags: ["tribunal", "decision", "topic-keywords"]
 )
 ```
 
 ---
 
-## Persona Selection (v2)
+## When to Use
+
+| Scenario | What to use |
+|----------|-------------|
+| "Which skill for X?" | `tribunal_match` alone (step 1 only) |
+| Hard design decision, 2+ valid options | Full `/decision-tribunal` (all 5 steps) |
+| Architecture tradeoff (Redis vs PG, etc.) | Full pipeline, consider forcing specific experts |
+| GSD discuss/plan phase — open questions | Full pipeline |
+| During `/grill-me` — hard tradeoff surfaces | Full pipeline |
+| Simple factual question | Don't use tribunal — just answer it |
+| Task that just needs doing | Don't use tribunal — just do it |
+
+## When NOT to Use
+
+- Simple factual questions (just answer them)
+- Tasks with one obvious answer
+- Questions that need doing, not deciding
+
+---
+
+## Force Specific Experts
+
+If `tribunal_match` gives bad picks, override manually in Step 2:
+- Check the skill tier list (`~/.claude/rules/skill-tier-list.md`)
+- Name the experts directly when spawning agents in Step 3
+- Example: for "GSAP vs CSS animations?" force `gsap-master`, `awwwards-animations`, `frontend-design`
+
+---
+
+## Persona Selection Engine
 
 Two-signal merge with scoring:
 
@@ -100,7 +147,6 @@ Two-signal merge with scoring:
 2. **TF-IDF keyword scoring** — matches domain terms, weights rare words higher
 3. **Skill-name 3x boost** — "websocket" in question → `websocket-engineer` scores 3x
 4. **Dual-match bonus** (+0.2) — skills found by BOTH signals rank highest
-5. **Min score threshold** (2.0) — filters noise matches
 
 ### Match Quality (Verified)
 
@@ -112,6 +158,7 @@ Two-signal merge with scoring:
 | Svelte | svelte-code-writer |
 | Security | secure-code-guardian |
 | Animation | gsap-master |
+| FastAPI backend | fastapi-expert |
 
 ---
 
@@ -119,20 +166,31 @@ Two-signal merge with scoring:
 
 | GSD Phase | Tribunal Use |
 |-----------|-------------|
-| `/gsd:discuss-phase` | `tribunal_decide` for open design questions |
+| `/gsd:discuss-phase` | Full pipeline for open design questions |
 | `/gsd:plan-phase` | `tribunal_match` to preview expert coverage |
-| `/gsd:execute-phase` | `tribunal_automaton` for implementation decisions |
-| Architecture review | `tribunal_decide` with `full_knowledge=True` |
+| `/gsd:execute-phase` | Full pipeline for implementation decisions |
+| Architecture review | Full pipeline with deep expert framing |
+
+---
+
+## Integration with Other Tools
+
+| Tool | How it pairs with Tribunal |
+|------|---------------------------|
+| `/grill-me` | Grill surfaces the hard questions → Tribunal answers them |
+| Ruflo `memory_store` | Step 5 persists verdicts for future recall |
+| Ruflo `memory_search` | Search past tribunal decisions before re-asking |
+| Viking `viking_search` | Powers the semantic matching in `tribunal_match` |
 
 ---
 
 ## Key Design Decisions
 
 1. **Synthesis, not voting** — Queen combines best parts of expert opinions. Expertise is hierarchical, not democratic.
-2. **Prompt truncation** (3K chars default) — First 3K of SKILL.md has description, workflow, and key constraints. Enough for a 200-word opinion. `full_knowledge=True` sends everything.
-3. **Process group kill** — `start_new_session=True` + `os.killpg(SIGKILL)` prevents zombie `claude -p` processes on timeout.
-4. **Excluded personas** — `autoresearch`, `decision-tribunal`, `find-skills`, `skill-creator`, `write-a-skill` never selected (meta-skills that would recurse).
-5. **Ruflo integration** — Best-effort HTTP calls to store verdicts + create tasks. Silently fails if Ruflo unavailable (stdio-only MCP).
+2. **Opus IS the queen** — No subprocess needed. Claude synthesizes directly. Faster, zero failures.
+3. **MCP + Skill split** — MCP handles fast matching (no LLM). Skill handles orchestration (needs Claude's brain). Clean separation.
+4. **Parallel agents** — All expert agents spawn in one message. ~12-15s total vs 60-90s with old sequential `claude -p`.
+5. **Excluded personas** — `autoresearch`, `decision-tribunal`, `find-skills`, `skill-creator`, `write-a-skill` never selected (meta-skills that would recurse).
 
 ---
 
@@ -140,7 +198,17 @@ Two-signal merge with scoring:
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| All personas timeout | API congestion or zombie processes | Kill stale `claude -p`: `ps aux \| grep "claude -p" \| awk '{print $2}' \| xargs kill -9` |
-| Wrong personas selected | Generic query terms | Use `tribunal_match` to debug, or specify `personas=` explicitly |
-| Ruflo "not available" | Ruflo is stdio MCP, no HTTP API | Expected. Verdicts still work, just not persisted to Ruflo memory |
-| Queen verdict too short | <2 experts responded | Increase `max_personas` or check API status |
+| Wrong personas selected | Generic query terms | Use `tribunal_match` to debug, then override in Step 2 |
+| Experts give shallow answers | Too little context | Add project context to the Agent prompt in Step 3 |
+| Ruflo store fails | Ruflo MCP not running | Expected gracefully — verdict still works, just not persisted |
+| Viking returns no matches | Viking server down | Falls back to keyword-only matching (still works) |
+
+---
+
+## History
+
+| Version | Date | Architecture |
+|---------|------|-------------|
+| v1.0 | 2026-03 | Sequential `claude -p` subprocesses, HTTP Ruflo |
+| v2.0 | 2026-03-22 | `tribunal_decide` + `tribunal_automaton` MCP tools (removed) |
+| v3.0 | 2026-03-25 | MCP matching only + Skill orchestration + Agent tool fan-out |

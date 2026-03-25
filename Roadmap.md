@@ -89,7 +89,8 @@ OFFLINE: SQLite (single-user, auto-fallback)
 
 | Priority | Task | Status |
 |----------|------|--------|
-| **P11** | Platform Stability | **ACTIVE** |
+| **P12** | UI Polish (4 issues from v9.0 testing) | **NEXT** |
+| P11 | Platform Stability | ✅ COMPLETE |
 | P10 | DB Abstraction Layer | ✅ COMPLETE |
 | P9 | Launcher + Offline/Online | ✅ COMPLETE |
 | P8 | Dashboard Overhaul | LOW PRIORITY |

@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-02-01 (Session 60+) | **Build:** 524 | **Open:** 0
+**Last Updated:** 2026-03-25 | **Build:** GREEN (Light Build v26.324.2024) | **Open:** 4
 
 ---
 
@@ -8,14 +8,39 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 0 |
+| **OPEN** | 4 |
 | **FIXED/CLOSED** | 167 |
 
 ---
 
 ## OPEN ISSUES
 
-*No open issues. All caught up!*
+### UI-101: br-tag Linebreaks Show as Tag Pills
+
+- **Found:** v9.0 Windows testing (2026-03-25)
+- **Component:** VirtualGrid tag pill rendering
+- **Problem:** `<br/>` linebreak tags render as tag pills in view mode, disappear on edit, don't restore
+- **Decision:** HIDE br-tags entirely in grid (merge auto-handles them). Only show color/format tags.
+- **Stack:** `/xml-localization` + `/svelte-code-writer`
+
+### UI-102: Color Code + Format Code Should Be Combined
+
+- **Found:** v9.0 Windows testing (2026-03-25)
+- **Component:** tagDetector.js + TagText.svelte
+- **Problem:** Color codes and format codes render as separate tag pills. Should be ONE combined regex tag: `ColorCode+TextFormatCode` as a single pill with the color applied.
+- **Stack:** `/xml-localization` + `/svelte-code-writer`
+
+### UI-103: Grid Default Background Yellow
+
+- **Found:** v9.0 Windows testing (2026-03-25)
+- **Component:** VirtualGrid CSS
+- **Problem:** Grid default background is yellow. Should be neutral/white.
+
+### UI-104: Tag Pill Redesign
+
+- **Found:** v9.0 Windows testing (2026-03-25)
+- **Component:** TagText.svelte
+- **Problem:** Tag pills need redesign — color-coded formatters as tight combined tags. Nobody customizes format codes independent of color.
 
 ---
 

@@ -8,17 +8,35 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current Milestone: v9.0 Build Validation + Real-World Testing
+## Current Milestone: v10.0 UI Polish + Tag Pill Redesign
 
-**Goal:** Verify the built app works on an offline PC with real-like data — language data upload, Perforce-path mock data (DDS/WEM/XML), full E2E testing, and Qwen3-VL visual audit of all pages.
+**Goal:** Fix 4 UI issues found during v9.0 Windows testing. Qwen3-VL visual review mandatory after each change.
 
 **Target features:**
-- ✓ Mock gamedata matching real Perforce paths (images, audio, XML structure) — Phase 74
-- ✓ Light Build triggered + lxml + merge module verification — Phase 75
-- ✓ Language data upload/edit/save E2E tests (16 tests) — Phase 76
-- ✓ Feature pipeline verification: TM cascade, merge, QA, Aho-Corasick, context panel (34 tests) — Phase 78
-- ✓ Qwen3-VL visual audit all 5 pages — avg 8.6/10, all 7+/10 — Phase 79
-- ⏳ BUILD-04: Download installer and test on offline Windows PC (pending human verify)
+- [ ] UI-101: Hide br-tag linebreaks from grid (merge auto-handles them, only show color/format tags)
+- [ ] UI-102: Combine color+format codes into single tag pill with color applied
+- [ ] UI-103: Grid default background → neutral/white (not yellow)
+- [ ] UI-104: Tag pill redesign — color-coded combined formatter tags
+
+**Stack:** `/xml-localization` + `/svelte-code-writer` + `/svelte-core-bestpractices` + `/vision-review` (Qwen3-VL)
+**Mode:** DEV (localhost:5173) + Playwright for instant feedback
+
+**Critical env note:** Remove WSL2 portproxy on 8888 before Playground testing (`netsh interface portproxy delete v4tov4 listenport=8888 listenaddress=0.0.0.0`)
+
+## Shipped: v9.0 Build Validation + Real-World Testing (2026-03-25)
+
+<details>
+<summary>v9.0 details (click to expand)</summary>
+
+- 6 phases, 14 plans, 212 commits
+- GitHub Actions build GREEN — Light Build v26.324.2024
+- Gitea build GREEN — Build 555, all 7 QA stages
+- Security audit: 6 CVEs fixed
+- Windows Playground: installed, backend running, file upload verified
+- Qwen3-VL visual audit: avg 8.6/10, all pages 7+
+- 12+ build fixes: CORS, deps, Model2Vec, PYTHONPATH, DATABASE_MODE
+
+</details>
 
 ## Current State (v8.0 shipped — 12 milestones complete)
 
@@ -26,6 +44,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - v8.0: MemoQ-style tag pills (136 tests) + 8 service classes extracted (route files 33-81% thinner)
 - v7.0: Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer instrumentation
 - v7.1: Security hardening (17 endpoints secured, 3 path traversal fixes, XSS/IDOR patches)
+- v9.0: Security audit (6 CVEs fixed), build pipeline hardened (12+ fixes), Ruflo intelligence initialized
 - 10 service classes in server/services/ (Stats, Rankings, Auth, Telemetry, RemoteLogging, DbStats, Health, Progress, Sync, Transfer)
 - 834 API test functions across 40 test files covering 275 endpoints
 - All 5 main pages verified working (Files, Game Dev, Codex, Map, TM)
@@ -74,18 +93,20 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ TAG-01 through TAG-03 — Tag pills: 5-pattern detector, colored inline pills, display-only in VirtualGrid — v8.0
 - ✓ SVC-01 through SVC-04 — Service extraction: 8 service classes from 8 thick route files — v8.0
 
+- ✓ BUILD-01 through BUILD-04 — PyInstaller merge bundle, Light Build CI, Windows installer verified — v9.0
+- ✓ MOCK-09 through MOCK-12 — Perforce-path mock gamedata (DDS/WEM/XML), all paths resolve — v9.0
+- ✓ LDE2E-01, LDE2E-02, LDE2E-04 — Language data upload/edit/save round-trip, SQLite offline — v9.0
+- ✓ FEAT-01 through FEAT-04, FEAT-07 — TM cascade, merge modes, QA checks, mock TM data — v9.0
+- ✓ UIUX-01, UIUX-02 — Qwen3-VL visual audit all 5 pages (avg 8.6/10), critical fixes applied — v9.0
+- ✓ FIX-01 through FIX-07 — Merge route conflict, test fixtures, CI gates, GSD artifacts — v9.0
+
 ### Active
 
-- [x] BUILD-01 — PyInstaller bundle includes internalized merge module (Phase 75)
-- [x] BUILD-02 — Bundled app runs merge workflow end-to-end without QT source tree (Phase 75)
-- [x] MOCK-09 — Mock gamedata matches real Perforce paths (DDS images, WEM audio, XML language data) (Phase 74)
-- [x] MOCK-10 — Mock data loadable from built app on offline PC (Phase 74)
-- [x] LDE2E-01 — Upload language data in built app, verify it loads correctly (Phase 76)
-- [x] LDE2E-02 — Edit language data and save, verify round-trip integrity (Phase 76)
+- [ ] UI-101 — Hide br-tag linebreaks from grid display (merge auto-handles them)
+- [ ] UI-102 — Combine color+format codes into single tag pill with color applied
+- [ ] UI-103 — Grid default background → neutral/white (not yellow)
+- [ ] UI-104 — Tag pill redesign — color-coded combined formatter tags
 - [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths
-- [x] UIUX-01 — AI visual audit of all 5 pages with real-looking mock data (Phase 79)
-- [x] UIUX-02 — Fix critical UIUX issues from visual audit (Phase 79)
-- [ ] BUILD-04 — Download installer and test on offline Windows PC (pending human verification)
 
 ### Out of Scope
 
@@ -106,7 +127,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **v3.1 shipped** — Pure Svelte 5 Runes, 12 bug fixes, 60 UIUX audit fixes, 834 API E2E tests, 7 post-review fixes
 - **v7.0 shipped** — Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer on all hot paths, merge modal hardened
 - **v8.0 shipped** — MemoQ-style tag pills (136 tests), 8 service classes extracted (net -2,173 LOC), Tribunal-driven architecture decisions
-- **v9.0 starting** — Build validation, real-world testing with Perforce-path mock data, language data E2E, Qwen3-VL visual audit
+- **v9.0 shipped** — Build validated on Windows, 6 CVEs fixed, 12+ build fixes, Qwen3-VL visual audit (8.6/10 avg), 4 UI issues found for v10.0
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -169,4 +190,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-24 after v9.0 Phase 79 (Visual Audit) completion — all phases done except BUILD-04 human verify*
+*Last updated: 2026-03-25 after v9.0 milestone completion — archived, v10.0 planned*
