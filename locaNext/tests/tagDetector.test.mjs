@@ -279,3 +279,97 @@ describe('hasTags', () => {
     assert.strictEqual(hasTags(42), false);
   });
 });
+
+// ---- br-tag exclusion (TAG-04) ----
+
+describe('br-tag exclusion (TAG-04)', () => {
+  it('br-tag only text returns pure text segment, no pills', () => {
+    const result = detectTags('Hello&lt;br/&gt;World');
+    assert.deepStrictEqual(result, [{ text: 'Hello&lt;br/&gt;World' }]);
+  });
+
+  it('multiple br-tags return pure text, no pills', () => {
+    const result = detectTags('Text&lt;br/&gt;More&lt;br/&gt;End');
+    assert.deepStrictEqual(result, [{ text: 'Text&lt;br/&gt;More&lt;br/&gt;End' }]);
+  });
+
+  it('real tag + br-tag: Code pill preserved, br-tag is plain text', () => {
+    const result = detectTags('{Code}&lt;br/&gt;More');
+    assert.strictEqual(result.length, 2);
+    assert.strictEqual(result[0].tag.label, 'Code');
+    assert.strictEqual(result[0].tag.type, 'braced');
+    assert.strictEqual(result[1].text, '&lt;br/&gt;More');
+  });
+
+  it('hasTags returns false for br-tags only', () => {
+    assert.strictEqual(hasTags('Hello&lt;br/&gt;World'), false);
+  });
+
+  it('hasTags returns true when br-tags mixed with real tags', () => {
+    assert.strictEqual(hasTags('Hello&lt;br/&gt;{Code}'), true);
+  });
+});
+
+// ---- combined color+code (TAG-05) ----
+
+describe('combined color+code (TAG-05)', () => {
+  it('PAColor wrapping braced code returns single combinedcolor pill', () => {
+    const result = detectTags('&lt;PAColor0xffe9bd23&gt;{ItemName}&lt;PAOldColor&gt;');
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].tag.label, 'ItemName');
+    assert.strictEqual(result[0].tag.type, 'combinedcolor');
+    assert.strictEqual(result[0].tag.color, 'combined');
+    assert.strictEqual(result[0].tag.cssColor, '#e9bd23');
+    assert.strictEqual(result[0].tag.raw, '&lt;PAColor0xffe9bd23&gt;{ItemName}&lt;PAOldColor&gt;');
+  });
+
+  it('PAColor wrapping braced code with trailing text', () => {
+    const result = detectTags('&lt;PAColor0xffff0000&gt;{HP}&lt;PAOldColor&gt; remaining');
+    assert.strictEqual(result.length, 2);
+    assert.strictEqual(result[0].tag.label, 'HP');
+    assert.strictEqual(result[0].tag.type, 'combinedcolor');
+    assert.strictEqual(result[0].tag.cssColor, '#ff0000');
+    assert.strictEqual(result[1].text, ' remaining');
+  });
+
+  it('PAColor wrapping param returns combinedcolor pill', () => {
+    const result = detectTags('&lt;PAColor0xffe9bd23&gt;%1#&lt;PAOldColor&gt;');
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].tag.label, 'Param1');
+    assert.strictEqual(result[0].tag.type, 'combinedcolor');
+    assert.strictEqual(result[0].tag.cssColor, '#e9bd23');
+  });
+
+  it('plain braced tag still works without PAColor', () => {
+    const result = detectTags('Plain {Code} text');
+    assert.strictEqual(result.length, 3);
+    assert.strictEqual(result[1].tag.type, 'braced');
+    assert.strictEqual(result[1].tag.color, 'blue');
+  });
+
+  it('PAColor wrapping plain text does NOT create combined pill', () => {
+    // When PAColor wraps non-code text, ColorText handles it -- not tagDetector
+    const result = detectTags('&lt;PAColor0xffe9bd23&gt;just text&lt;PAOldColor&gt;');
+    // Should return as plain text segments (no tag pills)
+    assert.ok(result.every(seg => !seg.tag || seg.tag.type !== 'combinedcolor'),
+      'Should not create combinedcolor pill for plain text inside PAColor');
+  });
+
+  it('round-trips combined color+code', () => {
+    const input = '&lt;PAColor0xffe9bd23&gt;{ItemName}&lt;PAOldColor&gt;';
+    const segments = detectTags(input);
+    const reconstructed = segments.map(seg => seg.tag ? seg.tag.raw : seg.text).join('');
+    assert.strictEqual(reconstructed, input);
+  });
+
+  it('combined pill with 6-char hex (no alpha)', () => {
+    const result = detectTags('&lt;PAColor0xe9bd23&gt;{Code}&lt;PAOldColor&gt;');
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].tag.type, 'combinedcolor');
+    assert.strictEqual(result[0].tag.cssColor, '#e9bd23');
+  });
+
+  it('hasTags detects PAColor-wrapped code', () => {
+    assert.strictEqual(hasTags('&lt;PAColor0xffe9bd23&gt;{Code}&lt;PAOldColor&gt;'), true);
+  });
+});
