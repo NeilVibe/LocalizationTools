@@ -1,1 +1,1 @@
-Build QACompiler — fix loguru to stdlib logging for PyInstaller compat
+Build QACompiler — exclude Script/Face from active pending
