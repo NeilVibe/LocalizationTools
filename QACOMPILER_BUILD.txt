@@ -1,1 +1,1 @@
-Build QACompiler — full pending debug log
+Build QACompiler — fix debug log path for setup.exe
