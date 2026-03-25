@@ -194,39 +194,66 @@ def test_latest_file_wins_dedup(tmp_dirs):
 
 
 def test_multi_sheet_master(tmp_dirs):
-    """Master_Script.xlsx with Sequencer + Dialog sheets, aggregated under 'Script'."""
+    """Master_System.xlsx with System + Help sheets, aggregated under 'System'.
+
+    Note: Script and Face categories are EXCLUDED from active pending
+    (same zeroing logic as total.py), so we test with System instead.
+    """
     en, cn = tmp_dirs
 
-    _make_master(en, "Master_Script.xlsx", {
-        "Sequencer_Tab1": {
+    _make_master(en, "Master_System.xlsx", {
+        "System": {
             "headers": [
-                "EventName", "Text", "Translation",
+                "StringID", "Text", "Translation",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
             ],
             "rows": [
-                ["EVT1", "Hello", "Bonjour", "ISSUE", "FIXED"],
-                ["EVT2", "World", "Monde", "ISSUE", None],
+                ["SYS1", "Setting1", "설정1", "ISSUE", "FIXED"],
+                ["SYS2", "Setting2", "설정2", "ISSUE", None],
             ],
         },
-        "Dialog_Tab1": {
+        "Help": {
             "headers": [
-                "EventName", "Text", "Translation",
+                "StringID", "Text", "Translation",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
             ],
             "rows": [
-                ["DLG1", "Hi", "Salut", "ISSUE", "REPORTED"],
+                ["HLP1", "Help1", "도움말1", "ISSUE", "REPORTED"],
             ],
         },
     })
 
     result = build_pending_from_masterfiles(en, cn)
 
-    # Both sheets aggregate under "Script" category
-    alice = result["Alice"]["Script"]
+    # Both sheets aggregate under "System" category
+    alice = result["Alice"]["System"]
     assert alice["active_issues"] == 3
     assert alice["fixed"] == 1
     assert alice["pending"] == 1
     assert alice["reported"] == 1
+
+
+def test_script_face_excluded(tmp_dirs):
+    """Script and Face categories are excluded from active pending."""
+    en, cn = tmp_dirs
+
+    _make_master(en, "Master_Script.xlsx", {
+        "Sequencer": {
+            "headers": ["EventName", "Text", "TESTER_STATUS_Alice", "STATUS_Alice"],
+            "rows": [["EVT1", "Hello", "ISSUE", ""]],
+        },
+    })
+    _make_master(en, "Master_Face.xlsx", {
+        "Face": {
+            "headers": ["StringID", "Text", "TESTER_STATUS_Bob", "STATUS_Bob"],
+            "rows": [["F1", "Face1", "ISSUE", ""]],
+        },
+    })
+
+    result = build_pending_from_masterfiles(en, cn)
+
+    # Both should be excluded — empty result
+    assert result == {}, f"Script/Face should be excluded but got: {result}"
 
 
 def test_empty_folders(tmp_dirs):

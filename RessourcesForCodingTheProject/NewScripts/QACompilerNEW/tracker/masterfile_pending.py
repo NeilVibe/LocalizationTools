@@ -47,6 +47,11 @@ _STATUS_PREFIX = "STATUS_"
 # Sheets to skip
 _SKIP_SHEETS = {"STATUS"}
 
+# Categories to EXCLUDE from active pending (same logic as total.py zeroing)
+# Script types have rows without STATUS that are NOT pending work.
+# Face uses non-standard masterfile format.
+_EXCLUDED_CATEGORIES = {"Script", "Face"}
+
 
 def _extract_category_from_filename(filename: str) -> Optional[str]:
     """Extract category from Master_XXX.xlsx filename."""
@@ -244,6 +249,10 @@ def build_pending_from_masterfiles(
     result: Dict[str, Dict[str, Dict[str, int]]] = {}
 
     for category, master_path in masters_to_read:
+        # Skip Script/Face categories — same zeroing logic as total.py
+        if category in _EXCLUDED_CATEGORIES:
+            logger.debug(f"Skipping {category} (excluded from active pending)")
+            continue
         logger.debug(f"Reading {category} from {master_path}")
         user_counts = _read_master_statuses(master_path, category)
 
