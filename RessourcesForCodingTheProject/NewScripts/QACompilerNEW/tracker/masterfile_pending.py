@@ -267,4 +267,24 @@ def build_pending_from_masterfiles(
             else:
                 result[username][category] = counts
 
+    # DIAGNOSTIC: dump all counts so we can see where bloat comes from
+    print("\n" + "=" * 70)
+    print("MASTERFILE PENDING DIAGNOSTIC DUMP")
+    print("=" * 70)
+    grand_active = 0
+    grand_pending = 0
+    for username in sorted(result.keys()):
+        user_active = 0
+        user_pending = 0
+        for cat in sorted(result[username].keys()):
+            c = result[username][cat]
+            print(f"  {username:20s} | {cat:25s} | issues={c['active_issues']:4d} pending={c['pending']:4d} fixed={c['fixed']:4d} reported={c['reported']:4d} checking={c['checking']:4d} nonissue={c['nonissue']:4d}")
+            user_active += c["active_issues"]
+            user_pending += c["pending"]
+        print(f"  {username:20s} | {'TOTAL':25s} | issues={user_active:4d} pending={user_pending:4d}")
+        grand_active += user_active
+        grand_pending += user_pending
+    print(f"\n  {'GRAND TOTAL':20s} | {'ALL CATEGORIES':25s} | issues={grand_active:4d} pending={grand_pending:4d}")
+    print("=" * 70 + "\n")
+
     return result
