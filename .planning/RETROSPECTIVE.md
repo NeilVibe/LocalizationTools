@@ -88,12 +88,43 @@
 
 ---
 
+## Milestone: v10.0 — UI Polish + Tag Pill Redesign
+
+**Shipped:** 2026-03-25
+**Phases:** 3 | **Plans:** 3
+
+### What Was Built
+1. Combined color+format tag pills with dynamic hex-tinted inline styling and br-tag exclusion
+2. Neutral grid background (#222222) replacing amber-dominant visual, status colors preserved
+3. Qwen3-VL visual verification across all 5 LocaNext pages (avg 7.4/10)
+
+### What Worked
+- **Smallest milestone yet** — 3 phases, 3 plans, completed same day as planned
+- **Tribunal for next direction** — 3-expert panel produced clear v11.0 recommendation
+- **Qwen3-VL review** — automated visual QA catches issues humans miss
+- **CSS-only changes** — zero backend risk, immediate HMR feedback
+
+### What Was Inefficient
+- Phase 82 (visual verification) required starting backend server manually — should auto-detect
+- Qwen3-VL not on OpenViking port 8100, had to use Ollama directly — inconsistent stack
+- Phase 81 plan was trivial (2-line CSS change) — could have been inlined without full GSD plan cycle
+
+### Patterns Established
+- `combinedcolor` as priority-0 pattern prevents braced pattern from claiming inner `{code}`
+- Dynamic inline styles for hex colors rather than fixed CSS classes per color value
+- Tribunal decision-making for strategic direction at milestone boundaries
+
+### Key Lessons
+- Small UI polish milestones are valuable — ship fast, validate with Qwen3-VL, move on
+- Tribunal works best for strategic decisions, not tactical ones
+- GSD overhead scales down well for small milestones (3 phases = ~2 hours total)
+
 ## Cross-Milestone Trends
 
-| Metric | v1.0 | v9.0 |
-|--------|------|------|
-| Phases | 7 | 6 |
-| Plans | 20 | 14 |
-| Requirements | 42 | 29 |
-| Avg plan duration | ~10min | ~3.5min |
-| Rework incidents | 0 | 1 (STATE.md staleness) |
+| Metric | v1.0 | v9.0 | v10.0 |
+|--------|------|------|-------|
+| Phases | 7 | 6 | 3 |
+| Plans | 20 | 14 | 3 |
+| Requirements | 42 | 29 | 5 |
+| Avg plan duration | ~10min | ~3.5min | ~5min |
+| Rework incidents | 0 | 1 (STATE.md staleness) | 0 |

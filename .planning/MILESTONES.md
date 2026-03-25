@@ -1,5 +1,16 @@
 # Milestones
 
+## v10.0 UI Polish + Tag Pill Redesign (Shipped: 2026-03-25)
+
+**Phases completed:** 3 phases, 2 plans, 2 tasks
+
+**Key accomplishments:**
+
+- Priority-0 combinedcolor pattern for PAColor+code pairs with dynamic hex-tinted pills, br-tag exclusion confirmed, and tighter inline pill CSS
+- Completed:
+
+---
+
 ## v9.0 Build Validation + Real-World Testing (Shipped: 2026-03-25)
 
 **Phases completed:** 6 phases, 14 plans, 22 tasks
