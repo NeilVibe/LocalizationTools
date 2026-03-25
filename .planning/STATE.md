@@ -58,6 +58,7 @@ Progress: ███░░░░░░░ 1/3 phases
 
 - ARCH-02: Split mega_index.py (1310 lines)
 - LDE2E-03: Language data with images/audio resolves from Perforce-like paths
+- LAN-01 through LAN-07: LAN Server Mode — installer sets up machine as PostgreSQL LAN server for demo/sync (future milestone, after v12.0 TM Intelligence)
 
 ### Blockers/Concerns
 

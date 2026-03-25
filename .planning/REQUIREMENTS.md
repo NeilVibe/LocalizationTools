@@ -34,6 +34,18 @@ Requirements for Architecture & Test Infrastructure milestone. Enables safe futu
 - **TM-07**: Batch pre-translation with confidence scoring and threshold slider
 - **TM-08**: One-click "pre-translate project" workflow
 
+### LAN Server Mode (Demo/Sync — future milestone)
+
+- **LAN-01**: Installer "Admin Advanced" button → "Set up as LAN Server for Sync" option
+- **LAN-02**: Installer shows available network interfaces, user picks their IP address
+- **LAN-03**: Installer configures PostgreSQL `listen_addresses` and `pg_hba.conf` for LAN trust (internal IP range, no password)
+- **LAN-04**: Backend binds to `0.0.0.0:8888` (not localhost) when LAN server mode enabled
+- **LAN-05**: Client Settings UI: "Online Server" section with IP input field (like FileZilla) to connect to LAN server
+- **LAN-06**: WebSocket sync works over LAN between server machine and client machines
+- **LAN-07**: Robust Windows App offline testing — upload and test files in stable offline environment
+
+**Context:** For demo/presentation purposes. User's machine becomes the central server, other internal machines connect via IP. Down the line this will be replaced by a dedicated server setup. Existing architecture already supports this (CENTRAL_SERVER_URL, configurable postgres_host, repository pattern with factory injection, Socket.IO sync). Main work: installer config + Settings UI + PostgreSQL LAN exposure.
+
 ### Architecture (Deferred)
 
 - **ARCH-02**: Split mega_index.py (1310 lines) into domain services
