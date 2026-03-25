@@ -20,6 +20,37 @@
   import CategoryFilter from "./CategoryFilter.svelte";
   import { getStatusKind } from '$lib/utils/statusColors';
 
+  // Phase 84: Shared grid state and extracted modules
+  import {
+    grid,
+    rowIndexById,
+    rowHeightCache,
+    loadedPages,
+    tmAppliedRows,
+    referenceData as gridReferenceData,
+    cumulativeHeights,
+    visibleRows,
+    getRowById,
+    getRowIndexById,
+    resetGridState,
+    measureRowHeight,
+    rebuildCumulativeHeights,
+    getRowTop,
+    getRowHeight as gridGetRowHeight,
+    getTotalHeight,
+    estimateRowHeight,
+    countDisplayLines,
+    MIN_ROW_HEIGHT,
+    MAX_ROW_HEIGHT,
+    CHARS_PER_LINE,
+    LINE_HEIGHT,
+    CELL_PADDING,
+    BUFFER_ROWS,
+    PAGE_SIZE,
+    PREFETCH_PAGES,
+  } from './grid/gridState.svelte.ts';
+  import ScrollEngine from './grid/ScrollEngine.svelte';
+
   // Category color map (synced with CategoryFilter)
   const CATEGORY_COLORS = {
     "Item": "#D9D2E9", "Character": "#F8CBAD", "Quest": "#D9D2E9",
@@ -52,35 +83,18 @@
     onAddToTM = undefined
   } = $props();
 
-  // Virtual scrolling constants
-  const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
-  const MAX_ROW_HEIGHT = 800; // Allow cells to expand much more for long content
-  const CHARS_PER_LINE = 45; // Estimated chars per line for height calc
-  const LINE_HEIGHT = 26; // Height per line of text (14px * 1.6 line-height + buffer)
-  const CELL_PADDING = 24; // Vertical padding in cells (0.75rem * 2)
-  const BUFFER_ROWS = 8; // Extra rows to render above/below viewport
-  const PAGE_SIZE = 100; // Rows per page to fetch
-  const PREFETCH_PAGES = 2; // Number of pages to prefetch ahead/behind
-
-  // VARIABLE HEIGHT VIRTUALIZATION: Height cache and cumulative positions
-  let rowHeightCache = $state(new Map()); // row_index -> estimated height
-  let cumulativeHeights = $state([]); // cumulativeHeights[i] = position of row i
+  // Phase 84: Constants, rowHeightCache, cumulativeHeights moved to gridState.svelte.ts
 
   // Real-time subscription
   let cellUpdateUnsubscribe = null;
 
-  // Svelte 5: State
-  let loading = $state(false);
-  let initialLoading = $state(true);
-  let rows = $state([]); // Cached rows (sparse array by row_num)
-  let total = $state(0);
+  // Phase 84: loading, initialLoading, rows, total moved to grid state object
   let searchTerm = $state("");
   let searchDebounceTimer = null;
 
   // Note: Clear button directly manipulates both searchTerm and DOM input value
 
-  // P2: Filter state
-  let activeFilter = $state("all"); // 'all' | 'confirmed' | 'unconfirmed' | 'qa_flagged'
+  // Phase 84: activeFilter moved to grid state object
   const filterOptions = [
     { id: "all", text: "All Rows" },
     { id: "confirmed", text: "Confirmed" },
@@ -88,8 +102,7 @@
     { id: "qa_flagged", text: "QA Flagged" }
   ];
 
-  // P16: Category filter state
-  let selectedCategories = $state([]);
+  // Phase 84: selectedCategories moved to grid state object
 
   /**
    * Get CSS color for a content category.
@@ -124,38 +137,16 @@
   let semanticSearchTime = $state(0);
   let semanticLoading = $state(false);
 
-  // P4: AI badge tracking - rows that had TM suggestions applied
-  let tmAppliedRows = $state(new Map()); // row_id -> { match_type: 'exact'|'fuzzy'|'semantic' }
+  // Phase 84: tmAppliedRows moved to gridState.svelte.ts
 
-  // Svelte 5: Virtual scroll state
+  // Phase 84: scrollTop, containerHeight, visibleStart, visibleEnd, loadedPages, loadingPages moved to ScrollEngine/gridState
   let containerEl = $state(null);
-  let scrollTop = $state(0);
-  let containerHeight = $state(400);
-  let visibleStart = $state(0);
-  let visibleEnd = $state(50);
 
-  // Page cache - track which pages we've loaded
-  let loadedPages = $state(new Set());
-  let loadingPages = $state(new Set());
-
-  // SMART INDEXING: Row index map for O(1) lookups by row_id
-  let rowIndexById = $state(new Map()); // row_id -> array index
-
-  // SMART INDEXING: O(1) row lookup by ID
-  function getRowById(rowId) {
-    const index = rowIndexById.get(rowId.toString());
-    return index !== undefined ? rows[index] : null;
-  }
-
-  // SMART INDEXING: O(1) row index lookup
-  function getRowIndexById(rowId) {
-    return rowIndexById.get(rowId.toString());
-  }
+  // Phase 84: rowIndexById, getRowById, getRowIndexById moved to gridState.svelte.ts
 
   // Go to row state - REMOVED (BUG-001 - not useful)
 
-  // Phase 2: Inline editing state (MemoQ-style) - replaces modal editing
-  let inlineEditingRowId = $state(null);
+  // Phase 84: grid.inlineEditingRowId moved to grid.inlineEditingRowId
   let inlineEditValue = $state("");
   let inlineEditTextarea = $state(null);
   let isCancellingEdit = $state(false); // Flag to prevent blur-save race condition
@@ -208,17 +199,12 @@
 
   // UI-113: Derived state for colors available in current editing row's source
   let sourceColors = $derived.by(() => {
-    if (!inlineEditingRowId) return [];
-    const row = getRowById(inlineEditingRowId);
+    if (!grid.inlineEditingRowId) return [];
+    const row = getRowById(grid.inlineEditingRowId);
     return row ? extractColorsFromSource(row.source) : [];
   });
 
-  // Selected row state (click-based)
-  let selectedRowId = $state(null);
-
-  // HOVER SYSTEM: Track actual mouse hover (not click)
-  let hoveredRowId = $state(null);
-  let hoveredCell = $state(null); // 'source' | 'target' | null
+  // Phase 84: grid.selectedRowId, grid.hoveredRowId, grid.hoveredCell moved to grid state object
 
   // TM suggestions state
   let tmSuggestions = $state([]);
@@ -358,8 +344,7 @@
       : translatorColumns
   );
 
-  // Reference data cache (loaded when referenceFileId changes)
-  let referenceData = $state(new Map()); // string_id -> { target, source }
+  // Phase 84: referenceData moved to gridState (gridReferenceData). referenceLoading stays local.
   let referenceLoading = $state(false);
 
   // TM results cache (per row)
@@ -429,234 +414,14 @@
     { value: "approved", label: "Approved" }
   ];
 
-  // VARIABLE HEIGHT: Calculate visible range using binary search
-  // O(log n) complexity for finding start row, O(k) for visible rows
-  function calculateVisibleRange() {
-    if (!containerEl) return;
+  // Phase 84: calculateVisibleRange, ensureRowsLoaded, loadPage, prefetchAdjacentPages,
+  // scrollToRowById, scrollToRowNum all moved to ScrollEngine.svelte
+  // ScrollEngine component ref for delegation
+  let scrollEngine = $state(null);
 
-    containerHeight = containerEl.clientHeight;
-    scrollTop = containerEl.scrollTop;
-
-    // Sanity check: container height shouldn't be larger than viewport
-    if (containerHeight > 5000) {
-      logger.warning("Container height unusually large", {
-        containerHeight,
-        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0
-      });
-      containerHeight = Math.min(containerHeight, 1200);
-    }
-
-    // Use binary search to find first visible row
-    const startRow = findRowAtPosition(scrollTop);
-
-    // Find end row by scanning forward until we exceed viewport
-    let endRow = startRow;
-    const viewportBottom = scrollTop + containerHeight;
-
-    while (endRow < total && getRowTop(endRow) < viewportBottom) {
-      endRow++;
-    }
-
-    // Add buffer rows
-    visibleStart = Math.max(0, startRow - BUFFER_ROWS);
-    visibleEnd = Math.min(total, endRow + BUFFER_ROWS);
-
-    // Check if we need to load more data
-    ensureRowsLoaded(visibleStart, visibleEnd);
-  }
-
-  // SMART INDEXING: Ensure rows in range are loaded + prefetch ahead
-  // Throttled to prevent excessive API calls during fast scrolling
-  let ensureRowsThrottleTimer = null;
-  let lastEnsureRowsTime = 0;
-  const ENSURE_ROWS_THROTTLE_MS = 100; // Max 10 API batches per second
-
-  async function ensureRowsLoaded(start, end) {
-    const now = Date.now();
-
-    // Throttle API calls during fast scrolling
-    if (now - lastEnsureRowsTime < ENSURE_ROWS_THROTTLE_MS) {
-      if (!ensureRowsThrottleTimer) {
-        ensureRowsThrottleTimer = setTimeout(() => {
-          ensureRowsThrottleTimer = null;
-          ensureRowsLoadedImmediate(start, end);
-        }, ENSURE_ROWS_THROTTLE_MS);
-      }
-      return;
-    }
-
-    lastEnsureRowsTime = now;
-    await ensureRowsLoadedImmediate(start, end);
-  }
-
-  async function ensureRowsLoadedImmediate(start, end) {
-    const startPage = Math.floor(start / PAGE_SIZE) + 1;
-    const endPage = Math.floor(end / PAGE_SIZE) + 1;
-
-    // BUG-036-FIX: Prevent loading too many pages at once (max 3 pages visible)
-    const MAX_PAGES_TO_LOAD = 3;
-    const limitedEndPage = Math.min(endPage, startPage + MAX_PAGES_TO_LOAD - 1);
-
-    if (endPage > limitedEndPage) {
-      logger.warning("Prevented excessive page load", {
-        startPage, endPage, limitedTo: limitedEndPage,
-        visibleRange: { start, end }
-      });
-    }
-
-    // Load visible pages (blocking)
-    for (let page = startPage; page <= limitedEndPage; page++) {
-      if (!loadedPages.has(page) && !loadingPages.has(page)) {
-        await loadPage(page);
-      }
-    }
-
-    // SMART PREFETCH: Load adjacent pages in background (non-blocking)
-    prefetchAdjacentPages(limitedEndPage);
-  }
-
-  // Load a specific page of rows
-  async function loadPage(page) {
-    if (!fileId || loadingPages.has(page)) return;
-
-    loadingPages.add(page);
-    loading = true;
-
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: PAGE_SIZE.toString()
-      });
-      if (searchTerm) {
-        params.append('search', searchTerm);
-        params.append('search_mode', searchMode);
-        params.append('search_fields', searchFields.join(','));
-      }
-      // P2: Add filter param
-      if (activeFilter && activeFilter !== 'all') {
-        params.append('filter', activeFilter);
-      }
-      // P16: Add category filter param
-      if (selectedCategories.length > 0) {
-        params.append('category', selectedCategories.join(','));
-      }
-
-      // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
-      // Game Dev files use a different endpoint (POST with xml_path)
-      let response;
-      if (fileType === 'gamedev') {
-        const body = {
-          xml_path: fileId,
-          page: page,
-          limit: PAGE_SIZE,
-          search: searchTerm || ""
-        };
-        if (searchTerm) {
-          body.search_mode = searchMode;
-          body.search_fields = searchFields.join(',');
-        }
-        if (activeFilter && activeFilter !== 'all') {
-          body.filter = activeFilter;
-        }
-        if (selectedCategories.length > 0) {
-          body.category = selectedCategories.join(',');
-        }
-        response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-      } else {
-        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
-          headers: getAuthHeaders()
-        });
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        total = data.total;
-
-        // Store rows by their index position
-        // SMART INDEXING: Also build index map for O(1) lookups
-        // BUG FIX: When searching, use sequential indices not original row_num
-        const isSearching = searchTerm && searchTerm.trim();
-        const pageStartIndex = (page - 1) * PAGE_SIZE;
-        data.rows.forEach((row, pageIndex) => {
-          // For search: use sequential index based on page position
-          // For normal: use row_num - 1 (preserves position for pagination)
-          const index = isSearching ? (pageStartIndex + pageIndex) : (row.row_num - 1);
-          const rowData = {
-            ...row,
-            id: row.id.toString()
-          };
-          rows[index] = rowData;
-          rowIndexById.set(row.id.toString(), index); // O(1) lookup index
-          // Clear height cache for this row (will be recalculated)
-          rowHeightCache.delete(index);
-        });
-
-        // Force reactivity
-        rows = [...rows];
-
-        // VARIABLE HEIGHT: Rebuild cumulative heights after loading new rows
-        rebuildCumulativeHeights();
-
-        loadedPages.add(page);
-        logger.info("SMART LOAD: Page loaded", { page, count: data.rows.length, total, indexSize: rowIndexById.size });
-      }
-    } catch (err) {
-      logger.error("Failed to load page", { page, error: err.message });
-    } finally {
-      loadingPages.delete(page);
-      loading = loadingPages.size > 0;
-      initialLoading = false;
-    }
-  }
-
-  // BUG-037: Export function to scroll to a row and highlight it
-  export function scrollToRowById(rowId) {
-    // Use O(1) lookup via rowIndexById map
-    const row = getRowById(rowId);
-    if (!row) {
-      logger.warning("Row not found for scroll", { rowId, loadedRows: rows.filter(r => r).length });
-      return false;
-    }
-
-    // Get row index from map (more reliable than row_num - 1)
-    const index = getRowIndexById(rowId);
-    if (index === undefined) {
-      logger.warning("Row index not found", { rowId });
-      return false;
-    }
-
-    // Set selected to highlight the row
-    selectedRowId = row.id;
-
-    // Scroll to row position
-    if (containerEl) {
-      const scrollPos = getRowTop(index);
-      // Center the row in view (subtract half container height)
-      const centeredPos = Math.max(0, scrollPos - (containerHeight / 2) + 20);
-      containerEl.scrollTop = centeredPos;
-      logger.userAction("Scrolled to row", { rowId, index, scrollPos: centeredPos });
-    }
-
-    return true;
-  }
-
-  // BUG-037: Export function to scroll to a row by row number
-  export function scrollToRowNum(rowNum) {
-    // Row number is 1-based, find by index
-    const index = rowNum - 1;
-    const row = rows[index];
-
-    if (!row) {
-      logger.warning("Row not found for scroll", { rowNum });
-      return false;
-    }
-
-    return scrollToRowById(row.id);
-  }
+  // Re-export scroll functions via delegation
+  export function scrollToRowById(rowId) { return scrollEngine?.scrollToRowById(rowId) ?? false; }
+  export function scrollToRowNum(rowNum) { return scrollEngine?.scrollToRowNum(rowNum) ?? false; }
 
   // BUG-037: Export function to navigate to row and start editing (for QA panel integration)
   // Phase 2: Now uses inline editing instead of modal
@@ -677,12 +442,12 @@
   // Phase 2: Export function to update a row's QA flag count (for Ctrl+D dismiss)
   export function updateRowQAFlag(rowId, flagCount) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && rows[rowIndex]) {
-      rows[rowIndex] = {
-        ...rows[rowIndex],
+    if (rowIndex !== undefined && grid.rows[rowIndex]) {
+      grid.rows[rowIndex] = {
+        ...grid.rows[rowIndex],
         qa_flag_count: flagCount
       };
-      rows = [...rows]; // Trigger reactivity
+      grid.rows = [...grid.rows]; // Trigger reactivity
       logger.info('Updated row QA flag', { rowId, flagCount });
     } else {
       logger.warning("Row not found for QA flag update", { rowId });
@@ -692,145 +457,38 @@
   // P16-02: Handle QA dismiss from inline badge (optimistic UI)
   function handleQADismiss(rowId) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && rows[rowIndex]) {
-      const currentCount = rows[rowIndex].qa_flag_count || 0;
-      rows[rowIndex] = {
-        ...rows[rowIndex],
+    if (rowIndex !== undefined && grid.rows[rowIndex]) {
+      const currentCount = grid.rows[rowIndex].qa_flag_count || 0;
+      grid.rows[rowIndex] = {
+        ...grid.rows[rowIndex],
         qa_flag_count: Math.max(0, currentCount - 1)
       };
-      rows = [...rows]; // Trigger reactivity
-      logger.info('QA inline dismiss', { rowId, newCount: rows[rowIndex].qa_flag_count });
+      grid.rows = [...grid.rows]; // Trigger reactivity
+      logger.info('QA inline dismiss', { rowId, newCount: grid.rows[rowIndex].qa_flag_count });
     }
   }
 
+  // Phase 84: loadRows delegates to ScrollEngine with pre-reset of interaction state
   export async function loadRows() {
     if (!fileId) return;
 
-    // Reset state INSTANTLY - don't wait for API
-    rows = [];
-    loadedPages.clear();
-    loadingPages.clear();
-    rowIndexById.clear(); // SMART INDEXING: Clear index map
-    rowHeightCache.clear(); // VARIABLE HEIGHT: Clear height cache
-    cumulativeHeights = [0]; // VARIABLE HEIGHT: Reset cumulative heights
-    total = 0;
-    initialLoading = true;
-
-    // Dual UI Mode: Reset all interaction state on file switch
-    inlineEditingRowId = null;
-    selectedRowId = null;
-    hoveredRowId = null;
-    hoveredCell = null;
+    // Reset interaction state that belongs in parent (per D-19)
+    grid.inlineEditingRowId = null;
+    grid.selectedRowId = null;
+    grid.hoveredRowId = null;
+    grid.hoveredCell = null;
     tmResults = new Map();
-    referenceData = new Map();
+    gridReferenceData.clear();
     semanticResults = [];
-    activeFilter = "all";
-    selectedCategories = []; // P16: Reset category filter on file change
-    tmAppliedRows = new Map();
+    grid.activeFilter = "all";
+    grid.selectedCategories = [];
+    tmAppliedRows.clear();
     searchTerm = "";
     const inputEl = document.getElementById('ldm-search-input');
     if (inputEl) inputEl.value = "";
 
-    // OPTIMIZATION: Single API call for first page + count (not 2 calls)
-    // The first page response includes total count
-    try {
-      const params = new URLSearchParams({
-        page: '1',
-        limit: PAGE_SIZE.toString()
-      });
-
-      // Add search term if present
-      if (searchTerm && searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
-        params.append('search_mode', searchMode);
-        params.append('search_fields', searchFields.join(','));
-        logger.info("loadRows with search", { searchTerm, searchMode, searchFields });
-      }
-
-      // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
-      // Game Dev files use a different endpoint (POST with xml_path)
-      let response;
-      if (fileType === 'gamedev') {
-        const body = {
-          xml_path: fileId,
-          page: 1,
-          limit: PAGE_SIZE,
-          search: ""
-        };
-        if (searchTerm && searchTerm.trim()) {
-          body.search = searchTerm.trim();
-          body.search_mode = searchMode;
-          body.search_fields = searchFields.join(',');
-        }
-        response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-      } else {
-        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
-          headers: getAuthHeaders()
-        });
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        total = data.total;
-
-        // INSTANT: Store rows immediately + build index
-        // BUG FIX: When searching, use sequential indices (0, 1, 2...) not original row_num
-        // Original row_num is kept in row data for display, but storage index must be sequential
-        const isSearching = searchTerm && searchTerm.trim();
-        data.rows.forEach((row, pageIndex) => {
-          // For search: use sequential index (page 1 = 0-49)
-          // For normal: use row_num - 1 (preserves position for pagination)
-          const index = isSearching ? pageIndex : (row.row_num - 1);
-          const rowData = {
-            ...row,
-            id: row.id.toString()
-          };
-          rows[index] = rowData;
-          rowIndexById.set(row.id.toString(), index); // O(1) lookup
-        });
-        rows = [...rows];
-        loadedPages.add(1);
-
-        // VARIABLE HEIGHT: Build cumulative heights for positioning
-        rebuildCumulativeHeights();
-
-        logger.info("SMART LOAD: Initial page loaded", { total, loaded: data.rows.length, indexSize: rowIndexById.size });
-
-        // PREFETCH: Start loading adjacent pages in background (non-blocking)
-        prefetchAdjacentPages(1);
-      }
-    } catch (err) {
-      logger.error("Failed to load rows", { error: err.message });
-    } finally {
-      initialLoading = false;
-    }
-
-    // Calculate visible range immediately
-    await tick();
-    calculateVisibleRange();
-  }
-
-  // SMART INDEXING: Prefetch pages in background for smooth scrolling
-  function prefetchAdjacentPages(currentPage) {
-    // Prefetch next pages in background (non-blocking)
-    for (let i = 1; i <= PREFETCH_PAGES; i++) {
-      const nextPage = currentPage + i;
-      const maxPage = Math.ceil(total / PAGE_SIZE);
-      if (nextPage <= maxPage && !loadedPages.has(nextPage) && !loadingPages.has(nextPage)) {
-        // Use setTimeout to not block the main thread
-        setTimeout(() => loadPage(nextPage), i * 50);
-      }
-    }
-  }
-
-  // Handle scroll - update visible range immediately for smooth scrolling
-  // API calls are throttled inside ensureRowsLoaded
-  function handleScroll() {
-    calculateVisibleRange();
+    // Delegate actual loading to ScrollEngine
+    return scrollEngine?.loadRows();
   }
 
   // Handle search with debounce
@@ -849,7 +507,7 @@
 
       logger.info("handleSearch executing search", { searchTerm });
       loadedPages.clear();
-      rows = [];
+      grid.rows = [];
       loadRows();
     }, 300);
   }
@@ -906,7 +564,7 @@
   // P4: Handle semantic result selection - scroll to matching row
   function handleSemanticResultSelect(result) {
     // Try to find a matching row in loaded data by source text
-    const matchRow = rows.find(r => r && r.source === result.source_text);
+    const matchRow = grid.rows.find(r => r && r.source === result.source_text);
     if (matchRow) {
       scrollToRowById(matchRow.id);
     }
@@ -925,7 +583,7 @@
   // P4: Apply TM suggestion to a row (called from GridPage via side panel)
   export function applyTMToRow(lineNumber, targetText) {
     // Find the row by line_number (row_num)
-    const row = rows.find(r => r && r.row_num === lineNumber);
+    const row = grid.rows.find(r => r && r.row_num === lineNumber);
     if (!row) {
       logger.warning("applyTMToRow: row not found", { lineNumber });
       return;
@@ -947,26 +605,26 @@
   // P4: Export function to mark a row as TM-applied (called from parent)
   export function markRowAsTMApplied(rowId, matchType = 'fuzzy') {
     tmAppliedRows.set(rowId.toString(), { match_type: matchType });
-    tmAppliedRows = new Map(tmAppliedRows); // trigger reactivity
+    // Note: $state(Map) tracks .set() calls reactively in Svelte 5
     logger.info("Row marked as TM-applied", { rowId, matchType });
   }
 
   // P2: Handle filter change
   function handleFilterChange(event) {
-    activeFilter = event.detail.selectedId;
+    grid.activeFilter = event.detail.selectedId;
     loadedPages.clear();
-    rows = [];
+    grid.rows = [];
     loadRows();
-    logger.userAction("Filter changed", { filter: activeFilter });
+    logger.userAction("Filter changed", { filter: grid.activeFilter });
   }
 
   // P16: Category filter change handler
   function handleCategoryFilterChange(categories) {
-    selectedCategories = categories;
+    grid.selectedCategories = categories;
     loadedPages.clear();
-    rows = [];
+    grid.rows = [];
     loadRows();
-    logger.userAction("Category filter changed", { categories: selectedCategories });
+    logger.userAction("Category filter changed", { categories: grid.selectedCategories });
   }
 
   // Go to specific row - REMOVED (BUG-001 - not useful)
@@ -1042,13 +700,13 @@
         // Update row's qa_flag_count in cache
         // SMART INDEXING: O(1) lookup instead of O(n) findIndex
         const rowIndex = getRowIndexById(rowId);
-        if (rowIndex !== undefined && rows[rowIndex]) {
-          rows[rowIndex] = {
-            ...rows[rowIndex],
+        if (rowIndex !== undefined && grid.rows[rowIndex]) {
+          grid.rows[rowIndex] = {
+            ...grid.rows[rowIndex],
             qa_flag_count: result.issue_count,
             qa_checked_at: result.checked_at
           };
-          rows = [...rows];
+          grid.rows = [...grid.rows];
         }
 
         if (result.issue_count > 0) {
@@ -1097,7 +755,7 @@
    */
   async function loadReferenceData(refFileId) {
     if (!refFileId) {
-      referenceData = new Map();
+      gridReferenceData.clear();
       return;
     }
 
@@ -1105,8 +763,6 @@
     logger.info("Loading reference file", { fileId: refFileId });
 
     try {
-      // Fetch reference file rows (limit to 10K for performance)
-      // Reference matching is by string_id, so we need enough rows to match
       const response = await fetch(`${API_BASE}/api/ldm/files/${refFileId}/rows?limit=10000`, {
         headers: getAuthHeaders()
       });
@@ -1115,18 +771,17 @@
         const data = await response.json();
         const refRows = data.rows || [];
 
-        // Build lookup map by string_id
-        referenceData = new Map();
+        gridReferenceData.clear();
         for (const row of refRows) {
           if (row.string_id) {
-            referenceData.set(row.string_id, {
+            gridReferenceData.set(row.string_id, {
               target: row.target,
               source: row.source
             });
           }
         }
 
-        logger.success("Reference data loaded", { entries: referenceData.size });
+        logger.success("Reference data loaded", { entries: gridReferenceData.size });
       } else {
         logger.error("Failed to load reference file", { status: response.status });
       }
@@ -1141,9 +796,9 @@
    * Get reference translation for a row
    */
   function getReferenceForRow(row, matchMode) {
-    if (!row.string_id || referenceData.size === 0) return null;
+    if (!row.string_id || gridReferenceData.size === 0) return null;
 
-    const ref = referenceData.get(row.string_id);
+    const ref = gridReferenceData.get(row.string_id);
     if (!ref) return null;
 
     // If matching by string_id + source, verify source matches too
@@ -1159,7 +814,7 @@
     if ($preferences.referenceFileId) {
       loadReferenceData($preferences.referenceFileId);
     } else {
-      referenceData = new Map();
+      gridReferenceData.clear();
     }
   });
 
@@ -1286,11 +941,11 @@
     }
 
     // Set inline editing state
-    inlineEditingRowId = row.id;
+    grid.inlineEditingRowId = row.id;
     // Convert file-format linebreaks to actual \n for editing, then to HTML for WYSIWYG
     const rawText = formatTextForDisplay(row.target || "");
     const htmlContent = paColorToHtml(rawText);
-    selectedRowId = row.id;
+    grid.selectedRowId = row.id;
 
     // Push initial state to undo stack
     pushUndoState(row.id, row.target || "");
@@ -1326,9 +981,9 @@
    */
   async function saveInlineEdit(moveToNext = false) {
     // Don't save if we're intentionally cancelling (Escape key)
-    if (!inlineEditingRowId || isCancellingEdit) return;
+    if (!grid.inlineEditingRowId || isCancellingEdit) return;
 
-    const row = getRowById(inlineEditingRowId);
+    const row = getRowById(grid.inlineEditingRowId);
     if (!row) {
       cancelInlineEdit();
       return;
@@ -1365,7 +1020,7 @@
           const rowIndex = getRowIndexById(row.id);
           if (rowIndex !== undefined) {
             rowHeightCache.delete(rowIndex);
-            rebuildCumulativeHeights(); // Recalculate all positions
+            rebuildCumulativeHeights(stripColorTags); // Recalculate all positions
           }
 
           logger.success("Inline edit saved", { rowId: row.id, offline: isLocalFile });
@@ -1404,17 +1059,17 @@
     }
 
     // Clear inline editing state
-    const currentRowId = inlineEditingRowId;
-    inlineEditingRowId = null;
+    const currentRowId = grid.inlineEditingRowId;
+    grid.inlineEditingRowId = null;
     inlineEditValue = "";
 
     // Move to next row if requested
     if (moveToNext) {
       const currentIndex = getRowIndexById(currentRowId);
-      if (currentIndex !== undefined && rows[currentIndex + 1]) {
-        const nextRow = rows[currentIndex + 1];
+      if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
+        const nextRow = grid.rows[currentIndex + 1];
         if (nextRow && !nextRow.placeholder) {
-          selectedRowId = nextRow.id;
+          grid.selectedRowId = nextRow.id;
           onRowSelect?.({ row: nextRow });
           // Auto-start editing on next row
           await startInlineEdit(nextRow);
@@ -1427,9 +1082,9 @@
    * Cancel inline edit without saving
    */
   function cancelInlineEdit() {
-    if (!inlineEditingRowId) return;
+    if (!grid.inlineEditingRowId) return;
 
-    const rowId = inlineEditingRowId;
+    const rowId = grid.inlineEditingRowId;
 
     // Set flag to prevent blur handler from saving
     isCancellingEdit = true;
@@ -1439,7 +1094,7 @@
       unlockRow(fileId, parseInt(rowId));
     }
 
-    inlineEditingRowId = null;
+    grid.inlineEditingRowId = null;
     inlineEditValue = "";
     logger.userAction("Inline edit cancelled", { rowId });
 
@@ -1579,15 +1234,15 @@
    */
   function handleGridKeydown(e) {
     // Skip if in edit mode (textarea handles its own keys)
-    if (inlineEditingRowId) return;
+    if (grid.inlineEditingRowId) return;
 
     // Skip if no row selected
-    if (!selectedRowId) return;
+    if (!grid.selectedRowId) return;
 
     // Skip if focus is in search/filter inputs
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    const row = getRowById(selectedRowId);
+    const row = getRowById(grid.selectedRowId);
     if (!row) return;
 
     // Ctrl+S: Confirm selected row
@@ -1617,17 +1272,17 @@
     // Escape: Clear selection
     if (e.key === 'Escape') {
       e.preventDefault();
-      selectedRowId = null;
+      grid.selectedRowId = null;
       return;
     }
 
     // Arrow Down: Move to next row
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const currentIndex = getRowIndexById(selectedRowId);
-      if (currentIndex !== undefined && rows[currentIndex + 1]) {
-        selectedRowId = rows[currentIndex + 1].id;
-        onRowSelect?.({ row: rows[currentIndex + 1] });
+      const currentIndex = getRowIndexById(grid.selectedRowId);
+      if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
+        grid.selectedRowId = grid.rows[currentIndex + 1].id;
+        onRowSelect?.({ row: grid.rows[currentIndex + 1] });
       }
       return;
     }
@@ -1635,10 +1290,10 @@
     // Arrow Up: Move to previous row
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const currentIndex = getRowIndexById(selectedRowId);
-      if (currentIndex !== undefined && currentIndex > 0 && rows[currentIndex - 1]) {
-        selectedRowId = rows[currentIndex - 1].id;
-        onRowSelect?.({ row: rows[currentIndex - 1] });
+      const currentIndex = getRowIndexById(grid.selectedRowId);
+      if (currentIndex !== undefined && currentIndex > 0 && grid.rows[currentIndex - 1]) {
+        grid.selectedRowId = grid.rows[currentIndex - 1].id;
+        onRowSelect?.({ row: grid.rows[currentIndex - 1] });
       }
       return;
     }
@@ -1677,8 +1332,8 @@
 
         // Move to next row
         const currentIndex = getRowIndexById(row.id);
-        if (currentIndex !== undefined && rows[currentIndex + 1]) {
-          selectedRowId = rows[currentIndex + 1].id;
+        if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
+          grid.selectedRowId = rows[currentIndex + 1].id;
           onRowSelect?.({ row: rows[currentIndex + 1] });
         }
       }
@@ -1767,9 +1422,9 @@
    * Saves current text without adding to TM (unlike Ctrl+S confirm which = reviewed + TM)
    */
   async function markAsTranslated() {
-    if (!inlineEditingRowId) return;
+    if (!grid.inlineEditingRowId) return;
 
-    const row = getRowById(inlineEditingRowId);
+    const row = getRowById(grid.inlineEditingRowId);
     if (!row) return;
 
     const currentHtml = inlineEditTextarea?.innerHTML || "";
@@ -1789,7 +1444,7 @@
         const rowIndex = getRowIndexById(row.id);
         if (rowIndex !== undefined) {
           rowHeightCache.delete(rowIndex);
-          rebuildCumulativeHeights();
+          rebuildCumulativeHeights(stripColorTags);
         }
         logger.success("Marked as translated (needs review)", { rowId: row.id });
         cancelInlineEdit();
@@ -1800,13 +1455,13 @@
   }
 
   async function confirmInlineEdit() {
-    if (!inlineEditingRowId || isConfirming) return;
+    if (!grid.inlineEditingRowId || isConfirming) return;
 
     // Set guard flags to prevent re-entry and blur-triggered saves
     isConfirming = true;
     isCancellingEdit = true;
 
-    const row = getRowById(inlineEditingRowId);
+    const row = getRowById(grid.inlineEditingRowId);
     if (!row) {
       isConfirming = false;
       cancelInlineEdit();
@@ -1842,7 +1497,7 @@
         const rowIndex = getRowIndexById(row.id);
         if (rowIndex !== undefined) {
           rowHeightCache.delete(rowIndex);
-          rebuildCumulativeHeights(); // Recalculate all positions
+          rebuildCumulativeHeights(stripColorTags); // Recalculate all positions
         }
 
         logger.success("Translation confirmed", { rowId: row.id, status: 'reviewed' });
@@ -1867,16 +1522,16 @@
       unlockRow(fileId, parseInt(row.id));
     }
 
-    const currentRowId = inlineEditingRowId;
-    inlineEditingRowId = null;
+    const currentRowId = grid.inlineEditingRowId;
+    grid.inlineEditingRowId = null;
     inlineEditValue = "";
 
     // Move to next row
     const currentIndex = getRowIndexById(currentRowId);
-    if (currentIndex !== undefined && rows[currentIndex + 1]) {
-      const nextRow = rows[currentIndex + 1];
+    if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
+      const nextRow = grid.rows[currentIndex + 1];
       if (nextRow && !nextRow.placeholder) {
-        selectedRowId = nextRow.id;
+        grid.selectedRowId = nextRow.id;
         onRowSelect?.({ row: nextRow });
         await startInlineEdit(nextRow);
       }
@@ -1894,7 +1549,7 @@
    */
   function dismissQAIssues() {
     // Works in both edit mode and selection mode
-    const targetRowId = inlineEditingRowId || selectedRowId;
+    const targetRowId = grid.inlineEditingRowId || grid.selectedRowId;
     if (!targetRowId) return;
 
     const row = getRowById(targetRowId);
@@ -1909,7 +1564,7 @@
    * Works in both edit mode and selection mode
    */
   async function revertRowStatus() {
-    const targetRowId = inlineEditingRowId || selectedRowId;
+    const targetRowId = grid.inlineEditingRowId || grid.selectedRowId;
     if (!targetRowId) return;
 
     const row = getRowById(targetRowId);
@@ -1961,7 +1616,7 @@
     showContextMenu = true;
 
     // Also select the row
-    selectedRowId = rowId;
+    grid.selectedRowId = rowId;
     const row = getRowById(rowId);
     if (row) {
       onRowSelect?.({ row });
@@ -2101,8 +1756,8 @@
     undoStack = undoStack.slice(0, -1);
 
     // Save current value to redo stack
-    if (inlineEditingRowId && inlineEditTextarea) {
-      redoStack = [...redoStack, { rowId: inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
+    if (grid.inlineEditingRowId && inlineEditTextarea) {
+      redoStack = [...redoStack, { rowId: grid.inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
     }
 
     // Restore the previous value by setting innerHTML directly
@@ -2125,8 +1780,8 @@
     redoStack = redoStack.slice(0, -1);
 
     // Save current value to undo stack
-    if (inlineEditingRowId && inlineEditTextarea) {
-      undoStack = [...undoStack, { rowId: inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
+    if (grid.inlineEditingRowId && inlineEditTextarea) {
+      undoStack = [...undoStack, { rowId: grid.inlineEditingRowId, value: inlineEditTextarea.innerHTML }];
     }
 
     // Restore the redo value by setting innerHTML directly
@@ -2147,23 +1802,21 @@
   function handleCellUpdates(updates) {
     let heightsChanged = false;
     updates.forEach(update => {
-      // O(1) lookup using index map
       const rowIndex = getRowIndexById(update.row_id);
-      if (rowIndex !== undefined && rows[rowIndex]) {
-        rows[rowIndex] = {
-          ...rows[rowIndex],
+      if (rowIndex !== undefined && grid.rows[rowIndex]) {
+        grid.rows[rowIndex] = {
+          ...grid.rows[rowIndex],
           target: update.target,
           status: update.status
         };
-        // Invalidate height cache for this row (content may have changed)
         rowHeightCache.delete(rowIndex);
         heightsChanged = true;
       }
     });
     if (heightsChanged) {
-      rebuildCumulativeHeights();
+      rebuildCumulativeHeights(stripColorTags);
     }
-    rows = [...rows];
+    grid.rows = [...grid.rows];
     logger.info("Real-time updates applied", { count: updates.length });
   }
 
@@ -2219,147 +1872,12 @@
     }
   }
 
-  // Calculate display lines for text (accounts for newlines AND wrapping per segment)
-  // Each segment (split by newlines) is measured for wrapping, then summed
-  function countDisplayLines(text, charsPerLine = 55) {
-    if (!text) return 1;
+  // Phase 84: countDisplayLines, estimateRowHeight, measureRowHeight, rebuildCumulativeHeights,
+  // getRowTop, getRowHeight, getTotalHeight, findRowAtPosition all moved to gridState.svelte.ts
 
-    // First, convert all newline types to actual newlines for consistent splitting
-    let normalized = text
-      .replace(/&lt;br\s*\/&gt;/gi, '\n')  // XML escaped
-      .replace(/<br\s*\/?>/gi, '\n')       // HTML
-      .replace(/\\n/g, '\n');              // Escaped \n
-
-    // Split by newlines to get segments
-    const segments = normalized.split('\n');
-
-    // Calculate wrap lines for EACH segment, then sum
-    let totalLines = 0;
-    for (const segment of segments) {
-      // Each segment takes at least 1 line, plus extra for wrapping
-      const segmentLines = Math.max(1, Math.ceil(segment.length / charsPerLine));
-      totalLines += segmentLines;
-    }
-
-    return totalLines;
-  }
-
-  // VARIABLE HEIGHT: Estimate row height based on content
-  // This is used for both display AND positioning (proper virtualization)
-  function estimateRowHeight(row, index) {
-    if (!row || row.placeholder) return MIN_ROW_HEIGHT;
-
-    // Check cache first - if we have a measured height, use it
-    if (rowHeightCache.has(index)) {
-      return rowHeightCache.get(index);
-    }
-
-    // FIX: Strip color tags before calculating length (tags are not rendered)
-    // This gives accurate length of what's actually displayed
-    const sourceText = stripColorTags(row.source || "");
-    const targetText = stripColorTags(row.target || "");
-
-    // FIXED: Calculate display lines properly - accounts for both newlines AND wrapping
-    // Old bug: was adding wrapLines + newlines which double-counted
-    const effectiveCharsPerLine = 55; // ~45% viewport width, ~8px per char
-    const sourceLines = countDisplayLines(sourceText, effectiveCharsPerLine);
-    const targetLines = countDisplayLines(targetText, effectiveCharsPerLine);
-    const totalLines = Math.max(sourceLines, targetLines);
-
-    // Calculate height: use tighter line height (actual CSS is ~20px)
-    const actualLineHeight = 22; // Closer to real rendered line height
-    const contentHeight = totalLines * actualLineHeight;
-    const estimatedHeight = Math.max(MIN_ROW_HEIGHT, contentHeight + CELL_PADDING);
-    const finalHeight = Math.min(estimatedHeight, MAX_ROW_HEIGHT);
-
-    // Cache the result (will be updated with actual measurement later)
-    rowHeightCache.set(index, finalHeight);
-
-    return finalHeight;
-  }
-
-  // SMART MEMBRANE: Measure actual row height after render and update cache
-  function measureRowHeight(node, { index }) {
-    // Wait for next frame to ensure content is rendered
-    requestAnimationFrame(() => {
-      const actualHeight = node.scrollHeight;
-      const cachedHeight = rowHeightCache.get(index);
-
-      // Only update if significantly different (>10px difference)
-      if (cachedHeight && Math.abs(actualHeight - cachedHeight) > 10) {
-        rowHeightCache.set(index, actualHeight);
-        // Trigger re-calculation of cumulative heights
-        rebuildCumulativeHeights();
-      } else if (!cachedHeight) {
-        rowHeightCache.set(index, actualHeight);
-      }
-    });
-
-    return {
-      destroy() {
-        // Cleanup if needed
-      }
-    };
-  }
-
-  // VARIABLE HEIGHT: Rebuild cumulative heights for all loaded rows
-  // Called when rows change or on initial load
-  function rebuildCumulativeHeights() {
-    const newCumulative = [0]; // First row starts at position 0
-
-    for (let i = 0; i < total; i++) {
-      const row = rows[i];
-      const height = row ? estimateRowHeight(row, i) : MIN_ROW_HEIGHT;
-      newCumulative[i + 1] = newCumulative[i] + height;
-    }
-
-    cumulativeHeights = newCumulative;
-  }
-
-  // VARIABLE HEIGHT: Get row position using cumulative heights
-  function getRowTop(index) {
-    // If we have cumulative heights calculated, use them
-    if (cumulativeHeights.length > index) {
-      return cumulativeHeights[index];
-    }
-    // Fallback: estimate based on MIN_ROW_HEIGHT (for rows not yet calculated)
-    return index * MIN_ROW_HEIGHT;
-  }
-
-  // VARIABLE HEIGHT: Get height of a specific row
+  // Local wrapper for gridGetRowHeight (needs stripColorTags parameter)
   function getRowHeight(index) {
-    const row = rows[index];
-    return row ? estimateRowHeight(row, index) : MIN_ROW_HEIGHT;
-  }
-
-  // VARIABLE HEIGHT: Total height is last cumulative value
-  function getTotalHeight() {
-    if (cumulativeHeights.length > total) {
-      return cumulativeHeights[total];
-    }
-    // Fallback: estimate
-    return total * MIN_ROW_HEIGHT;
-  }
-
-  // VARIABLE HEIGHT: Binary search to find row at scroll position
-  function findRowAtPosition(scrollPos) {
-    if (cumulativeHeights.length === 0) {
-      return Math.floor(scrollPos / MIN_ROW_HEIGHT);
-    }
-
-    let low = 0;
-    let high = total - 1;
-
-    while (low < high) {
-      const mid = Math.floor((low + high) / 2);
-      if (cumulativeHeights[mid + 1] <= scrollPos) {
-        low = mid + 1;
-      } else {
-        high = mid;
-      }
-    }
-
-    return Math.max(0, low);
+    return gridGetRowHeight(index, stripColorTags);
   }
 
   // UI-029: downloadFile removed - users download via right-click on FileExplorer
@@ -2371,7 +1889,7 @@
     if (!row || row.placeholder) return;
 
     // Select the row
-    selectedRowId = row.id;
+    grid.selectedRowId = row.id;
 
     // Phase 1: Dispatch rowSelect event for side panel
     onRowSelect?.({ row });
@@ -2387,18 +1905,18 @@
   // HOVER SYSTEM: Track mouse enter/leave on cells
   function handleCellMouseEnter(row, cellType) {
     if (!row || row.placeholder) return;
-    hoveredRowId = row.id;
-    hoveredCell = cellType; // 'source' or 'target'
+    grid.hoveredRowId = row.id;
+    grid.hoveredCell = cellType; // 'source' or 'target'
   }
 
   function handleCellMouseLeave() {
-    hoveredRowId = null;
-    hoveredCell = null;
+    grid.hoveredRowId = null;
+    grid.hoveredCell = null;
   }
 
   function handleRowMouseLeave() {
-    hoveredRowId = null;
-    hoveredCell = null;
+    grid.hoveredRowId = null;
+    grid.hoveredCell = null;
   }
 
   // ============================================================
@@ -2465,13 +1983,8 @@
     document.removeEventListener('mouseup', stopResize);
   }
 
-  // Svelte 5: Derived - Get visible rows for rendering
-  let visibleRows = $derived(Array.from({ length: visibleEnd - visibleStart }, (_, i) => {
-    const index = visibleStart + i;
-    return rows[index] || { row_num: index + 1, placeholder: true };
-  }));
-
-  // Svelte 5: Derived - Total scroll height (reactive to rows changes)
+  // Phase 84: visibleRows moved to gridState.svelte.ts (cross-module derived)
+  // totalHeight derived from gridState
   let totalHeight = $derived(getTotalHeight());
 
   // Svelte 5: Effect - Watch file changes AND subscribe to real-time updates
@@ -2513,18 +2026,23 @@
   // ResizeObserver to handle container size changes
   let resizeObserver = null;
 
+  // Phase 84: Local handleScroll delegates to ScrollEngine
+  function handleScroll() {
+    scrollEngine?.handleScroll();
+  }
+
   // Svelte 5: Effect - Setup scroll listener when container element is available
-  // This is more reliable than onMount for bind:this elements
+  // Phase 84: Scroll handling delegated to ScrollEngine, but event + resize observer stays here
   $effect(() => {
     if (containerEl) {
-      // Add scroll listener
+      // Add scroll listener (delegates to ScrollEngine)
       containerEl.addEventListener('scroll', handleScroll);
-      calculateVisibleRange();
+      scrollEngine?.calculateVisibleRange();
 
       // Add resize observer to recalculate when container size changes
       if (!resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
-          calculateVisibleRange();
+          scrollEngine?.calculateVisibleRange();
           updateContainerWidth(); // UI-083: Update for resize bar positions
         });
       }
@@ -2541,11 +2059,10 @@
     }
   });
 
-  // Keep onMount for backward compatibility but also handle via effect
+  // Keep onMount for backward compatibility
   onMount(() => {
-    // Initial calculation in case effect hasn't run yet
     if (containerEl) {
-      calculateVisibleRange();
+      scrollEngine?.calculateVisibleRange();
     }
   });
 
@@ -2570,10 +2087,23 @@
   tabindex="-1"
 >
   {#if fileId}
+    <!-- Phase 84: ScrollEngine (renderless) handles scroll, load, viewport -->
+    <ScrollEngine
+      bind:this={scrollEngine}
+      {fileId}
+      {fileType}
+      {searchTerm}
+      {searchMode}
+      {searchFields}
+      {activeTMs}
+      activeFilter={grid.activeFilter}
+      selectedCategories={grid.selectedCategories}
+      {containerEl}
+    />
     <div class="grid-header">
       <div class="header-left">
         <h4>{fileName || `File #${fileId}`}</h4>
-        <span class="row-count">{total.toLocaleString()} rows</span>
+        <span class="row-count">{grid.total.toLocaleString()} rows</span>
         <Tag type={fileType === 'gamedev' ? 'teal' : 'blue'} size="sm">
           {fileType === 'gamedev' ? 'Game Dev' : 'Translator'}
         </Tag>
@@ -2692,7 +2222,7 @@
       <div class="filter-wrapper">
         <Dropdown
           size="sm"
-          selectedId={activeFilter}
+          selectedId={grid.activeFilter}
           items={filterOptions}
           on:select={handleFilterChange}
           titleText=""
@@ -2703,7 +2233,7 @@
       <!-- P16: Category Filter -->
       {#if fileType !== 'gamedev'}
         <CategoryFilter
-          bind:selectedCategories={selectedCategories}
+          bind:selectedCategories={grid.selectedCategories}
           onchange={handleCategoryFilterChange}
         />
       {/if}
@@ -2735,7 +2265,7 @@
         ></div>
       {/each}
       <div class="scroll-container" bind:this={containerEl}>
-      {#if initialLoading}
+      {#if grid.initialLoading}
         <div class="loading-overlay">
           <InlineLoading description="Loading rows..." />
         </div>
@@ -2744,15 +2274,15 @@
         <div class="scroll-content" style="height: {totalHeight}px;">
           <!-- Rendered rows -->
           {#each visibleRows as row, i (row.row_num)}
-            {@const rowIndex = visibleStart + i}
+            {@const rowIndex = grid.visibleStart + i}
             {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
               class="virtual-row"
               class:placeholder={row.placeholder}
               class:locked={rowLock}
-              class:selected={selectedRowId === row.id}
-              class:row-hovered={hoveredRowId === row.id}
+              class:selected={grid.selectedRowId === row.id}
+              class:row-hovered={grid.hoveredRowId === row.id}
               style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;"
               use:measureRowHeight={{ index: rowIndex }}
               onclick={(e) => handleCellClick(row, e)}
@@ -2829,9 +2359,9 @@
                 <!-- UI-090: Uses flex-grow ratio to share remaining space after fixed columns -->
                 <div
                   class="cell source"
-                  class:source-hovered={hoveredRowId === row.id && hoveredCell === 'source'}
-                  class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
-                  class:cell-selected={selectedRowId === row.id}
+                  class:source-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'source'}
+                  class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
+                  class:cell-selected={grid.selectedRowId === row.id}
                   style="flex: {sourceWidthPercent} 1 0;{fileType === 'gamedev' ? ` padding-left: ${(row.extra_data?.depth || 0) * 20 + 8}px` : ''}"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
@@ -2855,10 +2385,10 @@
                 <div
                   class="cell target"
                   class:locked={rowLock}
-                  class:target-hovered={hoveredRowId === row.id && hoveredCell === 'target'}
-                  class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
-                  class:cell-selected={selectedRowId === row.id}
-                  class:inline-editing={inlineEditingRowId === row.id}
+                  class:target-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'target'}
+                  class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
+                  class:cell-selected={grid.selectedRowId === row.id}
+                  class:inline-editing={grid.inlineEditingRowId === row.id}
                   class:status-translated={row.status === 'translated'}
                   class:status-reviewed={row.status === 'reviewed'}
                   class:status-approved={row.status === 'approved'}
@@ -2868,9 +2398,9 @@
                   ondblclick={() => !rowLock && startInlineEdit(row)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
+                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !grid.inlineEditingRowId && startInlineEdit(row)}
                 >
-                  {#if inlineEditingRowId === row.id}
+                  {#if grid.inlineEditingRowId === row.id}
                     <!-- WYSIWYG inline editing - colors render directly -->
                     <div class="inline-edit-container">
                       <div
@@ -2944,7 +2474,7 @@
       </div>
     </div>
 
-    {#if loading && !initialLoading}
+    {#if grid.loading && !grid.initialLoading}
       <div class="loading-bar">
         <InlineLoading description="Loading more..." />
       </div>
