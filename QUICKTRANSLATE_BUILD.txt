@@ -1,1 +1,1 @@
-Build QuickTranslate v20260325 — remove broken XML check, fix integrity warnings
+Build QuickTranslate — add grouped missing-column warnings for Excel validation
