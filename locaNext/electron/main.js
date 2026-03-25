@@ -217,7 +217,7 @@ async function startBackendServer() {
     env: {
       ...process.env,
       PYTHONUNBUFFERED: '1',
-      PYTHONPATH: paths.projectRoot,
+      PYTHONPATH: [path.join(paths.serverPath, '..'), paths.projectRoot].join(path.delimiter),
       LOCANEXT_MODELS_PATH: paths.modelsPath,
       // Suppress Python warnings (FutureWarning, UserWarning, etc.)
       PYTHONWARNINGS: 'ignore',
