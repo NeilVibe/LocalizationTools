@@ -3557,7 +3557,7 @@
     display: flex;
     /* Subtle row separator - thinner for cleaner look */
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: var(--cds-layer-01);
+    background: #222222; /* UI-103: neutral default — not yellow */
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
     box-sizing: border-box;
@@ -3926,7 +3926,7 @@
 
   /* Needs Confirmation: Yellow/amber highlight for translated rows */
   .cell.target.status-translated {
-    background: rgba(198, 163, 0, 0.12); /* amber - needs confirmation */
+    background: rgba(198, 163, 0, 0.16); /* amber - needs confirmation (UI-103: increased from 0.12 for visibility) */
     border-left: 3px solid #c6a300;
   }
 
