@@ -1,1 +1,1 @@
-Build QACompiler — exclude Script/Face from active pending
+Build QACompiler — Issues/Pending now masterfile-based, old formula removed
