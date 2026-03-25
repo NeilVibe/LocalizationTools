@@ -34,9 +34,19 @@
   <span class="tag-text">
     {#each segments as seg, i (i)}
       {#if seg.tag}
-        <span class="tag-pill tag-{seg.tag.color}" title={seg.tag.raw}>
-          {seg.tag.label}
-        </span>
+        {#if seg.tag.type === 'combinedcolor'}
+          <span
+            class="tag-pill tag-combinedcolor"
+            title={seg.tag.raw}
+            style="background: {seg.tag.cssColor}22; color: {seg.tag.cssColor}; border: 1px solid {seg.tag.cssColor}44;"
+          >
+            {seg.tag.label}
+          </span>
+        {:else}
+          <span class="tag-pill tag-{seg.tag.color}" title={seg.tag.raw}>
+            {seg.tag.label}
+          </span>
+        {/if}
         {#if seg.tag.inner}
           <ColorText text={formatPlainText(seg.tag.inner)} />
         {/if}
@@ -56,19 +66,25 @@
 
   .tag-pill {
     display: inline;
-    padding: 0 4px;
-    border-radius: 3px;
-    font-size: 0.85em;
-    font-family: monospace;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-size: 0.8em;
+    font-family: 'Consolas', 'Monaco', monospace;
+    line-height: 1.2;
     vertical-align: baseline;
     white-space: nowrap;
     cursor: default;
     user-select: none;
+    border: 1px solid transparent;
   }
 
-  .tag-blue    { background: #1e3a5f; color: #7ec8f0; }
-  .tag-purple  { background: #3d1f5c; color: #c4a0e8; }
-  .tag-grey    { background: #3a3a3a; color: #b0b0b0; }
-  .tag-green   { background: #1a4a2e; color: #7ed4a0; }
-  .tag-orange  { background: #5c3a1a; color: #e8b070; }
+  .tag-combinedcolor {
+    font-weight: 500;
+  }
+
+  .tag-blue    { background: #1e3a5f; color: #7ec8f0; border-color: #2d5a8f; }
+  .tag-purple  { background: #3d1f5c; color: #c4a0e8; border-color: #5d3f7c; }
+  .tag-grey    { background: #3a3a3a; color: #b0b0b0; border-color: #555555; }
+  .tag-green   { background: #1a4a2e; color: #7ed4a0; border-color: #2a6a4e; }
+  .tag-orange  { background: #5c3a1a; color: #e8b070; border-color: #7c5a3a; }
 </style>
