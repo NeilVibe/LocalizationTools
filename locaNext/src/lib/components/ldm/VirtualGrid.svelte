@@ -1,22 +1,17 @@
 <script>
   import {
-    Search,
     InlineLoading,
     Tag,
-    Button,
     Dropdown
   } from "carbon-components-svelte";
-  import { Edit, Locked, Settings, ChevronDown, MachineLearningModel } from "carbon-icons-svelte";
+  import { ChevronDown, MachineLearningModel } from "carbon-icons-svelte";
   import { onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { ldmStore, joinFile, leaveFile, lockRow, unlockRow, isRowLocked, onCellUpdate, ldmConnected } from "$lib/stores/ldm.js";
-  import { preferences, getFontSizeValue, getFontFamilyValue, getFontColorValue } from "$lib/stores/preferences.js";
-  import { WarningAltFilled } from "carbon-icons-svelte";
+  import { preferences } from "$lib/stores/preferences.js";
   import PresenceBar from "./PresenceBar.svelte";
-  import ColorText from "./ColorText.svelte";
-  import TagText from "./TagText.svelte";
   import CategoryFilter from "./CategoryFilter.svelte";
   import { getStatusKind } from '$lib/utils/statusColors';
 
@@ -28,40 +23,19 @@
     loadedPages,
     tmAppliedRows,
     referenceData as gridReferenceData,
-    cumulativeHeights,
-    visibleRows,
     getRowById,
     getRowIndexById,
     resetGridState,
-    measureRowHeight,
     rebuildCumulativeHeights,
-    getRowTop,
-    getRowHeight as gridGetRowHeight,
-    getTotalHeight,
-    estimateRowHeight,
-    countDisplayLines,
-    MIN_ROW_HEIGHT,
-    MAX_ROW_HEIGHT,
-    CHARS_PER_LINE,
-    LINE_HEIGHT,
-    CELL_PADDING,
-    BUFFER_ROWS,
     PAGE_SIZE,
-    PREFETCH_PAGES,
   } from './grid/gridState.svelte.ts';
   import ScrollEngine from './grid/ScrollEngine.svelte';
   import StatusColors from './grid/StatusColors.svelte';
+  import CellRenderer from './grid/CellRenderer.svelte';
 
-  // Category color map (synced with CategoryFilter)
-  const CATEGORY_COLORS = {
-    "Item": "#D9D2E9", "Character": "#F8CBAD", "Quest": "#D9D2E9",
-    "Skill": "#D9D2E9", "Region": "#F8CBAD", "Gimmick": "#D9D2E9",
-    "Knowledge": "#D9D2E9", "UI": "#A9D08E", "Other": "#D9D9D9",
-    "Uncategorized": "#D9D9D9",
-  };
+  // Phase 84 Batch 2: CATEGORY_COLORS, getCategoryColor moved to CellRenderer.svelte
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
   import SemanticResults from "./SemanticResults.svelte";
-  import QAInlineBadge from "./QAInlineBadge.svelte";
 
   // API base URL - centralized in api.js
   let API_BASE = $derived(getApiBase());
@@ -104,15 +78,6 @@
   ];
 
   // Phase 84: selectedCategories moved to grid state object
-
-  /**
-   * Get CSS color for a content category.
-   * @param {string} category - Category name
-   * @returns {string} Hex color code
-   */
-  function getCategoryColor(category) {
-    return CATEGORY_COLORS[category] || "#D9D9D9";
-  }
 
   // P5: Advanced Search state
   let searchMode = $state("contain"); // 'contain' | 'exact' | 'not_contain' | 'fuzzy'
@@ -214,200 +179,10 @@
   let contextMenuPosition = $state({ x: 0, y: 0 });
   let contextMenuRowId = $state(null);
 
-  // ============================================================
-  // UNIFIED COLUMN RESIZE SYSTEM (UI-083)
-  // All columns use full-height resize bars, factorized logic
-  // ============================================================
-
-  // Column widths (px for fixed, % for source/target split)
-  let indexColumnWidth = $state(60);
-  let stringIdColumnWidth = $state(150);
-  let sourceWidthPercent = $state(50);
-  let referenceColumnWidth = $state(300);
-
-  // Column width limits (min, max)
-  const COLUMN_LIMITS = {
-    index: { min: 40, max: 120 },
-    stringId: { min: 80, max: 300 },
-    source: { min: 20, max: 80 }, // percentage
-    reference: { min: 150, max: 500 }
-  };
-
-  // Resize state (unified) - using simple variables to avoid reactivity issues
-  let isResizing = $state(false);
-  let resizeColumn = $state(null);    // 'index' | 'stringId' | 'source' | 'reference'
-  let resizeStartX = $state(0);
-  let resizeStartValue = $state(0);   // px or % depending on column
-
-  // Calculate total fixed width before source column
-  function getFixedWidthBefore() {
-    let width = 0;
-    if ($preferences.showIndex) width += indexColumnWidth;
-    // StringID only in Translator mode
-    if ($preferences.showStringId && fileType !== 'gamedev') width += stringIdColumnWidth;
-    return width;
-  }
-
-  // Calculate total fixed width after target column
-  function getFixedWidthAfter() {
-    // Game Dev mode: Values (250) + Children (100) after target
-    if (fileType === 'gamedev') return 350;
-    return $preferences.showReference ? referenceColumnWidth : 0;
-  }
-
-  // Container width for position calculations (reactive)
-  let containerWidth = $state(800);
-
-  // Update container width when it changes
-  function updateContainerWidth() {
-    if (containerEl) {
-      containerWidth = containerEl.clientWidth;
-    }
-  }
-
-  // Get visible resize bars based on preferences
-  let visibleResizeBars = $derived.by(() => {
-    const bars = [];
-    if ($preferences.showIndex) bars.push('index');
-    if ($preferences.showStringId) bars.push('stringId');
-    bars.push('source'); // Always visible (source/target split)
-    if ($preferences.showReference) bars.push('reference');
-    return bars;
-  });
-
-  // Pre-compute resize bar positions (REACTIVE)
-  let resizeBarPositions = $derived.by(() => {
-    const positions = {};
-    let pos = 0;
-
-    // Index bar position (at right edge of index column)
-    if ($preferences.showIndex) {
-      positions['index'] = indexColumnWidth;
-      pos += indexColumnWidth;
-    }
-
-    // StringID bar position (at right edge of stringId column)
-    if ($preferences.showStringId) {
-      positions['stringId'] = pos + stringIdColumnWidth;
-      pos += stringIdColumnWidth;
-    }
-
-    // Source bar position (between source and target, percentage-based)
-    const fixedAfter = $preferences.showReference ? referenceColumnWidth : 0;
-    const fixedTotal = pos + fixedAfter;
-    const flexWidth = containerWidth - fixedTotal;
-    positions['source'] = pos + (flexWidth * sourceWidthPercent / 100);
-
-    // Reference bar position (at left edge of reference column)
-    if ($preferences.showReference) {
-      positions['reference'] = containerWidth - referenceColumnWidth;
-    }
-
-    return positions;
-  });
-
-  // Table column definitions (base config, actual widths from state)
-  // Note: Status column REMOVED - using cell colors instead
-
-  // Translator columns (original column set)
-  const translatorColumns = {
-    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
-    string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
-    category: { key: "category", label: "Category", width: 100, minWidth: 80, prefKey: "showCategory" },
-    source: { key: "source", label: "Source (KR)", width: 350, always: true },
-    target: { key: "target", label: "Target", width: 350, always: true },
-    reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
-    tm_result: { key: "tm_result", label: "TM Match", width: 300, prefKey: "showTmResults" }
-  };
-
-  // Game Dev columns (XML structure view)
-  // node_name maps to source field, attributes maps to target field
-  // values and children_count read from row.extra_data
-  const gameDevColumns = {
-    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
-    node_name: { key: "source", label: "Node", width: 200, always: true },
-    attributes: { key: "target", label: "Attributes", width: 300, always: true },
-    values: { key: "values", label: "Values", width: 250, always: true },
-    children_count: { key: "children_count", label: "Children", width: 100, always: true }
-  };
-
-  // Dual UI Mode: switch columns based on file type
-  // Phase 18: Dynamic columns from GameDevPage override static defaults
-  let allColumns = $derived(
-    fileType === 'gamedev'
-      ? (gamedevDynamicColumns || gameDevColumns)
-      : translatorColumns
-  );
-
+  // Phase 84 Batch 2: Column definitions, resize system, getVisibleColumns all moved to CellRenderer.svelte
   // Phase 84: referenceData and referenceLoading moved to StatusColors
   // Local derived for template access
   let referenceLoading = $derived(statusColors?.isReferenceLoading() ?? false);
-
-  // Phase 84: tmResults moved to StatusColors
-
-  // Svelte 5: Derived - visible columns based on preferences
-  // Dual UI Mode: visibleColumns reacts to fileType changes via allColumns dependency
-  let visibleColumns = $derived(getVisibleColumns($preferences, allColumns));
-
-  // Svelte 5: Derived - font styles from preferences (UI-031, UI-032, P2)
-  let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
-  let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
-  let gridFontFamily = $derived(getFontFamilyValue($preferences.fontFamily));
-  let gridFontColor = $derived(getFontColorValue($preferences.fontColor));
-
-  function getVisibleColumns(prefs, _cols = null) {
-    const cols = [];
-
-    // Game Dev mode: show all defined columns (no preference toggles for Game Dev)
-    if (fileType === 'gamedev') {
-      if (prefs.showIndex && allColumns.row_num) cols.push(allColumns.row_num);
-      if (allColumns.node_name) cols.push(allColumns.node_name);
-      if (allColumns.attributes) cols.push(allColumns.attributes);
-      if (allColumns.values) cols.push(allColumns.values);
-      if (allColumns.children_count) cols.push(allColumns.children_count);
-      return cols;
-    }
-
-    // Translator mode: original column logic
-    // Optional: Index number
-    if (prefs.showIndex) {
-      cols.push(allColumns.row_num);
-    }
-
-    // Optional: String ID
-    if (prefs.showStringId) {
-      cols.push(allColumns.string_id);
-    }
-
-    // Always visible: Source and Target
-    cols.push(allColumns.source);
-    cols.push(allColumns.target);
-
-    // Optional: Reference column (on the right)
-    if (prefs.showReference) {
-      cols.push(allColumns.reference);
-    }
-
-    // UI-039: Removed TM Results column - only StringID (left) and Reference (right) are supported
-
-    return cols;
-  }
-
-  // Legacy: columns array for compatibility (deprecated, use visibleColumns)
-  const columns = [
-    { key: "row_num", label: "#", width: 60 },
-    { key: "string_id", label: "StringID", width: 150 },
-    { key: "source", label: "Source (KR)", width: 350 },
-    { key: "target", label: "Target", width: 350 }
-  ];
-
-  // Status options
-  const statusOptions = [
-    { value: "pending", label: "Pending" },
-    { value: "translated", label: "Translated" },
-    { value: "reviewed", label: "Reviewed" },
-    { value: "approved", label: "Approved" }
-  ];
 
   // Phase 84: calculateVisibleRange, ensureRowsLoaded, loadPage, prefetchAdjacentPages,
   // scrollToRowById, scrollToRowNum all moved to ScrollEngine.svelte
@@ -1572,11 +1347,7 @@
 
   // Phase 84: countDisplayLines, estimateRowHeight, measureRowHeight, rebuildCumulativeHeights,
   // getRowTop, getRowHeight, getTotalHeight, findRowAtPosition all moved to gridState.svelte.ts
-
-  // Local wrapper for gridGetRowHeight (needs stripColorTags parameter)
-  function getRowHeight(index) {
-    return gridGetRowHeight(index, stripColorTags);
-  }
+  // Phase 84 Batch 2: Local getRowHeight wrapper moved to CellRenderer.svelte
 
   // UI-029: downloadFile removed - users download via right-click on FileExplorer
 
@@ -1617,73 +1388,10 @@
     grid.hoveredCell = null;
   }
 
-  // ============================================================
-  // UI-083: UNIFIED RESIZE HANDLERS (factorized)
-  // Single entry point for all column resizing
-  // ============================================================
-
-  function startResize(event, column = 'source') {
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Get starting value based on column type
-    if (column === 'source') {
-      resizeStartValue = sourceWidthPercent;
-    } else if (column === 'index') {
-      resizeStartValue = indexColumnWidth;
-    } else if (column === 'stringId') {
-      resizeStartValue = stringIdColumnWidth;
-    } else if (column === 'reference') {
-      resizeStartValue = referenceColumnWidth;
-    }
-
-    isResizing = true;
-    resizeColumn = column;
-    resizeStartX = event.clientX;
-
-    document.addEventListener('mousemove', handleResize);
-    document.addEventListener('mouseup', stopResize);
-  }
-
-  function handleResize(event) {
-    if (!isResizing || !containerEl) return;
-
-    const deltaX = event.clientX - resizeStartX;
-    const limits = COLUMN_LIMITS[resizeColumn];
-    if (!limits) return;
-
-    if (resizeColumn === 'source') {
-      // Source/Target split (percentage-based)
-      const cw = containerEl.clientWidth;
-      const fixedTotal = getFixedWidthBefore() + getFixedWidthAfter();
-      const flexWidth = cw - fixedTotal;
-      if (flexWidth <= 0) return;
-      const deltaPercent = (deltaX / flexWidth) * 100;
-      const newPercent = resizeStartValue + deltaPercent;
-      sourceWidthPercent = Math.max(limits.min, Math.min(limits.max, newPercent));
-    } else if (resizeColumn === 'reference') {
-      // Reference resizes from LEFT edge (dragging left = bigger)
-      const newWidth = resizeStartValue - deltaX;
-      referenceColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
-    } else if (resizeColumn === 'index') {
-      const newWidth = resizeStartValue + deltaX;
-      indexColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
-    } else if (resizeColumn === 'stringId') {
-      const newWidth = resizeStartValue + deltaX;
-      stringIdColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
-    }
-  }
-
-  function stopResize() {
-    isResizing = false;
-    resizeColumn = null;
-    document.removeEventListener('mousemove', handleResize);
-    document.removeEventListener('mouseup', stopResize);
-  }
-
+  // Phase 84 Batch 2: Resize handlers moved to CellRenderer.svelte
   // Phase 84: visibleRows moved to gridState.svelte.ts (cross-module derived)
-  // totalHeight derived from gridState
-  let totalHeight = $derived(getTotalHeight());
+  // Phase 84 Batch 2: CellRenderer component ref
+  let cellRenderer = $state(null);
 
   // Svelte 5: Effect - Watch file changes AND subscribe to real-time updates
   // CRITICAL: Must track previousFileId to prevent infinite loop (BUG-001)
@@ -1741,11 +1449,11 @@
       if (!resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
           scrollEngine?.calculateVisibleRange();
-          updateContainerWidth(); // UI-083: Update for resize bar positions
+          cellRenderer?.updateContainerWidth(); // UI-083: Update for resize bar positions
         });
       }
       resizeObserver.observe(containerEl);
-      updateContainerWidth(); // Initial width calculation
+      cellRenderer?.updateContainerWidth(); // Initial width calculation
 
       // Cleanup function returned from $effect
       return () => {
@@ -1954,228 +1662,28 @@
       <span class="hotkey"><kbd>Ctrl+Y</kbd> Redo</span>
     </div>
 
-    <!-- Virtual Scroll Container with Resize Overlay -->
-    <!-- UI-081: Clean grid - no header, just data rows -->
+    <!-- Phase 84 Batch 2: CellRenderer handles row/cell rendering, resize bars, column layout -->
     <div class="scroll-wrapper">
-      <!-- UI-083: Full-height resize bars - OUTSIDE scroll container so they don't scroll -->
-      {#each visibleResizeBars as column (column)}
-        <div
-          class="column-resize-bar"
-          class:resize-active={isResizing && resizeColumn === column}
-          style="left: {resizeBarPositions[column] || 0}px;"
-          onmousedown={(e) => startResize(e, column)}
-          role="separator"
-          aria-label="Resize {column} column"
-        ></div>
-      {/each}
-      <div class="scroll-container" bind:this={containerEl}>
-      {#if grid.initialLoading}
-        <div class="loading-overlay">
-          <InlineLoading description="Loading rows..." />
-        </div>
-      {:else}
-        <!-- Total height spacer -->
-        <div class="scroll-content" style="height: {totalHeight}px;">
-          <!-- Rendered rows -->
-          {#each visibleRows as row, i (row.row_num)}
-            {@const rowIndex = grid.visibleStart + i}
-            {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div
-              class="virtual-row"
-              class:placeholder={row.placeholder}
-              class:locked={rowLock}
-              class:selected={grid.selectedRowId === row.id}
-              class:row-hovered={grid.hoveredRowId === row.id}
-              style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;"
-              use:measureRowHeight={{ index: rowIndex }}
-              onclick={(e) => handleCellClick(row, e)}
-              oncontextmenu={(e) => !row.placeholder && handleCellContextMenu(e, row.id)}
-              onmouseleave={handleRowMouseLeave}
-              role="row"
-            >
-              {#if row.placeholder}
-                <!-- UI-066: Placeholder rows match actual column structure -->
-                <!-- UI-082: Using state-based widths for all columns -->
-                {#if $preferences.showIndex}
-                  <div class="cell row-num" style="width: {indexColumnWidth}px;">{row.row_num}</div>
-                {/if}
-                {#if $preferences.showStringId && fileType !== 'gamedev'}
-                  <div class="cell string-id loading-cell" style="width: {stringIdColumnWidth}px;">
-                    <div class="placeholder-shimmer"></div>
-                  </div>
-                {/if}
-                {#if $preferences.showCategory && fileType !== 'gamedev'}
-                  <div class="cell category loading-cell" style="width: 100px;">
-                    <div class="placeholder-shimmer"></div>
-                  </div>
-                {/if}
-                <!-- UI-090: Use flex-grow ratios to share remaining space after fixed columns -->
-                <div class="cell source loading-cell" style="flex: {sourceWidthPercent} 1 0;">
-                  <div class="placeholder-shimmer"></div>
-                </div>
-                <div class="cell target loading-cell" style="flex: {100 - sourceWidthPercent} 1 0;">
-                  <div class="placeholder-shimmer"></div>
-                </div>
-                {#if $preferences.showReference && fileType !== 'gamedev'}
-                  <div class="cell reference loading-cell" style="width: {referenceColumnWidth}px;">
-                    <div class="placeholder-shimmer"></div>
-                  </div>
-                {/if}
-                {#if fileType === 'gamedev'}
-                  <div class="cell gamedev-values loading-cell" style="width: 250px;">
-                    <div class="placeholder-shimmer"></div>
-                  </div>
-                  <div class="cell gamedev-children loading-cell" style="width: 100px;">
-                    <div class="placeholder-shimmer"></div>
-                  </div>
-                {/if}
-              {:else}
-                <!-- UI-083: Row number (conditional) - resize via full-height bar -->
-                {#if $preferences.showIndex}
-                  <div class="cell row-num" style="width: {indexColumnWidth}px;">
-                    {row.row_num}
-                  </div>
-                {/if}
-
-                <!-- UI-083: StringID (conditional) - resize via full-height bar -->
-                <!-- Hidden in Game Dev mode (no StringID concept) -->
-                {#if $preferences.showStringId && fileType !== 'gamedev'}
-                  <div class="cell string-id" style="width: {stringIdColumnWidth}px;">
-                    {row.string_id || "-"}
-                  </div>
-                {/if}
-
-                <!-- P16: Category column (translator mode only) -->
-                {#if $preferences.showCategory && fileType !== 'gamedev'}
-                  <div class="cell category" style="width: 100px;">
-                    {#if row.category}
-                      <Tag type="outline" size="sm" style="--cds-tag-background-color: {getCategoryColor(row.category)}; --cds-tag-color: #333; background-color: {getCategoryColor(row.category)}30; border-color: {getCategoryColor(row.category)};">
-                        {row.category}
-                      </Tag>
-                    {:else}
-                      <span class="category-empty">-</span>
-                    {/if}
-                  </div>
-                {/if}
-
-                <!-- Source (always visible, READ-ONLY) -->
-                <!-- UI-090: Uses flex-grow ratio to share remaining space after fixed columns -->
-                <div
-                  class="cell source"
-                  class:source-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'source'}
-                  class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
-                  class:cell-selected={grid.selectedRowId === row.id}
-                  style="flex: {sourceWidthPercent} 1 0;{fileType === 'gamedev' ? ` padding-left: ${(row.extra_data?.depth || 0) * 20 + 8}px` : ''}"
-                  onmouseenter={() => handleCellMouseEnter(row, 'source')}
-                >
-                  <span class="cell-content"><TagText text={row.source || ""} /></span>
-                  <!-- CTX-07: Translation source badge (AI/TM indicator) -->
-                  {#if row.translation_source === 'ai'}
-                    <span class="translation-source-badge ai" title="AI Translated">
-                      <MachineLearningModel size={10} />
-                      <span class="badge-text">AI</span>
-                    </span>
-                  {:else if row.translation_source === 'tm'}
-                    <span class="translation-source-badge tm" title="TM Match">
-                      <span class="badge-text">TM</span>
-                    </span>
-                  {/if}
-                </div>
-
-                <!-- Target (always visible, EDITABLE) -->
-                <!-- Phase 2: Inline editing on double-click -->
-                <!-- Cell color indicates status: gray=pending, yellow=translated(needs confirmation), teal=reviewed/approved(confirmed) -->
-                <div
-                  class="cell target"
-                  class:locked={rowLock}
-                  class:target-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'target'}
-                  class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
-                  class:cell-selected={grid.selectedRowId === row.id}
-                  class:inline-editing={grid.inlineEditingRowId === row.id}
-                  class:status-translated={row.status === 'translated'}
-                  class:status-reviewed={row.status === 'reviewed'}
-                  class:status-approved={row.status === 'approved'}
-                  class:qa-flagged={row.qa_flag_count > 0}
-                  style="flex: {100 - sourceWidthPercent} 1 0;"
-                  onmouseenter={() => handleCellMouseEnter(row, 'target')}
-                  ondblclick={() => !rowLock && startInlineEdit(row)}
-                  role="button"
-                  tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !grid.inlineEditingRowId && startInlineEdit(row)}
-                >
-                  {#if grid.inlineEditingRowId === row.id}
-                    <!-- WYSIWYG inline editing - colors render directly -->
-                    <div class="inline-edit-container">
-                      <div
-                        bind:this={inlineEditTextarea}
-                        contenteditable="true"
-                        class="inline-edit-textarea"
-                        onkeydown={handleInlineEditKeydown}
-                        onblur={() => saveInlineEdit(false)}
-                        oncontextmenu={handleEditContextMenu}
-                        data-placeholder="Enter translation..."
-                      ></div>
-                    </div>
-                  {:else}
-                    <!-- Display mode -->
-                    <span class="cell-content"><TagText text={row.target || ""} /></span>
-                    {#if tmAppliedRows.has(row.id)}
-                      {@const tmInfo = tmAppliedRows.get(row.id)}
-                      <span class="ai-badge" title="AI-matched ({tmInfo.match_type})">
-                        <MachineLearningModel size={12} />
-                      </span>
-                    {/if}
-                    {#if row.qa_flag_count > 0}
-                      <QAInlineBadge qaFlagCount={row.qa_flag_count} rowId={row.id} onDismiss={handleQADismiss} />
-                    {/if}
-                    {#if rowLock}
-                      <span class="lock-icon"><Locked size={12} /></span>
-                    {:else}
-                      <span class="edit-icon"><Edit size={12} /></span>
-                    {/if}
-                  {/if}
-                </div>
-
-                <!-- UI-083: Reference Column (conditional) - resize via full-height bar -->
-                <!-- Hidden in Game Dev mode (no reference file concept) -->
-                {#if $preferences.showReference && fileType !== 'gamedev'}
-                  {@const refText = getReferenceForRow(row, $preferences.referenceMatchMode)}
-                  <div
-                    class="cell reference"
-                    class:has-match={refText}
-                    class:no-match={!refText}
-                    style="width: {referenceColumnWidth}px;"
-                    title={refText ? `Reference: ${refText}` : 'No reference match'}
-                  >
-                    {#if referenceLoading}
-                      <span class="cell-loading">Loading...</span>
-                    {:else if refText}
-                      <span class="cell-content ref-match"><TagText text={refText || ""} /></span>
-                    {:else}
-                      <!-- UI-071: Clearer "No match" styling -->
-                      <span class="cell-content no-match">No match</span>
-                    {/if}
-                  </div>
-                {/if}
-
-                <!-- UI-039: Removed TM Result Column - only StringID (left) and Reference (right) are third column options -->
-
-                <!-- Dual UI Mode: Game Dev extra_data columns -->
-                {#if fileType === 'gamedev'}
-                  <div class="cell gamedev-values" style="width: 250px;">
-                    <span class="cell-content">{row.extra_data?.values || ''}</span>
-                  </div>
-                  <div class="cell gamedev-children" style="width: 100px;">
-                    <span class="cell-content">{row.extra_data?.children_count ?? 0}</span>
-                  </div>
-                {/if}
-              {/if}
-            </div>
-          {/each}
-        </div>
-      {/if}
-      </div>
+      <CellRenderer
+        bind:this={cellRenderer}
+        {fileType}
+        bind:containerEl={containerEl}
+        {gamedevDynamicColumns}
+        inlineEditingRowId={grid.inlineEditingRowId}
+        bind:inlineEditTextarea={inlineEditTextarea}
+        onRowClick={handleCellClick}
+        onRowDoubleClick={(row) => startInlineEdit(row)}
+        onCellContextMenu={handleCellContextMenu}
+        onCellMouseEnter={handleCellMouseEnter}
+        onCellMouseLeave={handleCellMouseLeave}
+        onRowMouseLeave={handleRowMouseLeave}
+        onInlineEditKeydown={handleInlineEditKeydown}
+        onInlineEditBlur={() => saveInlineEdit(false)}
+        onEditContextMenu={handleEditContextMenu}
+        onQADismiss={handleQADismiss}
+        {getReferenceForRow}
+        {referenceLoading}
+      />
     </div>
 
     {#if grid.loading && !grid.initialLoading}
@@ -2674,53 +2182,7 @@
     z-index: 10;
   }
 
-  /* UI-083: Full-height column resize bars (unified system) */
-  .column-resize-bar {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 10px;
-    margin-left: -5px; /* Center on the column boundary */
-    cursor: col-resize;
-    background: transparent;
-    z-index: 20;
-    transition: background-color 0.15s;
-  }
-
-  .column-resize-bar:hover {
-    background: rgba(15, 98, 254, 0.35);
-  }
-
-  .column-resize-bar:active,
-  .column-resize-bar.resize-active {
-    background: var(--cds-interactive-01, #0f62fe);
-  }
-
-  .th {
-    padding: 0.625rem 0.75rem; /* Match cell padding for alignment */
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* UI-044: Minimum width for source/target headers */
-  .th-source,
-  .th-target {
-    min-width: 150px;
-  }
-
-  /* Source column header - subtle divider */
-  .th-source {
-    position: relative;
-    border-right: 1px solid var(--cds-border-subtle-02, #525252);
-  }
-
-  .th-target {
-    /* Target header - no special border needed */
-  }
-
-  /* NOTE: UI-083 removed .resize-handle - now using unified .column-resize-bar system */
+  /* Phase 84 Batch 2: column-resize-bar, th, th-source, th-target CSS moved to CellRenderer.svelte */
 
   /* FIX: Wrapper for scroll container + resize bars overlay */
   .scroll-wrapper {
@@ -2732,289 +2194,15 @@
     height: 0; /* Critical for flex to work */
   }
 
-  .scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    /* UI-053 FIX: Critical - height: 0 + flex: 1 forces container to respect parent height */
-    /* Without this, flex child expands to content height, breaking virtual scroll */
-    height: 0;
-    min-height: 200px; /* Minimum for usability */
-    /* UI-080 FIX: Reserve scrollbar space to align header with data rows */
-    /* Without this, header columns are wider than data columns by scrollbar width (~15px) */
-    scrollbar-gutter: stable;
-  }
+  /* Phase 84 Batch 2: scroll-container, scroll-content, loading-overlay CSS moved to CellRenderer.svelte */
 
-  /* Custom scrollbar styling for executive-demo polish */
-  .scroll-container::-webkit-scrollbar {
-    width: 8px;
-  }
+  /* Phase 84 Batch 2: virtual-row, cell, cell-content, inline-edit CSS moved to CellRenderer.svelte */
 
-  .scroll-container::-webkit-scrollbar-track {
-    background: var(--cds-layer-01);
-  }
-
-  .scroll-container::-webkit-scrollbar-thumb {
-    background: var(--cds-border-subtle-02, #525252);
-    border-radius: 4px;
-    border: 2px solid var(--cds-layer-01);
-  }
-
-  .scroll-container::-webkit-scrollbar-thumb:hover {
-    background: var(--cds-text-03);
-  }
-
-  .scroll-content {
-    position: relative;
-    width: 100%;
-  }
-
-  .loading-overlay {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-  }
-
-  .virtual-row {
-    position: absolute;
-    left: 0;
-    right: 0;
-    display: flex;
-    /* Subtle row separator - thinner for cleaner look */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: #222222; /* UI-103: neutral default — not yellow */
-    transition: background-color 0.15s ease;
-    /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
-    box-sizing: border-box;
-  }
-
-  /* HOVER SYSTEM: Row-level hover (subtle background) */
-  .virtual-row:hover,
-  .virtual-row.row-hovered {
-    background: var(--cds-layer-hover-01);
-  }
-
-  /* UI-059 FIX: Selected row takes priority over hover */
-  .virtual-row.selected {
-    background: var(--cds-layer-selected-01) !important;
-    /* Make selection more prominent with left border */
-    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
-    /* Subtle shadow for depth */
-    box-shadow: inset 0 0 0 1px rgba(15, 98, 254, 0.2);
-  }
-
-  /* UI-059: Selected + hovered - slightly different to show both states */
-  .virtual-row.selected:hover,
-  .virtual-row.selected.row-hovered {
-    background: var(--cds-layer-selected-hover-01, rgba(15, 98, 254, 0.18)) !important;
-  }
-
-  .virtual-row.placeholder {
-    opacity: 0.5;
-  }
-
-  .virtual-row.locked {
-    background: var(--cds-layer-02);
-  }
-
-  .cell {
-    padding: 0.5rem 0.75rem; /* Balanced padding: 8px 12px */
-    font-size: var(--grid-font-size, 14px);
-    font-weight: var(--grid-font-weight, 400);
-    font-family: var(--grid-font-family, inherit);
-    color: var(--grid-font-color, var(--cds-text-01));
-    /* Subtle border for cleaner look */
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    align-items: flex-start;
-    /* VARIABLE HEIGHT: Cells expand to fit content */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    /* SMART MEMBRANE: Let content determine height, don't force 100% */
-    align-self: stretch;
-    box-sizing: border-box;
-  }
-
-  /* UI-090: Source and Target cells use flex-grow ratios to share remaining space */
-  /* After fixed columns (index, stringId), source/target divide what's left */
-  /* flex is controlled by inline style, no default flex here */
-
-  .cell-content {
-    word-break: break-word;
-    white-space: pre-wrap;
-    line-height: 1.6; /* More spacious line height for readability */
-    /* VARIABLE HEIGHT: Content expands fully - no scrollbar */
-    width: 100%;
-  }
-
-  .cell.row-num {
-    justify-content: center;
-    align-items: center;
-    color: var(--cds-text-02);
-    font-size: 0.75rem;
-    flex: none; /* UI-083: Use inline width style, not fixed flex */
-  }
-
-  .cell.string-id {
-    font-family: monospace;
-    font-size: 0.75rem;
-    word-break: break-all;
-    flex: none; /* UI-083: Use inline width style, not fixed flex */
-  }
-
-  .cell.source {
-    background: var(--cds-layer-02);
-    color: var(--cds-text-02);
-    transition: background-color 0.15s ease;
-    /* Subtle divider between source and target */
-    border-right: 1px solid var(--cds-border-subtle-02, #525252);
-    /* Source is READ-ONLY - cursor indicates this */
-    cursor: default;
-  }
-
-  /* HOVER SYSTEM: Source cell - subtle hover (read-only indicator) */
-  .cell.source.row-active {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .cell.source.source-hovered {
-    /* Slightly more prominent when directly hovered, but still subtle */
-    background: var(--cds-layer-accent-hover-01, var(--cds-layer-hover-01));
-    /* Subtle left border to show focus */
-    border-left: 2px solid var(--cds-border-subtle-02, #525252);
-  }
-
-  .cell.target {
-    position: relative;
-    cursor: pointer;
-    padding-right: 1.5rem;
-    transition: all 0.15s ease;
-  }
-
-  /* HOVER SYSTEM: Target cell - when row is active but source is hovered */
-  .cell.target.row-active {
-    background: var(--cds-layer-hover-01);
-  }
-
-  /* HOVER SYSTEM: Target cell - prominent when directly hovered (EDITABLE) */
-  .cell.target.target-hovered {
-    background: var(--cds-interactive-02, #4589ff);
-    background: rgba(69, 137, 255, 0.15);
-    /* Blue left border indicates editable/active */
-    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
-    /* Slight shadow for depth */
-    box-shadow: inset 0 0 0 1px rgba(15, 98, 254, 0.3);
-  }
-
-  /* Show edit icon when target is hovered */
-  .cell.target.target-hovered .edit-icon {
-    opacity: 1;
-    color: var(--cds-interactive-01, #0f62fe);
-  }
-
-  .cell.target.locked {
-    cursor: not-allowed;
-    background: var(--cds-layer-02);
-  }
-
-  /* Phase 2: Inline editing mode */
-  .cell.target.inline-editing {
-    padding: 0;
-    background: var(--cds-field-01);
-    border: 2px solid var(--cds-interactive-01);
-    box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.3);
-  }
-
-  .inline-edit-textarea {
-    width: 100%;
-    height: 100%;
-    min-height: 100%;
-    padding: 0.5rem;
-    border: none;
-    background: var(--cds-field-01);
-    color: var(--grid-font-color, var(--cds-text-01));
-    font-family: var(--grid-font-family, inherit);
-    font-size: var(--grid-font-size, 0.875rem);
-    font-weight: var(--grid-font-weight, 400);
-    line-height: 1.5;
-    outline: none;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    cursor: text;
-  }
-
-  .inline-edit-textarea:focus {
-    outline: none;
-  }
-
-  /* Placeholder for contenteditable */
-  .inline-edit-textarea:empty:before {
-    content: attr(data-placeholder);
-    color: var(--cds-text-02);
-    font-style: italic;
-    pointer-events: none;
-  }
-
-  /* Inline edit container for textarea + preview */
-  .inline-edit-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    min-height: 100%;
-  }
-
-  .inline-edit-container .inline-edit-textarea {
-    flex: 1;
-    min-height: 60px;
-  }
-
-  /* Color Picker Context Menu */
+  /* Color Picker/Edit Context Menu CSS - stays in VirtualGrid (color picker is parent-owned, used in edit mode) */
   .color-picker-overlay {
     position: fixed;
     inset: 0;
     z-index: 999;
-  }
-
-  .color-picker-menu {
-    position: fixed;
-    z-index: 1000;
-    min-width: 200px;
-    background: var(--cds-layer-02);
-    border: 1px solid var(--cds-border-strong-01);
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-  }
-
-  .color-picker-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    background: var(--cds-layer-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
-  }
-
-  .color-picker-header .close-btn {
-    background: none;
-    border: none;
-    color: var(--cds-text-02);
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-  }
-
-  .color-picker-header .close-btn:hover {
-    color: var(--cds-text-01);
   }
 
   .color-picker-colors {
@@ -3144,214 +2332,14 @@
     color: var(--cds-text-03);
   }
 
-  /* Status-based cell colors (replaces Status column)
-   * 3-state scheme:
-   * - Empty (pending, untranslated) = Gray (default, no styling)
-   * - Needs Confirmation (translated) = Yellow/amber highlight
-   * - Confirmed (reviewed, approved) = Blue-green/teal highlight
-   */
-
-  /* Needs Confirmation: Yellow/amber highlight for translated rows */
-  .cell.target.status-translated {
-    background: rgba(198, 163, 0, 0.16); /* amber - needs confirmation (UI-103: increased from 0.12 for visibility) */
-    border-left: 3px solid #c6a300;
-  }
-
-  /* Confirmed: Blue-green/teal highlight for reviewed rows */
-  .cell.target.status-reviewed {
-    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
-    border-left: 3px solid #009d9a;
-  }
-
-  /* Confirmed: Blue-green/teal highlight for approved rows (same as reviewed) */
-  .cell.target.status-approved {
-    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
-    border-left: 3px solid #009d9a;
-  }
-
-  /* Status hover overrides for styled cells */
-  .cell.target.status-translated:hover,
-  .cell.target.status-reviewed:hover,
-  .cell.target.status-approved:hover {
-    filter: brightness(1.1);
-  }
-
-  .edit-icon, .lock-icon {
-    position: absolute;
-    right: 0.25rem;
-    opacity: 0;
-    color: var(--cds-icon-02);
-    transition: opacity 0.15s ease;
-  }
-
-  .cell.target:hover .edit-icon {
-    opacity: 1;
-  }
-
-  /* UI-059 & UI-065: Selected cell states */
-  .cell.cell-selected {
-    background: var(--cds-layer-selected-01);
-  }
-
-  .cell.target.cell-selected {
-    /* Selected target cell - subtle blue tint */
-    background: rgba(69, 137, 255, 0.1);
-    border-left: 3px solid var(--cds-interactive-01, #0f62fe);
-  }
-
-  /* UI-065: Show edit icon on selected cells (not just hover) */
-  .cell.target.cell-selected .edit-icon {
-    opacity: 0.7;
-    color: var(--cds-interactive-01, #0f62fe);
-  }
-
-  /* Selected + hovered - full opacity */
-  .cell.target.cell-selected:hover .edit-icon,
-  .cell.target.cell-selected.target-hovered .edit-icon {
-    opacity: 1;
-  }
-
-  .cell.target.locked .lock-icon {
-    opacity: 0.8;
-    color: var(--cds-support-03);
-  }
-
-  /* P2: QA Flag Styles */
-  .cell.target.qa-flagged {
-    border-left: 3px solid var(--cds-support-01, #da1e28);
-    background: rgba(218, 30, 40, 0.08);
-  }
-
-  .qa-icon {
-    position: absolute;
-    right: 1.75rem; /* UI-069: Moved left to avoid overlap with edit icon */
-    color: var(--cds-support-01, #da1e28);
-    opacity: 1;
-    z-index: 1; /* Below edit icon */
-  }
-
-  /* UI-069: When QA icon present, shift edit icon right to ensure no overlap */
-  .cell.target.qa-flagged .edit-icon {
-    right: 0.35rem;
-  }
-
-  .cell.target.qa-flagged:hover {
-    background: rgba(218, 30, 40, 0.12);
-  }
-
-  /* ========================================
-     Reference Column (Phase 8)
-     ======================================== */
-  .cell.reference {
-    background: var(--cds-layer-02);
-    color: var(--cds-text-02);
-    font-size: 0.8rem;
-    flex: none; /* UI-083: Use inline width style, not fixed flex */
-  }
-
-  .cell.reference.has-match {
-    background: rgba(36, 161, 72, 0.08);
-    border-left: 2px solid var(--cds-support-02);
-  }
-
-  .cell.reference .ref-match {
-    color: var(--cds-text-01);
-  }
-
-  /* UI-071: Clearer "No match" styling */
-  .cell.reference .no-match {
-    color: var(--cds-text-03);
-    font-style: italic;
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-
-  /* ========================================
-     Game Dev Columns (Dual UI Mode - Phase 08)
-     ======================================== */
-  .cell.gamedev-values,
-  .cell.gamedev-children {
-    background: var(--cds-layer-02);
-    color: var(--cds-text-02);
-    font-size: 0.8rem;
-    flex: none;
-  }
-
-  .cell.gamedev-children {
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ========================================
-     TM Match Column (Phase 9)
-     ======================================== */
-  .cell.tm-result {
-    background: var(--cds-layer-02);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-    padding: 0.35rem 0.5rem;
-  }
-
-  .cell.tm-result.high-match {
-    background: rgba(36, 161, 72, 0.12);
-    border-left: 3px solid var(--cds-support-02);
-  }
-
-  .cell.tm-result.medium-match {
-    background: rgba(255, 209, 0, 0.12);
-    border-left: 3px solid var(--cds-support-03);
-  }
-
-  .cell.tm-result.low-match {
-    background: rgba(198, 198, 198, 0.12);
-    border-left: 3px solid var(--cds-border-subtle-01);
-  }
-
-  .tm-similarity {
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    background: var(--cds-layer-accent-01);
-    color: var(--cds-text-02);
-  }
-
-  .cell.tm-result.high-match .tm-similarity {
-    background: var(--cds-support-02);
-    color: white;
-  }
-
-  .cell.tm-result.medium-match .tm-similarity {
-    background: var(--cds-support-03);
-    color: var(--cds-text-inverse);
-  }
-
-  .cell.tm-result .no-match {
-    color: var(--cds-text-03);
-    font-style: italic;
-    font-size: 0.75rem;
-  }
-
-  .loading-cell {
-    justify-content: center;
-  }
-
-  /* PERF: Static placeholder - no animation for smooth scrolling */
-  .placeholder-shimmer {
-    width: 60%;
-    height: 16px;
-    background: #3a3a3a;
-    border-radius: 4px;
-  }
+  /* Phase 84 Batch 2: Status cell colors, edit/lock icons, QA flags, reference, gamedev, TM match,
+     loading-cell, placeholder-shimmer CSS all moved to CellRenderer.svelte */
 
   .loading-bar {
     padding: 0.25rem 1rem;
     background: var(--cds-layer-02);
     border-top: 1px solid var(--cds-border-subtle-01);
   }
-
-  /* UI-041: Removed .grid-footer CSS */
 
   .empty-state {
     display: flex;
@@ -3455,56 +2443,7 @@
     opacity: 0.7;
   }
 
-  /* P4: AI Badge - indicates TM-applied translations */
-  .ai-badge {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 4px;
-    color: #0f62fe;
-    opacity: 0.7;
-    vertical-align: middle;
-  }
-
-  .ai-badge:hover {
-    opacity: 1;
-  }
-
-  /* CTX-07: Translation source badge (AI/TM indicator in source cell) */
-  .translation-source-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 6px;
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: 0.5625rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    vertical-align: middle;
-    flex-shrink: 0;
-    opacity: 0.85;
-    transition: opacity 0.15s ease;
-  }
-
-  .translation-source-badge:hover {
-    opacity: 1;
-  }
-
-  .translation-source-badge.ai {
-    background: rgba(139, 92, 246, 0.15);
-    color: #8b5cf6;
-    border: 1px solid rgba(139, 92, 246, 0.3);
-  }
-
-  .translation-source-badge.tm {
-    background: rgba(15, 98, 254, 0.12);
-    color: #0f62fe;
-    border: 1px solid rgba(15, 98, 254, 0.25);
-  }
-
-  .translation-source-badge .badge-text {
-    line-height: 1;
-  }
+  /* Phase 84 Batch 2: ai-badge, translation-source-badge CSS moved to CellRenderer.svelte */
 
   /* P4: Semantic search no-TM message */
   .semantic-no-tm {
