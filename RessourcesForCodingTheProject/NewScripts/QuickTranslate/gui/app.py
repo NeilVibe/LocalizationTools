@@ -1635,6 +1635,11 @@ class QuickTranslateApp:
                 filepath for filepath, _ in files_to_check
                 if filepath.suffix.lower() in (".xlsx", ".xls")
             ]
+            # Track which files are missing key columns (for grouped warning)
+            _missing_strorigin: list = []
+            _missing_correction: list = []
+            _missing_id: list = []
+
             for ef in excel_files_to_scan:
                 try:
                     cols = detect_excel_columns(ef)
@@ -1655,8 +1660,31 @@ class QuickTranslateApp:
                             self._log(f"  {ef.name}: {', '.join(found)} \u2014 no Correction column", 'warning')
                     else:
                         self._log(f"  {ef.name}: no recognized columns", 'warning')
+                    # Collect missing-column info for grouped summary
+                    if not cols["has_strorigin"]:
+                        _missing_strorigin.append(ef.name)
+                    if not cols["has_correction"]:
+                        _missing_correction.append(ef.name)
+                    if not has_id:
+                        _missing_id.append(ef.name)
                 except Exception:
                     continue
+
+            # ── Grouped missing-column warnings ──
+            # Only warn when SOME files have it and others don't (partial coverage).
+            total_excel = len(excel_files_to_scan)
+            for col_label, missing_files in [
+                ("StrOrigin", _missing_strorigin),
+                ("Correction", _missing_correction),
+                ("StringID/EventName", _missing_id),
+            ]:
+                if missing_files and len(missing_files) < total_excel:
+                    names = ", ".join(missing_files[:5])
+                    extra = f" (+{len(missing_files) - 5} more)" if len(missing_files) > 5 else ""
+                    self._log(
+                        f"Note: {col_label} column missing from: {names}{extra}",
+                        'warning'
+                    )
 
             # Store and update match types on main thread
             self._source_columns = combined_columns
