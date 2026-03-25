@@ -1,1 +1,1 @@
-Build QACompiler — fix double-counted pending from clustered categories
+Build QACompiler — diagnostic dump for pending bloat
