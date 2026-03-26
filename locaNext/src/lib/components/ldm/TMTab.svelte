@@ -45,11 +45,11 @@
 
   /**
    * Get tier label and color for AC context results (Phase 88)
-   * @param {number} tier - 1=Exact(whole AC), 2=Line(line AC), 3=Fuzzy(Jaccard)
+   * @param {number|string} tier - 1/"whole"=Exact, 2/"line"=Line, 3/"fuzzy"=Fuzzy
    */
   function getTierLabel(tier) {
-    if (tier === 1) return { text: 'Exact', color: 'var(--cds-support-success, #24a148)' };
-    if (tier === 2) return { text: 'Line', color: 'var(--cds-support-info, #4589ff)' };
+    if (tier === 1 || tier === "whole") return { text: 'Exact', color: 'var(--cds-support-success, #24a148)' };
+    if (tier === 2 || tier === "line") return { text: 'Line', color: 'var(--cds-support-info, #4589ff)' };
     return { text: 'Fuzzy', color: 'var(--cds-support-warning, #c6a300)' };
   }
 
