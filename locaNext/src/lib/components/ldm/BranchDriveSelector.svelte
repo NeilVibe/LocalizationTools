@@ -55,7 +55,7 @@
         logger.error('Path configure failed', { detail: data.detail });
       }
     } catch (err) {
-      logger.warn('Path configure request failed (offline?)', { error: err.message });
+      logger.warning('Path configure request failed (offline?)', { error: err.message });
     }
 
     // PATH-03: validate after every change

@@ -272,7 +272,7 @@
 {/each}
 
 <!-- Scroll Container: owns the scrollbar, parent binds grid.containerEl from here -->
-<div class="scroll-container" bind:this={grid.grid.containerEl}>
+<div class="scroll-container" bind:this={grid.containerEl}>
 {#if grid.initialLoading}
   <div class="loading-overlay">
     <InlineLoading description="Loading rows..." />

@@ -64,6 +64,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
     """
 
     def __init__(self) -> None:
+        super().__init__()  # Cooperative MRO — propagates through all mixins
         # === Phase 1: Foundation (Direct Dicts) ===
         self.knowledge_by_strkey: Dict[str, KnowledgeEntry] = {}  # D1
         self.dds_by_stem: Dict[str, Path] = {}  # D9

@@ -570,8 +570,7 @@
 
   /** Apply TM suggestion to a row (called from parent's export wrapper) */
   export async function applyTMToRow(row, targetText, markRowAsTMApplied) {
-    startInlineEdit(row);
-    await tick();
+    await startInlineEdit(row);
     if (inlineEditTextarea) {
       inlineEditTextarea.innerText = targetText;
       saveInlineEdit(false);
