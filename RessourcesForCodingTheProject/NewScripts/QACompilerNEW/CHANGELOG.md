@@ -1,5 +1,22 @@
 # QACompiler Changelog
 
+## v2.6 — 2026-03-26
+
+### Phantom Issue Detection + Log Security
+
+**Commits:** `7dc4b4b3`, `66d15c92`
+
+- **Phantom issue rule:** ISSUE without comment = NO ISSUE. Applied universally:
+  - `tracker/masterfile_pending.py` — masterfile pending counts
+  - `core/tracker_update.py` — QA file overall stats
+  - `core/processing.py` — compilation pipeline + row visibility
+- **Named column detection:** Comment columns found by header name (`COMMENT_`, `MEMO_`, `SCREENSHOT_` per user), not positional offset. Prevents cross-tester column bleeding.
+- **Safe fallback:** If no comment columns exist in the sheet, ISSUE is treated as real (not phantom).
+- **Result:** Pending count dropped from 3,728 → 1,452 (61% reduction, 2,276 phantom issues eliminated).
+- **Log security:** All `*_DEBUG.log` files now write to `logs/` subfolder (gitignored). Prevents confidential tester names and game content from being committed to public repo.
+
+---
+
 ## v2.5 — 2026-02-25
 
 ### StringID Order Fix
