@@ -134,9 +134,12 @@ class TestGetImageContext:
         assert result.has_image is True
         assert "UI_Icon_Sword_01.dds" in result.dds_path
 
-    def test_returns_none_for_unknown_strkey(self, service):
+    def test_returns_fallback_for_unknown_strkey(self, service):
         result = service.get_image_context("unknown_key_xyz")
-        assert result is None
+        assert result is not None
+        assert result.has_image is False
+        assert result.fallback_reason != ""
+        assert "Entity not found" in result.fallback_reason
 
     def test_multi_key_lookup_stringid(self, service):
         """StringID alias resolves to same ImageContext as StrKey."""
@@ -177,7 +180,7 @@ class TestGetImageContextC7Bridge:
         assert result.texture_name == "char_varon"
 
     def test_get_image_context_unknown_stringid(self, mock_mega_index):
-        """UNKNOWN_SID returns None when no C7 mapping and no StrKey match."""
+        """UNKNOWN_SID returns fallback ImageContext with reason when no C7 mapping."""
         svc = MapDataService()
         svc._loaded = True
 
@@ -187,7 +190,10 @@ class TestGetImageContextC7Bridge:
         ):
             result = svc.get_image_context("UNKNOWN_SID")
 
-        assert result is None
+        assert result is not None
+        assert result.has_image is False
+        assert result.fallback_reason != ""
+        assert "Entity not found" in result.fallback_reason
 
     def test_get_image_context_direct_strkey_still_works(self, mock_mega_index):
         """Knowledge_Region_Calpheon via direct StrKey match (existing behavior)."""
@@ -237,9 +243,12 @@ class TestGetAudioContext:
         assert result.script_eng == "Hello, traveler."
         assert result.duration_seconds == 2.5
 
-    def test_returns_none_for_unknown_strkey(self, service):
+    def test_returns_fallback_for_unknown_strkey(self, service):
         result = service.get_audio_context("unknown_audio_xyz")
-        assert result is None
+        assert result is not None
+        assert result.wem_path == ""
+        assert result.fallback_reason != ""
+        assert "No audio event" in result.fallback_reason
 
     def test_multi_key_lookup_stringid(self, service):
         """StringID alias resolves to same AudioContext."""

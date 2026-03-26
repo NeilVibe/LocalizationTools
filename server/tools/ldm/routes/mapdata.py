@@ -39,6 +39,7 @@ class ImageContextResponse(BaseModel):
     dds_path: str
     thumbnail_url: str
     has_image: bool
+    fallback_reason: str = ""
 
 
 class AudioContextResponse(BaseModel):
@@ -47,6 +48,7 @@ class AudioContextResponse(BaseModel):
     script_kr: str
     script_eng: str
     duration_seconds: Optional[float] = None
+    fallback_reason: str = ""
 
 
 class CombinedContextResponse(BaseModel):
@@ -181,7 +183,9 @@ async def stream_audio(
     service = get_mapdata_service()
     audio_ctx = service.get_audio_context(string_id)
     if audio_ctx is None:
-        raise HTTPException(status_code=404, detail=f"No audio for '{string_id}'")
+        raise HTTPException(status_code=503, detail="MapData service not initialized")
+    if not audio_ctx.wem_path:
+        raise HTTPException(status_code=404, detail=audio_ctx.fallback_reason or f"No audio for '{string_id}'")
 
     # If the path is already a WAV file, serve it directly
     source_path = Path(audio_ctx.wem_path)
@@ -206,11 +210,15 @@ async def get_image_context(
     string_id: str,
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get image context (texture name, DDS path, thumbnail) for a string_id."""
+    """Get image context (texture name, DDS path, thumbnail) for a string_id.
+
+    Returns 200 with has_image=False and fallback_reason when media not found.
+    Returns 503 only when MapData service is not initialized.
+    """
     service = get_mapdata_service()
     result = service.get_image_context(string_id)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"No image context for '{string_id}'")
+        raise HTTPException(status_code=503, detail="MapData service not initialized")
     return ImageContextResponse(**result.to_dict())
 
 
@@ -219,11 +227,15 @@ async def get_audio_context(
     string_id: str,
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get audio context (event name, WEM path, script text) for a string_id."""
+    """Get audio context (event name, WEM path, script text) for a string_id.
+
+    Returns 200 with empty wem_path and fallback_reason when audio not found.
+    Returns 503 only when MapData service is not initialized.
+    """
     service = get_mapdata_service()
     result = service.get_audio_context(string_id)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"No audio context for '{string_id}'")
+        raise HTTPException(status_code=503, detail="MapData service not initialized")
     return AudioContextResponse(**result.to_dict())
 
 

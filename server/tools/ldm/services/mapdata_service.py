@@ -31,6 +31,7 @@ class ImageContext:
     dds_path: str
     thumbnail_url: str
     has_image: bool
+    fallback_reason: str = ""  # Why media not found (empty = found)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -44,6 +45,7 @@ class AudioContext:
     script_kr: str
     script_eng: str
     duration_seconds: Optional[float] = None
+    fallback_reason: str = ""  # Why media not found (empty = found)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -151,19 +153,28 @@ class MapDataService:
     def get_image_context(self, string_id: str) -> Optional[ImageContext]:
         """Look up image context by StrKey, StringID, or KnowledgeKey.
 
+        Path resolution uses whatever branch+drive is configured via
+        PerforcePathService (see Phase 90 BranchDriveSelector).
+
         Lookup order:
         1. Exact match in pre-indexed _strkey_to_image (from initialize/C1)
         2. C7 bridge: StringID -> entity StrKey -> C1 image path
         3. Fuzzy partial match against indexed StrKeys
 
-        Returns None if service is not loaded or key is unknown.
+        Returns None only if service is not loaded.
+        Returns ImageContext with has_image=False and fallback_reason when
+        media cannot be resolved (instead of None).
         """
         if not self._loaded:
             return None
+
         # 1. Exact match (pre-indexed from initialize or cached)
         result = self._strkey_to_image.get(string_id)
         if result:
             return result
+
+        # Track reason through the lookup chain
+        reason = ""
 
         # 2. C7 bridge: StringID -> entity -> knowledge -> C1 image path
         from server.tools.ldm.services.mega_index import get_mega_index
@@ -184,6 +195,16 @@ class MapDataService:
                 )
                 self._strkey_to_image[string_id] = ctx  # cache
                 return ctx
+
+            # C1 lookup failed -- determine specific reason
+            knowledge = mega.knowledge_by_strkey.get(entity_strkey)
+            if not knowledge:
+                reason = f"Entity '{entity_strkey}' not in knowledge index"
+            elif not knowledge.ui_texture_name:
+                reason = f"Entity '{entity_strkey}' has no UITextureName attribute"
+            else:
+                reason = f"Texture '{knowledge.ui_texture_name}' not found in DDS index"
+
             # Scan knowledge entries whose strkey matches the entity name
             entity_name_lower = entity_strkey.lower()
             for k_strkey, k_entry in mega.knowledge_by_strkey.items():
@@ -198,6 +219,8 @@ class MapDataService:
                         )
                         self._strkey_to_image[string_id] = ctx
                         return ctx
+        else:
+            reason = "Entity not found for this StringID"
 
         # 3. Fuzzy: try partial match against indexed StrKeys
         sid_lower = string_id.lower().replace("_", "")
@@ -207,7 +230,14 @@ class MapDataService:
                 # Cache for future lookups
                 self._strkey_to_image[string_id] = ctx
                 return ctx
-        return None
+
+        return ImageContext(
+            texture_name="",
+            dds_path="",
+            thumbnail_url="",
+            has_image=False,
+            fallback_reason=reason or "No matching entity or texture found",
+        )
 
     def get_knowledge_lookup(self, strkey: str) -> Optional[KnowledgeLookup]:
         """Look up raw KnowledgeLookup entry by StrKey.
@@ -230,7 +260,9 @@ class MapDataService:
         lookup, with C4/C5 (event_to_script) for Korean/English script text.
         Falls back to lazy-loaded TTS WAV files.
 
-        Returns None if service is not loaded or key is unknown.
+        Returns None only if service is not loaded.
+        Returns AudioContext with empty fields and fallback_reason when
+        audio cannot be resolved (instead of None).
         """
         if not self._loaded:
             return None
@@ -293,7 +325,14 @@ class MapDataService:
             if sid_lower in key_lower or key_lower in sid_lower:
                 self._strkey_to_audio[string_id] = ctx
                 return ctx
-        return None
+
+        return AudioContext(
+            event_name="",
+            wem_path="",
+            script_kr="",
+            script_eng="",
+            fallback_reason="No audio event linked to this StringID",
+        )
 
     def _lazy_load_audio(self) -> None:
         """Lazily scan audio/ directory for WAV files and populate _strkey_to_audio."""
