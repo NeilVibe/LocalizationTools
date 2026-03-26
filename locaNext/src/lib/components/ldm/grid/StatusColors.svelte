@@ -39,7 +39,8 @@
 
   // Module-local state
   let tmResults = $state(new Map()); // row_id -> { target, similarity, source }
-  let tmSuggestions = $state([]);
+  // FIX-04: tmSuggestions was dead internal state (written but never read externally).
+  // RightPanel/TMTab has its own TM fetch via /api/ldm/tm/suggest.
   let tmLoading = $state(false);
   let qaLoading = $state(false);
   let lastQaResult = $state(null);
@@ -172,12 +173,10 @@
   /** Fetch TM suggestions for a source text */
   export async function fetchTMSuggestions(sourceText, rowId) {
     if (!sourceText || !sourceText.trim()) {
-      tmSuggestions = [];
       return;
     }
 
     tmLoading = true;
-    tmSuggestions = [];
 
     try {
       const params = new URLSearchParams({
@@ -198,9 +197,9 @@
 
       if (response.ok) {
         const data = await response.json();
-        tmSuggestions = data.suggestions || [];
+        const suggestions = data.suggestions || [];
         const tmId = activeTMs?.[0]?.tm_id || 'project-rows';
-        logger.info("TM suggestions fetched", { count: tmSuggestions.length, tmId });
+        logger.info("TM suggestions fetched", { count: suggestions.length, tmId });
       }
     } catch (err) {
       logger.error("Failed to fetch TM suggestions", { error: err.message });

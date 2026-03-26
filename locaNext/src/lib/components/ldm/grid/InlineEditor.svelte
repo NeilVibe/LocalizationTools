@@ -37,7 +37,7 @@
     onRowUpdate = undefined,
     onRowSelect = undefined,
     onConfirmTranslation = undefined,
-    onSaveComplete = undefined,
+    // FIX-03: onSaveComplete was dead (declared but never called) — removed
   } = $props();
 
   // ============================================================

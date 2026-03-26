@@ -98,26 +98,8 @@
       : translatorColumns
   );
 
-  // Visible columns based on preferences
-  let visibleColumns = $derived(getVisibleColumns($preferences, allColumns));
-
-  function getVisibleColumns(prefs, _cols = null) {
-    const cols = [];
-    if (fileType === 'gamedev') {
-      if (prefs.showIndex && allColumns.row_num) cols.push(allColumns.row_num);
-      if (allColumns.node_name) cols.push(allColumns.node_name);
-      if (allColumns.attributes) cols.push(allColumns.attributes);
-      if (allColumns.values) cols.push(allColumns.values);
-      if (allColumns.children_count) cols.push(allColumns.children_count);
-      return cols;
-    }
-    if (prefs.showIndex) cols.push(allColumns.row_num);
-    if (prefs.showStringId) cols.push(allColumns.string_id);
-    cols.push(allColumns.source);
-    cols.push(allColumns.target);
-    if (prefs.showReference) cols.push(allColumns.reference);
-    return cols;
-  }
+  // FIX-02: visibleColumns $derived and getVisibleColumns were dead code (never consumed).
+  // Column visibility is handled directly in the template via $preferences checks.
 
   // ============================================================
   // UNIFIED COLUMN RESIZE SYSTEM (UI-083)
