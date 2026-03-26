@@ -1,1 +1,1 @@
-Build QuickTranslate — all controls log state to GUI (checkboxes ON/OFF, radios selected, compact precision)
+Build QuickTranslate — fix missing callback on Only untranslated radio
