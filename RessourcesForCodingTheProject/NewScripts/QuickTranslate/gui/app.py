@@ -481,21 +481,23 @@ class QuickTranslateApp:
                                            relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        uo_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
-        uo_row.pack(fill=tk.X)
-        self._uo_unique_cb = tk.Checkbutton(uo_row, text="Unique only",
+        uo_row1 = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        uo_row1.pack(fill=tk.X)
+        self._uo_unique_cb = tk.Checkbutton(uo_row1, text="Unique only",
                        variable=self.unique_only_strorigin,
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
-        self._uo_unique_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._uo_spaces_cb = tk.Checkbutton(uo_row, text="Ignore Spaces",
+        self._uo_unique_cb.pack(side=tk.LEFT)
+        uo_row2 = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        uo_row2.pack(fill=tk.X, pady=(2, 0))
+        self._uo_spaces_cb = tk.Checkbutton(uo_row2, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._uo_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._uo_punct_cb = tk.Checkbutton(uo_row, text="Ignore Punctuation",
+        self._uo_punct_cb = tk.Checkbutton(uo_row2, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
@@ -507,21 +509,23 @@ class QuickTranslateApp:
                                                  relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        ns_row = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
-        ns_row.pack(fill=tk.X)
-        self._ns_nonscript_cb = tk.Checkbutton(ns_row, text="Non-Script only",
+        ns_row1 = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
+        ns_row1.pack(fill=tk.X)
+        self._ns_nonscript_cb = tk.Checkbutton(ns_row1, text="Non-Script only",
                        variable=self._strict_non_script_var,
                        command=lambda: (self._on_presub_setting_changed(), self._restyle_checkboxes()),
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2')
-        self._ns_nonscript_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._ns_spaces_cb = tk.Checkbutton(ns_row, text="Ignore Spaces",
+        self._ns_nonscript_cb.pack(side=tk.LEFT)
+        ns_row2 = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
+        ns_row2.pack(fill=tk.X, pady=(2, 0))
+        self._ns_spaces_cb = tk.Checkbutton(ns_row2, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._ns_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._ns_punct_cb = tk.Checkbutton(ns_row, text="Ignore Punctuation",
+        self._ns_punct_cb = tk.Checkbutton(ns_row2, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
@@ -3360,7 +3364,7 @@ class QuickTranslateApp:
         }
         config.save_presubmission_settings(settings)
         ns_state = "ON" if settings["strict_non_script_only"] else "OFF"
-        self._log(f"Strict non-script only: {ns_state} (saved)", 'info')
+        self._log(f"Non-Script only: {ns_state}", 'info')
 
     def _check_korean(self):
         """Run Korean character check on Source folder."""

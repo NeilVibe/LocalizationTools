@@ -1,1 +1,1 @@
-Build QuickTranslate — Quick Converters + clean indicator colors (white radios, white→red checkboxes)
+Build QuickTranslate — fix checkbox layout (2-row split, responsive, clean log)
