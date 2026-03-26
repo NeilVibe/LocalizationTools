@@ -1,1 +1,1 @@
-Build v12.0+v13.0 — TM Intelligence + Production Path Resolution
+Build v12.0+v13.0 — fix Svelte 5 derived export build error
