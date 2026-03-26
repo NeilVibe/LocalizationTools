@@ -385,14 +385,15 @@ class QuickTranslateApp:
         ]
 
         for value, label, desc in match_types:
-            row = tk.Frame(match_frame, bg='#f0f0f0')
+            row = tk.Frame(match_frame, bg='white')
             row.pack(fill=tk.X, pady=2)
             rb = tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
-                          font=('Segoe UI', 10), bg='#f0f0f0', activebackground='#f0f0f0',
+                          font=('Segoe UI', 10), bg='white', activebackground='#fff8dc',
+                          selectcolor='#ffe066', indicatoron=True,
                           cursor='hand2', width=35, anchor='w',
                           command=self._on_match_type_changed)
             rb.pack(side=tk.LEFT)
-            desc_lbl = tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888')
+            desc_lbl = tk.Label(row, text=desc, font=('Segoe UI', 9), bg='white', fg='#888')
             desc_lbl.pack(side=tk.LEFT)
             self._match_type_radios[value] = (rb, desc_lbl)
 
@@ -481,18 +482,24 @@ class QuickTranslateApp:
 
         uo_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
         uo_row.pack(fill=tk.X)
-        tk.Checkbutton(uo_row, text="Unique only",
+        self._uo_unique_cb = tk.Checkbutton(uo_row, text="Unique only",
                        variable=self.unique_only_strorigin,
-                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
-                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
-        tk.Checkbutton(uo_row, text="Ignore Spaces",
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._uo_unique_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._uo_spaces_cb = tk.Checkbutton(uo_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
-                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
-        tk.Checkbutton(uo_row, text="Ignore Punctuation",
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._uo_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._uo_punct_cb = tk.Checkbutton(uo_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
-                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._uo_punct_cb.pack(side=tk.LEFT)
 
         # === Non-Script Only frame (STRICT mode only) ===
         self.strict_non_script_frame = tk.Frame(match_frame, bg='#fde8e8', padx=10, pady=3,
@@ -501,19 +508,24 @@ class QuickTranslateApp:
 
         ns_row = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
         ns_row.pack(fill=tk.X)
-        tk.Checkbutton(ns_row, text="Non-Script only",
+        self._ns_nonscript_cb = tk.Checkbutton(ns_row, text="Non-Script only",
                        variable=self._strict_non_script_var,
-                       command=self._on_presub_setting_changed,
-                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
-                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
-        tk.Checkbutton(ns_row, text="Ignore Spaces",
+                       command=lambda: (self._on_presub_setting_changed(), self._restyle_checkboxes()),
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2')
+        self._ns_nonscript_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._ns_spaces_cb = tk.Checkbutton(ns_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
-                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
-        tk.Checkbutton(ns_row, text="Ignore Punctuation",
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._ns_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._ns_punct_cb = tk.Checkbutton(ns_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
-                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
+                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._ns_punct_cb.pack(side=tk.LEFT)
 
         # === StringID ALL Categories frame (StringID-Only mode) ===
         self.stringid_all_frame = tk.Frame(match_frame, bg='#ffe0e0', padx=10, pady=3,
@@ -522,10 +534,12 @@ class QuickTranslateApp:
 
         sid_all_row = tk.Frame(self.stringid_all_frame, bg='#ffe0e0')
         sid_all_row.pack(fill=tk.X)
-        tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
+        self._sid_all_cb = tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
                        variable=self._stringid_all_var,
-                       font=('Segoe UI', 9), bg='#ffe0e0', fg='#cc0000', selectcolor='#ff9090',
-                       activebackground='#ffe0e0', cursor='hand2').pack(side=tk.LEFT)
+                       font=('Segoe UI', 9), bg='white', fg='#cc0000', selectcolor='#e85050',
+                       activebackground='white', cursor='hand2',
+                       command=self._restyle_checkboxes)
+        self._sid_all_cb.pack(side=tk.LEFT)
 
         # === Files Section ===
         files_frame = tk.LabelFrame(self._tab1_inner, text="Files", font=('Segoe UI', 10, 'bold'),
@@ -1798,6 +1812,18 @@ class QuickTranslateApp:
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
 
+        # Restyle radio buttons: selected = yellow bg, unselected = white
+        for value, (rb, desc_lbl) in self._match_type_radios.items():
+            row = rb.master
+            if value == match_type:
+                row.configure(bg='#fff8dc')
+                rb.configure(bg='#fff8dc', activebackground='#fff8dc')
+                desc_lbl.configure(bg='#fff8dc', fg='#555')
+            else:
+                row.configure(bg='white')
+                rb.configure(bg='white', activebackground='#fff8dc')
+                desc_lbl.configure(bg='white', fg='#888')
+
         # Hide stringid_all_frame for non-stringid modes
         if match_type != "stringid_only":
             self.stringid_all_frame.pack_forget()
@@ -1837,6 +1863,24 @@ class QuickTranslateApp:
             self._bind_mousewheel_recursive(self.stringid_all_frame)
             # Rebind mousewheel on newly shown frame
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
+        self._restyle_checkboxes()
+
+    def _restyle_checkboxes(self):
+        """Restyle checkboxes: checked = red bg, unchecked = white bg."""
+        checks = [
+            (self._uo_unique_cb, self.unique_only_strorigin),
+            (self._uo_spaces_cb, self._ignore_spaces_var),
+            (self._uo_punct_cb, self._ignore_punctuation_var),
+            (self._ns_nonscript_cb, self._strict_non_script_var),
+            (self._ns_spaces_cb, self._ignore_spaces_var),
+            (self._ns_punct_cb, self._ignore_punctuation_var),
+            (self._sid_all_cb, self._stringid_all_var),
+        ]
+        for cb, var in checks:
+            if var.get():
+                cb.configure(bg='#fde8e8', activebackground='#fde8e8')
+            else:
+                cb.configure(bg='white', activebackground='white')
 
     def _update_match_type_availability(self):
         """Enable/disable match type radio buttons based on detected source columns.
