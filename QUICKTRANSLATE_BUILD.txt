@@ -1,1 +1,1 @@
-Build QuickTranslate — radio/checkbox visual feedback (white→yellow radios, white→red checkboxes)
+Build QuickTranslate — Quick Converters (XML↔Excel, TMX↔Excel, Concatenate XML) + radio/checkbox visual feedback
