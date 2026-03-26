@@ -23,10 +23,10 @@ Requirements for Production Path Resolution milestone.
 
 ### Media Path Resolution
 
-- [ ] **MEDIA-01**: LanguageData grid row-select resolves DDS image via StringID -> GameData entity -> TextureName -> Perforce DDS path -- shown in ImageTab
-- [ ] **MEDIA-02**: LanguageData grid row-select resolves WEM audio via StringID -> GameData entity -> SoundEventName -> Perforce WEM path -- shown in AudioTab
-- [ ] **MEDIA-03**: Path resolution uses configured Branch+Drive (not hardcoded paths)
-- [ ] **MEDIA-04**: Graceful fallback when image/audio not found -- shows "No media" with reason (entity not found / texture attribute missing / file not on disk)
+- [x] **MEDIA-01**: LanguageData grid row-select resolves DDS image via StringID -> GameData entity -> TextureName -> Perforce DDS path -- shown in ImageTab
+- [x] **MEDIA-02**: LanguageData grid row-select resolves WEM audio via StringID -> GameData entity -> SoundEventName -> Perforce WEM path -- shown in AudioTab
+- [x] **MEDIA-03**: Path resolution uses configured Branch+Drive (not hardcoded paths)
+- [x] **MEDIA-04**: Graceful fallback when image/audio not found -- shows "No media" with reason (entity not found / texture attribute missing / file not on disk)
 
 ### Mock Testing
 
@@ -76,10 +76,10 @@ Deferred to future milestones.
 | PATH-02 | Phase 90 | Complete |
 | PATH-03 | Phase 90 | Complete |
 | PATH-04 | Phase 90 | Complete |
-| MEDIA-01 | Phase 91 | Pending |
-| MEDIA-02 | Phase 91 | Pending |
-| MEDIA-03 | Phase 91 | Pending |
-| MEDIA-04 | Phase 91 | Pending |
+| MEDIA-01 | Phase 91 | Complete |
+| MEDIA-02 | Phase 91 | Complete |
+| MEDIA-03 | Phase 91 | Complete |
+| MEDIA-04 | Phase 91 | Complete |
 | MOCK-01 | Phase 91 | Pending |
 | MOCK-02 | Phase 91 | Pending |
 | MOCK-03 | Phase 91 | Pending |
