@@ -31,6 +31,8 @@
     activeTMs = [],
     // Callback to trigger row reload after filter/search change
     onSearchComplete = undefined,
+    // Callback to scroll to a row by ID (e.g. semantic result click)
+    onScrollToRow = undefined,
   } = $props();
 
   // ============================================================
@@ -173,9 +175,7 @@
     logger.userAction("Category filter changed", { categories: grid.selectedCategories });
   }
 
-  // Callback for scrolling to row on semantic result click
-  let onScrollToRow = $state(null);
-  export function setScrollToRowDelegate(fn) { onScrollToRow = fn; }
+  // onScrollToRow is now received via $props() — no delegate needed (FIX-01)
 
   // ============================================================
   // RESET (called by parent on file change)

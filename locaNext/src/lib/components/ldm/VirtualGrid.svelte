@@ -157,11 +157,7 @@
     }
   });
 
-  $effect(() => {
-    if (searchEngine) {
-      searchEngine.setScrollToRowDelegate((rowId) => scrollToRowById(rowId));
-    }
-  });
+  // FIX-01: onScrollToRow is now a prop on SearchEngine (no delegate race)
 
   $effect(() => {
     if (grid.containerEl) {
@@ -251,6 +247,7 @@
       {fileType}
       {activeTMs}
       onSearchComplete={() => loadRows()}
+      onScrollToRow={(rowId) => scrollToRowById(rowId)}
     />
 
     <!-- Hotkey Reference Bar -->
