@@ -22,6 +22,13 @@ except ImportError:
     MODELS_AVAILABLE = False
     logger.warning("faiss not available - TM indexing disabled")
 
+try:
+    import ahocorasick
+    AC_AVAILABLE = True
+except ImportError:
+    AC_AVAILABLE = False
+    logger.debug("ahocorasick not available - AC context search disabled")
+
 from server.database.models import LDMTranslationMemory, LDMTMEntry, LDMTMIndex
 from server.tools.shared import FAISSManager, get_embedding_engine, get_current_engine_name
 from .utils import normalize_for_hash, normalize_for_embedding
@@ -418,11 +425,57 @@ class TMIndexer:
         return {"count": len(texts), "dim": dim}
 
     # =========================================================================
+    # AC Automaton Build (for ContextSearcher)
+    # =========================================================================
+
+    def _build_ac_automatons(self, whole_lookup: Dict[str, Dict], line_lookup: Dict[str, Dict]):
+        """Build Aho-Corasick automatons from whole_lookup and line_lookup keys.
+
+        Note: pickle usage in this file is for trusted, locally-generated TM index
+        data only (not user-uploaded content).
+
+        Returns:
+            Tuple of (whole_automaton, line_automaton). Either may be None if
+            AC is unavailable or lookup is empty.
+        """
+        if not AC_AVAILABLE:
+            logger.debug("ahocorasick not available, skipping AC automaton build")
+            return (None, None)
+
+        whole_automaton = None
+        line_automaton = None
+
+        if whole_lookup:
+            whole_automaton = ahocorasick.Automaton()
+            for idx, key in enumerate(whole_lookup):
+                whole_automaton.add_word(key, (idx, key))
+            if len(whole_lookup) > 0:
+                whole_automaton.make_automaton()
+                logger.info(f"Built whole AC automaton with {len(whole_lookup)} terms")
+            else:
+                whole_automaton = None
+
+        if line_lookup:
+            line_automaton = ahocorasick.Automaton()
+            for idx, key in enumerate(line_lookup):
+                line_automaton.add_word(key, (idx, key))
+            if len(line_lookup) > 0:
+                line_automaton.make_automaton()
+                logger.info(f"Built line AC automaton with {len(line_lookup)} terms")
+            else:
+                line_automaton = None
+
+        return (whole_automaton, line_automaton)
+
+    # =========================================================================
     # Index Loading
     # =========================================================================
 
     def load_indexes(self, tm_id: int) -> Dict[str, Any]:
-        """Load all indexes for a TM into memory."""
+        """Load all indexes for a TM into memory.
+
+        Note: pickle usage here is for trusted, locally-generated TM index data only.
+        """
         tm_path = self.get_tm_path(tm_id)
 
         if not tm_path.exists():
@@ -434,6 +487,8 @@ class TMIndexer:
         whole_lookup = self._load_pickle(tm_path / "hash" / "whole_lookup.pkl")
         line_lookup = self._load_pickle(tm_path / "hash" / "line_lookup.pkl")
 
+        # Build AC automatons for context search
+        whole_automaton, line_automaton = self._build_ac_automatons(whole_lookup, line_lookup)
 
         whole_embeddings = np.load(tm_path / "embeddings" / "whole.npy")
         whole_mapping = self._load_pickle(tm_path / "embeddings" / "whole_mapping.pkl")
@@ -459,6 +514,8 @@ class TMIndexer:
             "metadata": metadata,
             "whole_lookup": whole_lookup,
             "line_lookup": line_lookup,
+            "whole_automaton": whole_automaton,
+            "line_automaton": line_automaton,
             "whole_embeddings": whole_embeddings,
             "whole_mapping": whole_mapping,
             "whole_index": whole_index,
