@@ -114,7 +114,7 @@
     if (heightsChanged) {
       rebuildCumulativeHeights(stripColorTags);
     }
-    grid.rows = [...grid.rows];
+    grid.rowsVersion++;
     logger.info("Real-time updates applied", { count: updates.length });
   }
 

@@ -202,8 +202,8 @@
           rowHeightCache.delete(index);
         });
 
-        // Force reactivity
-        grid.rows = [...grid.rows];
+        // Trigger reactivity by bumping a version counter instead of spreading 100k+ array
+        grid.rowsVersion++;
 
         rebuildCumulativeHeights(stripColorTags);
 
@@ -298,7 +298,8 @@
           grid.rows[index] = rowData;
           rowIndexById.set(row.id.toString(), index);
         });
-        grid.rows = [...grid.rows];
+        // Trigger reactivity without creating a dense copy of the sparse array
+        grid.rowsVersion++;
         loadedPages.add(1);
 
         rebuildCumulativeHeights(stripColorTags);

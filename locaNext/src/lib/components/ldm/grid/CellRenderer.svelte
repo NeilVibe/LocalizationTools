@@ -246,6 +246,8 @@
 
   // Font styles from preferences
   let visibleRows = $derived.by(() => {
+    // Read rowsVersion to establish dependency — re-evaluates when rows are batch-mutated
+    const _v = grid.rowsVersion;
     const start = grid.visibleStart;
     const end = grid.visibleEnd;
     return Array.from({ length: end - start }, (_, i) => {

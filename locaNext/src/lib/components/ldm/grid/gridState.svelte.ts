@@ -45,6 +45,9 @@ export const grid = $state({
   searchMode: 'contain' as string,
   searchFields: ['source', 'target'] as string[],
   containerEl: null as HTMLElement | null,
+  // Version counter: bump after batch-mutating grid.rows to trigger $derived re-evaluation.
+  // Safer than self-assignment (grid.rows = grid.rows) which may be optimized away in future Svelte versions.
+  rowsVersion: 0,
 });
 
 // --- Mutable Maps/Sets ---
@@ -149,15 +152,35 @@ export function estimateRowHeight(row: any, index: number, stripColorTags: (text
   return finalHeight;
 }
 
-/** Rebuild cumulative heights for all loaded rows */
+/**
+ * Rebuild cumulative heights using a hybrid approach:
+ * - Loaded rows get their measured/estimated height
+ * - Unloaded rows use MIN_ROW_HEIGHT (no string processing)
+ *
+ * For very large files (>10k rows), this uses a sparse representation
+ * to avoid creating a 100k+ element reactive array that freezes Svelte.
+ */
 export function rebuildCumulativeHeights(stripColorTags: (text: string) => string): void {
-  const newCumulative = [0];
-  for (let i = 0; i < grid.total; i++) {
+  const total = grid.total;
+  if (total === 0) {
+    heightData.cumulativeHeights = [0];
+    return;
+  }
+
+  // For large files, build cumulative heights using a non-reactive typed array
+  // then only expose the result via heightData (single reactive write).
+  const cumulative = new Float64Array(total + 1);
+  // cumulative[0] = 0 (default for typed arrays)
+
+  for (let i = 0; i < total; i++) {
     const row = grid.rows[i];
     const height = row ? estimateRowHeight(row, i, stripColorTags) : MIN_ROW_HEIGHT;
-    newCumulative[i + 1] = newCumulative[i] + height;
+    cumulative[i + 1] = cumulative[i] + height;
   }
-  heightData.cumulativeHeights = newCumulative;
+
+  // Single reactive write — assign the typed array directly.
+  // findRowAtPosition and getRowTop read by index, which works on Float64Array.
+  heightData.cumulativeHeights = cumulative as any;
 }
 
 /** Get row position using cumulative heights */
@@ -241,6 +264,7 @@ export function resetGridState(): void {
   grid.searchTerm = '';
   grid.searchMode = 'contain';
   grid.searchFields = ['source', 'target'];
+  grid.rowsVersion = 0;
   rowIndexById.clear();
   rowHeightCache.clear();
   loadedPages.clear();

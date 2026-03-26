@@ -68,7 +68,7 @@
         ...grid.rows[rowIndex],
         qa_flag_count: flagCount
       };
-      grid.rows = [...grid.rows];
+      grid.rowsVersion++;
       logger.info('Updated row QA flag', { rowId, flagCount });
     } else {
       logger.warning("Row not found for QA flag update", { rowId });
@@ -84,7 +84,7 @@
         ...grid.rows[rowIndex],
         qa_flag_count: Math.max(0, currentCount - 1)
       };
-      grid.rows = [...grid.rows];
+      grid.rowsVersion++;
       logger.info('QA inline dismiss', { rowId, newCount: grid.rows[rowIndex].qa_flag_count });
     }
   }
@@ -120,7 +120,7 @@
             qa_flag_count: result.issue_count,
             qa_checked_at: result.checked_at
           };
-          grid.rows = [...grid.rows];
+          grid.rowsVersion++;
         }
 
         if (result.issue_count > 0) {
