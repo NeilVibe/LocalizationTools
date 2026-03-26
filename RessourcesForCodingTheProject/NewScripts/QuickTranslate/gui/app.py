@@ -390,7 +390,7 @@ class QuickTranslateApp:
             row.pack(fill=tk.X, pady=2)
             rb = tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
                           font=('Segoe UI', 10), bg='white', activebackground='#fff8dc',
-                          selectcolor='#ffe066', indicatoron=True,
+                          selectcolor='white', indicatoron=True,
                           cursor='hand2', width=35, anchor='w',
                           command=self._on_match_type_changed)
             rb.pack(side=tk.LEFT)
@@ -469,11 +469,11 @@ class QuickTranslateApp:
         tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
                         variable=self.transfer_scope, value="all",
                         command=self._on_transfer_scope_changed,
-                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='#f0c040',
+                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='white',
                         activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
         tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
                         variable=self.transfer_scope, value="untranslated",
-                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='#f0c040',
+                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='white',
                         activebackground='#fef3e2').pack(side=tk.LEFT)
 
         # === Unique-Only StrOrigin sub-frame (visible only for strorigin_only) ===
@@ -485,19 +485,19 @@ class QuickTranslateApp:
         uo_row.pack(fill=tk.X)
         self._uo_unique_cb = tk.Checkbutton(uo_row, text="Unique only",
                        variable=self.unique_only_strorigin,
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._uo_unique_cb.pack(side=tk.LEFT, padx=(0, 12))
         self._uo_spaces_cb = tk.Checkbutton(uo_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._uo_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
         self._uo_punct_cb = tk.Checkbutton(uo_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._uo_punct_cb.pack(side=tk.LEFT)
@@ -512,18 +512,18 @@ class QuickTranslateApp:
         self._ns_nonscript_cb = tk.Checkbutton(ns_row, text="Non-Script only",
                        variable=self._strict_non_script_var,
                        command=lambda: (self._on_presub_setting_changed(), self._restyle_checkboxes()),
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2')
         self._ns_nonscript_cb.pack(side=tk.LEFT, padx=(0, 12))
         self._ns_spaces_cb = tk.Checkbutton(ns_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._ns_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
         self._ns_punct_cb = tk.Checkbutton(ns_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='white', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._ns_punct_cb.pack(side=tk.LEFT)
@@ -537,7 +537,7 @@ class QuickTranslateApp:
         sid_all_row.pack(fill=tk.X)
         self._sid_all_cb = tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
                        variable=self._stringid_all_var,
-                       font=('Segoe UI', 9), bg='white', fg='#cc0000', selectcolor='#e85050',
+                       font=('Segoe UI', 9), bg='white', fg='#cc0000', selectcolor='white',
                        activebackground='white', cursor='hand2',
                        command=self._restyle_checkboxes)
         self._sid_all_cb.pack(side=tk.LEFT)
@@ -1870,7 +1870,7 @@ class QuickTranslateApp:
         self._restyle_checkboxes()
 
     def _restyle_checkboxes(self):
-        """Restyle checkboxes: checked = red bg, unchecked = white bg."""
+        """Restyle checkboxes: checked = red square indicator, unchecked = white square."""
         checks = [
             (self._uo_unique_cb, self.unique_only_strorigin),
             (self._uo_spaces_cb, self._ignore_spaces_var),
@@ -1881,10 +1881,7 @@ class QuickTranslateApp:
             (self._sid_all_cb, self._stringid_all_var),
         ]
         for cb, var in checks:
-            if var.get():
-                cb.configure(bg='#fde8e8', activebackground='#fde8e8')
-            else:
-                cb.configure(bg='white', activebackground='white')
+            cb.configure(selectcolor='#e85050' if var.get() else 'white')
 
     # ------------------------------------------------------------------
     # Quick Converters (Other Tools tab)
