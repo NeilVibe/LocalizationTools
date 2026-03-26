@@ -8,18 +8,35 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current Milestone: v12.0 TM Intelligence
+## Current Milestone: v13.0 Production Path Resolution
 
-**Goal:** Add intelligent context-aware TM matching with dual thresholds, polished match UI, and on-the-fly Aho-Corasick context search for Korean source text.
+**Goal:** Wire real Perforce path resolution for image/audio in LanguageData grid, with Branch+Drive selection, path validation, mock testing, and fix deferred code issues.
 
 **Target features:**
-- [ ] TMUI-01: Dual threshold system — 92% pretranslation, 62% context panel
-- [ ] TMUI-02: TM Tab UI polish with prominent match percentage display
-- [ ] ACCTX-01: AC Context Search 3-tier cascade (whole AC, line AC, character n-gram Jaccard)
-- [ ] ACCTX-02: AC automatons built on TM load from existing whole_lookup + line_lookup
-- [ ] ACCTX-03: Character n-gram {2,3,4,5} with space-stripped Korean, Jaccard ≥62%
+- [ ] FIX-01: Fix 4 v11.0 code review issues (onScrollToRow race, visibleColumns dead code, onSaveComplete, tmSuggestions)
+- [ ] PATH-01: Branch + Drive selector UI (like QACompiler/MapDataGenerator)
+- [ ] PATH-02: Path validation — verify data availability (OK/NOT OK with details)
+- [ ] PATH-03: Wire LanguageData StringID → GameData entity → DDS image path resolution
+- [ ] PATH-04: Wire LanguageData StringID → GameData entity → WEM audio path resolution
+- [ ] MOCK-01: Mock Perforce paths on local machine (relative, drive-agnostic)
+- [ ] MOCK-02: E2E tests with mocked Perforce structure
+- [ ] ARCH-02: Split mega_index.py (1310 lines) into domain services
 
-**Grill-me session (2026-03-26):** Existing 5-tier cascade + 3 engines + QA pipeline confirmed sufficient. v12.0 adds context intelligence layer on top — AC scans source text on row-select, character n-grams for fuzzy Korean matching. Korean NLP research: char bigrams+trigrams optimal for Korean (no word n-grams needed), add n=4,5 for compound nouns.
+**Research needed:** MapDataGenerator path patterns, QACompiler branch/drive selection, LanguageDataExporter path conventions, path validation logic.
+
+## Shipped: v12.0 TM Intelligence (2026-03-26)
+
+<details>
+<summary>v12.0 details (click to expand)</summary>
+
+- 3 phases, 4 plans, 25 tests
+- Dual threshold: 62% context panel, 92% pretranslation (hardcoded)
+- AC Context Engine: 3-tier cascade (whole AC, line AC, char n-gram Jaccard n={2,3,4,5})
+- Bigram inverted index pre-filter for <100ms at 1000+ entries
+- POST /api/ldm/tm/context endpoint, TMTab context section with tier badges
+- 6 code review issues fixed
+
+</details>
 
 ## Shipped: v11.0 Architecture & Test Infrastructure (2026-03-26)
 
@@ -142,8 +159,14 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-- [ ] ARCH-02 — Split mega_index.py (1310 lines) into domain services (deferred)
-- [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths (deferred)
+- [ ] FIX-01 — Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks)
+- [ ] PATH-01 — Branch + Drive selector UI (like QACompiler/MapDataGenerator)
+- [ ] PATH-02 — Path validation with OK/NOT OK status and missing data details
+- [ ] PATH-03 — LanguageData StringID → GameData → DDS image path resolution
+- [ ] PATH-04 — LanguageData StringID → GameData → WEM audio path resolution
+- [ ] MOCK-01 — Mock Perforce paths on local machine (relative, drive-agnostic)
+- [ ] MOCK-02 — E2E tests with mocked Perforce path structure
+- [ ] ARCH-02 — Split mega_index.py (1310 lines) into domain services
 
 ### Out of Scope
 
@@ -234,4 +257,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after v12.0 milestone initialization*
+*Last updated: 2026-03-26 after v13.0 milestone initialization*
