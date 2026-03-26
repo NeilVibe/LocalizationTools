@@ -77,7 +77,9 @@ Plans:
   2. Pretranslation (batch apply) only uses matches at or above 92% (quality threshold)
   3. Every TM result in the right panel displays a color-coded match percentage badge (green for 92%+, yellow for 75-91%, orange for 62-74%)
   4. Match percentage badge is prominent and immediately visible without hovering or expanding
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 86-01-PLAN.md --- Hardcode 0.62 context threshold in StatusColors, update TMTab color bands and prominent badge
 
 ### Phase 87: AC Context Engine
 **Goal**: The backend can scan Korean source text against TM entries using a 3-tier cascade (whole AC, line AC, char n-gram Jaccard) in under 100ms
@@ -107,6 +109,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 86. Dual Threshold + TM Tab UI | 0/TBD | Not started | - |
+| 86. Dual Threshold + TM Tab UI | 0/1 | Planning complete | - |
 | 87. AC Context Engine | 0/TBD | Not started | - |
 | 88. AC Context Integration | 0/TBD | Not started | - |
