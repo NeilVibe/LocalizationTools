@@ -517,7 +517,7 @@ def write_number_check_excel(
     """
     Write NUMBER CHECK results to Excel.
 
-    Columns: StringId | StrOrigin | Str | Source Numbers | Target Numbers | Missing in Target | Extra in Target | Status | Comment
+    Columns: StringId | Category | StrOrigin | Str | Source Numbers | Target Numbers | Missing in Target | Extra in Target | Status | Comment
     """
     _require_xlsxwriter()
 
@@ -569,10 +569,10 @@ def write_number_check_excel(
         })
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
-        headers = ["StringId", "StrOrigin", "Str", "Source Numbers",
+        headers = ["StringId", "Category", "StrOrigin", "Str", "Source Numbers",
                    "Target Numbers", "Missing in Target", "Extra in Target",
                    "Status", "Comment"]
-        widths = [20, 50, 50, 16, 16, 18, 18, 14, 40]
+        widths = [20, 15, 50, 50, 16, 16, 18, 18, 14, 40]
 
         ws.set_row(0, 22)
         for i, h in enumerate(headers):
@@ -586,18 +586,19 @@ def write_number_check_excel(
             f_s = fmt_sid_alt if alt else fmt_sid
 
             ws.write_string(row, 0, str(issue.string_id), f_s)
-            ws.write(row, 1, issue.str_origin, f_r)
-            ws.write(row, 2, issue.str_text, f_r)
-            ws.write(row, 3, issue.source_numbers, fmt_nums)
-            ws.write(row, 4, issue.target_numbers, fmt_nums)
-            ws.write(row, 5, issue.missing_in_target, fmt_missing if issue.missing_in_target else f_r)
-            ws.write(row, 6, issue.extra_in_target, fmt_extra if issue.extra_in_target else f_r)
-            ws.write(row, 7, "", fmt_status)
-            ws.write(row, 8, "", fmt_comment)
+            ws.write(row, 1, issue.category, f_s)
+            ws.write(row, 2, issue.str_origin, f_r)
+            ws.write(row, 3, issue.str_text, f_r)
+            ws.write(row, 4, issue.source_numbers, fmt_nums)
+            ws.write(row, 5, issue.target_numbers, fmt_nums)
+            ws.write(row, 6, issue.missing_in_target, fmt_missing if issue.missing_in_target else f_r)
+            ws.write(row, 7, issue.extra_in_target, fmt_extra if issue.extra_in_target else f_r)
+            ws.write(row, 8, "", fmt_status)
+            ws.write(row, 9, "", fmt_comment)
 
         data_rows = len(issues)
         if data_rows > 0:
-            ws.data_validation(1, 7, data_rows, 7, {
+            ws.data_validation(1, 8, data_rows, 8, {
                 "validate": "list",
                 "source": ["ISSUE", "NO ISSUE", "FIXED"],
             })

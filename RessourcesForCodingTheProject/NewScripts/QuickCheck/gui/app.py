@@ -729,6 +729,7 @@ class QuickCheckApp(tk.Tk):
 
         lang_files = self._get_selected_lang_files()
         output_dir = Path(get_output_dir())
+        cat_idx = self._category_index
 
         def worker() -> None:
             try:
@@ -736,6 +737,7 @@ class QuickCheckApp(tk.Tk):
                     lang_files=lang_files,
                     output_dir=output_dir,
                     progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                    category_index=cat_idx,
                 )
                 summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
                 summary = "NUM CHECK done: " + " ".join(summary_parts)
