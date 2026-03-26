@@ -22,7 +22,7 @@ except ImportError:
     USING_LXML = False
 
 import config
-from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
+from .text_utils import normalize_text, normalize_nospace, normalize_for_matching, normalize_no_punctuation
 from .korean_detection import is_korean_text
 from .xml_parser import get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS, DESC_ATTRS, DESCORIGIN_ATTRS, LOCSTR_TAGS
 from .source_scanner import scan_source_for_languages, scan_target_for_languages, TargetScanResult
@@ -87,6 +87,18 @@ def _is_no_translation(value: str) -> bool:
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
 
+def _apply_normalization(text: str, ignore_spaces: bool = False, ignore_punctuation: bool = False) -> str:
+    """Apply optional normalization layers to text for lenient matching.
+
+    Called on BOTH lookup keys AND target values so they match.
+    """
+    if ignore_punctuation:
+        text = normalize_no_punctuation(text)
+    if ignore_spaces:
+        text = normalize_nospace(text)
+    return text
+
+
 # ─── Pre-filter: raw-bytes regex for fast StringID/StrOrigin scanning ────
 _STRINGID_RE = re.compile(rb'stringid\s*=\s*"([^"]*)"', re.IGNORECASE)
 _STRORIGIN_RE = re.compile(rb'strorigin\s*=\s*"([^"]*)"', re.IGNORECASE)
@@ -116,7 +128,8 @@ def _quick_scan_strorigins(filepath: Path) -> Optional[set]:
         return None
 
 
-def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None):
+def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None,
+                              ignore_spaces=False, ignore_punctuation=False):
     """
     Build correction lookup dicts ONCE for reuse across all target files.
 
@@ -127,7 +140,15 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
     Args:
         corrections: List of correction dicts (already filtered/preprocessed)
         match_mode: One of "strict", "strorigin_only", "stringid_only", "strorigin_filename", "fuzzy"
+        ignore_spaces: If True, strip all whitespace from StrOrigin keys for lenient matching
+        ignore_punctuation: If True, strip punctuation from StrOrigin keys for lenient matching
     """
+    _norm_extra = ignore_spaces or ignore_punctuation
+
+    def _norm(text):
+        """Apply extra normalization if user enabled ignore_spaces/ignore_punctuation."""
+        return _apply_normalization(text, ignore_spaces, ignore_punctuation)
+
     if match_mode == "strict":
         # (StringID, normalized_StrOrigin) -> list of (corrected_text, category, index)
         correction_lookup = defaultdict(list)
@@ -137,6 +158,9 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
             origin_norm = normalize_text(c.get("str_origin", ""))
             origin_nospace = normalize_nospace(origin_norm)
             category = c.get("category", "Uncategorized")
+            if _norm_extra:
+                origin_norm = _norm(origin_norm)
+                origin_nospace = _norm(origin_nospace)
             correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
             correction_lookup_nospace[(sid_lower, origin_nospace)].append((c["corrected"], category, i))
         return correction_lookup, correction_lookup_nospace
@@ -150,12 +174,15 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
             if not origin_norm:
                 continue
             origin_nospace = normalize_nospace(origin_norm)
+            if _norm_extra:
+                origin_norm = _norm(origin_norm)
+                origin_nospace = _norm(origin_nospace)
             correction_lookup[origin_norm] = (c["corrected"], i)
             correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
         return correction_lookup, correction_lookup_nospace
 
     elif match_mode == "stringid_only":
-        # sid.lower() -> full correction dict
+        # sid.lower() -> full correction dict (no StrOrigin matching)
         correction_lookup = {}
         for c in corrections:
             sid_lower = c["string_id"].lower()
@@ -177,6 +204,11 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
             origin_nospace = normalize_nospace(origin_norm)
             desc_nospace = normalize_nospace(desc_norm)
             category = c.get("category", "Uncategorized")
+            if _norm_extra:
+                origin_norm = _norm(origin_norm)
+                desc_norm = _norm(desc_norm)
+                origin_nospace = _norm(origin_nospace)
+                desc_nospace = _norm(desc_nospace)
             correction_lookup[(origin_norm, desc_norm)].append((c["corrected"], category, i))
             correction_lookup_nospace[(origin_nospace, desc_nospace)].append((c["corrected"], category, i))
         return correction_lookup, correction_lookup_nospace
@@ -195,6 +227,10 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
             filepath = _fp_index.get(sid_lower, "")
             desc_norm = normalize_for_matching(c.get("desc_origin", ""))
             category = c.get("category", "Uncategorized")
+            if _norm_extra:
+                origin_norm = _norm(origin_norm)
+                if desc_norm:
+                    desc_norm = _norm(desc_norm)
             # PASS1: full 3-tuple (only if descorigin is present)
             if desc_norm:
                 correction_lookup[(origin_norm, filepath, desc_norm)].append((c["corrected"], category, i))
@@ -1139,6 +1175,8 @@ def _fast_folder_merge(
     log_callback=None,
     progress_callback=None,
     stringid_to_filepath: Optional[Dict[str, str]] = None,
+    ignore_spaces: bool = False,
+    ignore_punctuation: bool = False,
 ) -> Dict:
     """
     Merge ALL corrections into ALL target XML files in one tight loop.
@@ -1287,6 +1325,10 @@ def _fast_folder_merge(
 
                 sid_lower = sid.lower()
                 orig_nospace = normalize_nospace(orig)
+                # Apply user normalization (ignore spaces/punctuation) to match lookup keys
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
                 key = (sid_lower, orig)
                 key_nospace = (sid_lower, orig_nospace)
 
@@ -1347,6 +1389,9 @@ def _fast_folder_merge(
                     continue
 
                 orig_nospace = normalize_nospace(orig)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
 
                 match_data = correction_lookup.get(orig)
                 if match_data is None:
@@ -1443,6 +1488,11 @@ def _fast_folder_merge(
                     continue
                 orig_nospace = normalize_nospace(orig)
                 desc_nospace = normalize_nospace(desc)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    desc = _apply_normalization(desc, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
+                    desc_nospace = _apply_normalization(desc_nospace, ignore_spaces, ignore_punctuation)
                 key = (orig, desc)
                 key_nospace = (orig_nospace, desc_nospace)
 
@@ -1506,6 +1556,10 @@ def _fast_folder_merge(
                 filepath = _fp_index.get(sid_lower, "")
                 desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
                 desc = normalize_for_matching(desc_raw)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    if desc:
+                        desc = _apply_normalization(desc, ignore_spaces, ignore_punctuation)
 
                 # PASS1: (StrOrigin, filepath, DescOrigin) — only if desc present
                 match_entries = []
@@ -1735,6 +1789,9 @@ def transfer_folder_to_folder(
     strict_non_script_only: bool = False,
     # StringID-Only: match ALL categories (bypass SCRIPT filter)
     stringid_all_categories: bool = False,
+    # Normalization: ignore space/punctuation differences in StrOrigin matching
+    ignore_spaces: bool = False,
+    ignore_punctuation: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -2362,20 +2419,24 @@ def transfer_folder_to_folder(
             continue
 
         if _base_mode == "strict":
-            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strict")
+            _lookup_cache[_corr_id] = _build_correction_lookups(
+                _corr, "strict", ignore_spaces=ignore_spaces, ignore_punctuation=ignore_punctuation)
             logger.info(f"Built shared strict lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
         elif _base_mode == "strorigin_only":
-            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_only")
+            _lookup_cache[_corr_id] = _build_correction_lookups(
+                _corr, "strorigin_only", ignore_spaces=ignore_spaces, ignore_punctuation=ignore_punctuation)
             logger.info(f"Built shared strorigin_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
         elif _base_mode == "strorigin_descorigin":
-            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_descorigin")
+            _lookup_cache[_corr_id] = _build_correction_lookups(
+                _corr, "strorigin_descorigin", ignore_spaces=ignore_spaces, ignore_punctuation=ignore_punctuation)
             logger.info(f"Built shared strorigin_descorigin lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
         elif _base_mode == "strorigin_filename":
             _lookup_cache[_corr_id] = _build_correction_lookups(
-                _corr, "strorigin_filename", stringid_to_filepath=stringid_to_filepath
+                _corr, "strorigin_filename", stringid_to_filepath=stringid_to_filepath,
+                ignore_spaces=ignore_spaces, ignore_punctuation=ignore_punctuation,
             )
             logger.info(
                 f"Built shared strorigin_filename lookup: "
@@ -2495,6 +2556,8 @@ def transfer_folder_to_folder(
                 dry_run, only_untranslated,
                 log_callback, progress_callback,
                 stringid_to_filepath=stringid_to_filepath,
+                ignore_spaces=ignore_spaces,
+                ignore_punctuation=ignore_punctuation,
             )
 
             # Aggregate fast_result into results

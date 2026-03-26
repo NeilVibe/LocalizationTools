@@ -434,3 +434,26 @@ def normalize_nospace(txt: str) -> str:
         Text with all whitespace removed
     """
     return re.sub(r'\s+', '', txt)
+
+
+# Punctuation characters to strip (common in game dialogue StrOrigin).
+# Excludes <br/> tag chars and Korean/CJK ranges.
+_PUNCTUATION_RE = re.compile(r'[.,;:!?\'"\-–—…()[\]{}<>/\\@#$%^&*_+=~`|]+')
+
+
+def normalize_no_punctuation(txt: str) -> str:
+    """
+    Remove punctuation from text for lenient matching.
+
+    Strips common punctuation marks while preserving letters, digits,
+    and whitespace. Collapses resulting double-spaces.
+
+    Args:
+        txt: Text to process
+
+    Returns:
+        Text with punctuation removed
+    """
+    result = _PUNCTUATION_RE.sub('', txt)
+    # Collapse double-spaces left by removed punctuation
+    return re.sub(r'\s{2,}', ' ', result).strip()

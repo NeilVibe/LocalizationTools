@@ -4,7 +4,7 @@ QuickTranslate Core Module.
 Public exports for XML parsing, Korean detection, indexing, matching, and I/O.
 """
 
-from .text_utils import normalize_text, normalize_for_matching, normalize_nospace
+from .text_utils import normalize_text, normalize_for_matching, normalize_nospace, normalize_no_punctuation
 from .xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements, DESC_ATTRS, DESCORIGIN_ATTRS
 from .korean_detection import KOREAN_REGEX, is_korean_text
 from .indexing import build_sequencer_strorigin_index, scan_folder_for_entries_with_context
@@ -105,6 +105,7 @@ __all__ = [
     "normalize_text",
     "normalize_for_matching",
     "normalize_nospace",
+    "normalize_no_punctuation",
     # xml_parser
     "sanitize_xml_content",
     "parse_xml_file",
