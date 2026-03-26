@@ -475,65 +475,48 @@ class QuickTranslateApp:
                         activebackground='#fef3e2').pack(side=tk.LEFT)
 
         # === Unique-Only StrOrigin sub-frame (visible only for strorigin_only) ===
-        self.unique_only_frame = tk.Frame(match_frame, bg='#e8f0fe', padx=10, pady=4,
+        self.unique_only_frame = tk.Frame(match_frame, bg='#e8f0fe', padx=10, pady=3,
                                            relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        unique_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
-        unique_row.pack(fill=tk.X)
-        tk.Checkbutton(unique_row, text="Unique strings only (skip duplicates)",
+        uo_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        uo_row.pack(fill=tk.X)
+        tk.Checkbutton(uo_row, text="Unique only",
                        variable=self.unique_only_strorigin,
-                       font=('Segoe UI', 9, 'bold'), bg='#e8f0fe',
-                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
-
-        tk.Label(self.unique_only_frame,
-            text="Safe mode: only merges StrOrigin that appears once. Duplicates exported to Excel.",
-            font=('Segoe UI', 8), bg='#e8f0fe', fg='#666', wraplength=350, justify='left'
-        ).pack(fill=tk.X, pady=(2, 0))
-
-        # Normalization checkboxes (inside unique_only_frame)
-        norm_row_uo = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
-        norm_row_uo.pack(fill=tk.X, pady=(4, 0))
-        tk.Checkbutton(norm_row_uo, text="Ignore Spaces",
+                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
+        tk.Checkbutton(uo_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='#e8f0fe',
-                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 15))
-        tk.Checkbutton(norm_row_uo, text="Ignore Punctuation",
+                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
+        tk.Checkbutton(uo_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='#e8f0fe',
                        activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
 
         # === Non-Script Only frame (STRICT mode only) ===
-        self.strict_non_script_frame = tk.Frame(match_frame, bg='#fde8e8', padx=10, pady=4,
+        self.strict_non_script_frame = tk.Frame(match_frame, bg='#fde8e8', padx=10, pady=3,
                                                  relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
         ns_row = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
         ns_row.pack(fill=tk.X)
-        tk.Checkbutton(ns_row, text="Non-Script only (skip Dialog/Sequencer)",
+        tk.Checkbutton(ns_row, text="Non-Script only",
                        variable=self._strict_non_script_var,
                        command=self._on_presub_setting_changed,
-                       font=('Segoe UI', 9, 'bold'), bg='#fde8e8',
-                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
-        tk.Label(self.strict_non_script_frame,
-            text="Skips SCRIPT categories (Dialog/Sequencer). Only processes game-data entries.",
-            font=('Segoe UI', 8), bg='#fde8e8', fg='#666', wraplength=350, justify='left'
-        ).pack(fill=tk.X, pady=(2, 0))
-
-        # Normalization checkboxes (inside strict_non_script_frame)
-        norm_row_ns = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
-        norm_row_ns.pack(fill=tk.X, pady=(4, 0))
-        tk.Checkbutton(norm_row_ns, text="Ignore Spaces",
+                       font=('Segoe UI', 9), bg='#fde8e8',
+                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
+        tk.Checkbutton(ns_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='#fde8e8',
-                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 15))
-        tk.Checkbutton(norm_row_ns, text="Ignore Punctuation",
+                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
+        tk.Checkbutton(ns_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='#fde8e8',
                        activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
 
         # === StringID ALL Categories frame (StringID-Only mode) ===
-        self.stringid_all_frame = tk.Frame(match_frame, bg='#ffe0e0', padx=10, pady=4,
+        self.stringid_all_frame = tk.Frame(match_frame, bg='#ffe0e0', padx=10, pady=3,
                                            relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
@@ -541,12 +524,8 @@ class QuickTranslateApp:
         sid_all_row.pack(fill=tk.X)
         tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
                        variable=self._stringid_all_var,
-                       font=('Segoe UI', 9, 'bold'), bg='#ffe0e0', fg='#cc0000',
+                       font=('Segoe UI', 9), bg='#ffe0e0', fg='#cc0000',
                        activebackground='#ffe0e0', cursor='hand2').pack(side=tk.LEFT)
-        tk.Label(self.stringid_all_frame,
-            text="WARNING: Matches ALL StringIDs regardless of category. Use only for exceptional cases.",
-            font=('Segoe UI', 8, 'bold'), bg='#ffe0e0', fg='#cc0000', wraplength=350, justify='left'
-        ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
         files_frame = tk.LabelFrame(self._tab1_inner, text="Files", font=('Segoe UI', 10, 'bold'),
