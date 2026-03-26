@@ -12,6 +12,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
   import RightPanel from '$lib/components/ldm/RightPanel.svelte';
+  import BranchDriveSelector from '$lib/components/ldm/BranchDriveSelector.svelte';
   import { Button, InlineLoading } from 'carbon-components-svelte';
   import { ArrowLeft, Column, Document, DataBase } from 'carbon-icons-svelte';
 
@@ -22,7 +23,6 @@
     linkedTM = null,
     onShowGridColumns = () => {},
     onShowReferenceSettings = () => {},
-    onShowBranchDriveSettings = () => {},
     onDismissQA = undefined
   } = $props();
 
@@ -369,6 +369,7 @@
     </div>
 
     <div class="toolbar-right">
+      <BranchDriveSelector />
       <Button
         kind="ghost"
         size="small"
@@ -384,14 +385,6 @@
         iconDescription="Reference Settings"
         tooltipAlignment="end"
         onclick={onShowReferenceSettings}
-      />
-      <Button
-        kind="ghost"
-        size="small"
-        icon={DataBase}
-        iconDescription="Branch & Drive Settings"
-        tooltipAlignment="end"
-        onclick={onShowBranchDriveSettings}
       />
     </div>
   </div>

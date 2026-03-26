@@ -927,7 +927,6 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           {linkedTM}
           onShowGridColumns={() => showGridColumns = true}
           onShowReferenceSettings={() => showReferenceSettings = true}
-          onShowBranchDriveSettings={() => showBranchDriveSettings = true}
           onDismissQA={handleDismissQA}
         />
       {:else if $currentPage === 'gamedev'}
