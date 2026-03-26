@@ -109,6 +109,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 86. Dual Threshold + TM Tab UI | 1/1 | Complete   | 2026-03-26 |
+| 86. Dual Threshold + TM Tab UI | 1/1 | Complete    | 2026-03-26 |
 | 87. AC Context Engine | 0/TBD | Not started | - |
 | 88. AC Context Integration | 0/TBD | Not started | - |
