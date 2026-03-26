@@ -37,7 +37,16 @@ logger = logging.getLogger(__name__)
 # Word-level diff (ported from VRSManager strorigin_analysis.py)
 # =============================================================================
 
-def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
+def _get_strorigin_from_attribs(attribs: Dict) -> str:
+    """Extract StrOrigin value from raw XML attributes dict, trying all case variants."""
+    for key in ('StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN'):
+        val = attribs.get(key)
+        if val is not None:
+            return val
+    return ""
+
+
+def extract_differences(text1: str, text2: str, max_length: int = 2000) -> str:
     """
     Extract WORD-LEVEL differences between two texts using difflib.
 
@@ -45,6 +54,7 @@ def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
     - [old words→new words] for replacements (consecutive words grouped)
     - [-deleted words] for deletions
     - [+added words] for additions
+    - [SPACING] when texts differ only by whitespace
 
     Args:
         text1: Previous text (old StrOrigin from correction source)
@@ -56,6 +66,10 @@ def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
     """
     if not text1 or not text2:
         return ""
+
+    # Detect spacing-only differences before word-level split normalizes them away
+    if text1 != text2 and text1.split() == text2.split():
+        return "[SPACING ONLY]"
 
     words1 = text1.split()
     words2 = text2.split()
@@ -541,7 +555,7 @@ def extract_mismatch_target_entries(results: Dict) -> List[Dict]:
 
             entries.append({
                 "string_id": detail.get("string_id", ""),
-                "str_origin": target_attribs.get("StrOrigin", target_attribs.get("Strorigin", "")),
+                "str_origin": _get_strorigin_from_attribs(target_attribs),
                 "str": target_attribs.get("Str", target_attribs.get("str", "")),
                 "language": language,
                 "raw_attribs": target_attribs,  # FULL target LocStr as-is

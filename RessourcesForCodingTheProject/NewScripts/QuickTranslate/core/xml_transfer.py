@@ -1598,9 +1598,12 @@ def _fast_folder_merge(
                 }
                 if status == "STRORIGIN_MISMATCH":
                     detail["target_raw_attribs"] = target_attribs_cache.get(sid_lower, {})
-                    # Build target_strorigin from cached attribs
+                    # Build target_strorigin from cached attribs (try all case variants)
                     cached = target_attribs_cache.get(sid_lower, {})
-                    detail["target_strorigin"] = cached.get("StrOrigin", cached.get("strorigin", ""))
+                    detail["target_strorigin"] = (
+                        cached.get("StrOrigin") or cached.get("Strorigin") or
+                        cached.get("strorigin") or cached.get("STRORIGIN") or ""
+                    )
                 result["unmatched_details"].append(detail)
 
     elif match_mode == "strorigin_only":
