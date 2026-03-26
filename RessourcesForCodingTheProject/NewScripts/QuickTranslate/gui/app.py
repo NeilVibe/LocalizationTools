@@ -470,6 +470,7 @@ class QuickTranslateApp:
                         activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
         tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
                         variable=self.transfer_scope, value="untranslated",
+                        command=self._on_transfer_scope_changed,
                         font=('Segoe UI', 9), bg='#fef3e2', selectcolor='white',
                         activebackground='#fef3e2').pack(side=tk.LEFT)
 
