@@ -1,1 +1,2 @@
 Build LocaNext — fix grid freeze (rowHeightCache reactive cascade)
+Build LocaNext — fix 103k-row grid freeze (Float64Array + rowsVersion)
