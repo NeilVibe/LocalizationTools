@@ -273,16 +273,22 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                             continue
 
                         stringid_idx = None  # 0-based index
+                        tester_status_cols = {}    # username -> 0-based idx
+                        memo_cols = {}             # username -> 0-based idx
                         for col_idx, header_val in enumerate(header_tuple):
                             if not header_val:
                                 continue
                             header_str = str(header_val)
                             header_upper = header_str.upper()
 
-                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            if header_upper.startswith("TESTER_STATUS_"):
+                                tester_status_cols[header_str[14:].strip()] = col_idx
+                            elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                                 status_cols[header_str[7:]] = col_idx
                             elif header_upper.startswith("COMMENT_"):
                                 comment_cols[header_str[8:]] = col_idx
+                            elif header_upper.startswith("MEMO_"):
+                                memo_cols[header_str[5:]] = col_idx
                             elif header_upper.startswith("SCREENSHOT_"):
                                 screenshot_cols[header_str[11:]] = col_idx
                             elif header_upper == "STRINGID":
@@ -331,22 +337,32 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                                             fixed_screenshots.add(str(sc_val).strip())
 
                                 # --- DATA 2: manager_stats (tracker counts) ---
-                                c_stats_idx = comment_cols.get(username)
-                                comment_val = row_tuple[c_stats_idx] if c_stats_idx is not None and c_stats_idx < len(row_tuple) else None
-                                comment_str_val = str(comment_val).strip() if comment_val else ""
-                                has_comment = bool(comment_str_val)
+                                # Phantom check: only count manager status if tester
+                                # has ISSUE + comment. Manager response to phantom = ignored.
+                                ts_idx = tester_status_cols.get(username)
+                                tester_has_real_issue = False
+                                if ts_idx is not None and ts_idx < len(row_tuple):
+                                    ts_val = row_tuple[ts_idx]
+                                    ts_str = str(ts_val).strip().upper() if ts_val else ""
+                                    if ts_str == "ISSUE":
+                                        # Check for comment (COMMENT, MEMO, or SCREENSHOT)
+                                        for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                            cidx = col_map.get(username)
+                                            if cidx is not None and cidx < len(row_tuple) and row_tuple[cidx] is not None:
+                                                if str(row_tuple[cidx]).strip():
+                                                    tester_has_real_issue = True
+                                                    break
 
-                                if has_status or has_comment:
-                                    if has_status:
-                                        status_entries_count += 1
-                                        if status_upper == "FIXED":
-                                            manager_stats[target_category][username]["fixed"] += 1
-                                        elif status_upper == "REPORTED":
-                                            manager_stats[target_category][username]["reported"] += 1
-                                        elif status_upper == "CHECKING":
-                                            manager_stats[target_category][username]["checking"] += 1
-                                        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-                                            manager_stats[target_category][username]["nonissue"] += 1
+                                if has_status and tester_has_real_issue:
+                                    status_entries_count += 1
+                                    if status_upper == "FIXED":
+                                        manager_stats[target_category][username]["fixed"] += 1
+                                    elif status_upper == "REPORTED":
+                                        manager_stats[target_category][username]["reported"] += 1
+                                    elif status_upper == "CHECKING":
+                                        manager_stats[target_category][username]["checking"] += 1
+                                    elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                                        manager_stats[target_category][username]["nonissue"] += 1
 
                                     manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 

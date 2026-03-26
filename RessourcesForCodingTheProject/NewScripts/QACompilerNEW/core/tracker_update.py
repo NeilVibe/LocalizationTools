@@ -399,8 +399,11 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
 
                     stringid_idx = None      # 0-based
                     translation_idx = None   # 0-based
-                    status_cols = {}         # username -> 0-based idx
+                    status_cols = {}         # username -> 0-based idx (manager STATUS)
+                    tester_status_cols = {}  # username -> 0-based idx (tester TESTER_STATUS)
                     comment_cols = {}        # username -> 0-based idx
+                    memo_cols = {}           # username -> 0-based idx
+                    screenshot_cols = {}     # username -> 0-based idx
 
                     for col_idx, header_val in enumerate(header_tuple):
                         if not header_val:
@@ -408,10 +411,16 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
                         header_str = str(header_val).strip()
                         header_upper = header_str.upper()
 
-                        if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                        if header_upper.startswith("TESTER_STATUS_"):
+                            tester_status_cols[header_str[14:].strip()] = col_idx
+                        elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                             status_cols[header_str[7:]] = col_idx
                         elif header_upper.startswith("COMMENT_"):
                             comment_cols[header_str[8:]] = col_idx
+                        elif header_upper.startswith("MEMO_"):
+                            memo_cols[header_str[5:]] = col_idx
+                        elif header_upper.startswith("SCREENSHOT_"):
+                            screenshot_cols[header_str[11:]] = col_idx
                         elif header_upper == "STRINGID":
                             stringid_idx = col_idx
                         elif header_upper == "EVENTNAME" and stringid_idx is None:
@@ -457,6 +466,25 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
                             v = str(status_value).strip().upper()
                             if v not in ("FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"):
                                 continue
+
+                            # Phantom check: only count manager status if tester
+                            # has ISSUE + comment. Manager response to a phantom = ignored.
+                            ts_idx = tester_status_cols.get(username)
+                            if ts_idx is not None and ts_idx < len(row_tuple):
+                                ts_val = row_tuple[ts_idx]
+                                ts_str = str(ts_val).strip().upper() if ts_val else ""
+                                if ts_str != "ISSUE":
+                                    continue  # No ISSUE from tester → skip manager status
+                                # Check for comment (COMMENT, MEMO, or SCREENSHOT)
+                                has_comment = False
+                                for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                    cidx = col_map.get(username)
+                                    if cidx is not None and cidx < len(row_tuple) and row_tuple[cidx] is not None:
+                                        if str(row_tuple[cidx]).strip():
+                                            has_comment = True
+                                            break
+                                if not has_comment:
+                                    continue  # Phantom issue → skip manager status
 
                             total_status_found += 1
 

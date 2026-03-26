@@ -17,20 +17,23 @@ def create_mock_master_script(folder: Path):
     ws = wb.active
     ws.title = "Sequencer_Sheet1"
 
-    # Headers: EventName, Text, Translation, STATUS_Alice, STATUS_Bob
+    # Headers: EventName, Text, Translation,
+    #   TESTER_STATUS_Alice, STATUS_Alice, COMMENT_Alice,
+    #   TESTER_STATUS_Bob, STATUS_Bob, COMMENT_Bob
     ws.cell(1, 1, "EventName")
     ws.cell(1, 2, "Text")
     ws.cell(1, 3, "Translation")
-    ws.cell(1, 4, "STATUS_Alice")
-    ws.cell(1, 5, "STATUS_Bob")
+    ws.cell(1, 4, "TESTER_STATUS_Alice"); ws.cell(1, 5, "STATUS_Alice"); ws.cell(1, 6, "COMMENT_Alice")
+    ws.cell(1, 7, "TESTER_STATUS_Bob"); ws.cell(1, 8, "STATUS_Bob"); ws.cell(1, 9, "COMMENT_Bob")
 
-    # Data rows with manager statuses
+    # Data rows — all ISSUE rows have comments (real issues, not phantoms)
+    # (EventName, Text, Translation, TS_Alice, S_Alice, C_Alice, TS_Bob, S_Bob, C_Bob)
     data = [
-        ("EVT001", "Hello", "Bonjour", "FIXED", "REPORTED"),
-        ("EVT002", "World", "Monde", "FIXED", "CHECKING"),
-        ("EVT003", "Test", "Test", "REPORTED", "NON-ISSUE"),
-        ("EVT004", "Game", "Jeu", None, "FIXED"),
-        ("EVT005", "Play", "Jouer", "CHECKING", None),
+        ("EVT001", "Hello", "Bonjour", "ISSUE", "FIXED", "Typo", "ISSUE", "REPORTED", "Wrong word"),
+        ("EVT002", "World", "Monde", "ISSUE", "FIXED", "Bad text", "ISSUE", "CHECKING", "Grammar"),
+        ("EVT003", "Test", "Test", "ISSUE", "REPORTED", "Context", "ISSUE", "NON-ISSUE", "Intended"),
+        ("EVT004", "Game", "Jeu", None, None, None, "ISSUE", "FIXED", "Fixed it"),
+        ("EVT005", "Play", "Jouer", "ISSUE", "CHECKING", "Unclear", None, None, None),
     ]
     for i, row in enumerate(data, start=2):
         for j, val in enumerate(row, start=1):
@@ -41,12 +44,12 @@ def create_mock_master_script(folder: Path):
     ws2.cell(1, 1, "EventName")
     ws2.cell(1, 2, "Text")
     ws2.cell(1, 3, "Translation")
-    ws2.cell(1, 4, "STATUS_Alice")
-    ws2.cell(1, 5, "STATUS_Charlie")
+    ws2.cell(1, 4, "TESTER_STATUS_Alice"); ws2.cell(1, 5, "STATUS_Alice"); ws2.cell(1, 6, "COMMENT_Alice")
+    ws2.cell(1, 7, "TESTER_STATUS_Charlie"); ws2.cell(1, 8, "STATUS_Charlie"); ws2.cell(1, 9, "COMMENT_Charlie")
 
     data2 = [
-        ("DLG001", "Hi", "Salut", "FIXED", "FIXED"),
-        ("DLG002", "Bye", "Au revoir", "NON ISSUE", "REPORTED"),  # Note: space not hyphen
+        ("DLG001", "Hi", "Salut", "ISSUE", "FIXED", "Wrong", "ISSUE", "FIXED", "Also wrong"),
+        ("DLG002", "Bye", "Au revoir", "ISSUE", "NON ISSUE", "Intended", "ISSUE", "REPORTED", "Bad format"),
     ]
     for i, row in enumerate(data2, start=2):
         for j, val in enumerate(row, start=1):
@@ -68,12 +71,12 @@ def create_mock_master_quest(folder: Path):
     ws.cell(1, 1, "Korean")
     ws.cell(1, 2, "English")
     ws.cell(1, 3, "STRINGID")
-    ws.cell(1, 4, "STATUS_Alice")
-    ws.cell(1, 5, "STATUS_Dave")
+    ws.cell(1, 4, "TESTER_STATUS_Alice"); ws.cell(1, 5, "STATUS_Alice"); ws.cell(1, 6, "COMMENT_Alice")
+    ws.cell(1, 7, "TESTER_STATUS_Dave"); ws.cell(1, 8, "STATUS_Dave"); ws.cell(1, 9, "COMMENT_Dave")
 
     data = [
-        ("퀘스트1", "Quest 1", "Q001", "FIXED", "FIXED"),
-        ("퀘스트2", "Quest 2", "Q002", "REPORTED", None),
+        ("퀘스트1", "Quest 1", "Q001", "ISSUE", "FIXED", "Wrong quest", "ISSUE", "FIXED", "Also wrong"),
+        ("퀘스트2", "Quest 2", "Q002", "ISSUE", "REPORTED", "Missing text", None, None, None),
     ]
     for i, row in enumerate(data, start=2):
         for j, val in enumerate(row, start=1):
