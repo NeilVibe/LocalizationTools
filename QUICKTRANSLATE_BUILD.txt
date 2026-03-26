@@ -1,1 +1,1 @@
-Build QuickTranslate — minimal punctuation regex: only . , ! ? : and ellipsis
+Build QuickTranslate — reorganize normalization checkboxes into per-mode option frames
