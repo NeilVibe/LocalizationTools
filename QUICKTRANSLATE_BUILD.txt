@@ -1,1 +1,1 @@
-Build QuickTranslate — add grouped missing-column warnings for Excel validation
+Build QuickTranslate — fix empty StrOrigin diff in failure report
