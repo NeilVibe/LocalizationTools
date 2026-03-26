@@ -328,6 +328,16 @@ def update_daily_data_sheet(
                 ws.cell(found_row, 10, stats["reported"])
                 ws.cell(found_row, 11, stats["checking"])
                 ws.cell(found_row, 12, stats["nonissue"])
+                # Also update active pending data (cols 15-20)
+                if active_pending_data:
+                    user_active = active_pending_data.get(user, {})
+                    cat_active = user_active.get(master_category, {})
+                    ws.cell(found_row, 15, cat_active.get("active_issues", 0))
+                    ws.cell(found_row, 16, cat_active.get("pending", 0))
+                    ws.cell(found_row, 17, cat_active.get("fixed", 0))
+                    ws.cell(found_row, 18, cat_active.get("reported", 0))
+                    ws.cell(found_row, 19, cat_active.get("checking", 0))
+                    ws.cell(found_row, 20, cat_active.get("nonissue", 0))
                 rows_updated += 1
             elif not normal_compilation_mode:
                 actual_max_row += 1
@@ -336,11 +346,23 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 2, user)
                 # Use master category for new rows (consistent with master file naming)
                 ws.cell(new_row, 3, master_category)
-                for c in [4,5,6,7,8,13,14,15,16,17,18,19,20]: ws.cell(new_row, c, 0)
+                for c in [4,5,6,7,8,13,14]: ws.cell(new_row, c, 0)
                 ws.cell(new_row, 9, stats["fixed"])
                 ws.cell(new_row, 10, stats["reported"])
                 ws.cell(new_row, 11, stats["checking"])
                 ws.cell(new_row, 12, stats["nonissue"])
+                # Write active pending data (cols 15-20) from masterfile scan
+                if active_pending_data:
+                    user_active = active_pending_data.get(user, {})
+                    cat_active = user_active.get(master_category, {})
+                    ws.cell(new_row, 15, cat_active.get("active_issues", 0))
+                    ws.cell(new_row, 16, cat_active.get("pending", 0))
+                    ws.cell(new_row, 17, cat_active.get("fixed", 0))
+                    ws.cell(new_row, 18, cat_active.get("reported", 0))
+                    ws.cell(new_row, 19, cat_active.get("checking", 0))
+                    ws.cell(new_row, 20, cat_active.get("nonissue", 0))
+                else:
+                    for c in [15,16,17,18,19,20]: ws.cell(new_row, c, 0)
                 existing_date_user_cat[(date_str, user, master_category)] = new_row
                 rows_created += 1
 
