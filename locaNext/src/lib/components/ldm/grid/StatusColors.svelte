@@ -25,6 +25,9 @@
   import { preferences } from '$lib/stores/preferences.js';
   import { stripColorTags } from '$lib/utils/colorParser.js';
 
+  // TMUI-01: Context panel threshold — lower than pretranslation to show more suggestions
+  const CONTEXT_THRESHOLD = 0.62;
+
   // Props from parent (configuration only, per D-05)
   let {
     fileId = null,
@@ -179,7 +182,7 @@
     try {
       const params = new URLSearchParams({
         source: sourceText,
-        threshold: $preferences.tmThreshold.toString(),
+        threshold: CONTEXT_THRESHOLD.toString(),
         max_results: '5'
       });
 
@@ -225,7 +228,7 @@
     try {
       const params = new URLSearchParams({
         source: row.source,
-        threshold: $preferences.tmThreshold.toString(),
+        threshold: CONTEXT_THRESHOLD.toString(),
         max_results: '1',
         tm_id: tmId.toString()
       });
