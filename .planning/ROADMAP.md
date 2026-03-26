@@ -63,7 +63,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 86: Dual Threshold + TM Tab UI** - Hardcoded dual threshold system (92%/62%) and prominent match percentage badges in TM right panel (completed 2026-03-26)
-- [ ] **Phase 87: AC Context Engine** - Aho-Corasick automaton build from TM dictionaries, character n-gram Jaccard scorer, performance-validated backend
+- [x] **Phase 87: AC Context Engine** - Aho-Corasick automaton build from TM dictionaries, character n-gram Jaccard scorer, performance-validated backend (completed 2026-03-26)
 - [ ] **Phase 88: AC Context Integration** - Wire AC context engine to row-select, display tiered results in right panel with match scores
 
 ## Phase Details
@@ -91,10 +91,10 @@ Plans:
   3. The 3-tier cascade returns results: tier-1 whole-match, tier-2 line-match, tier-3 fuzzy (Jaccard >= 62%)
   4. End-to-end context search completes in under 100ms for a single source text against a TM with 1000+ entries
   5. Unit tests verify each tier independently and the cascade ordering
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 87-01-PLAN.md --- AC automaton build in load_indexes(), ContextSearcher 3-tier cascade, unit tests
-- [ ] 87-02-PLAN.md --- POST /tm/context endpoint, performance benchmark (<100ms for 1000+ entries)
+- [x] 87-02-PLAN.md --- POST /tm/context endpoint, performance benchmark (<100ms for 1000+ entries)
 
 ### Phase 88: AC Context Integration
 **Goal**: When a translator selects a row, the right panel shows where the source text appears elsewhere in the TM with match tier and score
@@ -113,5 +113,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 86. Dual Threshold + TM Tab UI | 1/1 | Complete    | 2026-03-26 |
-| 87. AC Context Engine | 1/2 | In progress | - |
+| 87. AC Context Engine | 2/2 | Complete   | 2026-03-26 |
 | 88. AC Context Integration | 0/TBD | Not started | - |

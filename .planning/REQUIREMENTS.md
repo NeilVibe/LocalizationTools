@@ -21,7 +21,7 @@ Requirements for TM Intelligence milestone. Each maps to roadmap phases.
 
 ### Performance
 
-- [ ] **PERF-01**: AC context search completes within 100ms per row-select (no perceptible delay)
+- [x] **PERF-01**: AC context search completes within 100ms per row-select (no perceptible delay)
 
 ## Future Requirements
 
@@ -57,7 +57,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | ACCTX-02 | Phase 88 | Pending |
 | ACCTX-03 | Phase 87 | Complete |
 | ACCTX-04 | Phase 88 | Pending |
-| PERF-01 | Phase 87 | Pending |
+| PERF-01 | Phase 87 | Complete |
 
 **Coverage:**
 - v12.0 requirements: 7 total
