@@ -280,6 +280,123 @@ class TestGetAudioContext:
 # Service Status Tests
 # =============================================================================
 
+# =============================================================================
+# Fallback Reason Tests (Phase 91, Plan 02 - MOCK-01..04)
+# =============================================================================
+
+
+class TestImageFallbackReason:
+    """Test fallback_reason behavior for image context lookups."""
+
+    def test_unknown_stringid_returns_fallback_reason(self, mock_mega_index):
+        """When StringID has no matching image, returns ImageContext with has_image=False and fallback_reason."""
+        svc = MapDataService()
+        svc._loaded = True
+
+        with patch(
+            "server.tools.ldm.services.mega_index.get_mega_index",
+            return_value=mock_mega_index,
+        ):
+            result = svc.get_image_context("UNKNOWN_STRING_ID_12345")
+
+        assert result is not None, "Should return ImageContext, not None, when service is loaded"
+        assert result.has_image is False
+        assert result.fallback_reason != ""
+        assert "not found" in result.fallback_reason.lower() or "no" in result.fallback_reason.lower()
+
+    def test_known_strkey_has_no_fallback_reason(self, service):
+        """Existing lookup by StrKey still returns has_image=True with no fallback_reason."""
+        result = service.get_image_context("item_sword_01")
+        assert result is not None
+        assert result.has_image is True
+        assert result.fallback_reason == ""
+
+    def test_not_loaded_returns_none_not_fallback(self):
+        """When service is not loaded, returns None (not an ImageContext with fallback)."""
+        svc = MapDataService()
+        svc._loaded = False
+        result = svc.get_image_context("anything")
+        assert result is None
+
+    def test_entity_without_texture_gives_specific_reason(self, mock_mega_index):
+        """When entity exists but has no UITextureName, fallback_reason is specific."""
+        # Add an entity with no texture to the mock
+        mock_mega_index.stringid_to_entity["NO_TEXTURE_SID"] = ("item", "Item_NoTexture")
+        mock_mega_index.knowledge_by_strkey["Item_NoTexture"] = KnowledgeEntry(
+            strkey="Item_NoTexture",
+            name="텍스처없음",
+            desc="설명",
+            ui_texture_name="",  # Empty texture name
+            group_key="item_group",
+            source_file="test.xml",
+        )
+
+        svc = MapDataService()
+        svc._loaded = True
+
+        with patch(
+            "server.tools.ldm.services.mega_index.get_mega_index",
+            return_value=mock_mega_index,
+        ):
+            result = svc.get_image_context("NO_TEXTURE_SID")
+
+        assert result is not None
+        assert result.has_image is False
+        assert "UITextureName" in result.fallback_reason or "texture" in result.fallback_reason.lower()
+
+
+class TestAudioFallbackReason:
+    """Test fallback_reason behavior for audio context lookups."""
+
+    def test_unknown_stringid_returns_fallback_reason(self, mock_mega_index):
+        """When StringID has no matching audio, returns AudioContext with fallback_reason."""
+        svc = MapDataService()
+        svc._loaded = True
+
+        with patch(
+            "server.tools.ldm.services.mega_index.get_mega_index",
+            return_value=mock_mega_index,
+        ):
+            result = svc.get_audio_context("UNKNOWN_STRING_ID_12345")
+
+        assert result is not None, "Should return AudioContext, not None, when service is loaded"
+        assert result.wem_path == ""
+        assert result.fallback_reason != ""
+
+    def test_known_strkey_has_no_fallback_reason(self, service):
+        """Existing lookup by StrKey still returns audio with no fallback_reason."""
+        result = service.get_audio_context("npc_greeting_01")
+        assert result is not None
+        assert result.wem_path != ""
+        assert result.fallback_reason == ""
+
+    def test_not_loaded_returns_none_not_fallback(self):
+        """When service is not loaded, returns None (not AudioContext with fallback)."""
+        svc = MapDataService()
+        svc._loaded = False
+        result = svc.get_audio_context("anything")
+        assert result is None
+
+
+class TestDriveAgnosticPaths:
+    """MOCK-04: Mock paths work regardless of drive letter."""
+
+    def test_mock_paths_no_drive_letter_hardcoded(self, mock_mega_index):
+        """Test assertions in mock_mega_index use local paths, not Windows drive letters."""
+        # Verify the mock_mega_index paths are local (Path objects), not F:\perforce\...
+        for key, path in mock_mega_index.strkey_to_image_path.items():
+            path_str = str(path)
+            assert not (len(path_str) >= 2 and path_str[1] == ":"), (
+                f"Mock path for '{key}' uses Windows drive letter: {path_str}"
+            )
+
+        for key, path in mock_mega_index.stringid_to_audio_path.items():
+            path_str = str(path)
+            assert not (len(path_str) >= 2 and path_str[1] == ":"), (
+                f"Mock audio path for '{key}' uses Windows drive letter: {path_str}"
+            )
+
+
 class TestServiceStatus:
     def test_unloaded_service_returns_none(self):
         svc = MapDataService()
