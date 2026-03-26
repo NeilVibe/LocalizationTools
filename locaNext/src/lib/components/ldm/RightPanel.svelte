@@ -31,6 +31,8 @@
     qaIssues = [],
     tmLoading = false,
     qaLoading = false,
+    contextResults = [],
+    contextLoading = false,
     collapsed = $bindable(false),   // RightPanel owns collapse state
     width = $bindable(300),         // RightPanel owns width state
     leverageStats = null,
@@ -157,6 +159,8 @@
             {tmMatches}
             {tmLoading}
             {leverageStats}
+            {contextResults}
+            {contextLoading}
             onApplyTM={handleApplyTM}
           />
         {:else if activeTab === 'image'}

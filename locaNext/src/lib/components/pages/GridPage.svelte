@@ -48,6 +48,10 @@
   let sidePanelTMLoading = $state(false);
   let sidePanelQALoading = $state(false);
 
+  // AC Context results (Phase 88)
+  let sidePanelContextResults = $state([]);
+  let sidePanelContextLoading = $state(false);
+
   // Active TMs state (TM Hierarchy)
   let activeTMs = $state([]);
   let activeTMsLoading = $state(false);
@@ -57,6 +61,7 @@
 
   // AbortController for cancelling in-flight fetches
   let fetchController = null;
+  let contextAbortController = null;
 
   /**
    * Load active TMs for the current file (TM Hierarchy cascade)
@@ -132,6 +137,7 @@
   onDestroy(() => {
     clearTimeout(tmDebounceTimer);
     fetchController?.abort();
+    contextAbortController?.abort();
   });
 
   /**
@@ -141,6 +147,7 @@
     const { row } = data;
     sidePanelSelectedRow = row;
     sidePanelTMMatches = [];
+    sidePanelContextResults = [];
     sidePanelQAIssues = row?.qa_issues || [];
 
     if (!row?.source) return;
@@ -148,6 +155,9 @@
     // Debounce TM loading to avoid API spam on rapid row navigation
     clearTimeout(tmDebounceTimer);
     tmDebounceTimer = setTimeout(() => loadTMMatchesForRow(row), 200);
+
+    // AC context search (AbortController handles rapid-click cancellation)
+    loadContextForRow(row);
   }
 
   /**
@@ -190,6 +200,47 @@
       sidePanelTMMatches = [];
     } finally {
       sidePanelTMLoading = false;
+    }
+  }
+
+  /**
+   * Load AC context results for a row (Phase 88)
+   * Uses AbortController to cancel stale requests on rapid row clicking.
+   */
+  async function loadContextForRow(row) {
+    if (!row?.source || activeTMs.length === 0) return;
+
+    // Abort previous context request
+    contextAbortController?.abort();
+    contextAbortController = new AbortController();
+
+    sidePanelContextLoading = true;
+    try {
+      logger.apiCall('/api/ldm/tm/context', 'POST', { tm_id: activeTMs[0].tm_id });
+      const response = await fetch(`${API_BASE}/api/ldm/tm/context`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          source: row.source,
+          tm_id: activeTMs[0].tm_id,
+          max_results: 10
+        }),
+        signal: contextAbortController.signal
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      sidePanelContextResults = data.results || [];
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      logger.error('Failed to load context results', { error: err.message });
+      sidePanelContextResults = [];
+    } finally {
+      sidePanelContextLoading = false;
     }
   }
 
@@ -367,6 +418,8 @@
       qaIssues={sidePanelQAIssues}
       tmLoading={sidePanelTMLoading}
       qaLoading={sidePanelQALoading}
+      contextResults={sidePanelContextResults}
+      contextLoading={sidePanelContextLoading}
       {leverageStats}
       onApplyTM={handleApplyTMFromPanel}
       onApplySuggestion={handleApplySuggestionFromPanel}
