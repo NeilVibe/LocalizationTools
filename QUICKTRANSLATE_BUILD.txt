@@ -1,1 +1,1 @@
-Build QuickTranslate — add Ignore Spaces and Ignore Punctuation normalization checkboxes
+Build QuickTranslate — code review fixes: preserve br tags in punctuation regex, guard normalization logs
