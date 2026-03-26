@@ -42,8 +42,6 @@
       .then(async (response) => {
         if (response.ok) {
           imageContext = await response.json();
-        } else if (response.status === 404) {
-          imageContext = null;
         } else {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -94,6 +92,12 @@
       <Image size={32} />
       <span class="empty-title">Error Loading Image</span>
       <span class="empty-desc">{error}</span>
+    </div>
+  {:else if imageContext && imageContext.fallback_reason}
+    <div class="image-tab-empty" data-testid="image-tab-no-media">
+      <Image size={32} />
+      <span class="empty-title">No Image Available</span>
+      <span class="empty-desc" data-testid="image-tab-reason">{imageContext.fallback_reason}</span>
     </div>
   {:else}
     <div class="image-tab-empty" data-testid="image-tab-empty">

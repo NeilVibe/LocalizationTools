@@ -42,8 +42,6 @@
       .then(async (response) => {
         if (response.ok) {
           audioContext = await response.json();
-        } else if (response.status === 404) {
-          audioContext = null;
         } else {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -83,7 +81,7 @@
       <span class="empty-title">No Row Selected</span>
       <span class="empty-desc">Select a row in the grid to view audio context</span>
     </div>
-  {:else if audioContext}
+  {:else if audioContext && audioContext.wem_path}
     <div class="audio-context" data-testid="audio-tab-player">
       <!-- Event name header -->
       <div class="event-header">
@@ -122,6 +120,12 @@
 
       <!-- WEM path -->
       <span class="wem-path">{audioContext.wem_path}</span>
+    </div>
+  {:else if audioContext && audioContext.fallback_reason}
+    <div class="audio-tab-empty" data-testid="audio-tab-no-media">
+      <Music size={32} />
+      <span class="empty-title">No Audio Available</span>
+      <span class="empty-desc" data-testid="audio-tab-reason">{audioContext.fallback_reason}</span>
     </div>
   {:else if error}
     <div class="audio-tab-empty" data-testid="audio-tab-empty">
