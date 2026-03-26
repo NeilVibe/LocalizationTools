@@ -987,13 +987,25 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                     ws = wb[sheet_name]
 
                     status_cols = {}
+                    tester_status_cols = {}  # username -> col (1-based)
+                    comment_cols = {}        # username -> col (1-based)
+                    memo_cols = {}           # username -> col (1-based)
+                    screenshot_cols = {}     # username -> col (1-based)
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
                         if header:
                             header_str = str(header)
                             header_upper = header_str.upper()
-                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            if header_upper.startswith("TESTER_STATUS_"):
+                                tester_status_cols[header_str[14:].strip()] = col
+                            elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                                 status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
+                            elif header_upper.startswith("COMMENT_"):
+                                comment_cols[header_str[8:]] = col
+                            elif header_upper.startswith("MEMO_"):
+                                memo_cols[header_str[5:]] = col
+                            elif header_upper.startswith("SCREENSHOT_"):
+                                screenshot_cols[header_str[11:]] = col
 
                     _tracker_log(f"  SHEET '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
 
@@ -1058,6 +1070,25 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                             value = ws.cell(row=row, column=col).value
                             if value:
                                 v = str(value).strip().upper()
+                                if v not in ("FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"):
+                                    continue
+                                # Phantom check: only count if tester has ISSUE + comment
+                                ts_col = tester_status_cols.get(username)
+                                if ts_col:
+                                    ts_val = ws.cell(row=row, column=ts_col).value
+                                    ts_str = str(ts_val).strip().upper() if ts_val else ""
+                                    if ts_str != "ISSUE":
+                                        continue
+                                    has_comment = False
+                                    for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                        c_col = col_map.get(username)
+                                        if c_col:
+                                            c_val = ws.cell(row=row, column=c_col).value
+                                            if c_val and str(c_val).strip():
+                                                has_comment = True
+                                                break
+                                    if not has_comment:
+                                        continue
                                 if v == "FIXED": manager_stats[category][username]["fixed"] += 1
                                 elif v == "REPORTED": manager_stats[category][username]["reported"] += 1
                                 elif v == "CHECKING": manager_stats[category][username]["checking"] += 1
