@@ -547,7 +547,7 @@
     right: 0;
     display: flex;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: #222222;
+    background: var(--cds-layer-01);
     transition: background-color 0.15s ease;
     box-sizing: border-box;
   }

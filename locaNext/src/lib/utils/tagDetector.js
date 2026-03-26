@@ -69,8 +69,25 @@ const TAG_PATTERNS = [
     color: 'grey'
   },
   {
+    name: 'pacolor',
+    // Priority 5: Standalone &lt;PAColor0xHEX&gt; (opener without combined pattern)
+    regex: /&lt;PAColor(0x[0-9a-fA-F]{6,8})&gt;/g,
+    format: (m) => {
+      const cssColor = hexToCSS(m[1]);
+      return { label: 'Color', type: 'pacolor', cssColor };
+    },
+    color: 'combined'
+  },
+  {
+    name: 'paoldcolor',
+    // Priority 6: Standalone &lt;PAOldColor&gt; (closer/reset)
+    regex: /&lt;PAOldColor&gt;/g,
+    format: () => ({ label: '/Color', type: 'paoldcolor' }),
+    color: 'grey'
+  },
+  {
     name: 'desc',
-    // Priority 5: &desc; or &amp;desc; (dual-form entity matching)
+    // Priority 7: &desc; or &amp;desc; (dual-form entity matching)
     regex: /&(?:amp;)?desc;/g,
     format: () => ({ label: 'desc', type: 'desc' }),
     color: 'orange'
@@ -153,6 +170,7 @@ export function detectTags(text) {
 export function hasTags(text) {
   if (!text || typeof text !== 'string') return false;
   return /&lt;PAColor0x[0-9a-fA-F]{6,8}&gt;/.test(text) ||
+         /&lt;PAOldColor&gt;/.test(text) ||
          /%\d#/.test(text) ||
          /\{[^}]+\}/.test(text) ||
          /\\[\w]/.test(text) ||

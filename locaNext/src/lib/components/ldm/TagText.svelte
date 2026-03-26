@@ -26,7 +26,8 @@
    */
   function formatPlainText(t) {
     if (!t) return '';
-    return t.replace(/&lt;br\/&gt;/g, '\n');
+    // Handle both literal <br/> and HTML-escaped &lt;br/&gt; forms
+    return t.replace(/<br\s*\/?>/gi, '\n').replace(/&lt;br\s*\/?&gt;/gi, '\n');
   }
 </script>
 
@@ -34,7 +35,7 @@
   <span class="tag-text">
     {#each segments as seg, i (i)}
       {#if seg.tag}
-        {#if seg.tag.type === 'combinedcolor'}
+        {#if seg.tag.type === 'combinedcolor' || seg.tag.type === 'pacolor'}
           <span
             class="tag-pill tag-combinedcolor"
             title={seg.tag.raw}
@@ -66,11 +67,11 @@
 
   .tag-pill {
     display: inline;
-    padding: 0 3px;
+    padding: 0 2px;
     border-radius: 2px;
-    font-size: 0.8em;
+    font-size: 0.75em;
     font-family: 'Consolas', 'Monaco', monospace;
-    line-height: 1.2;
+    line-height: 1.3;
     vertical-align: baseline;
     white-space: nowrap;
     cursor: default;

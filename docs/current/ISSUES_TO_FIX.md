@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-03-25 | **Build:** GREEN (Light Build v26.324.2024) | **Open:** 4
+**Last Updated:** 2026-03-26 | **Build:** GREEN | **Open:** 0
 
 ---
 
@@ -8,43 +8,42 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
-| **FIXED/CLOSED** | 167 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 171 |
 
 ---
 
 ## OPEN ISSUES
 
-### UI-101: br-tag Linebreaks Show as Tag Pills
-
-- **Found:** v9.0 Windows testing (2026-03-25)
-- **Component:** VirtualGrid tag pill rendering
-- **Problem:** `<br/>` linebreak tags render as tag pills in view mode, disappear on edit, don't restore
-- **Decision:** HIDE br-tags entirely in grid (merge auto-handles them). Only show color/format tags.
-- **Stack:** `/xml-localization` + `/svelte-code-writer`
-
-### UI-102: Color Code + Format Code Should Be Combined
-
-- **Found:** v9.0 Windows testing (2026-03-25)
-- **Component:** tagDetector.js + TagText.svelte
-- **Problem:** Color codes and format codes render as separate tag pills. Should be ONE combined regex tag: `ColorCode+TextFormatCode` as a single pill with the color applied.
-- **Stack:** `/xml-localization` + `/svelte-code-writer`
-
-### UI-103: Grid Default Background Yellow
-
-- **Found:** v9.0 Windows testing (2026-03-25)
-- **Component:** VirtualGrid CSS
-- **Problem:** Grid default background is yellow. Should be neutral/white.
-
-### UI-104: Tag Pill Redesign
-
-- **Found:** v9.0 Windows testing (2026-03-25)
-- **Component:** TagText.svelte
-- **Problem:** Tag pills need redesign — color-coded formatters as tight combined tags. Nobody customizes format codes independent of color.
+None.
 
 ---
 
 ## RECENTLY FIXED (Session 60+)
+
+### UI-101: br-tag Linebreaks Show as Tag Pills ✅ FIXED
+
+- **Fixed:** 2026-03-26
+- **Component:** TagText.svelte `formatPlainText()`
+- **Fix:** Handle both literal `<br/>` and HTML-escaped `&lt;br/&gt;` forms — convert to newlines in display.
+
+### UI-102: Color Code + Format Code Should Be Combined ✅ FIXED
+
+- **Fixed:** 2026-03-26
+- **Component:** tagDetector.js + TagText.svelte
+- **Fix:** Added standalone `pacolor` and `paoldcolor` patterns to tagDetector so standalone PAColor/PAOldColor tags render as colored pills instead of raw text. Combined pattern (Priority 0) catches wrapped cases; new patterns (Priority 5-6) catch standalone cases.
+
+### UI-103: Grid Default Background Yellow ✅ FIXED
+
+- **Fixed:** 2026-03-26
+- **Component:** CellRenderer.svelte CSS
+- **Fix:** Replaced hardcoded `#222222` row background with `var(--cds-layer-01)` Carbon CSS variable for proper neutral theming.
+
+### UI-104: Tag Pill Redesign ✅ FIXED
+
+- **Fixed:** 2026-03-26
+- **Component:** TagText.svelte CSS
+- **Fix:** Tightened pill styling — reduced padding (3px→2px), smaller font (0.8em→0.75em), better line-height. Combined color pills use dynamic coloring from hex codes.
 
 ### DOCS-002: Repository/Factory Pattern Documentation ✅ ALREADY DOCUMENTED
 
