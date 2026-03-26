@@ -132,10 +132,11 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ ARCH-01 — VirtualGrid.svelte decomposed (4293→383 lines, 91% reduction) — v11.0
 - ✓ ARCH-04 — Unit test infrastructure for Svelte 5 components (Vitest, 169 tests) — v11.0
 
+- ✓ TMUI-01 — Dual threshold system (62% context panel, 92% pretranslation, hardcoded) — v12.0
+- ✓ TMUI-02 — TM Tab UI polish with prominent match percentage badges (4-tier color bands) — v12.0
+
 ### Active
 
-- [ ] TMUI-01 — Dual threshold system (92% pretranslation, 62% context panel)
-- [ ] TMUI-02 — TM Tab UI polish with prominent match percentage display
 - [ ] ACCTX-01 — AC Context Search 3-tier cascade (whole AC, line AC, char n-gram Jaccard)
 - [ ] ACCTX-02 — AC automatons built on TM load from whole_lookup + line_lookup
 - [ ] ACCTX-03 — Character n-gram {2,3,4,5} space-stripped Korean, Jaccard ≥62%
