@@ -1,5 +1,19 @@
 # Milestones
 
+## v13.0 Production Path Resolution (Shipped: 2026-03-26)
+
+**Phases completed:** 4 phases, 5 plans, 11 tasks
+
+**Key accomplishments:**
+
+- Fixed 4 v11.0 code review issues: delegate race condition, 2 dead code blocks, 1 dead prop, 1 dead state variable across 5 grid modules
+- Always-visible Branch+Drive selector in grid toolbar with real-time path validation and localStorage persistence
+- Structured fallback_reason field added to image/audio resolution chains with specific failure reasons displayed in frontend tabs
+- Unit tests for fallback_reason behavior (11 new) and E2E tests for LanguageData StringID -> image/audio resolution chains with drive-agnostic path verification
+- mega_index.py split from 1311 to 247 lines (81% reduction) via 4 mixin modules + helpers, zero behavior change
+
+---
+
 ## v12.0 TM Intelligence (Shipped: 2026-03-26)
 
 **Phases completed:** 3 phases, 4 plans, 6 tasks
