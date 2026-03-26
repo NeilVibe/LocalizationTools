@@ -47,9 +47,12 @@ export const grid = $state({
   containerEl: null as HTMLElement | null,
 });
 
-// --- Mutable Maps/Sets (exported as $state, mutated in place) ---
+// --- Mutable Maps/Sets ---
 export const rowIndexById = $state(new Map<string, number>());
-export const rowHeightCache = $state(new Map<number, number>());
+// CRITICAL: rowHeightCache must be a PLAIN Map (not $state).
+// A reactive Map triggers ALL rows to re-render when ANY entry changes,
+// creating an O(n²) cascade with measureRowHeight (50 rows × 50 re-renders = freeze).
+export const rowHeightCache = new Map<number, number>();
 export const loadedPages = $state(new Set<number>());
 export const tmAppliedRows = $state(new Map<string, { match_type: string }>());
 export const referenceData = $state(new Map<string, { target: string; source: string }>());
