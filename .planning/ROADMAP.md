@@ -112,7 +112,7 @@ Plans:
 
 - [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state) (completed 2026-03-26)
 - [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence (completed 2026-03-26)
-- [ ] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests
+- [x] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests (completed 2026-03-26)
 - [ ] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules
 
 ## Phase Details
@@ -154,10 +154,10 @@ Plans:
   3. When image or audio cannot be resolved, the tab shows a specific reason: "Entity not found", "No texture attribute", or "File not on disk" (not a generic error)
   4. E2E tests pass verifying the full image chain (LanguageData row -> StringID -> entity -> DDS thumbnail in ImageTab) against mock Perforce fixtures
   5. E2E tests pass verifying the full audio chain (LanguageData row -> StringID -> entity -> WEM playback in AudioTab) against mock Perforce fixtures with drive-agnostic relative paths
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 91-01-PLAN.md --- Add fallback_reason to image/audio resolution chains + update frontend tabs to show specific reasons
-- [ ] 91-02-PLAN.md --- Unit tests for fallback reasons + E2E tests for full LanguageData-to-media chains
+- [x] 91-02-PLAN.md --- Unit tests for fallback reasons + E2E tests for full LanguageData-to-media chains
 
 ### Phase 92: MegaIndex Decomposition
 **Goal**: mega_index.py is split into focused domain modules that are independently readable and testable, with zero behavior change
@@ -175,5 +175,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 89. Code Cleanup | 1/1 | Complete    | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete    | 2026-03-26 |
-| 91. Media Path Resolution + E2E Testing | 1/2 | In Progress|  |
+| 91. Media Path Resolution + E2E Testing | 2/2 | Complete   | 2026-03-26 |
 | 92. MegaIndex Decomposition | 0/? | Not started | - |

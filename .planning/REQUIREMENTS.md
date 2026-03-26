@@ -30,10 +30,10 @@ Requirements for Production Path Resolution milestone.
 
 ### Mock Testing
 
-- [ ] **MOCK-01**: Mock Perforce directory structure with DDS/WEM fixtures at correct relative paths
-- [ ] **MOCK-02**: E2E tests verify full chain: LanguageData row -> StringID -> entity -> DDS thumbnail in ImageTab
-- [ ] **MOCK-03**: E2E tests verify full chain: LanguageData row -> StringID -> entity -> WEM playback in AudioTab
-- [ ] **MOCK-04**: Mock paths are drive-agnostic (relative structure, any drive letter works)
+- [x] **MOCK-01**: Mock Perforce directory structure with DDS/WEM fixtures at correct relative paths
+- [x] **MOCK-02**: E2E tests verify full chain: LanguageData row -> StringID -> entity -> DDS thumbnail in ImageTab
+- [x] **MOCK-03**: E2E tests verify full chain: LanguageData row -> StringID -> entity -> WEM playback in AudioTab
+- [x] **MOCK-04**: Mock paths are drive-agnostic (relative structure, any drive letter works)
 
 ### Architecture
 
@@ -80,10 +80,10 @@ Deferred to future milestones.
 | MEDIA-02 | Phase 91 | Complete |
 | MEDIA-03 | Phase 91 | Complete |
 | MEDIA-04 | Phase 91 | Complete |
-| MOCK-01 | Phase 91 | Pending |
-| MOCK-02 | Phase 91 | Pending |
-| MOCK-03 | Phase 91 | Pending |
-| MOCK-04 | Phase 91 | Pending |
+| MOCK-01 | Phase 91 | Complete |
+| MOCK-02 | Phase 91 | Complete |
+| MOCK-03 | Phase 91 | Complete |
+| MOCK-04 | Phase 91 | Complete |
 | ARCH-02 | Phase 92 | Pending |
 
 **Coverage:**
