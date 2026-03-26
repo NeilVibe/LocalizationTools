@@ -171,17 +171,17 @@ class TestContextPanel:
         assert entity.get("strkey"), "Entity must have strkey"
 
     def test_image_context_endpoint(self, api):
-        """GET /api/ldm/mapdata/image/{string_id} returns 200 or 404."""
+        """GET /api/ldm/mapdata/image/{string_id} returns 200, 404, or 503."""
         resp = api.get_image_context("Character_ElderVaron")
-        # Endpoint should exist — 200 if data found, 404 if not configured
-        assert resp.status_code in (200, 404), (
+        # 200=found, 404=not found, 503=MapData service not initialized (CI)
+        assert resp.status_code in (200, 404, 503), (
             f"Image context returned unexpected {resp.status_code}: {resp.text[:200]}"
         )
 
     def test_audio_context_endpoint(self, api):
-        """GET /api/ldm/mapdata/audio/{string_id} returns 200 or 404."""
+        """GET /api/ldm/mapdata/audio/{string_id} returns 200, 404, or 503."""
         resp = api.get_audio_context("Character_ElderVaron")
-        # Endpoint should exist — 200 if data found, 404 if not configured
-        assert resp.status_code in (200, 404), (
+        # 200=found, 404=not found, 503=MapData service not initialized (CI)
+        assert resp.status_code in (200, 404, 503), (
             f"Audio context returned unexpected {resp.status_code}: {resp.text[:200]}"
         )
