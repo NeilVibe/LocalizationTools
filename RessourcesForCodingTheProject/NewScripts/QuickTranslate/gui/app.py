@@ -91,6 +91,7 @@ from core import (
     check_xlsxwriter_available,
 )
 from core.missing_translation_finder import find_missing_with_options
+from core.converters import xml_to_excel, excel_to_xml, concatenate_xmls
 from core.checker import run_korean_check, run_pattern_check, check_formula_text_in_file, check_text_integrity_in_file
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
@@ -786,6 +787,9 @@ class QuickTranslateApp:
             font=('Segoe UI', 9, 'bold'), bg='#27ae60', fg='white',
             relief='flat', padx=10, cursor='hand2')
         self.extract_trans_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        # --- Quick Converters section ---
+        self._build_quick_converters(self._tab2_inner)
 
         # === Log Section (right pane) ===
         log_frame = tk.LabelFrame(self._right_pane, text="Log", font=('Segoe UI', 10, 'bold'),
@@ -1881,6 +1885,242 @@ class QuickTranslateApp:
                 cb.configure(bg='#fde8e8', activebackground='#fde8e8')
             else:
                 cb.configure(bg='white', activebackground='white')
+
+    # ------------------------------------------------------------------
+    # Quick Converters (Other Tools tab)
+    # ------------------------------------------------------------------
+
+    def _build_quick_converters(self, parent):
+        """Build the Quick Converters section in the Other Tools tab."""
+        conv_frame = tk.LabelFrame(parent, text="Quick Converters",
+                                   font=('Segoe UI', 10, 'bold'),
+                                   bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        conv_frame.pack(fill=tk.X, pady=(0, 8))
+
+        # Mode toggle: File / Folder
+        mode_row = tk.Frame(conv_frame, bg='#f0f0f0')
+        mode_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(mode_row, text="Mode:", font=('Segoe UI', 9, 'bold'),
+                 bg='#f0f0f0').pack(side=tk.LEFT)
+        self._conv_mode = tk.StringVar(value="folder")
+        tk.Radiobutton(mode_row, text="Folder", variable=self._conv_mode,
+                        value="folder", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0',
+                        command=self._on_conv_mode_changed).pack(side=tk.LEFT, padx=(6, 0))
+        tk.Radiobutton(mode_row, text="File", variable=self._conv_mode,
+                        value="file", font=('Segoe UI', 9), bg='#f0f0f0',
+                        activebackground='#f0f0f0',
+                        command=self._on_conv_mode_changed).pack(side=tk.LEFT, padx=(8, 0))
+
+        # Input path
+        path_row = tk.Frame(conv_frame, bg='#f0f0f0')
+        path_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(path_row, text="Input:", font=('Segoe UI', 9),
+                 bg='#f0f0f0', width=6, anchor='w').pack(side=tk.LEFT)
+        self._conv_input_path = tk.StringVar()
+        tk.Entry(path_row, textvariable=self._conv_input_path,
+                 font=('Segoe UI', 9), relief='solid', bd=1).pack(
+                     side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        tk.Button(path_row, text="Browse", command=self._browse_conv_input,
+                  font=('Segoe UI', 8), relief='flat', bg='#bdc3c7',
+                  cursor='hand2').pack(side=tk.LEFT)
+
+        # Buttons row 1: XML ↔ Excel
+        btn_row1 = tk.Frame(conv_frame, bg='#f0f0f0')
+        btn_row1.pack(fill=tk.X, pady=(0, 4))
+
+        self._btn_xml_to_excel = tk.Button(
+            btn_row1, text="XML → Excel", command=self._conv_xml_to_excel,
+            font=('Segoe UI', 9, 'bold'), bg='#e74c3c', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=14)
+        self._btn_xml_to_excel.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._btn_excel_to_xml = tk.Button(
+            btn_row1, text="Excel → XML", command=self._conv_excel_to_xml,
+            font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=14)
+        self._btn_excel_to_xml.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._btn_concat_xml = tk.Button(
+            btn_row1, text="Concatenate XML", command=self._conv_concatenate_xml,
+            font=('Segoe UI', 9, 'bold'), bg='#8e44ad', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=16)
+        self._btn_concat_xml.pack(side=tk.LEFT)
+
+        # Buttons row 2: TMX ↔ Excel
+        btn_row2 = tk.Frame(conv_frame, bg='#f0f0f0')
+        btn_row2.pack(fill=tk.X)
+
+        self._btn_tmx_to_excel = tk.Button(
+            btn_row2, text="TMX → Excel", command=self._conv_tmx_to_excel,
+            font=('Segoe UI', 9, 'bold'), bg='#2980b9', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=14)
+        self._btn_tmx_to_excel.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._btn_excel_to_tmx = tk.Button(
+            btn_row2, text="Excel → TMX", command=self._conv_excel_to_tmx,
+            font=('Segoe UI', 9, 'bold'), bg='#27ae60', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=14)
+        self._btn_excel_to_tmx.pack(side=tk.LEFT)
+
+        # Initial state
+        self._on_conv_mode_changed()
+
+    def _on_conv_mode_changed(self):
+        """Enable/disable Concatenate XML based on mode (folder only)."""
+        is_folder = self._conv_mode.get() == "folder"
+        self._btn_concat_xml.configure(
+            state='normal' if is_folder else 'disabled',
+            bg='#8e44ad' if is_folder else '#cccccc',
+        )
+
+    def _browse_conv_input(self):
+        """Browse for converter input path."""
+        if self._conv_mode.get() == "folder":
+            path = filedialog.askdirectory(title="Select Input Folder")
+        else:
+            path = filedialog.askopenfilename(
+                title="Select Input File",
+                filetypes=[
+                    ("All supported", "*.xml *.xlsx *.tmx"),
+                    ("XML files", "*.xml"),
+                    ("Excel files", "*.xlsx"),
+                    ("TMX files", "*.tmx"),
+                    ("All files", "*.*"),
+                ])
+        if path:
+            self._conv_input_path.set(path)
+
+    def _conv_validate_input(self) -> bool:
+        """Validate converter input path exists."""
+        path = self._conv_input_path.get()
+        if not path:
+            messagebox.showwarning("Quick Converters", "Please select an input file or folder.")
+            return False
+        if not os.path.exists(path):
+            messagebox.showwarning("Quick Converters", f"Path not found:\n{path}")
+            return False
+        return True
+
+    def _set_conv_buttons_state(self, state: str):
+        """Enable/disable all converter buttons."""
+        for btn in (self._btn_xml_to_excel, self._btn_excel_to_xml,
+                    self._btn_concat_xml, self._btn_tmx_to_excel,
+                    self._btn_excel_to_tmx):
+            btn.configure(state=state)
+        # Re-apply concat mode restriction when re-enabling
+        if state == 'normal':
+            self._on_conv_mode_changed()
+
+    def _conv_run_threaded(self, label: str, func):
+        """Run a converter function in a background thread."""
+        self._set_conv_buttons_state('disabled')
+        self._log(f"[{label}] Starting...", "info")
+
+        def worker():
+            try:
+                result = func()
+                self.root.after(0, self._log, f"[{label}] Done: {result}", "info")
+            except Exception as exc:
+                logger.exception(f"{label} failed")
+                self.root.after(0, self._log, f"[{label}] ERROR: {exc}", "error")
+            finally:
+                self.root.after(0, self._set_conv_buttons_state, 'normal')
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _conv_check_ext(self, expected: str) -> bool:
+        """In file mode, check input file has the expected extension."""
+        if self._conv_mode.get() == "folder":
+            return True
+        path = self._conv_input_path.get().lower()
+        if not path.endswith(expected):
+            messagebox.showwarning("Quick Converters",
+                                   f"Expected a {expected} file, got: {os.path.basename(path)}")
+            return False
+        return True
+
+    def _conv_xml_to_excel(self):
+        if not self._conv_validate_input() or not self._conv_check_ext(".xml"):
+            return
+        input_path = self._conv_input_path.get()
+        is_folder = self._conv_mode.get() == "folder"
+        out = filedialog.asksaveasfilename(
+            title="Save Excel As",
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx")])
+        if not out:
+            return
+
+        def do_convert():
+            res = xml_to_excel(input_path, out, is_folder=is_folder,
+                               progress_callback=lambda msg: self.root.after(0, self._log, msg, "info"))
+            return f"{res['rows']} rows from {res['files']} file(s)"
+
+        self._conv_run_threaded("XML→Excel", do_convert)
+
+    def _conv_excel_to_xml(self):
+        if not self._conv_validate_input() or not self._conv_check_ext(".xlsx"):
+            return
+        input_path = self._conv_input_path.get()
+        out = filedialog.asksaveasfilename(
+            title="Save XML As",
+            defaultextension=".xml",
+            filetypes=[("XML files", "*.xml")])
+        if not out:
+            return
+
+        def do_convert():
+            res = excel_to_xml(input_path, out,
+                               progress_callback=lambda msg: self.root.after(0, self._log, msg, "info"))
+            return f"{res['rows']} entries"
+
+        self._conv_run_threaded("Excel→XML", do_convert)
+
+    def _conv_concatenate_xml(self):
+        if not self._conv_validate_input():
+            return
+        input_path = self._conv_input_path.get()
+        if not os.path.isdir(input_path):
+            messagebox.showwarning("Quick Converters", "Concatenate XML requires a folder input.")
+            return
+        out = filedialog.asksaveasfilename(
+            title="Save Concatenated XML As",
+            defaultextension=".xml",
+            filetypes=[("XML files", "*.xml")])
+        if not out:
+            return
+
+        def do_convert():
+            res = concatenate_xmls(input_path, out,
+                                   progress_callback=lambda msg: self.root.after(0, self._log, msg, "info"))
+            return f"{res['total_locs']} LocStrs from {res['files']} file(s)"
+
+        self._conv_run_threaded("Concatenate XML", do_convert)
+
+    def _conv_tmx_to_excel(self):
+        if not self._conv_validate_input() or not self._conv_check_ext(".tmx"):
+            return
+        input_path = self._conv_input_path.get()
+        from core.tmx_tools import clean_and_convert_to_excel
+
+        def do_convert():
+            out = clean_and_convert_to_excel(input_path)
+            return f"→ {os.path.basename(out)}"
+
+        self._conv_run_threaded("TMX→Excel", do_convert)
+
+    def _conv_excel_to_tmx(self):
+        if not self._conv_validate_input() or not self._conv_check_ext(".xlsx"):
+            return
+        input_path = self._conv_input_path.get()
+        from core.tmx_tools import excel_to_memoq_tmx
+
+        def do_convert():
+            out = excel_to_memoq_tmx(input_path)
+            return f"→ {os.path.basename(out)}"
+
+        self._conv_run_threaded("Excel→TMX", do_convert)
 
     def _update_match_type_availability(self):
         """Enable/disable match type radio buttons based on detected source columns.
