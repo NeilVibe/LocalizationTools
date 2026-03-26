@@ -1,1 +1,1 @@
-Build v12.0+v13.0 — fix infinite reactive loop in grid
+Build LocaNext — UI-101 to UI-104 grid fixes (br-tags, color pills, background, pill styling)
