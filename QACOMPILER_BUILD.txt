@@ -1,1 +1,1 @@
-Build QACompiler — named column phantom detection + code review fixes
+Build QACompiler — phantom check on manager stats (require ISSUE+comment)
