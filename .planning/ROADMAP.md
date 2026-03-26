@@ -64,7 +64,7 @@ Plans:
 
 - [x] **Phase 86: Dual Threshold + TM Tab UI** - Hardcoded dual threshold system (92%/62%) and prominent match percentage badges in TM right panel (completed 2026-03-26)
 - [x] **Phase 87: AC Context Engine** - Aho-Corasick automaton build from TM dictionaries, character n-gram Jaccard scorer, performance-validated backend (completed 2026-03-26)
-- [ ] **Phase 88: AC Context Integration** - Wire AC context engine to row-select, display tiered results in right panel with match scores
+- [x] **Phase 88: AC Context Integration** - Wire AC context engine to row-select, display tiered results in right panel with match scores (completed 2026-03-26)
 
 ## Phase Details
 
@@ -106,9 +106,9 @@ Plans:
   3. Each result shows a tier indicator (Exact / Line / Fuzzy) and the match score percentage
   4. Results are ordered by tier (exact first) then by score descending within each tier
   5. The right panel updates without perceptible delay when clicking between rows
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 88-01-PLAN.md --- Wire context fetch to row-select with AbortController, display tiered results in TM tab
+- [x] 88-01-PLAN.md --- Wire context fetch to row-select with AbortController, display tiered results in TM tab
 
 ## Progress
 
@@ -116,4 +116,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 86. Dual Threshold + TM Tab UI | 1/1 | Complete    | 2026-03-26 |
 | 87. AC Context Engine | 2/2 | Complete    | 2026-03-26 |
-| 88. AC Context Integration | 0/1 | Not started | - |
+| 88. AC Context Integration | 1/1 | Complete   | 2026-03-26 |

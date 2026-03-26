@@ -15,9 +15,9 @@ Requirements for TM Intelligence milestone. Each maps to roadmap phases.
 ### AC Context Search
 
 - [x] **ACCTX-01**: System builds Aho-Corasick automatons (whole + line) from loaded TM on TM index load
-- [ ] **ACCTX-02**: When translator selects a row, AC scans Korean source text and shows where terms appear elsewhere in the TM
+- [x] **ACCTX-02**: When translator selects a row, AC scans Korean source text and shows where terms appear elsewhere in the TM
 - [x] **ACCTX-03**: System uses character n-gram Jaccard (n={2,3,4,5}, space-stripped Korean) for fuzzy matches below AC exact threshold (>=62%)
-- [ ] **ACCTX-04**: Context search results appear in the right panel with match tier indicator and score
+- [x] **ACCTX-04**: Context search results appear in the right panel with match tier indicator and score
 
 ### Performance
 
@@ -54,9 +54,9 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | TMUI-01 | Phase 86 | Complete |
 | TMUI-02 | Phase 86 | Complete |
 | ACCTX-01 | Phase 87 | Complete |
-| ACCTX-02 | Phase 88 | Pending |
+| ACCTX-02 | Phase 88 | Complete |
 | ACCTX-03 | Phase 87 | Complete |
-| ACCTX-04 | Phase 88 | Pending |
+| ACCTX-04 | Phase 88 | Complete |
 | PERF-01 | Phase 87 | Complete |
 
 **Coverage:**
