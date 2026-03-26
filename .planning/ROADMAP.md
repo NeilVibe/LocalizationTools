@@ -113,7 +113,7 @@ Plans:
 - [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state) (completed 2026-03-26)
 - [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence (completed 2026-03-26)
 - [x] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests (completed 2026-03-26)
-- [ ] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules
+- [x] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules (completed 2026-03-26)
 
 ## Phase Details
 
@@ -167,9 +167,9 @@ Plans:
   1. mega_index.py is replaced by 5 focused modules (entity parsing, media indexing, cross-reference chains, search/lookup, build orchestrator) with no single module exceeding 400 lines
   2. All existing tests that exercise MegaIndex (E2E mapdata tests, mock gamedata tests, new Phase 91 tests) pass without modification
   3. The public API of MegaIndex (build(), all 35 dict accessors, all lookup methods) remains unchanged -- callers do not need to change imports
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 92-01-PLAN.md --- Mixin decomposition: extract 4 mixin modules (data parsers, entity parsers, builders, API) + helpers, slim mega_index.py to orchestrator
+- [x] 92-01-PLAN.md --- Mixin decomposition: extract 4 mixin modules (data parsers, entity parsers, builders, API) + helpers, slim mega_index.py to orchestrator
 
 ## Progress
 
@@ -178,4 +178,4 @@ Plans:
 | 89. Code Cleanup | 1/1 | Complete    | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete    | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete    | 2026-03-26 |
-| 92. MegaIndex Decomposition | 0/1 | Not started | - |
+| 92. MegaIndex Decomposition | 1/1 | Complete   | 2026-03-26 |

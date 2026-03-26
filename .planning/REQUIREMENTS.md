@@ -37,7 +37,7 @@ Requirements for Production Path Resolution milestone.
 
 ### Architecture
 
-- [ ] **ARCH-02**: mega_index.py split from 1310 lines into 5 focused modules (entity, media, cross-ref, search, build)
+- [x] **ARCH-02**: mega_index.py split from 1310 lines into 5 focused modules (entity, media, cross-ref, search, build)
 
 ## Future Requirements
 
@@ -84,7 +84,7 @@ Deferred to future milestones.
 | MOCK-02 | Phase 91 | Complete |
 | MOCK-03 | Phase 91 | Complete |
 | MOCK-04 | Phase 91 | Complete |
-| ARCH-02 | Phase 92 | Pending |
+| ARCH-02 | Phase 92 | Complete |
 
 **Coverage:**
 - v13.0 requirements: 17 total
