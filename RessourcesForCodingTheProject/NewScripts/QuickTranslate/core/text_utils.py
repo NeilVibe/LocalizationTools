@@ -438,8 +438,10 @@ def normalize_nospace(txt: str) -> str:
 
 # Punctuation characters to strip (common in game dialogue StrOrigin).
 # Excludes <br/> tag chars and Korean/CJK ranges.
-# Excludes <, >, / to preserve <br/> tags in StrOrigin values
-_PUNCTUATION_RE = re.compile(r'[.,;:!?\'"\-–—…()[\]{}\\@#$%^&*_+=~`|]+')
+# BARE MINIMUM sentence punctuation only — 6 chars + ellipsis.
+# .  ,  !  ?  :  …(U+2026)  ...(three dots)
+# NOTHING ELSE. No ; (could be code), no quotes, no dashes, no brackets, no symbols.
+_PUNCTUATION_RE = re.compile(r'[.,!?:\u2026]|\.{2,}')
 
 
 def normalize_no_punctuation(txt: str) -> str:
