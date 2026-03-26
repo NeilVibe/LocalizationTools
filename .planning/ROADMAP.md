@@ -106,7 +106,9 @@ Plans:
   3. Each result shows a tier indicator (Exact / Line / Fuzzy) and the match score percentage
   4. Results are ordered by tier (exact first) then by score descending within each tier
   5. The right panel updates without perceptible delay when clicking between rows
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 88-01-PLAN.md --- Wire context fetch to row-select with AbortController, display tiered results in TM tab
 
 ## Progress
 
@@ -114,4 +116,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 86. Dual Threshold + TM Tab UI | 1/1 | Complete    | 2026-03-26 |
 | 87. AC Context Engine | 2/2 | Complete    | 2026-03-26 |
-| 88. AC Context Integration | 0/TBD | Not started | - |
+| 88. AC Context Integration | 0/1 | Not started | - |
