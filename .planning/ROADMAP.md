@@ -110,7 +110,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state)
+- [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state) (completed 2026-03-26)
 - [ ] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence
 - [ ] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests
 - [ ] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules
@@ -126,9 +126,9 @@ Plans:
   2. CellRenderer has no unused $derived computations or dead helper functions (visibleColumns removed)
   3. InlineEditor notifies the parent when a cell save completes (onSaveComplete wired or removed with documented rationale)
   4. TM suggestions from StatusColors are either consumed by parent components or confirmed as internal-only with dead export path removed
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 89-01-PLAN.md --- Fix onScrollToRow race (prop instead of delegate), remove dead code in CellRenderer/InlineEditor/StatusColors
+- [x] 89-01-PLAN.md --- Fix onScrollToRow race (prop instead of delegate), remove dead code in CellRenderer/InlineEditor/StatusColors
 
 ### Phase 90: Branch+Drive Configuration
 **Goal**: Users can configure which Perforce branch and drive letter to use for game data lookups, with immediate visual feedback on path availability
@@ -168,7 +168,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 89. Code Cleanup | 0/1 | Planned | - |
+| 89. Code Cleanup | 1/1 | Complete   | 2026-03-26 |
 | 90. Branch+Drive Configuration | 0/? | Not started | - |
 | 91. Media Path Resolution + E2E Testing | 0/? | Not started | - |
 | 92. MegaIndex Decomposition | 0/? | Not started | - |

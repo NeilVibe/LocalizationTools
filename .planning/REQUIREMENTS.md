@@ -9,10 +9,10 @@ Requirements for Production Path Resolution milestone.
 
 ### Code Cleanup
 
-- [ ] **FIX-01**: onScrollToRow delegate race in SearchEngine resolved -- scroll-to-row works reliably after search
-- [ ] **FIX-02**: visibleColumns dead $derived removed from CellRenderer
-- [ ] **FIX-03**: onSaveComplete callback wired in InlineEditor -- parent notified on save
-- [ ] **FIX-04**: tmSuggestions accessible from StatusColors to parent components
+- [x] **FIX-01**: onScrollToRow delegate race in SearchEngine resolved -- scroll-to-row works reliably after search
+- [x] **FIX-02**: visibleColumns dead $derived removed from CellRenderer
+- [x] **FIX-03**: onSaveComplete callback wired in InlineEditor -- parent notified on save
+- [x] **FIX-04**: tmSuggestions accessible from StatusColors to parent components
 
 ### Path Configuration
 
@@ -68,10 +68,10 @@ Deferred to future milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-01 | Phase 89 | Pending |
-| FIX-02 | Phase 89 | Pending |
-| FIX-03 | Phase 89 | Pending |
-| FIX-04 | Phase 89 | Pending |
+| FIX-01 | Phase 89 | Complete |
+| FIX-02 | Phase 89 | Complete |
+| FIX-03 | Phase 89 | Complete |
+| FIX-04 | Phase 89 | Complete |
 | PATH-01 | Phase 90 | Pending |
 | PATH-02 | Phase 90 | Pending |
 | PATH-03 | Phase 90 | Pending |
