@@ -1,1 +1,1 @@
-Build QuickCheck — version title + NUM CHECK false-positive hardening
+Build QuickCheck — Roman numeral fix V/X/L/C + extended to 100
