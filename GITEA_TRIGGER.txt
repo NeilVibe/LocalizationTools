@@ -1,1 +1,1 @@
-Build v12.0+v13.0 — fix E2E context endpoint tests
+Build v12.0+v13.0 — fix infinite reactive loop in grid
