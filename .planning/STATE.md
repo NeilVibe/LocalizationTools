@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 86-01-PLAN.md
-last_updated: "2026-03-26T04:02:40.653Z"
+stopped_at: Completed 87-01-PLAN.md
+last_updated: "2026-03-26T04:20:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 3
+  completed_plans: 2
 ---
 
 # Project State
@@ -19,17 +19,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 86 — Dual Threshold + TM Tab UI
+**Current focus:** Phase 87 — AC Context Engine
 
 ## Current Position
 
-Phase: 87
-Plan: Not started
+Phase: 87 (AC Context Engine) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
 - Phases: 0/3 complete
-- Plans: 0/TBD complete
+- Plans: 2/3 complete
 - Requirements mapped: 7/7
 
 ## Accumulated Context
@@ -44,6 +44,8 @@ Plan: Not started
 - Space-strip Korean before n-gram extraction (inconsistent spacing in game text)
 - Performance fallback: n={2,4} if n={2,3,4,5} too slow
 - [Phase 86]: CONTEXT_THRESHOLD=0.62 hardcoded for right panel, preferences.tmThreshold=0.92 for pretranslation
+- [Phase 87]: AC automatons built in load_indexes() (not build_indexes()) -- rebuilds from existing data each load
+- [Phase 87]: Jaccard uses union of n={2,3,4,5} char n-grams with space stripping for Korean
 - [Phase 86]: Green color for both Exact and High (>=92%) to visually group quality matches
 
 ### Phase Structure
@@ -64,6 +66,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-26T04:00:05.087Z
-Stopped at: Completed 86-01-PLAN.md
-Next action: `/gsd:plan-phase 86`
+Last session: 2026-03-26T04:20:00.000Z
+Stopped at: Completed 87-01-PLAN.md
+Next action: Execute 87-02-PLAN.md (AC context engine performance benchmark)
