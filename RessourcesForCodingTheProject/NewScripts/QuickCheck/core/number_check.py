@@ -9,7 +9,7 @@ Algorithm:
   3. Compare multisets — flag if they differ (missing or extra numbers)
 
 Numbers are normalised: leading zeros stripped, trailing decimal zeros stripped.
-Handles integers, decimals, negative numbers, and comma-separated thousands.
+Handles integers, decimals, and comma-separated thousands. Hyphens are ignored.
 Skips numbers embedded in identifiers (e.g. item_02, stage3).
 Uses Counter (multiset) so "10 + 10 = 20" correctly requires two 10s.
 """
@@ -35,9 +35,9 @@ logger = logging.getLogger(__name__)
 _RE_IDENTIFIER = re.compile(r'[a-zA-Z_]\w*(?:\.\w+)*')
 
 # Step 2: Extract standalone numbers from cleaned text.
-# Matches: 100, 3.5, -10, 1,000, 1,234.56
+# Matches: 100, 3.5, 1,000, 1,234.56
+# Does NOT match negative signs — hyphens are ignored.
 _RE_NUMBER = re.compile(
-    r'-?'                    # optional negative sign
     r'(?:\d{1,3}(?:,\d{3})+|\d+)'  # integer part (with or without commas)
     r'(?:\.\d+)?'            # optional decimal part
 )
@@ -52,22 +52,16 @@ def _normalise_number(raw: str) -> str:
     - Returns canonical string form
     """
     s = raw.replace(',', '')
-    neg = s.startswith('-')
-    if neg:
-        s = s[1:]
 
     if '.' in s:
         int_part, dec_part = s.split('.', 1)
         int_part = int_part.lstrip('0') or '0'
         dec_part = dec_part.rstrip('0')
         if dec_part:
-            result = f"{int_part}.{dec_part}"
-        else:
-            result = int_part
-    else:
-        result = s.lstrip('0') or '0'
+            return f"{int_part}.{dec_part}"
+        return int_part
 
-    return f"-{result}" if neg else result
+    return s.lstrip('0') or '0'
 
 
 def _safe_sort_key(x: str) -> float:
