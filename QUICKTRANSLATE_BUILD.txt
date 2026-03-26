@@ -1,1 +1,1 @@
-Build QuickTranslate — unified colors (match type standard bg, checkboxes match frame bg)
+Build QuickTranslate — all controls log state to GUI (checkboxes ON/OFF, radios selected, compact precision)

@@ -411,18 +411,15 @@ class QuickTranslateApp:
 
         precision_row = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
         precision_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row, text="Perfect Match (exact text comparison)",
+        tk.Radiobutton(precision_row, text="Perfect Match",
                        variable=self.match_precision, value="perfect",
                        font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
-                       cursor='hand2', command=self._on_precision_changed).pack(
+                       selectcolor='white', cursor='hand2', command=self._on_precision_changed).pack(
                        side=tk.LEFT, padx=(10, 0))
-
-        precision_row2 = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
-        precision_row2.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row2, text="Fuzzy Match (Model2Vec semantic similarity)",
+        tk.Radiobutton(precision_row, text="Fuzzy Match",
                        variable=self.match_precision, value="fuzzy",
                        font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
-                       cursor='hand2', command=self._on_precision_changed).pack(
+                       selectcolor='white', cursor='hand2', command=self._on_precision_changed).pack(
                        side=tk.LEFT, padx=(10, 0))
 
         # Fuzzy threshold sub-frame (shown only when fuzzy precision selected)
@@ -481,27 +478,25 @@ class QuickTranslateApp:
                                            relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        uo_row1 = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
-        uo_row1.pack(fill=tk.X)
-        self._uo_unique_cb = tk.Checkbutton(uo_row1, text="Unique only",
+        uo_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        uo_row.pack(fill=tk.X)
+        self._uo_unique_cb = tk.Checkbutton(uo_row, text="Unique only",
                        variable=self.unique_only_strorigin,
                        font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='white',
                        activebackground='#e8f0fe', cursor='hand2',
-                       command=self._restyle_checkboxes)
-        self._uo_unique_cb.pack(side=tk.LEFT)
-        uo_row2 = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
-        uo_row2.pack(fill=tk.X, pady=(2, 0))
-        self._uo_spaces_cb = tk.Checkbutton(uo_row2, text="Ignore Spaces",
+                       command=lambda: self._on_checkbox_toggled("Unique only", self.unique_only_strorigin))
+        self._uo_unique_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._uo_spaces_cb = tk.Checkbutton(uo_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='white',
                        activebackground='#e8f0fe', cursor='hand2',
-                       command=self._restyle_checkboxes)
+                       command=lambda: self._on_checkbox_toggled("Ignore Spaces", self._ignore_spaces_var))
         self._uo_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._uo_punct_cb = tk.Checkbutton(uo_row2, text="Ignore Punctuation",
+        self._uo_punct_cb = tk.Checkbutton(uo_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='white',
                        activebackground='#e8f0fe', cursor='hand2',
-                       command=self._restyle_checkboxes)
+                       command=lambda: self._on_checkbox_toggled("Ignore Punctuation", self._ignore_punctuation_var))
         self._uo_punct_cb.pack(side=tk.LEFT)
 
         # === Non-Script Only frame (STRICT mode only) ===
@@ -509,27 +504,25 @@ class QuickTranslateApp:
                                                  relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        ns_row1 = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
-        ns_row1.pack(fill=tk.X)
-        self._ns_nonscript_cb = tk.Checkbutton(ns_row1, text="Non-Script only",
+        ns_row = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
+        ns_row.pack(fill=tk.X)
+        self._ns_nonscript_cb = tk.Checkbutton(ns_row, text="Non-Script only",
                        variable=self._strict_non_script_var,
-                       command=lambda: (self._on_presub_setting_changed(), self._restyle_checkboxes()),
+                       command=lambda: (self._on_presub_setting_changed(), self._on_checkbox_toggled("Non-Script only", self._strict_non_script_var)),
                        font=('Segoe UI', 9), bg='#fde8e8', selectcolor='white',
                        activebackground='#fde8e8', cursor='hand2')
-        self._ns_nonscript_cb.pack(side=tk.LEFT)
-        ns_row2 = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
-        ns_row2.pack(fill=tk.X, pady=(2, 0))
-        self._ns_spaces_cb = tk.Checkbutton(ns_row2, text="Ignore Spaces",
+        self._ns_nonscript_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self._ns_spaces_cb = tk.Checkbutton(ns_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
                        font=('Segoe UI', 9), bg='#fde8e8', selectcolor='white',
                        activebackground='#fde8e8', cursor='hand2',
-                       command=self._restyle_checkboxes)
+                       command=lambda: self._on_checkbox_toggled("Ignore Spaces", self._ignore_spaces_var))
         self._ns_spaces_cb.pack(side=tk.LEFT, padx=(0, 12))
-        self._ns_punct_cb = tk.Checkbutton(ns_row2, text="Ignore Punctuation",
+        self._ns_punct_cb = tk.Checkbutton(ns_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
                        font=('Segoe UI', 9), bg='#fde8e8', selectcolor='white',
                        activebackground='#fde8e8', cursor='hand2',
-                       command=self._restyle_checkboxes)
+                       command=lambda: self._on_checkbox_toggled("Ignore Punctuation", self._ignore_punctuation_var))
         self._ns_punct_cb.pack(side=tk.LEFT)
 
         # === StringID ALL Categories frame (StringID-Only mode) ===
@@ -543,7 +536,7 @@ class QuickTranslateApp:
                        variable=self._stringid_all_var,
                        font=('Segoe UI', 9), bg='#ffe0e0', fg='#cc0000', selectcolor='white',
                        activebackground='#ffe0e0', cursor='hand2',
-                       command=self._restyle_checkboxes)
+                       command=lambda: self._on_checkbox_toggled("ALL Categories", self._stringid_all_var))
         self._sid_all_cb.pack(side=tk.LEFT)
 
         # === Files Section ===
@@ -1819,6 +1812,14 @@ class QuickTranslateApp:
     def _on_match_type_changed(self):
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
+        mode_labels = {
+            "stringid_only": "StringID-Only (SCRIPT)",
+            "strict": "StringID + StrOrigin (STRICT)",
+            "strorigin_only": "StrOrigin Only",
+            "strorigin_descorigin": "StrOrigin + DescOrigin",
+            "strorigin_filename": "StrOrigin + FileName",
+        }
+        self._log(f"Match Type: {mode_labels.get(match_type, match_type)}", 'info')
 
         # Restyle radio buttons: selected = yellow bg, unselected = standard bg
         for value, (rb, desc_lbl) in self._match_type_radios.items():
@@ -1871,6 +1872,12 @@ class QuickTranslateApp:
             self._bind_mousewheel_recursive(self.stringid_all_frame)
             # Rebind mousewheel on newly shown frame
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
+        self._restyle_checkboxes()
+
+    def _on_checkbox_toggled(self, name: str, var):
+        """Log checkbox state change and restyle all checkboxes."""
+        state = "ON" if var.get() else "OFF"
+        self._log(f"{name}: {state}", 'info')
         self._restyle_checkboxes()
 
     def _restyle_checkboxes(self):
@@ -2192,6 +2199,8 @@ class QuickTranslateApp:
         """Warn user when switching to 'ALL' on StrOrigin Only (no StringID safety)."""
         match_type = self.match_type.get()
         scope = self.transfer_scope.get()
+        scope_label = "Transfer ALL" if scope == "all" else "Only untranslated"
+        self._log(f"Transfer Scope: {scope_label}", 'info')
 
         if scope == "all" and match_type == "strorigin_only":
             confirm = messagebox.askokcancel(
@@ -2224,11 +2233,14 @@ class QuickTranslateApp:
 
     def _on_precision_changed(self):
         """Show/hide fuzzy threshold slider within precision options."""
-        if self.match_precision.get() == "fuzzy":
+        precision = self.match_precision.get()
+        if precision == "fuzzy":
+            self._log("Match Precision: Fuzzy Match", 'info')
             self.fuzzy_sub_frame.pack(fill=tk.X, pady=(4, 0))
             self._update_fuzzy_model_status()
             self._bind_mousewheel_recursive(self.fuzzy_sub_frame)
         else:
+            self._log("Match Precision: Perfect Match", 'info')
             self.fuzzy_sub_frame.pack_forget()
 
     def _on_threshold_changed(self, value):
