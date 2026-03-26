@@ -1,1 +1,1 @@
-Build QuickTranslate — crisp DPI icon + responsive checkbox visual feedback
+Build QuickTranslate — radio/checkbox visual feedback (white→yellow radios, white→red checkboxes)
