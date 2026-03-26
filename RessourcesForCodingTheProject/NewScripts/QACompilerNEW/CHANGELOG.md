@@ -2,18 +2,32 @@
 
 ## v2.6 — 2026-03-26
 
-### Phantom Issue Detection + Log Security
+### Phantom Issue Detection + Manager Status Validation + Log Security
 
-**Commits:** `7dc4b4b3`, `66d15c92`
+**Universal rule: ISSUE without comment = NO ISSUE. Manager status only counted if tester has ISSUE + comment.**
 
-- **Phantom issue rule:** ISSUE without comment = NO ISSUE. Applied universally:
-  - `tracker/masterfile_pending.py` — masterfile pending counts
-  - `core/tracker_update.py` — QA file overall stats
-  - `core/processing.py` — compilation pipeline + row visibility
-- **Named column detection:** Comment columns found by header name (`COMMENT_`, `MEMO_`, `SCREENSHOT_` per user), not positional offset. Prevents cross-tester column bleeding.
-- **Safe fallback:** If no comment columns exist in the sheet, ISSUE is treated as real (not phantom).
-- **Result:** Pending count dropped from 3,728 → 1,452 (61% reduction, 2,276 phantom issues eliminated).
-- **Log security:** All `*_DEBUG.log` files now write to `logs/` subfolder (gitignored). Prevents confidential tester names and game content from being committed to public repo.
+**Tester side (ISSUE counting):**
+- `tracker/masterfile_pending.py` — masterfile pending counts
+- `core/tracker_update.py:count_sheet_stats()` — QA file overall stats
+- `core/processing.py:process_sheet()` — compilation pipeline
+- `core/processing.py` — row visibility logic
+
+**Manager side (FIXED/REPORTED/CHECKING/NON ISSUE counting):**
+- `core/tracker_update.py:aggregate_manager_stats_from_files()` — streaming path
+- `core/tracker_update.py:aggregate_manager_stats()` — ws.cell path
+- `core/compiler.py:collect_all_master_data()` — compilation path
+
+**Masterfile-only mode fix:**
+- `tracker/data.py:update_daily_data_sheet()` — active pending data (cols 15-20) now written when no QA files present
+
+**Code review fixes:**
+- Named column detection: `COMMENT_`, `MEMO_`, `SCREENSHOT_` found by header name per user, not positional offset (prevents cross-tester bleeding)
+- Safe fallback: if no comment columns exist, ISSUE treated as real
+- 8 locations total patched, 51 tests pass
+
+**Result:** Pending dropped from 3,728 → 1,452 (61% reduction, 2,276 phantom issues eliminated).
+
+**Log security:** All `*_DEBUG.log` files now write to `logs/` subfolder (gitignored). Prevents confidential tester names and game content from being committed to public repo.
 
 ---
 
