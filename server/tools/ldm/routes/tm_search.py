@@ -11,7 +11,7 @@ Note: Similarity search (pg_trgm) is PostgreSQL-specific, returns empty in offli
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
@@ -184,11 +184,26 @@ async def search_tm(
 # Context Search (AC Context Engine - Phase 87)
 # =========================================================================
 
+# Module-level cache for loaded indexes (avoid disk I/O on every request)
+_context_index_cache: dict = {}
+
+
 class ContextSearchRequest(BaseModel):
     """Request body for AC context search."""
-    source: str
+    source: str = Field(..., max_length=10000)
     tm_id: int
-    max_results: int = 10
+    max_results: int = Field(10, ge=1, le=50)
+
+
+def _get_cached_indexes(tm_id: int) -> dict:
+    """Load indexes with module-level caching. Reloads on TM rebuild via cache key."""
+    if tm_id in _context_index_cache:
+        return _context_index_cache[tm_id]
+
+    indexer = TMIndexer(db=None, data_dir=None)  # db=None is safe — load_indexes only reads files
+    indexes = indexer.load_indexes(tm_id)
+    _context_index_cache[tm_id] = indexes
+    return indexes
 
 
 @router.post("/tm/context")
@@ -218,10 +233,9 @@ async def context_search(
             logger.warning(f"[TM-SEARCH] [CONTEXT] TM {request.tm_id} not found")
             raise HTTPException(status_code=404, detail="Translation Memory not found")
 
-        # Load indexes (includes AC automatons built by TMIndexer._build_ac_automatons)
-        indexer = TMIndexer(db=None, data_dir=None)
+        # Load indexes with caching (includes AC automatons)
         try:
-            indexes = indexer.load_indexes(request.tm_id)
+            indexes = _get_cached_indexes(request.tm_id)
         except FileNotFoundError:
             logger.warning(f"[TM-SEARCH] [CONTEXT] TM {request.tm_id} indexes not built")
             raise HTTPException(status_code=404, detail="TM indexes not built")

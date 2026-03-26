@@ -449,21 +449,15 @@ class TMIndexer:
             whole_automaton = ahocorasick.Automaton()
             for idx, key in enumerate(whole_lookup):
                 whole_automaton.add_word(key, (idx, key))
-            if len(whole_lookup) > 0:
-                whole_automaton.make_automaton()
-                logger.info(f"Built whole AC automaton with {len(whole_lookup)} terms")
-            else:
-                whole_automaton = None
+            whole_automaton.make_automaton()
+            logger.info(f"Built whole AC automaton with {len(whole_lookup)} terms")
 
         if line_lookup:
             line_automaton = ahocorasick.Automaton()
             for idx, key in enumerate(line_lookup):
                 line_automaton.add_word(key, (idx, key))
-            if len(line_lookup) > 0:
-                line_automaton.make_automaton()
-                logger.info(f"Built line AC automaton with {len(line_lookup)} terms")
-            else:
-                line_automaton = None
+            line_automaton.make_automaton()
+            logger.info(f"Built line AC automaton with {len(line_lookup)} terms")
 
         return (whole_automaton, line_automaton)
 

@@ -152,12 +152,12 @@
 
     if (!row?.source) return;
 
-    // Debounce TM loading to avoid API spam on rapid row navigation
+    // Debounce TM + context loading to avoid API spam on rapid row navigation
     clearTimeout(tmDebounceTimer);
-    tmDebounceTimer = setTimeout(() => loadTMMatchesForRow(row), 200);
-
-    // AC context search (AbortController handles rapid-click cancellation)
-    loadContextForRow(row);
+    tmDebounceTimer = setTimeout(() => {
+      loadTMMatchesForRow(row);
+      loadContextForRow(row);
+    }, 200);
   }
 
   /**

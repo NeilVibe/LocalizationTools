@@ -72,13 +72,15 @@ class ContextSearcher:
         # Apply max_results limit
         all_results = all_results[:max_results]
 
+        # Compute tier_counts from truncated results (not pre-truncation)
+        tier_counts = {"whole": 0, "line": 0, "fuzzy": 0}
+        for r in all_results:
+            tier_key = r.get("tier", "fuzzy")
+            tier_counts[tier_key] = tier_counts.get(tier_key, 0) + 1
+
         return {
             "results": all_results,
-            "tier_counts": {
-                "whole": len(whole_results),
-                "line": len(line_results),
-                "fuzzy": len(fuzzy_results),
-            },
+            "tier_counts": tier_counts,
             "total": len(all_results),
         }
 
