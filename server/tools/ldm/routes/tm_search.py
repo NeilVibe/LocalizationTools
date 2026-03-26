@@ -11,11 +11,14 @@ Note: Similarity search (pg_trgm) is PostgreSQL-specific, returns empty in offli
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
 from server.repositories import TMRepository, RowRepository, get_tm_repository, get_row_repository
 from server.tools.ldm.schemas import TMSuggestResponse
+from server.tools.ldm.indexing.context_searcher import ContextSearcher
+from server.tools.ldm.indexing.indexer import TMIndexer
 
 router = APIRouter(tags=["LDM"])
 
@@ -175,3 +178,67 @@ async def search_tm(
         for e in entries
     ]
     return {"results": results, "count": len(results)}
+
+
+# =========================================================================
+# Context Search (AC Context Engine - Phase 87)
+# =========================================================================
+
+class ContextSearchRequest(BaseModel):
+    """Request body for AC context search."""
+    source: str
+    tm_id: int
+    max_results: int = 10
+
+
+@router.post("/tm/context")
+async def context_search(
+    request: ContextSearchRequest,
+    tm_repo: TMRepository = Depends(get_tm_repository),
+    current_user: dict = Depends(get_current_active_user_async)
+):
+    """
+    Search for contextual TM matches using Aho-Corasick + n-gram Jaccard.
+
+    3-tier cascade: whole AC -> line AC -> char n-gram Jaccard (>=62%).
+    Called by frontend on row-select to populate context panel.
+
+    Args:
+        request: ContextSearchRequest with source text, tm_id, max_results
+
+    Returns:
+        Dict with results list, tier_counts, and total
+    """
+    logger.info(f"[TM-SEARCH] [CONTEXT] START | source='{request.source[:50]}' | tm_id={request.tm_id}")
+
+    try:
+        # Validate TM exists
+        tm = await tm_repo.get(request.tm_id)
+        if not tm:
+            logger.warning(f"[TM-SEARCH] [CONTEXT] TM {request.tm_id} not found")
+            raise HTTPException(status_code=404, detail="Translation Memory not found")
+
+        # Load indexes (includes AC automatons built by TMIndexer._build_ac_automatons)
+        indexer = TMIndexer(db=None, data_dir=None)
+        try:
+            indexes = indexer.load_indexes(request.tm_id)
+        except FileNotFoundError:
+            logger.warning(f"[TM-SEARCH] [CONTEXT] TM {request.tm_id} indexes not built")
+            raise HTTPException(status_code=404, detail="TM indexes not built")
+
+        # Run 3-tier context search
+        searcher = ContextSearcher(indexes)
+        result = searcher.search(request.source, request.max_results)
+
+        logger.info(
+            f"[TM-SEARCH] [CONTEXT] SUCCESS | tm_id={request.tm_id} | "
+            f"total={result['total']} | tiers={result['tier_counts']}"
+        )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[TM-SEARCH] [CONTEXT] ERROR | {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Context search failed. Check server logs.")

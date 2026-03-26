@@ -37,6 +37,8 @@ class ContextSearcher:
         self.line_automaton = indexes.get("line_automaton")
         self.whole_lookup = indexes.get("whole_lookup", {})
         self.line_lookup = indexes.get("line_lookup", {})
+        # Pre-build bigram index for Tier 3 fuzzy pre-filtering
+        self._bigram_index = self._build_bigram_index() if self.whole_lookup else {}
 
     def search(self, source_text: str, max_results: int = 10) -> Dict[str, Any]:
         """Run 3-tier cascade on source_text.
@@ -152,7 +154,13 @@ class ContextSearcher:
     # =========================================================================
 
     def _tier3_fuzzy_jaccard(self, normalized: str, seen_entry_ids: set) -> list:
-        """Fuzzy match via multi-n-gram Jaccard similarity."""
+        """Fuzzy match via multi-n-gram Jaccard similarity.
+
+        Performance optimization: pre-filter candidates using bigram overlap.
+        Only compute full Jaccard for entries that share at least one bigram
+        with the source text. This reduces O(n) full comparisons to a much
+        smaller candidate set.
+        """
         if not self.whole_lookup:
             return []
 
@@ -164,8 +172,24 @@ class ContextSearcher:
         if not source_ngrams:
             return []
 
+        # Pre-filter: build inverted index of bigrams -> candidate keys
+        # Only compute full Jaccard for keys sharing at least one bigram
+        source_bigrams = set()
+        for i in range(len(source_stripped) - 1):
+            source_bigrams.add(source_stripped[i:i + 2])
+
+        # Build candidate set using bigram pre-filter
+        candidate_keys = set()
+        for bigram in source_bigrams:
+            if bigram in self._bigram_index:
+                candidate_keys.update(self._bigram_index[bigram])
+
         results = []
-        for key, match in self.whole_lookup.items():
+        for key in candidate_keys:
+            match = self.whole_lookup.get(key)
+            if not match:
+                continue
+
             entries = self._extract_entries_from_match(match)
 
             # Skip if all entries already seen
@@ -198,6 +222,21 @@ class ContextSearcher:
         # Sort by score descending
         results.sort(key=lambda r: r["score"], reverse=True)
         return results
+
+    def _build_bigram_index(self) -> Dict[str, set]:
+        """Build inverted index: bigram -> set of whole_lookup keys containing it.
+
+        Used for pre-filtering Tier 3 fuzzy candidates.
+        """
+        index: Dict[str, set] = {}
+        for key in self.whole_lookup:
+            key_stripped = key.replace(" ", "")
+            for i in range(len(key_stripped) - 1):
+                bigram = key_stripped[i:i + 2]
+                if bigram not in index:
+                    index[bigram] = set()
+                index[bigram].add(key)
+        return index
 
     # =========================================================================
     # Helpers
