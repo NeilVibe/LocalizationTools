@@ -245,7 +245,14 @@
   // ============================================================
 
   // Font styles from preferences
-  let visibleRows = $derived(getVisibleRows());
+  let visibleRows = $derived.by(() => {
+    const start = grid.visibleStart;
+    const end = grid.visibleEnd;
+    return Array.from({ length: end - start }, (_, i) => {
+      const index = start + i;
+      return grid.rows[index] || { row_num: index + 1, placeholder: true };
+    });
+  });
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
   let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
   let gridFontFamily = $derived(getFontFamilyValue($preferences.fontFamily));
