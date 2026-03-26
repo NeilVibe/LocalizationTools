@@ -14,7 +14,7 @@
   import { Edit, Locked, MachineLearningModel } from "carbon-icons-svelte";
   import {
     grid,
-    visibleRows,
+    getVisibleRows,
     measureRowHeight,
     tmAppliedRows,
     getRowById,
@@ -245,6 +245,7 @@
   // ============================================================
 
   // Font styles from preferences
+  let visibleRows = $derived(getVisibleRows());
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
   let gridFontWeight = $derived($preferences.fontWeight === 'bold' ? '600' : '400');
   let gridFontFamily = $derived(getFontFamilyValue($preferences.fontFamily));

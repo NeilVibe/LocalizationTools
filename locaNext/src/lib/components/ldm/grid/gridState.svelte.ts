@@ -69,12 +69,13 @@ export const PAGE_SIZE = 100;
 export const PREFETCH_PAGES = 2;
 
 // --- Cross-module derived state (per D-04) ---
-export const visibleRows = $derived(
-  Array.from({ length: grid.visibleEnd - grid.visibleStart }, (_, i) => {
+// Cannot export $derived from .svelte.ts module — export function instead
+export function getVisibleRows() {
+  return Array.from({ length: grid.visibleEnd - grid.visibleStart }, (_, i) => {
     const index = grid.visibleStart + i;
     return grid.rows[index] || { row_num: index + 1, placeholder: true };
-  })
-);
+  });
+}
 
 // --- Helper functions ---
 
