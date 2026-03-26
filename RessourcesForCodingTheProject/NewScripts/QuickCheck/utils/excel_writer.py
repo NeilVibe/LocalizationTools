@@ -1,7 +1,7 @@
 """
 Excel Writer Utility
 
-Writes QuickCheck output files (LineCheck, TermCheck, Glossary, LangCheck) as clean Excel.
+Writes QuickCheck output files (LineCheck, TermCheck, Glossary, LangCheck, NumCheck) as clean Excel.
 Uses xlsxwriter (write-only, reliable).
 """
 from __future__ import annotations
@@ -11,6 +11,7 @@ from typing import List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.lang_check import LangIssue
+    from core.number_check import NumberIssue
 
 try:
     import xlsxwriter
@@ -494,6 +495,127 @@ def write_lang_check_excel(
 
     except Exception as e:
         logger.error("Failed to write LangCheck Excel %s: %s", output_path, e)
+        return False
+
+    finally:
+        if wb is not None:
+            try:
+                wb.close()
+            except Exception:
+                pass
+
+
+# ---------------------------------------------------------------------------
+# NumCheck Excel
+# ---------------------------------------------------------------------------
+
+def write_number_check_excel(
+    issues: List[NumberIssue],
+    output_path: str,
+    lang_code: str = "",
+) -> bool:
+    """
+    Write NUMBER CHECK results to Excel.
+
+    Columns: StringId | StrOrigin | Str | Source Numbers | Target Numbers | Missing in Target | Extra in Target | Status | Comment
+    """
+    _require_xlsxwriter()
+
+    wb = None
+    try:
+        title = f"NumCheck {lang_code}" if lang_code else "NumCheck"
+        wb = xlsxwriter.Workbook(output_path)
+        ws = wb.add_worksheet(title[:31])
+
+        fmt_header = wb.add_format({
+            "bold": True, "bg_color": COL_HEADER_BG, "font_color": COL_HEADER_FG,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_row = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_row_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_sid = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter", "num_format": "@",
+        })
+        fmt_sid_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter", "num_format": "@",
+        })
+        fmt_nums = wb.add_format({
+            "bold": True, "bg_color": COL_GROUP_BG, "font_color": COL_DARK_TEXT,
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_missing = wb.add_format({
+            "bold": True, "bg_color": "#FFE0E0", "font_color": "#CC0000",
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_extra = wb.add_format({
+            "bold": True, "bg_color": "#FFF3CD", "font_color": "#856404",
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_status = wb.add_format({
+            "bold": True, "bg_color": "#FFE0E0", "font_color": "#CC0000",
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_comment = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
+
+        headers = ["StringId", "StrOrigin", "Str", "Source Numbers",
+                   "Target Numbers", "Missing in Target", "Extra in Target",
+                   "Status", "Comment"]
+        widths = [20, 50, 50, 16, 16, 18, 18, 14, 40]
+
+        ws.set_row(0, 22)
+        for i, h in enumerate(headers):
+            ws.write(0, i, h, fmt_header)
+            ws.set_column(i, i, widths[i])
+
+        for idx, issue in enumerate(issues):
+            row = idx + 1
+            alt = idx % 2 == 1
+            f_r = fmt_row_alt if alt else fmt_row
+            f_s = fmt_sid_alt if alt else fmt_sid
+
+            ws.write_string(row, 0, str(issue.string_id), f_s)
+            ws.write(row, 1, issue.str_origin, f_r)
+            ws.write(row, 2, issue.str_text, f_r)
+            ws.write(row, 3, issue.source_numbers, fmt_nums)
+            ws.write(row, 4, issue.target_numbers, fmt_nums)
+            ws.write(row, 5, issue.missing_in_target, fmt_missing if issue.missing_in_target else f_r)
+            ws.write(row, 6, issue.extra_in_target, fmt_extra if issue.extra_in_target else f_r)
+            ws.write(row, 7, "", fmt_status)
+            ws.write(row, 8, "", fmt_comment)
+
+        data_rows = len(issues)
+        if data_rows > 0:
+            ws.data_validation(1, 7, data_rows, 7, {
+                "validate": "list",
+                "source": ["ISSUE", "NO ISSUE", "FIXED"],
+            })
+            ws.autofilter(0, 0, data_rows, len(headers) - 1)
+            ws.freeze_panes(1, 0)
+
+        missing_count = sum(1 for i in issues if i.missing_in_target)
+        extra_count = sum(1 for i in issues if i.extra_in_target)
+        ws.write(data_rows + 2, 0,
+                 f"Total: {data_rows} issues ({missing_count} missing, {extra_count} extra)",
+                 fmt_summary)
+
+        wb.close()
+        wb = None
+        return True
+
+    except Exception as e:
+        logger.error("Failed to write NumCheck Excel %s: %s", output_path, e)
         return False
 
     finally:

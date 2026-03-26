@@ -1,7 +1,7 @@
 """
 QuickCheck GUI
 
-Single-window UI for LINE CHECK and TERM CHECK across multiple languages.
+Single-window UI for LINE CHECK, TERM CHECK, LANG CHECK, and NUM CHECK across multiple languages.
 
 Modes:
   - Auto-extract glossary: glossary is built from source files automatically
@@ -29,6 +29,7 @@ from core.line_check import run_line_check_all_languages
 from core.term_check import run_term_check_all_languages
 from core.glossary_extractor import extract_glossary_all_languages
 from core.lang_check import run_lang_check_all_languages
+from core.number_check import run_number_check_all_languages
 from core.category_mapper import load_cluster_config, build_export_indexes
 
 logger = logging.getLogger(__name__)
@@ -157,19 +158,28 @@ class QuickCheckApp(tk.Tk):
         # ---- Settings section ----
         self._build_settings(outer)
 
-        # ---- Action buttons ----
-        btn_row = tk.Frame(outer, bg=BG_MAIN)
-        btn_row.pack(fill=tk.X, pady=(4, 8))
-        self._btn_line = self._make_button(btn_row, "LINE CHECK", self._run_line_check, width=18)
-        self._btn_line.pack(side=tk.LEFT, padx=(0, 8))
-        self._btn_term = self._make_button(btn_row, "TERM CHECK", self._run_term_check, width=18)
-        self._btn_term.pack(side=tk.LEFT, padx=(0, 8))
+        # ---- Action buttons (2 rows for clean layout) ----
+        btn_frame = tk.LabelFrame(outer, text=" Checks ", bg=BG_FRAME,
+                                  fg=FG_MAIN, font=FONT_BOLD, padx=8, pady=6)
+        btn_frame.pack(fill=tk.X, pady=(4, 8))
+
+        btn_row1 = tk.Frame(btn_frame, bg=BG_FRAME)
+        btn_row1.pack(fill=tk.X, pady=(0, 4))
+        self._btn_line = self._make_button(btn_row1, "LINE CHECK", self._run_line_check, width=18)
+        self._btn_line.pack(side=tk.LEFT, padx=(0, 6))
+        self._btn_term = self._make_button(btn_row1, "TERM CHECK", self._run_term_check, width=18)
+        self._btn_term.pack(side=tk.LEFT, padx=(0, 6))
         self._btn_gloss = self._make_button(
-            btn_row, "EXTRACT GLOSSARY", self._run_extract_glossary, width=20
+            btn_row1, "EXTRACT GLOSSARY", self._run_extract_glossary, width=20
         )
-        self._btn_gloss.pack(side=tk.LEFT, padx=(0, 8))
-        self._btn_lang = self._make_button(btn_row, "LANG CHECK", self._run_lang_check, width=16)
-        self._btn_lang.pack(side=tk.LEFT)
+        self._btn_gloss.pack(side=tk.LEFT)
+
+        btn_row2 = tk.Frame(btn_frame, bg=BG_FRAME)
+        btn_row2.pack(fill=tk.X)
+        self._btn_lang = self._make_button(btn_row2, "LANG CHECK", self._run_lang_check, width=18)
+        self._btn_lang.pack(side=tk.LEFT, padx=(0, 6))
+        self._btn_num = self._make_button(btn_row2, "NUM CHECK", self._run_number_check, width=18)
+        self._btn_num.pack(side=tk.LEFT)
 
         # ---- Progress bar ----
         self._progress_var = tk.DoubleVar(value=0)
@@ -529,6 +539,7 @@ class QuickCheckApp(tk.Tk):
         self._btn_term.configure(state=state)
         self._btn_gloss.configure(state=state)
         self._btn_lang.configure(state=state)
+        self._btn_num.configure(state=state)
 
     # ------------------------------------------------------------------
     # LINE CHECK
@@ -696,6 +707,42 @@ class QuickCheckApp(tk.Tk):
                 self.after(0, self._log_msg, summary, "ok")
             except Exception as exc:
                 logger.exception("LANG CHECK failed")
+                self.after(0, self._log_msg, f"ERROR: {exc}", "err")
+            finally:
+                self.after(0, self._finish_run)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # NUMBER CHECK
+    # ------------------------------------------------------------------
+
+    def _run_number_check(self) -> None:
+        if not self._validate_run():
+            return
+        self._running = True
+        self._set_buttons_state(tk.DISABLED)
+        self._log_clear()
+        self._progressbar.configure(mode="indeterminate")
+        self._progressbar.start(15)
+        self._log_msg("Starting NUM CHECK...", "info")
+
+        lang_files = self._get_selected_lang_files()
+        output_dir = Path(get_output_dir())
+
+        def worker() -> None:
+            try:
+                results = run_number_check_all_languages(
+                    lang_files=lang_files,
+                    output_dir=output_dir,
+                    progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                )
+                summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
+                summary = "NUM CHECK done: " + " ".join(summary_parts)
+                summary += f" — saved to {output_dir}"
+                self.after(0, self._log_msg, summary, "ok")
+            except Exception as exc:
+                logger.exception("NUM CHECK failed")
                 self.after(0, self._log_msg, f"ERROR: {exc}", "err")
             finally:
                 self.after(0, self._finish_run)
