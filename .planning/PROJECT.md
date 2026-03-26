@@ -134,12 +134,14 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 - ✓ TMUI-01 — Dual threshold system (62% context panel, 92% pretranslation, hardcoded) — v12.0
 - ✓ TMUI-02 — TM Tab UI polish with prominent match percentage badges (4-tier color bands) — v12.0
+- ✓ ACCTX-01 — AC Context Search 3-tier cascade with AC automatons built on TM load — v12.0
+- ✓ ACCTX-02 — Row-select triggers AC context search, results in right panel with tier badges — v12.0
+- ✓ ACCTX-03 — Character n-gram {2,3,4,5} space-stripped Korean, Jaccard ≥62%, bigram pre-filter — v12.0
+- ✓ ACCTX-04 — Context results with tier indicators (Exact/Line/Fuzzy) and score percentages — v12.0
+- ✓ PERF-01 — AC context search <100ms for 1000+ TM entries (bigram inverted index optimization) — v12.0
 
 ### Active
 
-- [ ] ACCTX-01 — AC Context Search 3-tier cascade (whole AC, line AC, char n-gram Jaccard)
-- [ ] ACCTX-02 — AC automatons built on TM load from whole_lookup + line_lookup
-- [ ] ACCTX-03 — Character n-gram {2,3,4,5} space-stripped Korean, Jaccard ≥62%
 - [ ] ARCH-02 — Split mega_index.py (1310 lines) into domain services (deferred)
 - [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths (deferred)
 
