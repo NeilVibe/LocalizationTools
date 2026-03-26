@@ -3858,6 +3858,10 @@ class QuickTranslateApp:
             self._log("Non-Script Only: ON (Dialog/Sequencer will be skipped)", 'warning')
         if stringid_all:
             self._log("StringID ALL CATEGORIES: ON — bypassing SCRIPT-only filter!", 'warning')
+        if self._ignore_spaces_var.get():
+            self._log("Ignore Spaces: ON (whitespace stripped from StrOrigin matching)", 'warning')
+        if self._ignore_punctuation_var.get():
+            self._log("Ignore Punctuation: ON (punctuation stripped from StrOrigin matching)", 'warning')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
