@@ -1,15 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: TM Intelligence
-status: complete
-stopped_at: v12.0 COMPLETE — all 3 phases shipped
-last_updated: "2026-03-26T10:00:00.000Z"
+milestone: v1.0
+milestone_name: milestone
+status: completed
+stopped_at: v12.0 complete, milestone review pending
+last_updated: "2026-03-26T04:52:52.315Z"
+last_activity: 2026-03-26
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 4
   completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 Phase: All complete
 Plan: All complete
 Status: Milestone complete
-Last activity: 2026-03-26 — v12.0 TM Intelligence shipped
+Last activity: 2026-03-26
 
 Progress: [██████████] 100%
 

@@ -1,5 +1,18 @@
 # Milestones
 
+## v12.0 TM Intelligence (Shipped: 2026-03-26)
+
+**Phases completed:** 3 phases, 4 plans, 6 tasks
+
+**Key accomplishments:**
+
+- Hardcoded 0.62 context threshold for right panel TM fetches with 4-tier color-coded percentage badges (green/yellow/orange/red)
+- 3-tier AC context search engine with Aho-Corasick substring matching and char n-gram Jaccard fuzzy (62% threshold) for Korean TM text
+- POST /api/ldm/tm/context endpoint with bigram-optimized fuzzy search, proven <100ms for 2000 Korean TM entries via benchmark
+- Row-select wired to AC context search with 3-tier results (Exact/Line/Fuzzy) displayed in TMTab via AbortController-managed fetch
+
+---
+
 ## v10.0 UI Polish + Tag Pill Redesign (Shipped: 2026-03-25)
 
 **Phases completed:** 3 phases, 2 plans, 2 tasks
