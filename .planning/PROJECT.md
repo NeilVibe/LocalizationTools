@@ -8,18 +8,31 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current Milestone: v11.0 Architecture & Test Infrastructure
+## Current Milestone: v12.0 TM Intelligence
 
-**Goal:** Stand up Svelte component unit testing with Vitest, then decompose VirtualGrid.svelte (4299 lines) into composable modules — enabling safe future feature work.
+**Goal:** Add intelligent context-aware TM matching with dual thresholds, polished match UI, and on-the-fly Aho-Corasick context search for Korean source text.
 
 **Target features:**
-- [ ] ARCH-04: Vitest + @testing-library/svelte infrastructure for Svelte 5 components
-- [ ] ARCH-01: VirtualGrid.svelte decomposed into 5-6 focused modules (scroll, cells, selection, editing, shortcuts, status)
-- [ ] Unit tests for each extracted module verifying behavior parity
+- [ ] TMUI-01: Dual threshold system — 92% pretranslation, 62% context panel
+- [ ] TMUI-02: TM Tab UI polish with prominent match percentage display
+- [ ] ACCTX-01: AC Context Search 3-tier cascade (whole AC, line AC, character n-gram Jaccard)
+- [ ] ACCTX-02: AC automatons built on TM load from existing whole_lookup + line_lookup
+- [ ] ACCTX-03: Character n-gram {2,3,4,5} with space-stripped Korean, Jaccard ≥62%
 
-**Tribunal decision (2026-03-25):** 3 experts unanimous — tests first (safety net), split second (leverage). TM Intelligence deferred to v12.0.
+**Grill-me session (2026-03-26):** Existing 5-tier cascade + 3 engines + QA pipeline confirmed sufficient. v12.0 adds context intelligence layer on top — AC scans source text on row-select, character n-grams for fuzzy Korean matching. Korean NLP research: char bigrams+trigrams optimal for Korean (no word n-grams needed), add n=4,5 for compound nouns.
 
-**Critical env note:** Remove WSL2 portproxy on 8888 before Playground testing (`netsh interface portproxy delete v4tov4 listenport=8888 listenaddress=0.0.0.0`)
+## Shipped: v11.0 Architecture & Test Infrastructure (2026-03-26)
+
+<details>
+<summary>v11.0 details (click to expand)</summary>
+
+- 3 phases, 6 plans, 169 tests
+- Vitest + @testing-library/svelte infrastructure for Svelte 5 components
+- VirtualGrid.svelte decomposed: 4293→383 lines (91% reduction, 6 modules)
+- Modules: ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine
+- gridState.svelte.ts shared reactive state with Svelte 5 runes
+
+</details>
 
 ## Shipped: v10.0 UI Polish + Tag Pill Redesign (2026-03-25)
 
@@ -47,9 +60,9 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 </details>
 
-## Current State (v10.0 shipped — 13 milestones complete)
+## Current State (v11.0 shipped — 14 milestones complete)
 
-- 13 milestones shipped (v1.0 through v10.0), 82 phases, ~153 plans
+- 14 milestones shipped (v1.0 through v11.0), 85 phases, ~159 plans
 - v10.0: Tag pill overhaul (combinedcolor, br-tag exclusion), grid polish (#222222 neutral), Qwen3-VL 7.4/10
 - v8.0: MemoQ-style tag pills (136 tests) + 8 service classes extracted (route files 33-81% thinner)
 - v7.0: Merge internalized (14 modules, PyInstaller-safe), TM auto-update inline (~6ms), PerfTimer instrumentation
@@ -114,12 +127,20 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ GRID-01 — Grid default background neutralized (#222222), amber status contrast increased — v10.0
 - ✓ VIS-01 — Qwen3-VL visual verification all 5 pages (avg 7.4/10, all 7+) — v10.0
 
+- ✓ TEST-01 through TEST-06 — Vitest + @testing-library/svelte infrastructure, tagDetector.js + TagText.svelte + StatusColors tests — v11.0
+- ✓ GRID-02 through GRID-08 — VirtualGrid decomposed into 6 modules (ScrollEngine, CellRenderer, SelectionManager, InlineEditor, StatusColors, SearchEngine), regression verified — v11.0
+- ✓ ARCH-01 — VirtualGrid.svelte decomposed (4293→383 lines, 91% reduction) — v11.0
+- ✓ ARCH-04 — Unit test infrastructure for Svelte 5 components (Vitest, 169 tests) — v11.0
+
 ### Active
 
-- [ ] ARCH-01 — Split VirtualGrid.svelte (4299 lines) into composable modules
-- [ ] ARCH-02 — Split mega_index.py (1310 lines) into domain services
-- [ ] ARCH-04 — Unit test infrastructure for Svelte components (Vitest)
-- [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths
+- [ ] TMUI-01 — Dual threshold system (92% pretranslation, 62% context panel)
+- [ ] TMUI-02 — TM Tab UI polish with prominent match percentage display
+- [ ] ACCTX-01 — AC Context Search 3-tier cascade (whole AC, line AC, char n-gram Jaccard)
+- [ ] ACCTX-02 — AC automatons built on TM load from whole_lookup + line_lookup
+- [ ] ACCTX-03 — Character n-gram {2,3,4,5} space-stripped Korean, Jaccard ≥62%
+- [ ] ARCH-02 — Split mega_index.py (1310 lines) into domain services (deferred)
+- [ ] LDE2E-03 — Language data with images/audio resolves from Perforce-like paths (deferred)
 
 ### Out of Scope
 
@@ -142,6 +163,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **v8.0 shipped** — MemoQ-style tag pills (136 tests), 8 service classes extracted (net -2,173 LOC), Tribunal-driven architecture decisions
 - **v9.0 shipped** — Build validated on Windows, 6 CVEs fixed, 12+ build fixes, Qwen3-VL visual audit (8.6/10 avg), 4 UI issues found for v10.0
 - **v10.0 shipped** — Tag pill overhaul (combinedcolor + br-tag exclusion), grid neutral background, Qwen3-VL 7.4/10
+- **v11.0 shipped** — Vitest infrastructure (169 tests), VirtualGrid decomposed 4293→383 lines (6 modules), regression verified
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -187,7 +209,9 @@ The platform delivers real, working localization workflows — real XML parsing,
 | Tag pills = display-only render transform | Tribunal: raw text in DB, pills are frontend-only, no backend changes | ✓ Good — 136 tests verify round-trip integrity |
 | Combined color+format pills (priority-0 pattern) | Prevents braced pattern from claiming inner {code} | ✓ Good — dynamic hex-tinted inline pills |
 | Grid neutral background #222222 | Yellow/amber status-translated was dominant visual | ✓ Good — clear neutral baseline, amber stands out |
-| v11.0 = ARCH-04 + ARCH-01 (Tribunal decision) | Split without tests = blind surgery; tests first, split second | — Pending |
+| v11.0 = ARCH-04 + ARCH-01 (Tribunal decision) | Split without tests = blind surgery; tests first, split second | ✓ Good — 169 tests, 91% VG reduction |
+| Char n-gram {2,3,4,5} for Korean (NLP research) | Korean syllable blocks = high info density; bigrams capture compound nouns; n=4,5 for longer terms | — Pending |
+| AC automaton from TM whole_lookup + line_lookup | Data already in memory; build once on TM load, O(n) scan per row | — Pending |
 
 ## Evolution
 
@@ -207,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after v11.0 milestone initialization*
+*Last updated: 2026-03-26 after v12.0 milestone initialization*
