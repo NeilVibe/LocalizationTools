@@ -30,6 +30,8 @@ from pathlib import Path
 try:
     import ctypes
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuickTranslate.1.0")
+    # DPI awareness: use high-res icon + crisp text on high-DPI displays
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
 except Exception:
     pass
 

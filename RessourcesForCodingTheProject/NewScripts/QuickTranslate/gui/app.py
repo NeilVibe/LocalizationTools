@@ -467,11 +467,11 @@ class QuickTranslateApp:
         tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
                         variable=self.transfer_scope, value="all",
                         command=self._on_transfer_scope_changed,
-                        font=('Segoe UI', 9), bg='#fef3e2',
+                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='#f0c040',
                         activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
         tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
                         variable=self.transfer_scope, value="untranslated",
-                        font=('Segoe UI', 9), bg='#fef3e2',
+                        font=('Segoe UI', 9), bg='#fef3e2', selectcolor='#f0c040',
                         activebackground='#fef3e2').pack(side=tk.LEFT)
 
         # === Unique-Only StrOrigin sub-frame (visible only for strorigin_only) ===
@@ -483,15 +483,15 @@ class QuickTranslateApp:
         uo_row.pack(fill=tk.X)
         tk.Checkbutton(uo_row, text="Unique only",
                        variable=self.unique_only_strorigin,
-                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
                        activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
         tk.Checkbutton(uo_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
                        activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
         tk.Checkbutton(uo_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       font=('Segoe UI', 9), bg='#e8f0fe', selectcolor='#a8d0f8',
                        activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
 
         # === Non-Script Only frame (STRICT mode only) ===
@@ -504,15 +504,15 @@ class QuickTranslateApp:
         tk.Checkbutton(ns_row, text="Non-Script only",
                        variable=self._strict_non_script_var,
                        command=self._on_presub_setting_changed,
-                       font=('Segoe UI', 9), bg='#fde8e8',
+                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
                        activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
         tk.Checkbutton(ns_row, text="Ignore Spaces",
                        variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='#fde8e8',
+                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
                        activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 12))
         tk.Checkbutton(ns_row, text="Ignore Punctuation",
                        variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='#fde8e8',
+                       font=('Segoe UI', 9), bg='#fde8e8', selectcolor='#f8a8a8',
                        activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
 
         # === StringID ALL Categories frame (StringID-Only mode) ===
@@ -524,7 +524,7 @@ class QuickTranslateApp:
         sid_all_row.pack(fill=tk.X)
         tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
                        variable=self._stringid_all_var,
-                       font=('Segoe UI', 9), bg='#ffe0e0', fg='#cc0000',
+                       font=('Segoe UI', 9), bg='#ffe0e0', fg='#cc0000', selectcolor='#ff9090',
                        activebackground='#ffe0e0', cursor='hand2').pack(side=tk.LEFT)
 
         # === Files Section ===
