@@ -1,1 +1,1 @@
-Build QACompiler — phantom check on manager stats (require ISSUE+comment)
+Build QACompiler — fix masterfile-only active pending write
