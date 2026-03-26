@@ -20,6 +20,8 @@
     tmMatches = [],
     tmLoading = false,
     leverageStats = null,
+    contextResults = [],
+    contextLoading = false,
     onApplyTM = undefined
   } = $props();
 
@@ -39,6 +41,16 @@
     } else {
       return { color: 'var(--cds-support-error, #da1e28)', label: 'Below Threshold', type: 'red' };
     }
+  }
+
+  /**
+   * Get tier label and color for AC context results (Phase 88)
+   * @param {number} tier - 1=Exact(whole AC), 2=Line(line AC), 3=Fuzzy(Jaccard)
+   */
+  function getTierLabel(tier) {
+    if (tier === 1) return { text: 'Exact', color: 'var(--cds-support-success, #24a148)' };
+    if (tier === 2) return { text: 'Line', color: 'var(--cds-support-info, #4589ff)' };
+    return { text: 'Fuzzy', color: 'var(--cds-support-warning, #c6a300)' };
   }
 
   /**
@@ -178,6 +190,43 @@
     <div class="empty-msg muted">
       <Search size={16} />
       <span>No TM matches found</span>
+    </div>
+  {/if}
+
+  <!-- AC Context Results (Phase 88) -->
+  {#if contextLoading}
+    <div class="context-section">
+      <div class="context-header">Context Matches</div>
+      <div class="tm-loading">
+        <InlineLoading description="Searching context..." />
+      </div>
+    </div>
+  {:else if contextResults.length > 0}
+    <div class="context-section" data-testid="context-results">
+      <div class="context-header">
+        Context Matches
+        <span class="context-count">{contextResults.length}</span>
+      </div>
+      <div class="context-matches">
+        {#each contextResults as result, idx (result.entry_id || idx)}
+          {@const tierInfo = getTierLabel(result.tier)}
+          {@const scoreColor = getMatchColor(result.score)}
+          <div class="context-card">
+            <div class="context-card-header">
+              <span class="tier-badge" style="background: {tierInfo.color};">{tierInfo.text}</span>
+              <span class="match-badge" style="background: {scoreColor.color};">{Math.round(result.score * 100)}%</span>
+            </div>
+            <div class="tm-source">
+              <span class="field-label">Source:</span>
+              <span class="source-text">{result.source_text}</span>
+            </div>
+            <div class="tm-target">
+              <span class="field-label">Target:</span>
+              <span class="target-text">{result.target_text}</span>
+            </div>
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 </div>
@@ -413,5 +462,73 @@
 
   .empty-msg.muted {
     opacity: 0.7;
+  }
+
+  /* AC Context Results (Phase 88) */
+  .context-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .context-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+
+  .context-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--cds-layer-02);
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+  }
+
+  .context-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .context-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 6px;
+  }
+
+  .context-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.2px;
+    line-height: 1;
   }
 </style>
