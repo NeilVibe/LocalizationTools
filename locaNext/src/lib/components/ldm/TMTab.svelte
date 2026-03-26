@@ -31,11 +31,13 @@
     if (score >= 1.0) {
       return { color: 'var(--cds-support-success, #24a148)', label: 'Exact', type: 'green' };
     } else if (score >= 0.92) {
-      return { color: 'var(--cds-support-warning, #c6a300)', label: 'High Fuzzy', type: 'yellow' };
+      return { color: 'var(--cds-support-success, #24a148)', label: 'High', type: 'green' };
     } else if (score >= 0.75) {
-      return { color: 'var(--cds-support-caution-minor, #ff832b)', label: 'Fuzzy', type: 'orange' };
+      return { color: 'var(--cds-support-warning, #c6a300)', label: 'Fuzzy', type: 'yellow' };
+    } else if (score >= 0.62) {
+      return { color: 'var(--cds-support-caution-minor, #ff832b)', label: 'Low Fuzzy', type: 'orange' };
     } else {
-      return { color: 'var(--cds-support-error, #da1e28)', label: 'Low', type: 'red' };
+      return { color: 'var(--cds-support-error, #da1e28)', label: 'Below Threshold', type: 'red' };
     }
   }
 
@@ -278,17 +280,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.6875rem;
+    min-width: 48px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
     letter-spacing: 0.3px;
+    line-height: 1;
   }
 
   .match-label {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 500;
   }
 
