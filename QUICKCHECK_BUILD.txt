@@ -19,3 +19,4 @@ Build 017: TERM CHECK autofilter + freeze panes on header row
 Build 018: add QuickCheck program icon (red-crimson gradient sphere)
 Build 019: add window/taskbar icon (QC icon in title bar + taskbar)
 Build 020: add AppUserModelID for taskbar icon
+Build 021: add NUM CHECK — numeric consistency check (multiset comparison, identifier masking, 2-row button layout)
