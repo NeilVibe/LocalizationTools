@@ -61,7 +61,7 @@ class QuickCheckApp(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("QuickCheck")
+        self.title(f"QuickCheck v{config.VERSION}")
         import sys as _sys
         _base = Path(getattr(_sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
         _icon = _base / "images" / "QCico.ico"

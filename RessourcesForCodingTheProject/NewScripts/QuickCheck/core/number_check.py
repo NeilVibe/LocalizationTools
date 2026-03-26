@@ -30,9 +30,27 @@ logger = logging.getLogger(__name__)
 # Identifier masking (skip code-like tokens)
 # =============================================================================
 
-_RE_UNDERSCORE_ID = re.compile(r'\b[a-zA-Z_]\w*_\w+\b')
+# Unicode-aware: catches 벤치마크_0002 AND Benchmark_0002
+_RE_UNDERSCORE_ID = re.compile(r'[\w][\w]*_[\w]+', re.UNICODE)
 _RE_VERSION = re.compile(r'\bv\d+(?:\.\d+)+\b', re.IGNORECASE)
 _RE_HEX = re.compile(r'(?:0x|#)[0-9a-fA-F]{2,}')
+
+# Format placeholders — {0}, {1}, {0:d}, {count}, %d, %s, %1$s, %02d, %%
+_RE_FORMAT_BRACE = re.compile(r'\{[^}]*\}')
+_RE_FORMAT_PERCENT = re.compile(r'%(?:%|\d*\$?[dsf]|\d*\.\d*[dsf]|0\d+[dsf])')
+
+# Rich-text / markup tags with numbers — <size=14>, <color=#FF>, <sprite=3>
+_RE_RICH_TAG = re.compile(r'<[^>]*=\s*[^>]*>', re.IGNORECASE)
+
+# File extensions with numeric-like names — icon_01.png, sound.mp3
+_RE_FILE_EXT = re.compile(r'[\w.-]+\.(?:png|jpg|jpeg|gif|bmp|mp3|wav|ogg|mp4|avi|fbx|prefab)\b',
+                          re.IGNORECASE)
+
+# Dot-separated identifiers — item.001, quest.013
+_RE_DOT_ID = re.compile(r'\b[a-zA-Z]\w*\.\d{2,}\b')
+
+# CamelCase/PascalCase identifiers ending with digits — Item0002, NPC001, Quest013
+_RE_CAMEL_ID = re.compile(r'\b[A-Z][a-zA-Z]+\d{2,}\b')
 
 # =============================================================================
 # Multiplier patterns — normalise x10, 10x, 10배 → just the number
@@ -61,14 +79,44 @@ _RE_NUMBER = re.compile(
 def _mask_and_normalise(text: str) -> str:
     """Mask identifiers + normalise multipliers/ordinals. Returns cleaned text."""
     t = text
-    t = _RE_UNDERSCORE_ID.sub(' ', t)
-    t = _RE_VERSION.sub(' ', t)
-    t = _RE_HEX.sub(' ', t)
+    # --- Layer 1: Code-like tokens (mask BEFORE number extraction) ---
+    t = _RE_FORMAT_BRACE.sub(' ', t)    # {0}, {count}, {0:d}
+    t = _RE_FORMAT_PERCENT.sub(' ', t)  # %d, %1$s, %02d
+    t = _RE_RICH_TAG.sub(' ', t)        # <size=14>, <color=#FF>
+    t = _RE_FILE_EXT.sub(' ', t)        # icon_01.png, sound.mp3
+    t = _RE_DOT_ID.sub(' ', t)          # item.001, quest.013
+    t = _RE_CAMEL_ID.sub(' ', t)        # Item0002, NPC001
+    t = _RE_UNDERSCORE_ID.sub(' ', t)   # 벤치마크_0002, Benchmark_0002
+    t = _RE_VERSION.sub(' ', t)         # v1.2.3
+    t = _RE_HEX.sub(' ', t)            # 0xFF, #FF00
+    # --- Layer 2: Normalise multipliers/ordinals (keep the number) ---
     t = _RE_X_PREFIX.sub(r' \1 ', t)
     t = _RE_X_SUFFIX.sub(r' \1 ', t)
     t = _RE_BAE_SUFFIX.sub(r' \1 ', t)
     t = _RE_ORDINAL_SUFFIX.sub(r' \1 ', t)
     return t
+
+
+def _shared_token_mask(source: str, target: str) -> tuple:
+    """Nuclear false-positive killer: find tokens that appear identically in BOTH
+    source and target (e.g. code IDs, placeholders). Mask them from both before
+    number extraction so they never cause mismatches.
+
+    Returns (masked_source, masked_target).
+    """
+    # Extract all tokens that contain digits
+    re_digit_token = re.compile(r'(?:[\w.]+\d[\w.]*|\d[\w.]+)', re.UNICODE)
+    src_tokens = set(re_digit_token.findall(source))
+    tgt_tokens = set(re_digit_token.findall(target))
+    shared = src_tokens & tgt_tokens
+    if not shared:
+        return source, target
+    # Mask shared tokens from both (longest first to avoid partial matches)
+    ms, mt = source, target
+    for token in sorted(shared, key=len, reverse=True):
+        ms = ms.replace(token, ' ')
+        mt = mt.replace(token, ' ')
+    return ms, mt
 
 
 def _normalise_number(raw: str) -> str:
@@ -273,12 +321,16 @@ def _run_number_check_single(
         if not source or not target:
             continue
 
+        # === PASS 0: Shared-token elimination ===
+        # Tokens identical in both sides are code artifacts, not translation issues.
+        masked_src, masked_tgt = _shared_token_mask(source, target)
+
         # === PASS 1: Digit-to-digit (source must have digits) ===
-        src_nums = _extract_digits(source)
+        src_nums = _extract_digits(masked_src)
         if not src_nums:
             continue  # No digits in source → skip entirely
 
-        tgt_nums = _extract_digits(target)
+        tgt_nums = _extract_digits(masked_tgt)
         if src_nums == tgt_nums:
             continue  # Digits match perfectly → PASS
 
