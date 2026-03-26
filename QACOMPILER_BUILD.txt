@@ -1,1 +1,1 @@
-Build QACompiler — fix debug log path for setup.exe
+Build QACompiler — phantom issue detection (ISSUE without comment = NO ISSUE)
