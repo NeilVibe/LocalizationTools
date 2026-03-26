@@ -1,1 +1,1 @@
-Build QACompiler — phantom issue detection (ISSUE without comment = NO ISSUE)
+Build QACompiler — named column phantom detection + code review fixes
