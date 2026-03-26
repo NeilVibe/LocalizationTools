@@ -1150,15 +1150,18 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                         has_any_tester_status = True
                         status_upper = str(value).strip().upper()
                         if status_upper == "ISSUE":
-                            # Phantom check: look for comment in next 3 cols after STATUS
-                            # STATUS is at col_idx+1, comments at col_idx+2..col_idx+4
+                            # Phantom check: ISSUE without comment = NO ISSUE
+                            # Check named COMMENT_* columns for this row
                             has_comment = False
-                            for c_off in range(2, 5):
-                                c_idx = col_idx + c_off
-                                if c_idx < len(row_tuple) and row_tuple[c_idx] is not None:
-                                    if str(row_tuple[c_idx]).strip():
-                                        has_comment = True
-                                        break
+                            if comment_col_indices:
+                                for c_idx in comment_col_indices:
+                                    if c_idx < len(row_tuple) and row_tuple[c_idx] is not None:
+                                        if str(row_tuple[c_idx]).strip():
+                                            has_comment = True
+                                            break
+                            else:
+                                # No comment columns found — can't detect phantom, treat as real
+                                has_comment = True
                             if has_comment:
                                 has_issue = True
                                 rows_with_issue_status.add(row_idx)

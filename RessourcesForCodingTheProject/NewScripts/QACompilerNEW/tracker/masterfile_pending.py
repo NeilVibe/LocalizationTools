@@ -166,8 +166,10 @@ def _read_master_statuses(
                 debug_log.append(f"    SKIP sheet '{ws.title}' (no headers)")
                 continue
 
-            # Find TESTER_STATUS_{user} and STATUS_{user} column pairs
+            # Find TESTER_STATUS_{user}, STATUS_{user}, and comment columns per user
             user_columns: Dict[str, Tuple[int, Optional[int]]] = {}
+            # comment_columns[username] = list of 0-based indices for COMMENT/MEMO/SCREENSHOT
+            user_comment_cols: Dict[str, List[int]] = {}
 
             for idx, hdr in enumerate(headers):
                 hdr_upper = hdr.upper()
@@ -181,6 +183,19 @@ def _read_master_statuses(
                                 status_idx = sidx
                                 break
                         user_columns[username] = (idx, status_idx)
+
+            # Discover comment columns by header name (not position)
+            # Matches COMMENT_{user}, MEMO_{user}, SCREENSHOT_{user}
+            _COMMENT_PREFIXES = ("COMMENT_", "MEMO_", "SCREENSHOT_")
+            for idx, hdr in enumerate(headers):
+                hdr_upper = hdr.upper()
+                for prefix in _COMMENT_PREFIXES:
+                    if hdr_upper.startswith(prefix.upper()):
+                        uname = hdr[len(prefix):].strip()
+                        if uname in user_columns:
+                            if uname not in user_comment_cols:
+                                user_comment_cols[uname] = []
+                            user_comment_cols[uname].append(idx)
 
             if not user_columns:
                 debug_log.append(f"    SKIP sheet '{ws.title}' (no TESTER_STATUS_ columns)")
@@ -209,18 +224,20 @@ def _read_master_statuses(
                     if ts_str != "ISSUE":
                         continue
 
-                    # Check comment columns (up to 3 cols after STATUS)
-                    # These hold the tester's actual issue description.
+                    # Check named comment columns (COMMENT/MEMO/SCREENSHOT for this user)
                     # ISSUE without any comment = phantom issue → treat as nonissue.
+                    comment_cols = user_comment_cols.get(username, [])
                     has_comment = False
-                    if s_idx is not None:
-                        for c_offset in range(1, 4):  # STATUS+1, STATUS+2, STATUS+3
-                            c_idx = s_idx + c_offset
-                            if c_idx < len(row) and row[c_idx] is not None:
-                                val = str(row[c_idx]).strip()
-                                if val:
-                                    has_comment = True
-                                    break
+                    for c_idx in comment_cols:
+                        if c_idx < len(row) and row[c_idx] is not None:
+                            val = str(row[c_idx]).strip()
+                            if val:
+                                has_comment = True
+                                break
+                    # If no named comment columns found at all, treat as real issue
+                    # (can't detect phantom without comment columns)
+                    if not comment_cols:
+                        has_comment = True
 
                     if not has_comment:
                         # Phantom issue: ISSUE mark with no comment → auto-nonissue
