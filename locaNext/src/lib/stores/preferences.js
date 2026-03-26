@@ -39,8 +39,9 @@ const defaultPreferences = {
   referenceFileId: null,
 
   // MapData Generator Settings (Phase 5: branch/drive configuration)
-  mdgBranch: 'mainline',
-  mdgDrive: 'F',
+  // PATH-01: defaults updated to match QACompiler (cd_beta/D)
+  mdgBranch: 'cd_beta',
+  mdgDrive: 'D',
   mdgMetadataReading: true
 };
 
@@ -142,6 +143,11 @@ function createPreferencesStore() {
 
     setReferenceFile: (fileId) => {
       update(prefs => ({ ...prefs, referenceFileId: fileId }));
+    },
+
+    // Branch/Drive settings (PATH-04: persist across sessions)
+    setBranchDrive: (branch, drive) => {
+      update(prefs => ({ ...prefs, mdgBranch: branch, mdgDrive: drive }));
     },
 
     // Reset to defaults
