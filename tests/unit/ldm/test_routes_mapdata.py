@@ -154,9 +154,12 @@ class TestAudioStreamEndpoint:
         assert "audio/wav" in resp.headers["content-type"]
 
     def test_audio_stream_404(self, client):
-        """Unknown string_id returns 404."""
+        """Unknown string_id returns 404 when service is initialized but no audio found."""
+        mock_ctx = MagicMock()
+        mock_ctx.wem_path = None
+        mock_ctx.fallback_reason = "No audio for 'UNKNOWN_ID'"
         mock_service = MagicMock()
-        mock_service.get_audio_context.return_value = None
+        mock_service.get_audio_context.return_value = mock_ctx
 
         with patch("server.tools.ldm.routes.mapdata.get_mapdata_service", return_value=mock_service):
             resp = client.get("/api/ldm/mapdata/audio/stream/UNKNOWN_ID")
