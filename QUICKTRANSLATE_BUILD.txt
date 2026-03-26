@@ -1,1 +1,1 @@
-Build QuickTranslate — compact checkbox UI, minimal punctuation regex
+Build QuickTranslate — crisp DPI icon + responsive checkbox visual feedback
