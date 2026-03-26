@@ -1,12 +1,12 @@
 ---
 phase: 88-ac-context-integration
 verified: 2026-03-26T05:10:00Z
-status: gaps_found
-score: 4/5 must-haves verified
+status: passed
+score: 5/5 must-haves verified
 re_verification: false
 gaps:
   - truth: "Each context result shows tier indicator (Exact/Line/Fuzzy) and score percentage"
-    status: failed
+    status: resolved
     reason: "Type mismatch between backend and frontend: ContextSearcher emits tier as string (\"whole\", \"line\", \"fuzzy\") but getTierLabel() checks for numbers (1, 2, 3) using strict equality. Tier-1 and tier-2 results always fall through to default and display as 'Fuzzy' with yellow color regardless of actual tier."
     artifacts:
       - path: "server/tools/ldm/indexing/context_searcher.py"
