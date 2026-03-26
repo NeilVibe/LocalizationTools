@@ -23,6 +23,7 @@ from server.tools.ldm.services.perforce_path_service import (
     get_perforce_path_service,
     convert_to_wsl_path,
     KNOWN_BRANCHES,
+    KNOWN_DRIVES,
 )
 from server.tools.ldm.services.media_converter import get_media_converter
 
@@ -86,6 +87,20 @@ class PathStatusResponse(BaseModel):
     paths_resolved: int
     known_branches: list[str]
     known_drives: list[str]
+
+
+class PathFolderStatus(BaseModel):
+    key: str
+    path: str
+    exists: bool
+
+
+class PathValidationResponse(BaseModel):
+    ok: bool
+    drive: str
+    branch: str
+    folders: list[PathFolderStatus]
+    missing: list[str]
 
 
 # =============================================================================
@@ -326,3 +341,37 @@ async def configure_paths(
     )
 
     return PathStatusResponse(**path_service.get_status())
+
+
+@router.get("/mapdata/paths/validate", response_model=PathValidationResponse)
+async def validate_paths(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Check which resolved Perforce paths actually exist on disk.
+
+    Returns per-folder existence status. Critical folders (knowledge, loc, texture)
+    determine the overall ok status -- matches QACompiler validate_paths pattern.
+    """
+    path_service = get_perforce_path_service()
+    status = path_service.get_status()
+    all_paths = path_service.get_all_resolved()
+
+    CRITICAL_KEYS = ["knowledge_folder", "loc_folder", "texture_folder"]
+
+    folders = []
+    for key, path_obj in all_paths.items():
+        folders.append(PathFolderStatus(
+            key=key,
+            path=str(path_obj),
+            exists=path_obj.exists(),
+        ))
+
+    missing = [f.key for f in folders if f.key in CRITICAL_KEYS and not f.exists]
+
+    return PathValidationResponse(
+        ok=len(missing) == 0,
+        drive=status["drive"],
+        branch=status["branch"],
+        folders=folders,
+        missing=missing,
+    )
