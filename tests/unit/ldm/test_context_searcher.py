@@ -12,6 +12,9 @@ Tests cover:
 - Edge cases (empty, no matches)
 """
 
+import random
+import time
+
 import pytest
 
 try:
@@ -451,3 +454,163 @@ class TestIndexerACBuild:
 
         assert whole_auto is None
         assert line_auto is None
+
+
+# =========================================================================
+# Performance Benchmarks
+# =========================================================================
+
+def _random_korean_string(min_len: int = 20, max_len: int = 80) -> str:
+    """Generate a random Korean string using syllable range 0xAC00-0xD7AF."""
+    length = random.randint(min_len, max_len)
+    chars = []
+    for _ in range(length):
+        # Mix Korean syllables with occasional spaces (~10% chance)
+        if random.random() < 0.1:
+            chars.append(" ")
+        else:
+            chars.append(chr(random.randint(0xAC00, 0xD7AF)))
+    return "".join(chars)
+
+
+def _build_korean_tm_entries(count: int):
+    """Generate synthetic Korean TM data entries.
+
+    Returns:
+        Tuple of (whole_lookup, line_lookup) dicts.
+    """
+    from server.tools.ldm.indexing.utils import normalize_for_hash
+
+    whole_lookup = {}
+    line_lookup = {}
+
+    for i in range(count):
+        source = _random_korean_string(20, 80)
+        target = _random_korean_string(20, 80)
+        normalized = normalize_for_hash(source)
+        if not normalized:
+            continue
+
+        whole_lookup[normalized] = {
+            "entry_id": i,
+            "source_text": source,
+            "target_text": target,
+            "string_id": None,
+        }
+
+        # Build line entries from first line
+        lines = source.split(" ")
+        for j, line in enumerate(lines[:3]):  # limit lines per entry
+            line_norm = normalize_for_hash(line)
+            if line_norm and len(line_norm) >= 2 and line_norm not in line_lookup:
+                line_lookup[line_norm] = {
+                    "entry_id": i,
+                    "source_line": line,
+                    "target_line": target[:20],
+                    "line_num": j,
+                    "total_lines": min(len(lines), 3),
+                    "string_id": None,
+                }
+
+    return whole_lookup, line_lookup
+
+
+def _build_indexes_with_ac(whole_lookup, line_lookup):
+    """Create indexes dict with AC automatons from lookups."""
+    whole_automaton = None
+    line_automaton = None
+
+    if whole_lookup:
+        whole_automaton = ahocorasick.Automaton()
+        for idx, key in enumerate(whole_lookup):
+            whole_automaton.add_word(key, (idx, key))
+        whole_automaton.make_automaton()
+
+    if line_lookup:
+        line_automaton = ahocorasick.Automaton()
+        for idx, key in enumerate(line_lookup):
+            line_automaton.add_word(key, (idx, key))
+        line_automaton.make_automaton()
+
+    return {
+        "tm_id": 1,
+        "metadata": {},
+        "whole_lookup": whole_lookup,
+        "line_lookup": line_lookup,
+        "whole_automaton": whole_automaton,
+        "line_automaton": line_automaton,
+    }
+
+
+@pytest.mark.skipif(not AC_AVAILABLE, reason="ahocorasick not installed")
+class TestContextSearcherPerformance:
+    """Performance benchmarks for ContextSearcher with realistic Korean TM data."""
+
+    def test_performance_1000_entries(self):
+        """Context search completes in < 100ms per query with 1000+ entries.
+
+        Generates 1000 Korean TM entries, builds AC indexes, runs 10 searches
+        with partial substrings from actual entries. Each must be < 100ms,
+        average must be < 50ms (headroom).
+        """
+        from server.tools.ldm.indexing.context_searcher import ContextSearcher
+
+        random.seed(42)  # Reproducible
+
+        whole_lookup, line_lookup = _build_korean_tm_entries(1000)
+        assert len(whole_lookup) >= 900, f"Expected 900+ entries, got {len(whole_lookup)}"
+
+        indexes = _build_indexes_with_ac(whole_lookup, line_lookup)
+        searcher = ContextSearcher(indexes)
+
+        # Pick 10 source texts -- mix of partial substrings to trigger all tiers
+        source_keys = list(whole_lookup.keys())
+        search_texts = []
+        for i in range(10):
+            key = source_keys[i * (len(source_keys) // 10)]
+            # Use a substring (partial) to trigger both AC and fuzzy tiers
+            text = key[:len(key) // 2] + _random_korean_string(5, 15)
+            search_texts.append(text)
+
+        timings = []
+        for text in search_texts:
+            start = time.perf_counter()
+            result = searcher.search(text, max_results=10)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            timings.append(elapsed_ms)
+
+        max_time = max(timings)
+        avg_time = sum(timings) / len(timings)
+
+        assert max_time < 100, f"Max search time {max_time:.1f}ms exceeds 100ms limit"
+        assert avg_time < 50, f"Average search time {avg_time:.1f}ms exceeds 50ms headroom"
+
+    def test_performance_2000_entries_consecutive(self):
+        """10 consecutive searches with 2000 entries all complete in < 100ms each.
+
+        Validates sustained performance under heavier load.
+        """
+        from server.tools.ldm.indexing.context_searcher import ContextSearcher
+
+        random.seed(123)  # Reproducible
+
+        whole_lookup, line_lookup = _build_korean_tm_entries(2000)
+        assert len(whole_lookup) >= 1800, f"Expected 1800+ entries, got {len(whole_lookup)}"
+
+        indexes = _build_indexes_with_ac(whole_lookup, line_lookup)
+        searcher = ContextSearcher(indexes)
+
+        source_keys = list(whole_lookup.keys())
+        timings = []
+
+        for i in range(10):
+            key = source_keys[i * (len(source_keys) // 10)]
+            text = key[:len(key) // 2] + _random_korean_string(10, 30)
+
+            start = time.perf_counter()
+            result = searcher.search(text, max_results=10)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            timings.append(elapsed_ms)
+
+        for i, t in enumerate(timings):
+            assert t < 100, f"Search {i} took {t:.1f}ms, exceeds 100ms limit"
