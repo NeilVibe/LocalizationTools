@@ -153,12 +153,10 @@ export function estimateRowHeight(row: any, index: number, stripColorTags: (text
 }
 
 /**
- * Rebuild cumulative heights using a hybrid approach:
- * - Loaded rows get their measured/estimated height
- * - Unloaded rows use MIN_ROW_HEIGHT (no string processing)
+ * Rebuild cumulative heights for virtual scroll positioning.
  *
- * For very large files (>10k rows), this uses a sparse representation
- * to avoid creating a 100k+ element reactive array that freezes Svelte.
+ * Uses $state.snapshot to bypass Svelte proxy overhead when iterating large arrays.
+ * Without this, 103k proxy get-trap calls freeze the main thread.
  */
 export function rebuildCumulativeHeights(stripColorTags: (text: string) => string): void {
   const total = grid.total;
@@ -167,19 +165,18 @@ export function rebuildCumulativeHeights(stripColorTags: (text: string) => strin
     return;
   }
 
-  // For large files, build cumulative heights using a non-reactive typed array
-  // then only expose the result via heightData (single reactive write).
-  const cumulative = new Float64Array(total + 1);
-  // cumulative[0] = 0 (default for typed arrays)
+  // CRITICAL: $state.snapshot bypasses Svelte proxy overhead.
+  // Without this, 103k proxy get-trap calls take 130ms+ per rebuild
+  // (called 3+ times during file open due to prefetch cascade).
+  const rows = $state.snapshot(grid.rows);
 
+  const cumulative = new Float64Array(total + 1);
   for (let i = 0; i < total; i++) {
-    const row = grid.rows[i];
+    const row = rows[i];
     const height = row ? estimateRowHeight(row, i, stripColorTags) : MIN_ROW_HEIGHT;
     cumulative[i + 1] = cumulative[i] + height;
   }
 
-  // Single reactive write — assign the typed array directly.
-  // findRowAtPosition and getRowTop read by index, which works on Float64Array.
   heightData.cumulativeHeights = cumulative as any;
 }
 

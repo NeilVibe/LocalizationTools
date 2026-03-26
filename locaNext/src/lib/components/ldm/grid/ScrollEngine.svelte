@@ -298,6 +298,7 @@
           grid.rows[index] = rowData;
           rowIndexById.set(row.id.toString(), index);
         });
+
         // Trigger reactivity without creating a dense copy of the sparse array
         grid.rowsVersion++;
         loadedPages.add(1);
