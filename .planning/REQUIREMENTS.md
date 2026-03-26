@@ -3,34 +3,52 @@
 **Defined:** 2026-03-26
 **Core Value:** Real, working localization workflows with zero cloud dependency
 
-## v12.0 Requirements
+## v13.0 Requirements
 
-Requirements for TM Intelligence milestone. Each maps to roadmap phases.
+Requirements for Production Path Resolution milestone.
 
-### TM UI (Threshold + Display)
+### Code Cleanup
 
-- [x] **TMUI-01**: Dual threshold system — right panel TM suggestions automatically use 62% context threshold, pretranslation automatically uses 92% threshold (both hardcoded, not user-configurable)
-- [x] **TMUI-02**: Translator sees prominent match percentage with color-coded badges on every TM result in the right panel
+- [ ] **FIX-01**: onScrollToRow delegate race in SearchEngine resolved — scroll-to-row works reliably after search
+- [ ] **FIX-02**: visibleColumns dead $derived removed from CellRenderer
+- [ ] **FIX-03**: onSaveComplete callback wired in InlineEditor — parent notified on save
+- [ ] **FIX-04**: tmSuggestions accessible from StatusColors to parent components
 
-### AC Context Search
+### Path Configuration
 
-- [x] **ACCTX-01**: System builds Aho-Corasick automatons (whole + line) from loaded TM on TM index load
-- [x] **ACCTX-02**: When translator selects a row, AC scans Korean source text and shows where terms appear elsewhere in the TM
-- [x] **ACCTX-03**: System uses character n-gram Jaccard (n={2,3,4,5}, space-stripped Korean) for fuzzy matches below AC exact threshold (>=62%)
-- [x] **ACCTX-04**: Context search results appear in the right panel with match tier indicator and score
+- [ ] **PATH-01**: User can select Branch (cd_beta, mainline, cd_alpha, cd_delta, cd_lambda) via dropdown — always visible in UI like QACompiler top bar
+- [ ] **PATH-02**: User can select Drive letter (A-Z) via dropdown — combined with branch to form base Perforce path
+- [ ] **PATH-03**: Path validation shows green "PATHS OK" or red "PATHS NOT FOUND" with specific missing folders — validates on startup, on change, and before operations
+- [ ] **PATH-04**: Branch+Drive selection persisted across sessions (settings.json or DB preferences)
 
-### Performance
+### Media Path Resolution
 
-- [x] **PERF-01**: AC context search completes within 100ms per row-select (no perceptible delay)
+- [ ] **MEDIA-01**: LanguageData grid row-select resolves DDS image via StringID → GameData entity → TextureName → Perforce DDS path — shown in ImageTab
+- [ ] **MEDIA-02**: LanguageData grid row-select resolves WEM audio via StringID → GameData entity → SoundEventName → Perforce WEM path — shown in AudioTab
+- [ ] **MEDIA-03**: Path resolution uses configured Branch+Drive (not hardcoded paths)
+- [ ] **MEDIA-04**: Graceful fallback when image/audio not found — shows "No media" with reason (entity not found / texture attribute missing / file not on disk)
 
-## Future Requirements
+### Mock Testing
 
-Deferred to future milestones. Tracked but not in current roadmap.
+- [ ] **MOCK-01**: Mock Perforce directory structure with DDS/WEM fixtures at correct relative paths
+- [ ] **MOCK-02**: E2E tests verify full chain: LanguageData row → StringID → entity → DDS thumbnail in ImageTab
+- [ ] **MOCK-03**: E2E tests verify full chain: LanguageData row → StringID → entity → WEM playback in AudioTab
+- [ ] **MOCK-04**: Mock paths are drive-agnostic (relative structure, any drive letter works)
 
 ### Architecture
 
-- **ARCH-02**: Split mega_index.py (1310 lines) into domain services
-- **LDE2E-03**: Language data with images/audio resolves from Perforce-like paths
+- [ ] **ARCH-02**: mega_index.py split from 1310 lines into 5 focused modules (entity, media, cross-ref, search, build)
+
+## Future Requirements
+
+Deferred to future milestones.
+
+### Interactive Codex (v14.0+)
+
+- **CODEX-01**: Per-generator Codex pages (Quest, Item, Character, Region) with QACompiler tab structure
+- **CODEX-02**: Interactive world map with Region boundaries from MapPlot data
+- **CODEX-03**: Entity pins on map from WorldPosition, color-coded by type
+- **CODEX-04**: crimsondesert.gg-style visual quality for map and entity cards
 
 ### Infrastructure
 
@@ -40,30 +58,39 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| Word-level n-grams | Korean doesn't split on spaces reliably; char n-grams sufficient |
-| English source support for AC | Korean-only for now; can add later if needed |
-| Jamo decomposition | Destroys semantic density; only useful for typo correction |
-| Particle stripping | Optional optimization; defer to performance testing |
-| AI re-ranking of AC results | Existing AI suggestion tab is separate concern |
-| File/category-aware TM ranking | Current cascade is sufficient; not requested |
+| Perforce client integration | Branch list is hardcoded (matches all 3 NewScripts apps) |
+| Auto-detect drive letter | User selects manually (matches QACompiler/MapDataGenerator pattern) |
+| Real Perforce sync/checkout | Read-only access to local files, no P4 commands |
+| Multi-user branch/drive | v13.0 is single-user; multi-user deferred to LAN milestone |
+| Codex enhancements | Deferred to v14.0+ (needs path resolution working first) |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TMUI-01 | Phase 86 | Complete |
-| TMUI-02 | Phase 86 | Complete |
-| ACCTX-01 | Phase 87 | Complete |
-| ACCTX-02 | Phase 88 | Complete |
-| ACCTX-03 | Phase 87 | Complete |
-| ACCTX-04 | Phase 88 | Complete |
-| PERF-01 | Phase 87 | Complete |
+| FIX-01 | TBD | Pending |
+| FIX-02 | TBD | Pending |
+| FIX-03 | TBD | Pending |
+| FIX-04 | TBD | Pending |
+| PATH-01 | TBD | Pending |
+| PATH-02 | TBD | Pending |
+| PATH-03 | TBD | Pending |
+| PATH-04 | TBD | Pending |
+| MEDIA-01 | TBD | Pending |
+| MEDIA-02 | TBD | Pending |
+| MEDIA-03 | TBD | Pending |
+| MEDIA-04 | TBD | Pending |
+| MOCK-01 | TBD | Pending |
+| MOCK-02 | TBD | Pending |
+| MOCK-03 | TBD | Pending |
+| MOCK-04 | TBD | Pending |
+| ARCH-02 | TBD | Pending |
 
 **Coverage:**
-- v12.0 requirements: 7 total
-- Mapped to phases: 7
-- Unmapped: 0
+- v13.0 requirements: 17 total
+- Mapped to phases: 0
+- Unmapped: 17 (pending roadmap)
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after v12.0 roadmap creation*
+*Last updated: 2026-03-26 after v13.0 milestone initialization*
