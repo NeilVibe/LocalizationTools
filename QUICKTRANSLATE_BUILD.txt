@@ -1,1 +1,1 @@
-Build QuickTranslate — Quick Converters (XML↔Excel, TMX↔Excel, Concatenate XML) + radio/checkbox visual feedback
+Build QuickTranslate — Quick Converters + clean indicator colors (white radios, white→red checkboxes)
