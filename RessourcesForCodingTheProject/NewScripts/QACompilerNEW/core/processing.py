@@ -39,7 +39,8 @@ from core.matching import (
 # SCRIPT DEBUG LOGGING (shared log file with compiler.py)
 # =============================================================================
 
-_SCRIPT_DEBUG_FILE = Path(__file__).parent.parent / "SCRIPT_DEBUG.log"
+_LOG_DIR = Path(__file__).parent.parent / "logs"
+_SCRIPT_DEBUG_FILE = _LOG_DIR / "SCRIPT_DEBUG.log"
 _SCRIPT_DEBUG_LINES = []
 
 
@@ -622,9 +623,15 @@ def process_sheet(
             if qa_status:
                 status_upper = str(qa_status).strip().upper()
                 if status_upper == "ISSUE":
-                    result["stats"]["issue"] += 1
-                    should_compile_comment = True
-                    status_type = "ISSUE"
+                    # Phantom check: ISSUE without comment = NO ISSUE
+                    has_comment = qa_comment_value is not None and str(qa_comment_value).strip() != ""
+                    if has_comment:
+                        result["stats"]["issue"] += 1
+                        should_compile_comment = True
+                        status_type = "ISSUE"
+                    else:
+                        result["stats"]["no_issue"] += 1  # phantom → auto NO ISSUE
+                        status_type = "NO ISSUE"
                 elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
                     # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
                     result["stats"]["no_issue"] += 1
@@ -1133,6 +1140,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                             screenshot_cols_with_content.add(screenshot_col_list[i])  # Store 1-based
 
             # Check tester status columns (FAST: direct tuple access)
+            # ISSUE without comment = phantom → treat as NO ISSUE
             has_issue = False
             has_any_tester_status = False
             for col_idx in tester_status_indices:
@@ -1142,9 +1150,19 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                         has_any_tester_status = True
                         status_upper = str(value).strip().upper()
                         if status_upper == "ISSUE":
-                            has_issue = True
-                            rows_with_issue_status.add(row_idx)
-                            break
+                            # Phantom check: look for comment in next 3 cols after STATUS
+                            # STATUS is at col_idx+1, comments at col_idx+2..col_idx+4
+                            has_comment = False
+                            for c_off in range(2, 5):
+                                c_idx = col_idx + c_off
+                                if c_idx < len(row_tuple) and row_tuple[c_idx] is not None:
+                                    if str(row_tuple[c_idx]).strip():
+                                        has_comment = True
+                                        break
+                            if has_comment:
+                                has_issue = True
+                                rows_with_issue_status.add(row_idx)
+                                break
             if has_any_tester_status and not has_issue:
                 rows_non_issue_by_tester.add(row_idx)
                 if debug and row_idx <= 20:

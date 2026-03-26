@@ -194,6 +194,7 @@ def _read_master_statuses(
             row_count = 0
             status_value_tracker: Dict[str, Dict[str, int]] = {}  # user -> {status_value: count}
             sample_rows: Dict[str, List[str]] = {}  # user -> first 5 sample rows
+            phantom_tracker: Dict[str, int] = {}  # user -> count of phantom issues (ISSUE without comment)
 
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if not any(row):
@@ -208,7 +209,30 @@ def _read_master_statuses(
                     if ts_str != "ISSUE":
                         continue
 
-                    # This row is an active issue for this user
+                    # Check comment columns (up to 3 cols after STATUS)
+                    # These hold the tester's actual issue description.
+                    # ISSUE without any comment = phantom issue → treat as nonissue.
+                    has_comment = False
+                    if s_idx is not None:
+                        for c_offset in range(1, 4):  # STATUS+1, STATUS+2, STATUS+3
+                            c_idx = s_idx + c_offset
+                            if c_idx < len(row) and row[c_idx] is not None:
+                                val = str(row[c_idx]).strip()
+                                if val:
+                                    has_comment = True
+                                    break
+
+                    if not has_comment:
+                        # Phantom issue: ISSUE mark with no comment → auto-nonissue
+                        phantom_tracker[username] = phantom_tracker.get(username, 0) + 1
+                        # Still count as active_issues for tracking, but classify as nonissue
+                        if username not in result:
+                            result[username] = _empty_counts()
+                        result[username]["active_issues"] += 1
+                        result[username]["nonissue"] += 1
+                        continue
+
+                    # This row is a REAL active issue for this user (has comment)
                     if username not in result:
                         result[username] = _empty_counts()
 
@@ -242,8 +266,14 @@ def _read_master_statuses(
                         counts[classification] += 1
 
             debug_log.append(f"      ROWS scanned: {row_count}")
+            # Log phantom issues (ISSUE without comment → auto-nonissue)
+            if phantom_tracker:
+                total_phantoms = sum(phantom_tracker.values())
+                debug_log.append(f"      PHANTOM ISSUES (ISSUE without comment → auto-nonissue): {total_phantoms}")
+                for u in sorted(phantom_tracker.keys()):
+                    debug_log.append(f"        {u}: {phantom_tracker[u]} phantom issues")
             for u in sorted(status_value_tracker.keys()):
-                debug_log.append(f"      {u} STATUS values (for ISSUE rows only):")
+                debug_log.append(f"      {u} STATUS values (for REAL ISSUE rows only):")
                 for sv, cnt in sorted(status_value_tracker[u].items(), key=lambda x: -x[1]):
                     debug_log.append(f"        '{sv}': {cnt} rows")
                 if u in sample_rows:
@@ -339,9 +369,11 @@ def build_pending_from_masterfiles(
     debug_log.append(f"\n  {'=== GRAND TOTAL ===':20s} | {'ALL':25s} | issues={grand_active:4d} pending={grand_pending:4d}")
     debug_log.append("=" * 80)
 
-    # Write to file AND print — use SCRIPT_DIR for PyInstaller compat
+    # Write to file AND print — use SCRIPT_DIR/logs/ for PyInstaller compat
     from config import SCRIPT_DIR
-    log_path = SCRIPT_DIR / "MASTERFILE_PENDING_DEBUG.log"
+    log_dir = SCRIPT_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / "MASTERFILE_PENDING_DEBUG.log"
     try:
         with open(log_path, "w", encoding="utf-8") as f:
             f.write("\n".join(debug_log))

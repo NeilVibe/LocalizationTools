@@ -87,14 +87,15 @@ def test_stale_issues_excluded_from_active(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_UserA", "STATUS_UserA",
+                "COMMENT_UserA", "MEMO_UserA", "SCREENSHOT_UserA",
             ],
             "rows": [
-                # ISSUE + empty status -> pending
-                ["KR1", "EN1", "S001", "ISSUE", None],
-                # ISSUE + FIXED -> fixed
-                ["KR2", "EN2", "S002", "ISSUE", "FIXED"],
-                # ISSUE + CHECKING -> checking + pending
-                ["KR3", "EN3", "S003", "ISSUE", "CHECKING"],
+                # ISSUE + empty status + comment -> pending
+                ["KR1", "EN1", "S001", "ISSUE", None, "Typo here", None, None],
+                # ISSUE + FIXED + comment -> fixed
+                ["KR2", "EN2", "S002", "ISSUE", "FIXED", "Was wrong", None, None],
+                # ISSUE + CHECKING + comment -> checking + pending
+                ["KR3", "EN3", "S003", "ISSUE", "CHECKING", "Grammar", None, None],
             ],
         },
     })
@@ -124,10 +125,11 @@ def test_multiple_categories_independent(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", None],
-                ["KR2", "EN2", "S002", "ISSUE", "FIXED"],
+                ["KR1", "EN1", "S001", "ISSUE", None, "Wrong word", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", "FIXED", "Typo", None, None],
             ],
         },
     })
@@ -138,11 +140,12 @@ def test_multiple_categories_independent(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Bob", "STATUS_Bob",
+                "COMMENT_Bob", "MEMO_Bob", "SCREENSHOT_Bob",
             ],
             "rows": [
-                ["KR1", "EN1", "S101", "ISSUE", "REPORTED"],
-                ["KR2", "EN2", "S102", "ISSUE", None],
-                ["KR3", "EN3", "S103", "ISSUE", "CHECKING"],
+                ["KR1", "EN1", "S101", "ISSUE", "REPORTED", "Bad format", None, None],
+                ["KR2", "EN2", "S102", "ISSUE", None, "Missing text", None, None],
+                ["KR3", "EN3", "S103", "ISSUE", "CHECKING", "Under review", None, None],
             ],
         },
     })
@@ -180,12 +183,13 @@ def test_manager_resolved_all_no_pending(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_UserA", "STATUS_UserA",
+                "COMMENT_UserA", "MEMO_UserA", "SCREENSHOT_UserA",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", "FIXED"],
-                ["KR2", "EN2", "S002", "ISSUE", "REPORTED"],
-                ["KR3", "EN3", "S003", "ISSUE", "NON-ISSUE"],
-                ["KR4", "EN4", "S004", "ISSUE", "FIXED"],
+                ["KR1", "EN1", "S001", "ISSUE", "FIXED", "Was wrong", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", "REPORTED", "Reported upstream", None, None],
+                ["KR3", "EN3", "S003", "ISSUE", "NON-ISSUE", "Intended", None, None],
+                ["KR4", "EN4", "S004", "ISSUE", "FIXED", "Corrected", None, None],
             ],
         },
     })
@@ -212,21 +216,22 @@ def test_mixed_tester_statuses_only_issues_counted(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_UserA", "STATUS_UserA",
+                "COMMENT_UserA", "MEMO_UserA", "SCREENSHOT_UserA",
             ],
             "rows": [
-                # ISSUE -> counted
-                ["KR1", "EN1", "S001", "ISSUE", None],
-                ["KR2", "EN2", "S002", "ISSUE", "FIXED"],
+                # ISSUE -> counted (has comment)
+                ["KR1", "EN1", "S001", "ISSUE", None, "Wrong text", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", "FIXED", "Typo fixed", None, None],
                 # NO ISSUE -> NOT counted
-                ["KR3", "EN3", "S003", "NO ISSUE", None],
+                ["KR3", "EN3", "S003", "NO ISSUE", None, None, None, None],
                 # BLOCKED -> NOT counted
-                ["KR4", "EN4", "S004", "BLOCKED", None],
+                ["KR4", "EN4", "S004", "BLOCKED", None, None, None, None],
                 # KOREAN -> NOT counted
-                ["KR5", "EN5", "S005", "KOREAN", None],
+                ["KR5", "EN5", "S005", "KOREAN", None, None, None, None],
                 # Empty -> NOT counted
-                ["KR6", "EN6", "S006", None, None],
-                # Another ISSUE -> counted
-                ["KR7", "EN7", "S007", "ISSUE", "REPORTED"],
+                ["KR6", "EN6", "S006", None, None, None, None, None],
+                # Another ISSUE -> counted (has comment)
+                ["KR7", "EN7", "S007", "ISSUE", "REPORTED", "Bad format", None, None],
             ],
         },
     })

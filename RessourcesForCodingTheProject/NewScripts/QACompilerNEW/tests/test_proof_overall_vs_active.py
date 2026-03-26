@@ -108,20 +108,22 @@ def _make_masterfile(folder: Path, category: str):
     ws.cell(1, 5, "COMMENT_Alice")
 
     # 7 surviving ISSUE rows with manager responses
+    # All have comments (real issues, not phantoms)
     data = [
-        ("1001", "Issue text 0", "ISSUE", "FIXED"),
-        ("1002", "Issue text 1", "ISSUE", "FIXED"),
-        ("1003", "Issue text 2", "ISSUE", "REPORTED"),
-        ("1004", "Issue text 3", "ISSUE", "CHECKING"),
-        ("1005", "Issue text 4", "ISSUE", "NON-ISSUE"),
-        ("1006", "Issue text 5", "ISSUE", ""),           # empty = pending
-        ("1007", "Issue text 6", "ISSUE", ""),           # empty = pending
+        ("1001", "Issue text 0", "ISSUE", "FIXED", "Wrong word"),
+        ("1002", "Issue text 1", "ISSUE", "FIXED", "Typo in name"),
+        ("1003", "Issue text 2", "ISSUE", "REPORTED", "Missing context"),
+        ("1004", "Issue text 3", "ISSUE", "CHECKING", "Grammar check"),
+        ("1005", "Issue text 4", "ISSUE", "NON-ISSUE", "Intended"),
+        ("1006", "Issue text 5", "ISSUE", "", "Truncated text"),       # empty status = pending
+        ("1007", "Issue text 6", "ISSUE", "", "Wrong punctuation"),    # empty status = pending
     ]
-    for row_idx, (sid, text, tstatus, mstatus) in enumerate(data, 2):
+    for row_idx, (sid, text, tstatus, mstatus, comment) in enumerate(data, 2):
         ws.cell(row_idx, 1, sid)
         ws.cell(row_idx, 2, text)
         ws.cell(row_idx, 3, tstatus)
         ws.cell(row_idx, 4, mstatus)
+        ws.cell(row_idx, 5, comment)
 
     # Also add some NO ISSUE rows (these should NOT count as active issues)
     for i, sid in enumerate(["2001", "2002", "2003"], 9):
@@ -213,28 +215,28 @@ class TestProofOverallVsActive:
         en_folder.mkdir()
         cn_folder.mkdir()
 
-        # Master_Quest: Alice has 3 issues (1 fixed, 2 pending)
+        # Master_Quest: Alice has 3 issues (1 fixed, 2 pending) — all with comments
         wb = Workbook()
         del wb["Sheet"]
         ws = wb.create_sheet("Quest")
         ws.cell(1, 1, "STRINGID"); ws.cell(1, 2, "TEXT")
-        ws.cell(1, 3, "TESTER_STATUS_Alice"); ws.cell(1, 4, "STATUS_Alice")
-        ws.cell(2, 1, "Q1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED")
-        ws.cell(3, 1, "Q2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, "")
-        ws.cell(4, 1, "Q3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, "")
+        ws.cell(1, 3, "TESTER_STATUS_Alice"); ws.cell(1, 4, "STATUS_Alice"); ws.cell(1, 5, "COMMENT_Alice")
+        ws.cell(2, 1, "Q1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED"); ws.cell(2, 5, "Typo")
+        ws.cell(3, 1, "Q2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, ""); ws.cell(3, 5, "Wrong word")
+        ws.cell(4, 1, "Q3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, ""); ws.cell(4, 5, "Grammar")
         wb.save(en_folder / "Master_Quest.xlsx")
         wb.close()
 
-        # Master_Item: Bob has 4 issues (2 fixed, 1 reported, 1 pending)
+        # Master_Item: Bob has 4 issues (2 fixed, 1 reported, 1 pending) — all with comments
         wb = Workbook()
         del wb["Sheet"]
         ws = wb.create_sheet("Item")
         ws.cell(1, 1, "STRINGID"); ws.cell(1, 2, "TEXT")
-        ws.cell(1, 3, "TESTER_STATUS_Bob"); ws.cell(1, 4, "STATUS_Bob")
-        ws.cell(2, 1, "I1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED")
-        ws.cell(3, 1, "I2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, "FIXED")
-        ws.cell(4, 1, "I3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, "REPORTED")
-        ws.cell(5, 1, "I4"); ws.cell(5, 2, "T4"); ws.cell(5, 3, "ISSUE"); ws.cell(5, 4, "")
+        ws.cell(1, 3, "TESTER_STATUS_Bob"); ws.cell(1, 4, "STATUS_Bob"); ws.cell(1, 5, "COMMENT_Bob")
+        ws.cell(2, 1, "I1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED"); ws.cell(2, 5, "Fixed it")
+        ws.cell(3, 1, "I2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, "FIXED"); ws.cell(3, 5, "Also fixed")
+        ws.cell(4, 1, "I3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, "REPORTED"); ws.cell(4, 5, "Reported")
+        ws.cell(5, 1, "I4"); ws.cell(5, 2, "T4"); ws.cell(5, 3, "ISSUE"); ws.cell(5, 4, ""); ws.cell(5, 5, "Missing text")
         wb.save(en_folder / "Master_Item.xlsx")
         wb.close()
 
@@ -264,10 +266,10 @@ class TestProofOverallVsActive:
         del wb["Sheet"]
         ws = wb.create_sheet("Character")
         ws.cell(1, 1, "STRINGID"); ws.cell(1, 2, "TEXT")
-        ws.cell(1, 3, "TESTER_STATUS_Carol"); ws.cell(1, 4, "STATUS_Carol")
-        ws.cell(2, 1, "C1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED")
-        ws.cell(3, 1, "C2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, "REPORTED")
-        ws.cell(4, 1, "C3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, "NON-ISSUE")
+        ws.cell(1, 3, "TESTER_STATUS_Carol"); ws.cell(1, 4, "STATUS_Carol"); ws.cell(1, 5, "COMMENT_Carol")
+        ws.cell(2, 1, "C1"); ws.cell(2, 2, "T1"); ws.cell(2, 3, "ISSUE"); ws.cell(2, 4, "FIXED"); ws.cell(2, 5, "Fixed")
+        ws.cell(3, 1, "C2"); ws.cell(3, 2, "T2"); ws.cell(3, 3, "ISSUE"); ws.cell(3, 4, "REPORTED"); ws.cell(3, 5, "Reported")
+        ws.cell(4, 1, "C3"); ws.cell(4, 2, "T3"); ws.cell(4, 3, "ISSUE"); ws.cell(4, 4, "NON-ISSUE"); ws.cell(4, 5, "Intended")
         wb.save(en_folder / "Master_Character.xlsx")
         wb.close()
 

@@ -47,7 +47,8 @@ from core.processing import count_words_english, count_chars_chinese
 # GRANULAR DEBUG LOGGING
 # =============================================================================
 
-_TRACKER_LOG_FILE = Path(__file__).parent.parent / "TRACKER_UPDATE_DEBUG.log"
+_LOG_DIR = Path(__file__).parent.parent / "logs"
+_TRACKER_LOG_FILE = _LOG_DIR / "TRACKER_UPDATE_DEBUG.log"
 _TRACKER_LOG_ENABLED = True  # Set to False to disable verbose logging
 _TRACKER_LOG_LINES = []  # Buffer for batch writing
 
@@ -741,6 +742,12 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
         _tracker_log(f"    SHEET '{sheet_name}': No STATUS column found", "WARN")
         return stats
 
+    # Find COMMENT/MEMO column for phantom issue detection
+    # ISSUE without comment = NO ISSUE (phantom)
+    comment_col = find_column_by_header(qa_ws, "MEMO")
+    if not comment_col:
+        comment_col = find_column_by_header(qa_ws, "COMMENT")
+
     # Get translation column for word counting (header-name detection)
     from core.matching import find_translation_col_in_ws
     trans_col = find_translation_col_in_ws(qa_ws, is_english)
@@ -770,7 +777,15 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
                 rows_with_status.append((row, status_upper))
 
             if status_upper == "ISSUE":
-                stats["issue"] += 1
+                # Phantom check: ISSUE without comment = NO ISSUE
+                has_comment = True
+                if comment_col:
+                    comment_val = qa_ws.cell(row=row, column=comment_col).value
+                    has_comment = comment_val is not None and str(comment_val).strip() != ""
+                if has_comment:
+                    stats["issue"] += 1
+                else:
+                    stats["no_issue"] += 1  # phantom → auto NO ISSUE
             elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
                 # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
                 stats["no_issue"] += 1

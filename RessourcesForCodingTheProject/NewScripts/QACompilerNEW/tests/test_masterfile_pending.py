@@ -82,7 +82,11 @@ def tmp_dirs(tmp_path):
 
 
 def test_single_master_one_tester(tmp_dirs):
-    """1 masterfile, 1 tester, 4 rows with different statuses."""
+    """1 masterfile, 1 tester, 4 rows with different statuses.
+
+    Real masterfiles have comment columns after STATUS (COMMENT, MEMO, SCREENSHOT).
+    ISSUE rows without any comment → phantom issue → auto-nonissue.
+    """
     en, cn = tmp_dirs
 
     _make_master(en, "Master_Quest.xlsx", {
@@ -90,16 +94,17 @@ def test_single_master_one_tester(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                # ISSUE + empty status -> pending
-                ["KR1", "EN1", "S001", "ISSUE", None],
-                # ISSUE + FIXED -> fixed
-                ["KR2", "EN2", "S002", "ISSUE", "FIXED"],
-                # ISSUE + CHECKING -> pending + checking
-                ["KR3", "EN3", "S003", "ISSUE", "CHECKING"],
+                # ISSUE + empty status + has comment -> pending
+                ["KR1", "EN1", "S001", "ISSUE", None, "Typo in line 3", None, None],
+                # ISSUE + FIXED + has comment -> fixed
+                ["KR2", "EN2", "S002", "ISSUE", "FIXED", "Wrong word", None, None],
+                # ISSUE + CHECKING + has comment -> pending + checking
+                ["KR3", "EN3", "S003", "ISSUE", "CHECKING", "Grammar issue", None, None],
                 # No ISSUE -> skip entirely
-                ["KR4", "EN4", "S004", None, "FIXED"],
+                ["KR4", "EN4", "S004", None, "FIXED", None, None, None],
             ],
         },
     })
@@ -108,12 +113,43 @@ def test_single_master_one_tester(tmp_dirs):
 
     alice = result["Alice"]["Quest"]
     assert alice["active_issues"] == 3
-    # Row 1 (empty) -> pending, Row 3 (CHECKING) -> also pending
+    # Row 1 (empty status, has comment) -> pending, Row 3 (CHECKING) -> also pending
     assert alice["pending"] == 2
     assert alice["fixed"] == 1
     assert alice["checking"] == 1
     assert alice["reported"] == 0
     assert alice["nonissue"] == 0
+
+
+def test_phantom_issue_no_comment(tmp_dirs):
+    """ISSUE without any comment in comment columns → auto-nonissue (phantom)."""
+    en, cn = tmp_dirs
+
+    _make_master(en, "Master_Quest.xlsx", {
+        "MainQuest": {
+            "headers": [
+                "Korean", "Translation (ENG)", "STRINGID",
+                "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
+            ],
+            "rows": [
+                # ISSUE + no comment → phantom → nonissue
+                ["KR1", "EN1", "S001", "ISSUE", None, None, None, None],
+                # ISSUE + has comment → real pending
+                ["KR2", "EN2", "S002", "ISSUE", None, "Real issue here", None, None],
+                # ISSUE + FIXED + no comment → phantom → nonissue (even though FIXED)
+                ["KR3", "EN3", "S003", "ISSUE", "FIXED", None, None, None],
+            ],
+        },
+    })
+
+    result = build_pending_from_masterfiles(en, cn)
+
+    alice = result["Alice"]["Quest"]
+    assert alice["active_issues"] == 3
+    assert alice["pending"] == 1   # only row 2 (has comment, empty status)
+    assert alice["nonissue"] == 2  # rows 1 and 3 (no comment → phantom)
+    assert alice["fixed"] == 0     # row 3 is phantom, not counted as fixed
 
 
 def test_two_testers_same_master(tmp_dirs):
@@ -125,11 +161,13 @@ def test_two_testers_same_master(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
                 "TESTER_STATUS_Bob", "STATUS_Bob",
+                "COMMENT_Bob", "MEMO_Bob", "SCREENSHOT_Bob",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", "FIXED", "ISSUE", "REPORTED"],
-                ["KR2", "EN2", "S002", "ISSUE", None, None, "FIXED"],
+                ["KR1", "EN1", "S001", "ISSUE", "FIXED", "Wrong word", None, None, "ISSUE", "REPORTED", "Bad format", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", None, "Typo found", None, None, None, "FIXED", None, None, None],
             ],
         },
     })
@@ -139,7 +177,7 @@ def test_two_testers_same_master(tmp_dirs):
     alice = result["Alice"]["Item"]
     assert alice["active_issues"] == 2
     assert alice["fixed"] == 1
-    assert alice["pending"] == 1  # row 2 empty status
+    assert alice["pending"] == 1  # row 2 empty status, has comment
 
     bob = result["Bob"]["Item"]
     assert bob["active_issues"] == 1  # only row 1 has ISSUE
@@ -164,10 +202,11 @@ def test_latest_file_wins_dedup(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", None],
-                ["KR2", "EN2", "S002", "ISSUE", None],
+                ["KR1", "EN1", "S001", "ISSUE", None, "Bug here", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", None, "Another bug", None, None],
             ],
         },
     }, mtime=old_time)
@@ -178,9 +217,10 @@ def test_latest_file_wins_dedup(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", "FIXED"],
+                ["KR1", "EN1", "S001", "ISSUE", "FIXED", "Was a typo", None, None],
             ],
         },
     }, mtime=new_time)
@@ -206,19 +246,21 @@ def test_multi_sheet_master(tmp_dirs):
             "headers": [
                 "StringID", "Text", "Translation",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["SYS1", "Setting1", "설정1", "ISSUE", "FIXED"],
-                ["SYS2", "Setting2", "설정2", "ISSUE", None],
+                ["SYS1", "Setting1", "설정1", "ISSUE", "FIXED", "Wrong label", None, None],
+                ["SYS2", "Setting2", "설정2", "ISSUE", None, "Missing text", None, None],
             ],
         },
         "Help": {
             "headers": [
                 "StringID", "Text", "Translation",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["HLP1", "Help1", "도움말1", "ISSUE", "REPORTED"],
+                ["HLP1", "Help1", "도움말1", "ISSUE", "REPORTED", "Unclear help text", None, None],
             ],
         },
     })
@@ -272,18 +314,20 @@ def test_skip_status_sheet(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", None],
+                ["KR1", "EN1", "S001", "ISSUE", None, "Real issue", None, None],
             ],
         },
         "STATUS": {
             "headers": [
                 "TESTER_STATUS_Ghost", "STATUS_Ghost",
+                "COMMENT_Ghost", "MEMO_Ghost", "SCREENSHOT_Ghost",
             ],
             "rows": [
-                ["ISSUE", None],
-                ["ISSUE", "FIXED"],
+                ["ISSUE", None, "Ghost comment", None, None],
+                ["ISSUE", "FIXED", "Ghost fixed", None, None],
             ],
         },
     })
@@ -305,11 +349,12 @@ def test_non_issue_variants(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", "NON-ISSUE"],
-                ["KR2", "EN2", "S002", "ISSUE", "NON ISSUE"],
-                ["KR3", "EN3", "S003", "ISSUE", "non-issue"],
+                ["KR1", "EN1", "S001", "ISSUE", "NON-ISSUE", "Not a bug", None, None],
+                ["KR2", "EN2", "S002", "ISSUE", "NON ISSUE", "Intended", None, None],
+                ["KR3", "EN3", "S003", "ISSUE", "non-issue", "By design", None, None],
             ],
         },
     })
@@ -331,9 +376,10 @@ def test_en_and_cn_folders(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ENG)", "STRINGID",
                 "TESTER_STATUS_Alice", "STATUS_Alice",
+                "COMMENT_Alice", "MEMO_Alice", "SCREENSHOT_Alice",
             ],
             "rows": [
-                ["KR1", "EN1", "S001", "ISSUE", "FIXED"],
+                ["KR1", "EN1", "S001", "ISSUE", "FIXED", "Typo fixed", None, None],
             ],
         },
     })
@@ -344,10 +390,11 @@ def test_en_and_cn_folders(tmp_dirs):
             "headers": [
                 "Korean", "Translation (ZHO-CN)", "STRINGID",
                 "TESTER_STATUS_Bob", "STATUS_Bob",
+                "COMMENT_Bob", "MEMO_Bob", "SCREENSHOT_Bob",
             ],
             "rows": [
-                ["KR1", "CN1", "S001", "ISSUE", None],
-                ["KR2", "CN2", "S002", "ISSUE", "REPORTED"],
+                ["KR1", "CN1", "S001", "ISSUE", None, "Wrong translation", None, None],
+                ["KR2", "CN2", "S002", "ISSUE", "REPORTED", "Grammar error", None, None],
             ],
         },
     })

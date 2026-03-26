@@ -28,7 +28,8 @@ from core.excel_ops import find_column_by_header, preload_worksheet_data
 # GRANULAR DEBUG LOGGING
 # =============================================================================
 
-_MATCH_LOG_FILE = Path(__file__).parent.parent / "MATCHING_DEBUG.log"
+_LOG_DIR = Path(__file__).parent.parent / "logs"
+_MATCH_LOG_FILE = _LOG_DIR / "MATCHING_DEBUG.log"
 _MATCH_LOG_ENABLED = True  # Set to False to disable verbose logging
 _MATCH_LOG_LINES = []  # Buffer for batch writing
 

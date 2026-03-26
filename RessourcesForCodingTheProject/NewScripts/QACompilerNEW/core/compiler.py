@@ -25,7 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # GRANULAR DEBUG LOGGING
 # =============================================================================
 
-_COMPILER_LOG_FILE = Path(__file__).parent.parent / "COMPILER_DEBUG.log"
+_LOG_DIR = Path(__file__).parent.parent / "logs"
+_COMPILER_LOG_FILE = _LOG_DIR / "COMPILER_DEBUG.log"
 _COMPILER_LOG_ENABLED = False  # Set to True for verbose logging
 _COMPILER_LOG_LINES = []  # Buffer for batch writing
 
@@ -69,7 +70,7 @@ def _compiler_log_clear():
 # SCRIPT DEBUG LOGGING (for investigating Script manager status issue)
 # =============================================================================
 
-_SCRIPT_DEBUG_FILE = Path(__file__).parent.parent / "SCRIPT_DEBUG.log"
+_SCRIPT_DEBUG_FILE = _LOG_DIR / "SCRIPT_DEBUG.log"
 _SCRIPT_DEBUG_LINES = []
 
 
@@ -187,7 +188,9 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
     ))
 
     # LOG FILE for manager stats debug
-    log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
+    log_dir = Path(__file__).parent.parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / "MANAGER_STATS_DEBUG.log"
     L = []
 
     def log(msg, indent=0):

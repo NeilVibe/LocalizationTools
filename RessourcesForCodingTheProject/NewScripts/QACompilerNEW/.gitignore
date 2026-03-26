@@ -11,6 +11,10 @@ GeneratedDatasheets/
 Masterfolder_EN/*.xlsx
 Masterfolder_CN/*.xlsx
 
+# Debug logs (contain confidential tester names + game content)
+logs/
+*.log
+
 # Images (large files)
 *.png
 *.jpg

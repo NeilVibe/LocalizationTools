@@ -139,7 +139,9 @@ def update_daily_data_sheet(
     # Update or insert entries from daily_entries (tester stats)
     # Concise log - append to same file
     from pathlib import Path
-    log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
+    log_dir = Path(__file__).parent.parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / "MANAGER_STATS_DEBUG.log"
     log_lines = ["\n" + "="*60]
     log_lines.append("LOOKUP PHASE - update_daily_data_sheet()")
     log_lines.append("="*60)
