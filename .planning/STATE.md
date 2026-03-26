@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: TM Intelligence
-status: active
-stopped_at: Roadmap created, ready to plan Phase 86
-last_updated: "2026-03-26T08:00:00.000Z"
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+stopped_at: Completed 86-01-PLAN.md
+last_updated: "2026-03-26T04:00:05.089Z"
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -19,16 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** v12.0 TM Intelligence — Phase 86 ready to plan
+**Current focus:** Phase 86 — Dual Threshold + TM Tab UI
 
 ## Current Position
 
-Phase: 86 of 88 (Dual Threshold + TM Tab UI)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-26 — Roadmap created for v12.0
-
-Progress: [░░░░░░░░░░] 0%
+Phase: 86 (Dual Threshold + TM Tab UI) — EXECUTING
+Plan: 1 of 1
 
 ## Performance Metrics
 
@@ -47,6 +43,8 @@ Progress: [░░░░░░░░░░] 0%
 - AC automaton from TM whole_lookup + line_lookup — data already in memory
 - Space-strip Korean before n-gram extraction (inconsistent spacing in game text)
 - Performance fallback: n={2,4} if n={2,3,4,5} too slow
+- [Phase 86]: CONTEXT_THRESHOLD=0.62 hardcoded for right panel, preferences.tmThreshold=0.92 for pretranslation
+- [Phase 86]: Green color for both Exact and High (>=92%) to visually group quality matches
 
 ### Phase Structure
 
@@ -66,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-26
-Stopped at: Roadmap created for v12.0 TM Intelligence (3 phases, 7 requirements)
+Last session: 2026-03-26T04:00:05.087Z
+Stopped at: Completed 86-01-PLAN.md
 Next action: `/gsd:plan-phase 86`

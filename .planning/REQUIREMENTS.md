@@ -9,8 +9,8 @@ Requirements for TM Intelligence milestone. Each maps to roadmap phases.
 
 ### TM UI (Threshold + Display)
 
-- [ ] **TMUI-01**: Dual threshold system — right panel TM suggestions automatically use 62% context threshold, pretranslation automatically uses 92% threshold (both hardcoded, not user-configurable)
-- [ ] **TMUI-02**: Translator sees prominent match percentage with color-coded badges on every TM result in the right panel
+- [x] **TMUI-01**: Dual threshold system — right panel TM suggestions automatically use 62% context threshold, pretranslation automatically uses 92% threshold (both hardcoded, not user-configurable)
+- [x] **TMUI-02**: Translator sees prominent match percentage with color-coded badges on every TM result in the right panel
 
 ### AC Context Search
 
@@ -51,8 +51,8 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TMUI-01 | Phase 86 | Pending |
-| TMUI-02 | Phase 86 | Pending |
+| TMUI-01 | Phase 86 | Complete |
+| TMUI-02 | Phase 86 | Complete |
 | ACCTX-01 | Phase 87 | Pending |
 | ACCTX-02 | Phase 88 | Pending |
 | ACCTX-03 | Phase 87 | Pending |

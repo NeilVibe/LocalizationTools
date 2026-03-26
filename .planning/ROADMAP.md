@@ -62,7 +62,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 86: Dual Threshold + TM Tab UI** - Hardcoded dual threshold system (92%/62%) and prominent match percentage badges in TM right panel
+- [x] **Phase 86: Dual Threshold + TM Tab UI** - Hardcoded dual threshold system (92%/62%) and prominent match percentage badges in TM right panel (completed 2026-03-26)
 - [ ] **Phase 87: AC Context Engine** - Aho-Corasick automaton build from TM dictionaries, character n-gram Jaccard scorer, performance-validated backend
 - [ ] **Phase 88: AC Context Integration** - Wire AC context engine to row-select, display tiered results in right panel with match scores
 
@@ -77,9 +77,9 @@ Plans:
   2. Pretranslation (batch apply) only uses matches at or above 92% (quality threshold)
   3. Every TM result in the right panel displays a color-coded match percentage badge (green for 92%+, yellow for 75-91%, orange for 62-74%)
   4. Match percentage badge is prominent and immediately visible without hovering or expanding
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 86-01-PLAN.md --- Hardcode 0.62 context threshold in StatusColors, update TMTab color bands and prominent badge
+- [x] 86-01-PLAN.md --- Hardcode 0.62 context threshold in StatusColors, update TMTab color bands and prominent badge
 
 ### Phase 87: AC Context Engine
 **Goal**: The backend can scan Korean source text against TM entries using a 3-tier cascade (whole AC, line AC, char n-gram Jaccard) in under 100ms
@@ -109,6 +109,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 86. Dual Threshold + TM Tab UI | 0/1 | Planning complete | - |
+| 86. Dual Threshold + TM Tab UI | 1/1 | Complete   | 2026-03-26 |
 | 87. AC Context Engine | 0/TBD | Not started | - |
 | 88. AC Context Integration | 0/TBD | Not started | - |
