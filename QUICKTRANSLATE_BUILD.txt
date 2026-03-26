@@ -1,1 +1,1 @@
-Build QuickTranslate — fix empty StrOrigin diff in failure report
+Build QuickTranslate — add Ignore Spaces and Ignore Punctuation normalization checkboxes
