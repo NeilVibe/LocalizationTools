@@ -438,7 +438,8 @@ def normalize_nospace(txt: str) -> str:
 
 # Punctuation characters to strip (common in game dialogue StrOrigin).
 # Excludes <br/> tag chars and Korean/CJK ranges.
-_PUNCTUATION_RE = re.compile(r'[.,;:!?\'"\-–—…()[\]{}<>/\\@#$%^&*_+=~`|]+')
+# Excludes <, >, / to preserve <br/> tags in StrOrigin values
+_PUNCTUATION_RE = re.compile(r'[.,;:!?\'"\-–—…()[\]{}\\@#$%^&*_+=~`|]+')
 
 
 def normalize_no_punctuation(txt: str) -> str:

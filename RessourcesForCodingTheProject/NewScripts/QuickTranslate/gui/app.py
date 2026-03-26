@@ -3697,13 +3697,14 @@ class QuickTranslateApp:
             if stringid_all and match_type == "stringid_only":
                 transfer_kwargs["stringid_all_categories"] = True
 
-            # Normalization options (StrOrigin-based modes only)
-            if self._ignore_spaces_var.get():
-                transfer_kwargs["ignore_spaces"] = True
-                self._log("Normalization: ignoring space differences in StrOrigin", 'info')
-            if self._ignore_punctuation_var.get():
-                transfer_kwargs["ignore_punctuation"] = True
-                self._log("Normalization: ignoring punctuation differences in StrOrigin", 'info')
+            # Normalization options (StrOrigin-based modes only, not stringid_only)
+            if match_type != "stringid_only":
+                if self._ignore_spaces_var.get():
+                    transfer_kwargs["ignore_spaces"] = True
+                    self._log("Normalization: ignoring space differences in StrOrigin", 'info')
+                if self._ignore_punctuation_var.get():
+                    transfer_kwargs["ignore_punctuation"] = True
+                    self._log("Normalization: ignoring punctuation differences in StrOrigin", 'info')
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
