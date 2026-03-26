@@ -491,6 +491,18 @@ class QuickTranslateApp:
             font=('Segoe UI', 8), bg='#e8f0fe', fg='#666', wraplength=350, justify='left'
         ).pack(fill=tk.X, pady=(2, 0))
 
+        # Normalization checkboxes (inside unique_only_frame)
+        norm_row_uo = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        norm_row_uo.pack(fill=tk.X, pady=(4, 0))
+        tk.Checkbutton(norm_row_uo, text="Ignore Spaces",
+                       variable=self._ignore_spaces_var,
+                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT, padx=(0, 15))
+        tk.Checkbutton(norm_row_uo, text="Ignore Punctuation",
+                       variable=self._ignore_punctuation_var,
+                       font=('Segoe UI', 9), bg='#e8f0fe',
+                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
+
         # === Non-Script Only frame (STRICT mode only) ===
         self.strict_non_script_frame = tk.Frame(match_frame, bg='#fde8e8', padx=10, pady=4,
                                                  relief='groove', bd=1)
@@ -508,6 +520,18 @@ class QuickTranslateApp:
             font=('Segoe UI', 8), bg='#fde8e8', fg='#666', wraplength=350, justify='left'
         ).pack(fill=tk.X, pady=(2, 0))
 
+        # Normalization checkboxes (inside strict_non_script_frame)
+        norm_row_ns = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
+        norm_row_ns.pack(fill=tk.X, pady=(4, 0))
+        tk.Checkbutton(norm_row_ns, text="Ignore Spaces",
+                       variable=self._ignore_spaces_var,
+                       font=('Segoe UI', 9), bg='#fde8e8',
+                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 15))
+        tk.Checkbutton(norm_row_ns, text="Ignore Punctuation",
+                       variable=self._ignore_punctuation_var,
+                       font=('Segoe UI', 9), bg='#fde8e8',
+                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
+
         # === StringID ALL Categories frame (StringID-Only mode) ===
         self.stringid_all_frame = tk.Frame(match_frame, bg='#ffe0e0', padx=10, pady=4,
                                            relief='groove', bd=1)
@@ -522,32 +546,6 @@ class QuickTranslateApp:
         tk.Label(self.stringid_all_frame,
             text="WARNING: Matches ALL StringIDs regardless of category. Use only for exceptional cases.",
             font=('Segoe UI', 8, 'bold'), bg='#ffe0e0', fg='#cc0000', wraplength=350, justify='left'
-        ).pack(fill=tk.X, pady=(2, 0))
-
-        # === Normalization Options frame (visible for StrOrigin-based modes) ===
-        self.normalization_frame = tk.Frame(match_frame, bg='#e8f4e8', padx=10, pady=4,
-                                            relief='groove', bd=1)
-        # Don't pack yet - shown/hidden by _on_match_type_changed
-
-        norm_label = tk.Label(self.normalization_frame,
-            text="StrOrigin Normalization",
-            font=('Segoe UI', 9, 'bold'), bg='#e8f4e8', fg='#2d6a2d')
-        norm_label.pack(anchor='w')
-
-        norm_row = tk.Frame(self.normalization_frame, bg='#e8f4e8')
-        norm_row.pack(fill=tk.X)
-        tk.Checkbutton(norm_row, text="Ignore Spaces",
-                       variable=self._ignore_spaces_var,
-                       font=('Segoe UI', 9), bg='#e8f4e8',
-                       activebackground='#e8f4e8', cursor='hand2').pack(side=tk.LEFT, padx=(0, 15))
-        tk.Checkbutton(norm_row, text="Ignore Punctuation",
-                       variable=self._ignore_punctuation_var,
-                       font=('Segoe UI', 9), bg='#e8f4e8',
-                       activebackground='#e8f4e8', cursor='hand2').pack(side=tk.LEFT)
-
-        tk.Label(self.normalization_frame,
-            text="Merge even if StrOrigin differs only by spaces or punctuation (.,;:!? etc.)",
-            font=('Segoe UI', 8), bg='#e8f4e8', fg='#666', wraplength=350, justify='left'
         ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
@@ -1844,16 +1842,12 @@ class QuickTranslateApp:
                 self.unique_only_frame.pack_forget()
                 self.strict_non_script_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.strict_non_script_frame)
-            # Show normalization options (StrOrigin-based modes)
-            self.normalization_frame.pack(fill=tk.X, pady=(4, 0))
-            self._bind_mousewheel_recursive(self.normalization_frame)
             # Rebind mousewheel on newly shown frames
             self._bind_mousewheel_recursive(self.precision_options_frame)
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
-            self.normalization_frame.pack_forget()
             # Enable TRANSFER button + show transfer scope toggle
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
