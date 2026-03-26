@@ -16,10 +16,10 @@ Requirements for Production Path Resolution milestone.
 
 ### Path Configuration
 
-- [ ] **PATH-01**: User can select Branch (cd_beta, mainline, cd_alpha, cd_delta, cd_lambda) via dropdown -- always visible in UI like QACompiler top bar
-- [ ] **PATH-02**: User can select Drive letter (A-Z) via dropdown -- combined with branch to form base Perforce path
-- [ ] **PATH-03**: Path validation shows green "PATHS OK" or red "PATHS NOT FOUND" with specific missing folders -- validates on startup, on change, and before operations
-- [ ] **PATH-04**: Branch+Drive selection persisted across sessions (settings.json or DB preferences)
+- [x] **PATH-01**: User can select Branch (cd_beta, mainline, cd_alpha, cd_delta, cd_lambda) via dropdown -- always visible in UI like QACompiler top bar
+- [x] **PATH-02**: User can select Drive letter (A-Z) via dropdown -- combined with branch to form base Perforce path
+- [x] **PATH-03**: Path validation shows green "PATHS OK" or red "PATHS NOT FOUND" with specific missing folders -- validates on startup, on change, and before operations
+- [x] **PATH-04**: Branch+Drive selection persisted across sessions (settings.json or DB preferences)
 
 ### Media Path Resolution
 
@@ -72,10 +72,10 @@ Deferred to future milestones.
 | FIX-02 | Phase 89 | Complete |
 | FIX-03 | Phase 89 | Complete |
 | FIX-04 | Phase 89 | Complete |
-| PATH-01 | Phase 90 | Pending |
-| PATH-02 | Phase 90 | Pending |
-| PATH-03 | Phase 90 | Pending |
-| PATH-04 | Phase 90 | Pending |
+| PATH-01 | Phase 90 | Complete |
+| PATH-02 | Phase 90 | Complete |
+| PATH-03 | Phase 90 | Complete |
+| PATH-04 | Phase 90 | Complete |
 | MEDIA-01 | Phase 91 | Pending |
 | MEDIA-02 | Phase 91 | Pending |
 | MEDIA-03 | Phase 91 | Pending |

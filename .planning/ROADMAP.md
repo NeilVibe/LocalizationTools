@@ -111,7 +111,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state) (completed 2026-03-26)
-- [ ] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence
+- [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence (completed 2026-03-26)
 - [ ] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests
 - [ ] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules
 
@@ -140,9 +140,9 @@ Plans:
   3. After changing branch or drive, a status indicator shows green "PATHS OK" when the configured folders exist on disk, or red "PATHS NOT FOUND" listing which specific folders are missing
   4. Branch and drive selection persists across application restarts without re-configuration
   5. Path validation runs automatically on startup and on every branch/drive change
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 90-01-PLAN.md --- Path validation endpoint + BranchDriveSelector inline component + GridPage toolbar wiring
+- [x] 90-01-PLAN.md --- Path validation endpoint + BranchDriveSelector inline component + GridPage toolbar wiring
 
 ### Phase 91: Media Path Resolution + E2E Testing
 **Goal**: When a translator selects a LanguageData row, the Image and Audio tabs show the correct game asset by resolving the full chain from StringID through GameData entity to DDS/WEM file, verified by E2E tests against mock Perforce structure
@@ -171,6 +171,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 89. Code Cleanup | 1/1 | Complete    | 2026-03-26 |
-| 90. Branch+Drive Configuration | 0/1 | Not started | - |
+| 90. Branch+Drive Configuration | 1/1 | Complete   | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 0/? | Not started | - |
 | 92. MegaIndex Decomposition | 0/? | Not started | - |
