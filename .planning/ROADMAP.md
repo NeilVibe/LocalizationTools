@@ -126,7 +126,9 @@ Plans:
   2. CellRenderer has no unused $derived computations or dead helper functions (visibleColumns removed)
   3. InlineEditor notifies the parent when a cell save completes (onSaveComplete wired or removed with documented rationale)
   4. TM suggestions from StatusColors are either consumed by parent components or confirmed as internal-only with dead export path removed
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 89-01-PLAN.md --- Fix onScrollToRow race (prop instead of delegate), remove dead code in CellRenderer/InlineEditor/StatusColors
 
 ### Phase 90: Branch+Drive Configuration
 **Goal**: Users can configure which Perforce branch and drive letter to use for game data lookups, with immediate visual feedback on path availability
@@ -166,7 +168,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 89. Code Cleanup | 0/? | Not started | - |
+| 89. Code Cleanup | 0/1 | Planned | - |
 | 90. Branch+Drive Configuration | 0/? | Not started | - |
 | 91. Media Path Resolution + E2E Testing | 0/? | Not started | - |
 | 92. MegaIndex Decomposition | 0/? | Not started | - |
