@@ -1,1 +1,1 @@
-Build QuickTranslate — code review fixes: preserve br tags in punctuation regex, guard normalization logs
+Build QuickTranslate — minimal punctuation regex: only . , ! ? : and ellipsis
