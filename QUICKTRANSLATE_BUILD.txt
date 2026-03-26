@@ -1,1 +1,1 @@
-Build QuickTranslate — log active options (Ignore Spaces/Punctuation) in transfer summary
+Build QuickTranslate — unified colors (match type standard bg, checkboxes match frame bg)
