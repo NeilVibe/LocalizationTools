@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: Production Path Resolution
 status: complete
-stopped_at: v13.0 COMPLETE — all 4 phases shipped
-last_updated: "2026-03-26T06:16:17.146Z"
+stopped_at: v12.0+v13.0 shipped, built, build fixes applied, Playground updated
+last_updated: "2026-03-26T13:00:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -19,86 +19,73 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 92 — MegaIndex Decomposition
+**Current focus:** v13.0 complete — E2E validation pending
 
 ## Current Position
 
-Phase: 92
-Plan: Not started
+Phase: All complete
+Plan: All complete
+Status: Milestone shipped + built (Run 561 SUCCESS)
+Last activity: 2026-03-26 — Build fixes (infinite loop, test contracts), Playground auto-updated to v26.326.1907
 
-## Performance Metrics
+Progress: [██████████] 100%
 
-**Velocity:**
+## CRITICAL: What Still Needs Testing
 
-- Total plans completed: 0 (v13.0)
-- Average duration: --
-- Total execution time: 0 hours
+1. **Open a LanguageData file in the grid** — verify NO infinite loop (fixed in commit 52094717)
+2. **Branch+Drive selector** — verify dropdowns appear in toolbar, validation shows green/red
+3. **Image/Audio tabs** — verify fallback reasons display when no Perforce data
+4. **TM context search** — verify AC results appear when row selected (needs TM loaded)
 
-**By Phase:**
+## Build History (2026-03-26)
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 89. Code Cleanup | 0/? | -- | -- |
-| 90. Branch+Drive Configuration | 0/? | -- | -- |
-| 91. Media Path Resolution + E2E | 0/? | -- | -- |
-| 92. MegaIndex Decomposition | 0/? | -- | -- |
-
-**Recent Trend:**
-
-- Last 5 plans: --
-- Trend: --
-
-| Phase 89 P01 | 3min | 2 tasks | 5 files |
-| Phase 90 P01 | 3min | 3 tasks | 5 files |
-| Phase 91 P01 | 4min | 2 tasks | 5 files |
-| Phase 91 P02 | 5min | 2 tasks | 2 files |
-| Phase 92 P01 | 4min | 2 tasks | 6 files |
+| Run | Result | Issue | Fix |
+|-----|--------|-------|-----|
+| 557 | FAIL | Svelte 5 `$derived` export from module | Convert to `getVisibleRows()` function |
+| 558 | FAIL | `test_audio_stream_404` expects 404, gets 503 | Update mock to return AudioContext(wem_path=None) |
+| 559 | FAIL | E2E tests don't accept 503 for uninitialized service | Accept 503 in assertions |
+| 560 | SUCCESS | — | — |
+| 561 | SUCCESS | Infinite loop fix (getVisibleRows → inline $derived.by) | — |
 
 ## Accumulated Context
 
 ### Decisions
 
-- v13.0 scope: fix v11.0 issues + Perforce path resolution + mock testing + mega_index split
-- 4-phase structure: cleanup -> config UI -> media chains + E2E -> architecture split
-- FIX-01..04 first because small/independent, removes known bugs before new feature work
-- PATH before MEDIA because users need configuration UI before chains can use configured paths
-- MOCK grouped with MEDIA (Phase 91) because mock tests validate the chains they belong to
-- ARCH-02 last because it benefits from understanding gained during chain work and is pure refactoring
-- Branch list hardcoded: cd_beta, mainline, cd_alpha, cd_delta, cd_lambda (matches all 3 NewScripts apps)
-- Branch+Drive selector always visible (QACompiler pattern), not buried in settings
-- C6/C7 Korean text matching is the weakest link -- may need StrKey-based augmentation in Phase 91
-- [Phase 89]: Prop callbacks over delegate setters for cross-component communication (eliminates  timing races)
-- [Phase 90]: Native select over Carbon Select for compact inline toolbar
-- [Phase 90]: QACompiler defaults (cd_beta/D) as production defaults for branch/drive
-- [Phase 90]: Critical path validation: knowledge_folder, loc_folder, texture_folder
-- [Phase 91]: Return 200 with fallback_reason instead of 404 for missing media
-- [Phase 91]: 503 for uninitialized MapData service (distinct from media-not-found)
-- [Phase 91]: xfail for 503 in E2E tests -- MapData service not initialized in TestClient is expected
-- [Phase 91]: Updated existing E2E tests to expect 200+fallback_reason instead of 404 after 91-01
-- [Phase 92]: Mixin inheritance for mega_index decomposition: 4 mixins + helpers, MegaIndex inherits all, zero caller changes
+- v12.0: Dual threshold 92%/62%, AC Context Engine, 25 tests
+- v13.0: Branch+Drive selector, media fallback reasons, MegaIndex split
+- Build fix: `$derived(getVisibleRows())` causes infinite loop — must use inline `$derived.by()`
+- Code reviews: 12 issues found across v12.0+v13.0, all fixed
 
-### Research Findings
+### What Was Built (v12.0 + v13.0)
 
-- PerforcePathService: 11 templates, drive/branch substitution, WSL conversion -- FULLY WORKING
-- MegaIndex: 35 dicts, 7-phase build pipeline -- FULLY WORKING but 1311 lines
-- MapDataService: 3-tier image resolution, 5-tier audio resolution -- FULLY WORKING
-- Missing: frontend Branch+Drive selector, path validation feedback UI, LanguageData->entity chain visibility
-- Mock gamedata: 119 files, all entity types, DEV auto-init -- COMPLETE
-- API endpoints exist: POST /mapdata/paths/configure, GET /mapdata/paths/status -- just no frontend UI
-- C2 audio chain is weak (WEM filename rarely matches entity StrKey); C3 chain is the real audio path
+**Backend:**
+- `context_searcher.py` — 3-tier AC cascade (whole/line/fuzzy)
+- `BranchDriveSelector.svelte` — always-visible toolbar selector
+- `GET /mapdata/paths/validate` — path validation endpoint
+- `POST /tm/context` — AC context search endpoint
+- `mapdata_service.py` — fallback_reason on image/audio chains
+- `mega_index.py` — split 1311→247 lines (6 mixin modules)
+- 4 v11.0 code review issues fixed
+
+**Frontend:**
+- TMTab: 4-tier color badges + context matches section
+- StatusColors: CONTEXT_THRESHOLD = 0.62
+- GridPage: debounced context fetch + BranchDriveSelector
+- ImageTab/AudioTab: fallback reason display
 
 ### Deferred
 
 - LAN-01 through LAN-07: LAN Server Mode (future milestone)
-- Codex enhancements (v14.0+, needs path resolution working first)
+- CODEX-01 through CODEX-04: Interactive Codex + World Map (v14.0+)
+- Audio fallback_reason diagnostic detail (generic message for all failure modes)
 
 ### Blockers/Concerns
 
-- C6/C7 fragility: Korean text normalization exact match misses when entity name differs from StrOrigin
-- After v12.0, verify whether tmSuggestions (FIX-04) is still needed beyond internal status coloring
+- Infinite loop fix needs E2E verification on real grid (committed, build passed, not yet tested in browser)
+- Portproxy on 8888 needs admin elevation to remove (can't do from WSL)
 
 ## Session Continuity
 
-Last session: 2026-03-26T06:15:07.270Z
-Stopped at: Completed 92-01-PLAN.md
-Next action: `/gsd:plan-phase 89`
+Last session: 2026-03-26
+Stopped at: Build 561 SUCCESS, Playground auto-updated, E2E browser test pending
+Next action: `/clear` → open DEV server → verify grid loads → verify Branch+Drive selector → verify TM context
