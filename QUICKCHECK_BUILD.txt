@@ -1,1 +1,1 @@
-Build QuickCheck — group Dialog/Sequencer into SCRIPT category
+Build QuickCheck — NarrationDialog separated from SCRIPT
