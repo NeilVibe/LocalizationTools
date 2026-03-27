@@ -64,7 +64,7 @@
   const PAGE_SIZE = 50;
 
   // Per-tab cache: Map<entityType, { entities: [], currentPage: number, hasMore: boolean }>
-  let tabCache = $state(new Map());
+  let tabCache = new Map();
 
   // AI image generation state
   let imageGenAvailable = $state(false);
@@ -85,6 +85,7 @@
   $effect(() => {
     if (!batchInProgress || !batchOperationId) return;
 
+    const currentOpId = batchOperationId;
     websocket.socket?.emit('subscribe', { events: ['progress'] });
 
     unsubProgress = websocket.on('progress_update', (data) => {
@@ -102,7 +103,6 @@
         batchOperationId = null;
         // Invalidate cache for this tab so fresh data is fetched
         tabCache.delete(activeTab);
-        tabCache = new Map(tabCache);
         fetchEntityPage(activeTab, 0);
       }
     });
@@ -259,7 +259,6 @@
 
       // Update tab cache for instant switching
       tabCache.set(entityType, { entities, currentPage, hasMore });
-      tabCache = new Map(tabCache);
 
       logger.info('Codex entity page loaded', { type: entityType, page, count: batch.length, total: data.total });
     } catch (err) {
