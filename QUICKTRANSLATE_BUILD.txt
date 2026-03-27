@@ -1,1 +1,1 @@
-Build QuickTranslate — Unify Translations tool + ChangeDate column in TMX Clean
+Build QuickTranslate — Unify logging + normalization fix
