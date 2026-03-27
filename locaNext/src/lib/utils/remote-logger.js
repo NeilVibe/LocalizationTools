@@ -9,7 +9,23 @@ const BACKEND_URL = get(serverUrl);
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
 
+// Re-entrancy guard: prevents cascade when fetch itself triggers an error
+let _isSending = false;
+
+// Rate limiting: max 10 remote log calls per 5-second window
+let _callTimestamps = [];
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 5000;
+
 export const remoteLogger = {
+  _checkRateLimit() {
+    const now = Date.now();
+    _callTimestamps = _callTimestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    if (_callTimestamps.length >= RATE_LIMIT_MAX) return false;
+    _callTimestamps.push(now);
+    return true;
+  },
+
   async log(level, message, data = {}) {
     // Log to console using original method
     if (level === 'ERROR') {
@@ -20,7 +36,16 @@ export const remoteLogger = {
       console.log(`[${level}]`, message, data);
     }
 
-    // Send to backend
+    // Guard: skip remote send if already sending (prevents re-entrant cascade)
+    if (_isSending) return;
+
+    // Guard: never log errors about the remote-log endpoint itself
+    if (typeof message === 'string' && message.includes('remote-logs')) return;
+
+    // Rate limit check
+    if (!this._checkRateLimit()) return;
+
+    _isSending = true;
     try {
       await fetch(`${BACKEND_URL}/api/v1/remote-logs/frontend`, {
         method: 'POST',
@@ -37,6 +62,8 @@ export const remoteLogger = {
       });
     } catch (err) {
       // Fail silently - don't break app if logging fails
+    } finally {
+      _isSending = false;
     }
   },
 
@@ -85,6 +112,12 @@ export const remoteLogger = {
       // Skip WebSocket/Socket.IO connection errors (expected when not using WebSocket features)
       if (errorStr.includes('WebSocket connection error') ||
           errorStr.includes('TransportError')) {
+        originalConsoleError.apply(console, args);
+        return;
+      }
+
+      // Skip errors about the remote logging endpoint itself (prevents feedback cascade)
+      if (errorStr.includes('remote-logs') || errorStr.includes('remote_logs')) {
         originalConsoleError.apply(console, args);
         return;
       }
