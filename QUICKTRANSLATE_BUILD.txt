@@ -1,1 +1,1 @@
-Build 026 - STRICT mode StrOrigin case-insensitive fix
+Build QuickTranslate — Unify Translations tool + ChangeDate column in TMX Clean
