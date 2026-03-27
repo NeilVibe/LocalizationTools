@@ -112,7 +112,12 @@ class TwoTierCategoryMapper:
 
         top_level = parts[0].lower()
 
-        if top_level in ("dialog", "sequencer"):
+        if top_level == "dialog":
+            if len(parts) >= 3 and parts[1].lower() == "narrationdialog":
+                return "NarrationDialog"
+            return "SCRIPT"
+
+        if top_level == "sequencer":
             return "SCRIPT"
 
         return self._categorize_gamedata(relative, file_path)
