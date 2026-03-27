@@ -25,8 +25,9 @@
   // Validation state
   let pathStatus = $state({ ok: false, missing: [], loading: true });
 
-  // PATH-03: Validate on mount
-  $effect(() => {
+  // PATH-03: Validate on mount (using onMount pattern to avoid $effect infinite loop)
+  import { onMount } from 'svelte';
+  onMount(() => {
     validatePaths();
   });
 
