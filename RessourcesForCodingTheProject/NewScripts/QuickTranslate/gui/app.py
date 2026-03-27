@@ -92,6 +92,7 @@ from core import (
 )
 from core.missing_translation_finder import find_missing_with_options
 from core.converters import xml_to_excel, excel_to_xml, concatenate_xmls
+from core.unify_translations import run_unify
 from core.checker import run_korean_check, run_pattern_check, check_formula_text_in_file, check_text_integrity_in_file
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
@@ -785,6 +786,54 @@ class QuickTranslateApp:
             font=('Segoe UI', 9, 'bold'), bg='#27ae60', fg='white',
             relief='flat', padx=10, cursor='hand2')
         self.extract_trans_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        # --- Unify Translations section ---
+        unify_frame = tk.LabelFrame(self._tab2_inner, text="Unify Translations",
+                                     font=('Segoe UI', 10, 'bold'),
+                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        unify_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(unify_frame,
+                 text=("Match LineCheck inconsistencies against a reference file (TMX Clean) "
+                       "to produce a merge-ready correction file with unified translations."),
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+                 justify='left', anchor='w', wraplength=500).pack(fill=tk.X, pady=(0, 6))
+
+        # Reference file picker
+        ref_row = tk.Frame(unify_frame, bg='#f0f0f0')
+        ref_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(ref_row, text="Reference:", font=('Segoe UI', 9, 'bold'),
+                 bg='#f0f0f0', width=10, anchor='w').pack(side=tk.LEFT)
+        self._unify_ref_path = tk.StringVar()
+        tk.Entry(ref_row, textvariable=self._unify_ref_path,
+                 font=('Segoe UI', 9), width=40).pack(side=tk.LEFT, padx=(0, 4), fill=tk.X, expand=True)
+        tk.Button(ref_row, text="Browse...",
+                  command=self._browse_unify_ref,
+                  font=('Segoe UI', 8), relief='flat', bg='#bdc3c7',
+                  cursor='hand2').pack(side=tk.LEFT)
+
+        # LineCheck file picker
+        lc_row = tk.Frame(unify_frame, bg='#f0f0f0')
+        lc_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(lc_row, text="LineCheck:", font=('Segoe UI', 9, 'bold'),
+                 bg='#f0f0f0', width=10, anchor='w').pack(side=tk.LEFT)
+        self._unify_lc_path = tk.StringVar()
+        tk.Entry(lc_row, textvariable=self._unify_lc_path,
+                 font=('Segoe UI', 9), width=40).pack(side=tk.LEFT, padx=(0, 4), fill=tk.X, expand=True)
+        tk.Button(lc_row, text="Browse...",
+                  command=self._browse_unify_lc,
+                  font=('Segoe UI', 8), relief='flat', bg='#bdc3c7',
+                  cursor='hand2').pack(side=tk.LEFT)
+
+        unify_btn_row = tk.Frame(unify_frame, bg='#f0f0f0')
+        unify_btn_row.pack(fill=tk.X, pady=(4, 0))
+
+        self.unify_btn = tk.Button(
+            unify_btn_row, text="Unify Translations",
+            command=self._run_unify_translations,
+            font=('Segoe UI', 9, 'bold'), bg='#16a085', fg='white',
+            relief='flat', padx=10, cursor='hand2')
+        self.unify_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         # --- Quick Converters section ---
         self._build_quick_converters(self._tab2_inner)
@@ -2814,6 +2863,73 @@ class QuickTranslateApp:
             self._exclude_count_label.configure(text=f"({count} excluded)")
         else:
             self._exclude_count_label.configure(text="")
+
+    # ------------------------------------------------------------------
+    # Unify Translations (Other Tools)
+    # ------------------------------------------------------------------
+
+    def _browse_unify_ref(self):
+        path = filedialog.askopenfilename(
+            title="Select Reference File (TMX Clean Excel)",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
+        if path:
+            self._unify_ref_path.set(path)
+            self._log(f"Reference: {os.path.basename(path)}")
+
+    def _browse_unify_lc(self):
+        path = filedialog.askopenfilename(
+            title="Select LineCheck Output File",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
+        if path:
+            self._unify_lc_path.set(path)
+            self._log(f"LineCheck: {os.path.basename(path)}")
+
+    def _run_unify_translations(self):
+        ref_path = self._unify_ref_path.get().strip()
+        lc_path = self._unify_lc_path.get().strip()
+
+        # Validation
+        if not ref_path:
+            messagebox.showwarning("Unify Translations", "Please select a Reference file (TMX Clean Excel).")
+            return
+        if not lc_path:
+            messagebox.showwarning("Unify Translations", "Please select a LineCheck output file.")
+            return
+        if not os.path.isfile(ref_path):
+            messagebox.showerror("Unify Translations", f"Reference file not found:\n{ref_path}")
+            return
+        if not os.path.isfile(lc_path):
+            messagebox.showerror("Unify Translations", f"LineCheck file not found:\n{lc_path}")
+            return
+
+        self._log("=" * 50, tag='header')
+        self._log("UNIFY TRANSLATIONS", tag='header')
+        self._log(f"Reference: {os.path.basename(ref_path)}")
+        self._log(f"LineCheck: {os.path.basename(lc_path)}")
+        self._log("-" * 40)
+
+        self.unify_btn.config(state='disabled')
+
+        def worker():
+            try:
+                result_path = run_unify(
+                    reference_path=ref_path,
+                    linecheck_path=lc_path,
+                    progress_callback=lambda msg: self.after(0, self._log, msg),
+                )
+                if result_path:
+                    self.after(0, self._log, f"SUCCESS: {os.path.basename(result_path)}", 'success')
+                else:
+                    self.after(0, self._log, "No matches found — no output generated.", 'warning')
+            except ValueError as e:
+                self.after(0, self._log, f"VALIDATION ERROR: {e}", 'error')
+            except Exception as e:
+                logger.exception("Unify failed")
+                self.after(0, self._log, f"ERROR: {e}", 'error')
+            finally:
+                self.after(0, lambda: self.unify_btn.config(state='normal'))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _find_missing_translations(self):
         """
