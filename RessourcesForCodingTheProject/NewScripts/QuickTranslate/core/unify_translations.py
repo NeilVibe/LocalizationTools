@@ -260,7 +260,16 @@ def read_linecheck_excel(
     return results
 
 
-def _pick_best_translation(translations: List[Tuple[str, str]]) -> str:
+@dataclass
+class SelectionEntry:
+    """One row in the selection log — one per unique StrOrigin."""
+    str_origin: str
+    correction: str
+    category: str
+    method: str  # "Reference", "Tiebreaker (minority)", "Tiebreaker (linebreak)"
+
+
+def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, str]:
     """
     Tiebreaker when reference correction doesn't help.
 
@@ -272,7 +281,7 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> str:
         translations: [(translation_text, string_id), ...]
 
     Returns:
-        The best translation text
+        (best_translation_text, method_used)
     """
     from collections import Counter
 
@@ -280,19 +289,15 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> str:
     trans_counts = Counter(t for t, _ in translations)
 
     if len(trans_counts) < 2:
-        # Only one translation variant — return it
-        return translations[0][0]
+        return translations[0][0], "Tiebreaker (single variant)"
 
     sorted_variants = trans_counts.most_common()
 
-    # Check if odd split (clear minority exists)
-    total = sum(trans_counts.values())
-    least_common = sorted_variants[-1]  # (text, count)
-    most_common = sorted_variants[0]    # (text, count)
+    least_common = sorted_variants[-1]
+    most_common = sorted_variants[0]
 
     if least_common[1] != most_common[1]:
-        # Unequal counts — minority wins
-        return least_common[0]
+        return least_common[0], "Tiebreaker (minority)"
 
     # Even split — pick the one with fewer <br/> tags
     def br_count(text: str) -> int:
@@ -300,14 +305,14 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> str:
 
     candidates = [variant for variant, _ in sorted_variants]
     candidates.sort(key=br_count)
-    return candidates[0]
+    return candidates[0], "Tiebreaker (linebreak)"
 
 
 def unify(
     reference: Dict[str, Tuple[str, str]],
     linecheck_groups: List[dict],
     progress_callback: Optional[Callable[[str], None]] = None,
-) -> Tuple[List[UnifyResult], int, int]:
+) -> Tuple[List[UnifyResult], List[SelectionEntry], int, int]:
     """
     Match LineCheck groups against reference to produce unified corrections.
 
@@ -315,16 +320,15 @@ def unify(
     1. Minority translation wins (odd split — mass-confirmed majority is likely wrong)
     2. Even split — fewer <br/> linebreaks wins (cleaner translation)
 
-    Returns: (results, matched_count, unmatched_count)
+    Returns: (results, selections, matched_ref, matched_tiebreak)
     """
     if progress_callback:
         progress_callback("[3/4] Matching LineCheck groups against reference...")
 
     results: List[UnifyResult] = []
-    matched = 0
+    selections: List[SelectionEntry] = []
     matched_ref = 0
     matched_tiebreak = 0
-    unmatched = 0
     total = len(linecheck_groups)
 
     for idx, group in enumerate(linecheck_groups):
@@ -334,26 +338,30 @@ def unify(
         key = _normalize(source)
 
         correction = None
+        method = ""
 
         # Try reference lookup first
         if key in reference:
             ref_correction, _ = reference[key]
-            # Check if reference correction matches any translation in the group
             ref_norm = _normalize(ref_correction)
             trans_norms = {_normalize(t): t for t, _ in translations}
             if ref_norm in trans_norms:
                 correction = ref_correction
+                method = "Reference"
                 matched_ref += 1
             else:
-                # Reference exists but matches none — use tiebreaker
-                correction = _pick_best_translation(translations)
+                correction, method = _pick_best_translation(translations)
                 matched_tiebreak += 1
         else:
-            # No reference — use tiebreaker
-            correction = _pick_best_translation(translations)
+            correction, method = _pick_best_translation(translations)
             matched_tiebreak += 1
 
-        matched += 1
+        selections.append(SelectionEntry(
+            str_origin=source,
+            correction=correction,
+            category=category,
+            method=method,
+        ))
 
         for trans_val, sid_val in translations:
             results.append(UnifyResult(
@@ -363,21 +371,18 @@ def unify(
                 category=category,
             ))
 
-        # Progress every 50 groups
         if progress_callback and (idx + 1) % 50 == 0:
             progress_callback(f"  Processed {idx + 1}/{total} groups...")
 
     if progress_callback:
-        progress_callback(f"  Matched: {matched}/{total} groups")
+        progress_callback(f"  Processed: {total} groups")
         if matched_ref:
             progress_callback(f"    Reference match: {matched_ref}")
         if matched_tiebreak:
             progress_callback(f"    Tiebreaker (minority/linebreak): {matched_tiebreak}")
-        if unmatched:
-            progress_callback(f"  Skipped: {unmatched} groups")
-        progress_callback(f"  Output: {len(results)} rows to write")
+        progress_callback(f"  Output: {len(results)} rows, {len(selections)} unique selections")
 
-    return results, matched, unmatched
+    return results, selections, matched_ref, matched_tiebreak
 
 
 def write_unified_excel(
@@ -441,6 +446,68 @@ def write_unified_excel(
         return False
 
 
+def write_selection_log(
+    selections: List[SelectionEntry],
+    output_path: str,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> bool:
+    """Write selection log — one row per unique StrOrigin showing the chosen correction."""
+    if xlsxwriter is None:
+        raise ImportError("xlsxwriter is required")
+
+    try:
+        wb = xlsxwriter.Workbook(output_path)
+        ws = wb.add_worksheet('Selections')
+
+        hdr_fmt = wb.add_format({
+            'bold': True, 'bg_color': '#27AE60', 'font_color': 'white',
+            'border': 1, 'valign': 'vcenter', 'text_wrap': True,
+        })
+        cell_fmt = wb.add_format({
+            'border': 1, 'valign': 'vcenter', 'text_wrap': True,
+        })
+        method_ref_fmt = wb.add_format({
+            'border': 1, 'valign': 'vcenter', 'font_color': '#008000', 'bold': True,
+        })
+        method_tie_fmt = wb.add_format({
+            'border': 1, 'valign': 'vcenter', 'font_color': '#E67E22', 'bold': True,
+        })
+
+        headers = ['StrOrigin', 'Correction', 'Category', 'Method']
+        widths = [50, 50, 15, 25]
+
+        for col, h in enumerate(headers):
+            ws.write(0, col, h, hdr_fmt)
+            ws.set_column(col, col, widths[col])
+
+        for idx, s in enumerate(selections, 1):
+            ws.write(idx, 0, s.str_origin, cell_fmt)
+            ws.write(idx, 1, s.correction, cell_fmt)
+            ws.write(idx, 2, s.category, cell_fmt)
+            fmt = method_ref_fmt if s.method == "Reference" else method_tie_fmt
+            ws.write(idx, 3, s.method, fmt)
+
+        data_rows = len(selections)
+        if data_rows > 0:
+            ws.autofilter(0, 0, data_rows, len(headers) - 1)
+            ws.freeze_panes(1, 0)
+
+        wb.close()
+
+        if progress_callback:
+            ref_count = sum(1 for s in selections if s.method == "Reference")
+            tie_count = data_rows - ref_count
+            progress_callback(f"  Selection log: {data_rows} entries ({ref_count} ref, {tie_count} tiebreaker)")
+
+        return True
+
+    except Exception as e:
+        logger.error("Failed to write selection log %s: %s", output_path, e)
+        if progress_callback:
+            progress_callback(f"ERROR writing selection log: {e}")
+        return False
+
+
 def run_unify(
     reference_path: str,
     linecheck_path: str,
@@ -459,21 +526,31 @@ def run_unify(
     try:
         reference = read_reference_excel(reference_path, progress_callback)
         linecheck_groups = read_linecheck_excel(linecheck_path, progress_callback)
-        results, matched, unmatched = unify(reference, linecheck_groups, progress_callback)
+        results, selections, matched_ref, matched_tiebreak = unify(reference, linecheck_groups, progress_callback)
 
         if not results:
             if progress_callback:
                 progress_callback("No matches found — nothing to output.")
             return None
 
+        if progress_callback:
+            progress_callback("[4/4] Writing output files...")
+
         ok = write_unified_excel(results, output_path, progress_callback)
+
+        # Write selection log (second output)
+        selection_path = output_path.replace("_Unified.xlsx", "_Selections.xlsx")
+        if selection_path == output_path:
+            base = os.path.splitext(output_path)[0]
+            selection_path = f"{base}_Selections.xlsx"
+        write_selection_log(selections, selection_path, progress_callback)
 
         if ok and progress_callback:
             progress_callback("-" * 40)
-            progress_callback(f"DONE — Output: {os.path.basename(output_path)}")
-            progress_callback(f"  Location: {output_path}")
-            progress_callback(f"  Groups matched: {matched}, Skipped (no ref): {unmatched}")
-            progress_callback(f"  Total correction rows: {len(results)}")
+            progress_callback(f"DONE — 2 files generated:")
+            progress_callback(f"  1. {os.path.basename(output_path)} ({len(results)} rows)")
+            progress_callback(f"  2. {os.path.basename(selection_path)} ({len(selections)} selections)")
+            progress_callback(f"  Reference match: {matched_ref}, Tiebreaker: {matched_tiebreak}")
 
         if ok:
             return output_path
