@@ -1019,16 +1019,15 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
 
 
 def write_excel(rows: list[dict], output_path: str) -> None:
-    """Write rows to Excel using xlsxwriter — 5-column format with Desc support."""
+    """Write rows to Excel using xlsxwriter — 6-column format with Desc + ChangeDate."""
     import xlsxwriter
 
     wb = xlsxwriter.Workbook(output_path)
     ws = wb.add_worksheet('TMX Clean')
 
-    # 5-column format: DescOrigin + Desc (TM reference, not correction)
-    # User manually adds DescCorrection column when they want to correct descriptions
-    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'Desc']
-    keys = ['ko_seg', 'tgt_seg', 'x_context', 'desc_origin', 'desc_text']
+    # 6-column format: DescOrigin + Desc + ChangeDate
+    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'Desc', 'ChangeDate']
+    keys = ['ko_seg', 'tgt_seg', 'x_context', 'desc_origin', 'desc_text', 'changedate']
 
     hdr_fmt = wb.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1})
     cell_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
@@ -1048,6 +1047,7 @@ def write_excel(rows: list[dict], output_path: str) -> None:
     ws.set_column(2, 2, 30)   # StringID
     ws.set_column(3, 3, 50)   # DescOrigin
     ws.set_column(4, 4, 50)   # DescText
+    ws.set_column(5, 5, 22)   # ChangeDate
 
     ws.autofilter(0, 0, len(rows), len(headers) - 1)
 
@@ -1090,7 +1090,7 @@ def clean_and_convert_to_excel(fpath: str) -> str:
     base = os.path.splitext(fpath)[0]
     output_path = f"{base}_clean.xlsx"
 
-    logger.info("[3/3] Writing Excel (5 columns: StrOrigin, Correction, StringID, DescOrigin, DescText)...")
+    logger.info("[3/3] Writing Excel (6 columns: StrOrigin, Correction, StringID, DescOrigin, DescText, ChangeDate)...")
     write_excel(rows, output_path)
 
     logger.info("=" * 60)
