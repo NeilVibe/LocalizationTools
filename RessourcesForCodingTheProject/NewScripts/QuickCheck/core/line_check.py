@@ -23,6 +23,7 @@ class LineCheckResult:
     source: str
     translations: List[str]       # Multiple different translations found
     string_ids: List[str]         # First StringID seen for each translation (parallel to translations)
+    category: str = ""            # Category from EXPORT index (first StringID)
 
 
 def run_line_check(
@@ -31,6 +32,7 @@ def run_line_check(
     length_threshold: int = 15,
     min_occurrence: Optional[int] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
 ) -> List[LineCheckResult]:
     """
     Run LINE CHECK to find translation inconsistencies.
@@ -82,6 +84,7 @@ def run_line_check(
     # Group by source — track occurrence count, first StringID and first FileName per translation
     src_trans_count: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
     src_trans_sid:  Dict[str, Dict[str, str]] = defaultdict(dict)
+    cat_idx = category_index or {}
 
     for entry in filtered_entries:
         src_trans_count[entry.source][entry.translation] += 1
@@ -111,7 +114,10 @@ def run_line_check(
     for source in sorted(inconsistent.keys(), key=len):
         translations = list(inconsistent[source].keys())
         string_ids = [src_trans_sid[source].get(t, "") for t in translations]
-        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids))
+        # Deduplicate categories — show unique ones joined by ", "
+        cats = list(dict.fromkeys(cat_idx.get(sid, "") for sid in string_ids if cat_idx.get(sid)))
+        category = ", ".join(cats) if cats else ""
+        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids, category=category))
 
     return results
 
@@ -142,6 +148,7 @@ def run_line_check_all_languages(
     length_threshold: int = 15,
     min_occurrence: Optional[int] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
 ) -> Dict[str, int]:
     """
     Run LINE CHECK for every language in lang_files.
@@ -179,6 +186,7 @@ def run_line_check_all_languages(
             length_threshold=length_threshold,
             min_occurrence=min_occurrence,
             progress_callback=lang_progress,
+            category_index=category_index,
         )
 
         output_path = output_dir / f"LineCheck_{lang}.xlsx"

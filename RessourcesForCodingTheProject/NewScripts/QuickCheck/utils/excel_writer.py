@@ -52,8 +52,9 @@ def write_line_check_excel(
     """
     Write LINE CHECK results to Excel.
 
-    Columns: Source (KR) | Translation 1 | SID 1 | Translation 2 | SID 2 | ...
+    Columns: Source (KR) | Category | Translation 1 | SID 1 | Translation 2 | SID 2 | ... | Status | Comment
     One row per inconsistency group. Max 8 translation columns (each with a SID column).
+    Category shown if any result has one.
     """
     _require_xlsxwriter()
 
@@ -96,24 +97,29 @@ def write_line_check_excel(
         })
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
+        has_category = any(getattr(r, 'category', '') for r in results)
         max_trans = min(max((len(r.translations) for r in results), default=2), 8)
-        # Column layout: Source | Trans1 | SID1 | Trans2 | SID2 | ... | Status | Comment
-        status_col  = 1 + max_trans * 2
-        comment_col = 2 + max_trans * 2
+
+        # Column layout: Source | [Category] | Trans1 | SID1 | ... | Status | Comment
+        cat_col = 1 if has_category else -1
+        trans_start = 2 if has_category else 1
+        status_col  = trans_start + max_trans * 2
+        comment_col = status_col + 1
 
         # Header
         ws.set_row(0, 20)
         ws.write(0, 0, "Source (KR)", fmt_header)
+        ws.set_column(0, 0, 30)
+        if has_category:
+            ws.write(0, cat_col, "Category", fmt_header)
+            ws.set_column(cat_col, cat_col, 15)
         for i in range(max_trans):
-            ws.write(0, 1 + i * 2,     f"Translation {i + 1}", fmt_header)
-            ws.write(0, 1 + i * 2 + 1, f"StringID {i + 1}",    fmt_header)
+            ws.write(0, trans_start + i * 2,     f"Translation {i + 1}", fmt_header)
+            ws.write(0, trans_start + i * 2 + 1, f"StringID {i + 1}",    fmt_header)
+            ws.set_column(trans_start + i * 2,     trans_start + i * 2,     35)
+            ws.set_column(trans_start + i * 2 + 1, trans_start + i * 2 + 1, 20)
         ws.write(0, status_col,  "Status",  fmt_header)
         ws.write(0, comment_col, "Comment", fmt_header)
-
-        ws.set_column(0, 0, 30)
-        for i in range(max_trans):
-            ws.set_column(1 + i * 2,     1 + i * 2,     35)
-            ws.set_column(1 + i * 2 + 1, 1 + i * 2 + 1, 20)
         ws.set_column(status_col,  status_col,  14)
         ws.set_column(comment_col, comment_col, 40)
 
@@ -122,10 +128,12 @@ def write_line_check_excel(
             fmt_t = fmt_trans if idx % 2 == 0 else fmt_trans_alt
             fmt_s = fmt_sid   if idx % 2 == 0 else fmt_sid_alt
             ws.write(row, 0, result.source, fmt_source)
+            if has_category:
+                ws.write(row, cat_col, getattr(result, 'category', ''), fmt_s)
             for i, trans in enumerate(result.translations[:max_trans]):
                 sid = result.string_ids[i] if i < len(result.string_ids) else ""
-                ws.write(row, 1 + i * 2,     trans, fmt_t)
-                ws.write(row, 1 + i * 2 + 1, sid,   fmt_s)
+                ws.write(row, trans_start + i * 2,     trans, fmt_t)
+                ws.write(row, trans_start + i * 2 + 1, sid,   fmt_s)
             ws.write(row, status_col,  "", fmt_status)
             ws.write(row, comment_col, "", fmt_comment)
             row += 1
@@ -135,6 +143,8 @@ def write_line_check_excel(
                 "validate": "list",
                 "source":   ["ISSUE", "NO ISSUE", "FIXED"],
             })
+            ws.autofilter(0, 0, row - 1, comment_col)
+            ws.freeze_panes(1, 0)
 
         ws.set_row(row + 1, 16)
         ws.write(row + 1, 0, f"Total: {len(results)} inconsistencies", fmt_summary)
