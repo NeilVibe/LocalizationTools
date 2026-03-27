@@ -10,6 +10,7 @@ Output:     StrOrigin | Correction | StringID | Category
 """
 from __future__ import annotations
 
+import html
 import logging
 import os
 import re
@@ -30,10 +31,14 @@ except ImportError:
 
 
 def _normalize(text: str) -> str:
-    """Normalize text for matching — collapse whitespace, strip."""
+    """Normalize text for matching — unescape HTML, collapse whitespace, strip."""
     if not text:
         return ""
-    return re.sub(r'\s+', ' ', str(text).strip())
+    text = html.unescape(str(text))
+    text = re.sub(r'[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000\uFEFF]+', ' ', text)
+    text = re.sub(r'[\u200B-\u200F\u202A-\u202E]+', '', text)
+    text = re.sub(r'[\u2019\u2018\u02BC\u2032\u0060\u00B4]', "'", text)
+    return re.sub(r'\s+', ' ', text.strip())
 
 
 @dataclass
@@ -59,7 +64,7 @@ def read_reference_excel(
         raise ImportError("openpyxl is required")
 
     if progress_callback:
-        progress_callback("Reading reference file...")
+        progress_callback("[1/4] Reading reference file...")
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
@@ -73,6 +78,10 @@ def read_reference_excel(
 
     # Detect columns by header
     header = [str(c).strip().lower() if c else "" for c in rows[0]]
+
+    if progress_callback:
+        progress_callback(f"  Headers found: {[str(c).strip() for c in rows[0] if c]}")
+
     str_origin_idx = None
     correction_idx = None
     changedate_idx = None
@@ -92,12 +101,21 @@ def read_reference_excel(
     if correction_idx is None:
         missing.append("Correction")
     if missing:
-        raise ValueError(f"Reference file missing headers: {', '.join(missing)}")
+        raise ValueError(f"Reference file missing required headers: {', '.join(missing)}")
+
+    if progress_callback:
+        has_date = "YES" if changedate_idx is not None else "NO"
+        progress_callback(f"  StrOrigin=col {str_origin_idx}, Correction=col {correction_idx}, ChangeDate={has_date}")
 
     # Build lookup
     lookup: Dict[str, Tuple[str, str]] = {}
+    skipped_empty = 0
+    dupes_updated = 0
+    total_rows = len(rows) - 1
+
     for row in rows[1:]:
         if not row or len(row) <= max(str_origin_idx, correction_idx):
+            skipped_empty += 1
             continue
 
         str_origin_val = str(row[str_origin_idx] or "").strip()
@@ -107,20 +125,25 @@ def read_reference_excel(
             changedate_val = str(row[changedate_idx] or "").strip()
 
         if not str_origin_val or not correction_val:
+            skipped_empty += 1
             continue
 
         key = _normalize(str_origin_val)
 
         if key in lookup:
-            # Keep latest ChangeDate
             existing_date = lookup[key][1]
             if changedate_val > existing_date:
                 lookup[key] = (correction_val, changedate_val)
+                dupes_updated += 1
         else:
             lookup[key] = (correction_val, changedate_val)
 
     if progress_callback:
-        progress_callback(f"Reference: {len(lookup)} unique StrOrigin entries loaded")
+        progress_callback(f"  Read {total_rows} rows → {len(lookup)} unique StrOrigin entries")
+        if skipped_empty:
+            progress_callback(f"  Skipped {skipped_empty} empty/incomplete rows")
+        if dupes_updated:
+            progress_callback(f"  {dupes_updated} duplicate StrOrigins resolved by ChangeDate")
 
     return lookup
 
@@ -139,7 +162,7 @@ def read_linecheck_excel(
         raise ImportError("openpyxl is required")
 
     if progress_callback:
-        progress_callback("Reading LineCheck file...")
+        progress_callback("[2/4] Reading LineCheck file...")
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
@@ -154,6 +177,9 @@ def read_linecheck_excel(
     # Parse header to find columns dynamically
     header = [str(c).strip() if c else "" for c in rows[0]]
     header_lower = [h.lower() for h in header]
+
+    if progress_callback:
+        progress_callback(f"  Headers found: {[h for h in header if h]}")
 
     # Find Source column
     source_idx = None
@@ -173,18 +199,22 @@ def read_linecheck_excel(
             break
 
     # Find Translation N / StringID N pairs
-    trans_pairs: List[Tuple[int, int]] = []  # [(trans_col, sid_col), ...]
+    trans_pairs: List[Tuple[int, int]] = []
     for i, h in enumerate(header):
         if h.startswith("Translation "):
-            # Next column should be StringID N
             if i + 1 < len(header) and header[i + 1].startswith("StringID "):
                 trans_pairs.append((i, i + 1))
 
     if not trans_pairs:
         raise ValueError("LineCheck file missing Translation/StringID column pairs")
 
+    if progress_callback:
+        has_cat = "YES" if category_idx is not None else "NO"
+        progress_callback(f"  Source=col {source_idx}, Category={has_cat}, {len(trans_pairs)} translation pairs")
+
     # Parse data rows
     results = []
+    total_string_ids = 0
     for row in rows[1:]:
         if not row:
             continue
@@ -193,7 +223,6 @@ def read_linecheck_excel(
         if not source:
             continue
 
-        # Skip summary rows
         if source.lower().startswith("total:"):
             continue
 
@@ -214,9 +243,10 @@ def read_linecheck_excel(
                 'category': category,
                 'translations': translations,
             })
+            total_string_ids += len(translations)
 
     if progress_callback:
-        progress_callback(f"LineCheck: {len(results)} inconsistency groups loaded")
+        progress_callback(f"  {len(results)} inconsistency groups, {total_string_ids} total StringIDs")
 
     return results
 
@@ -231,11 +261,15 @@ def unify(
 
     Returns: (results, matched_count, unmatched_count)
     """
+    if progress_callback:
+        progress_callback("[3/4] Matching LineCheck groups against reference...")
+
     results: List[UnifyResult] = []
     matched = 0
     unmatched = 0
+    total = len(linecheck_groups)
 
-    for group in linecheck_groups:
+    for idx, group in enumerate(linecheck_groups):
         source = group['source']
         category = group['category']
         translations = group['translations']
@@ -243,14 +277,11 @@ def unify(
 
         if key not in reference:
             unmatched += 1
-            if progress_callback:
-                progress_callback(f"  NO REFERENCE: {source[:50]}...")
             continue
 
         correction, _ = reference[key]
         matched += 1
 
-        # Output ALL StringIDs in this group with the correct translation
         for trans_val, sid_val in translations:
             results.append(UnifyResult(
                 str_origin=source,
@@ -259,8 +290,15 @@ def unify(
                 category=category,
             ))
 
+        # Progress every 50 groups
+        if progress_callback and (idx + 1) % 50 == 0:
+            progress_callback(f"  Processed {idx + 1}/{total} groups...")
+
     if progress_callback:
-        progress_callback(f"Matched: {matched}, No reference: {unmatched}, Output rows: {len(results)}")
+        progress_callback(f"  Matched: {matched}/{total} groups")
+        if unmatched:
+            progress_callback(f"  No reference found: {unmatched} groups (skipped)")
+        progress_callback(f"  Output: {len(results)} rows to write")
 
     return results, matched, unmatched
 
@@ -275,7 +313,7 @@ def write_unified_excel(
         raise ImportError("xlsxwriter is required")
 
     if progress_callback:
-        progress_callback(f"Writing {len(results)} rows to {os.path.basename(output_path)}...")
+        progress_callback(f"[4/4] Writing {len(results)} rows to {os.path.basename(output_path)}...")
 
     try:
         wb = xlsxwriter.Workbook(output_path)
@@ -313,7 +351,9 @@ def write_unified_excel(
         wb.close()
 
         if progress_callback:
-            progress_callback(f"Saved: {os.path.basename(output_path)} ({data_rows} rows)")
+            # Count unique StrOrigins for summary
+            unique_sources = len(set(r.str_origin for r in results))
+            progress_callback(f"  Saved: {data_rows} rows ({unique_sources} unique sources)")
 
         return True
 
@@ -350,6 +390,14 @@ def run_unify(
             return None
 
         ok = write_unified_excel(results, output_path, progress_callback)
+
+        if ok and progress_callback:
+            progress_callback("-" * 40)
+            progress_callback(f"DONE — Output: {os.path.basename(output_path)}")
+            progress_callback(f"  Location: {output_path}")
+            progress_callback(f"  Groups matched: {matched}, Skipped (no ref): {unmatched}")
+            progress_callback(f"  Total correction rows: {len(results)}")
+
         if ok:
             return output_path
         return None
