@@ -18,7 +18,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
-from .text_utils import normalize_text, normalize_nospace, is_formula_text, is_text_integrity_issue
+from .text_utils import normalize_text, normalize_nospace, normalize_for_matching, is_formula_text, is_text_integrity_issue
 
 # ---------------------------------------------------------------------------
 # Formula safeguard — detect Excel formulas, error values, and non-str types
@@ -1073,14 +1073,14 @@ def _merge_excel_strict(
         if not entry["str_origin"].strip():
             continue
         sid_lower = entry["string_id"].lower()
-        norm_origin = normalize_text(entry["str_origin"])
+        norm_origin = normalize_for_matching(entry["str_origin"])
         nospace_origin = normalize_nospace(norm_origin)
         target_lookup[(sid_lower, norm_origin)].append(entry)
         target_lookup_nospace[(sid_lower, nospace_origin)].append(entry)
 
     for c in corrections:
         sid_lower = c["string_id"].lower()
-        origin_norm = normalize_text(c.get("str_origin", ""))
+        origin_norm = normalize_for_matching(c.get("str_origin", ""))
         origin_nospace = normalize_nospace(origin_norm)
 
         matching_entries = target_lookup.get((sid_lower, origin_norm), [])
