@@ -30,15 +30,22 @@ except ImportError:
     xlsxwriter = None
 
 
+# Pre-compiled regex patterns for normalization (avoid re-compile per call)
+_RE_UNICODE_WS = re.compile(r'[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000\uFEFF]+')
+_RE_ZERO_WIDTH = re.compile(r'[\u200B-\u200F\u202A-\u202E]+')
+_RE_APOSTROPHE = re.compile(r'[\u2019\u2018\u02BC\u2032\u0060\u00B4]')
+_RE_WHITESPACE = re.compile(r'\s+')
+
+
 def _normalize(text: str) -> str:
     """Normalize text for matching — unescape HTML, collapse whitespace, strip."""
     if not text:
         return ""
     text = html.unescape(str(text))
-    text = re.sub(r'[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000\uFEFF]+', ' ', text)
-    text = re.sub(r'[\u200B-\u200F\u202A-\u202E]+', '', text)
-    text = re.sub(r'[\u2019\u2018\u02BC\u2032\u0060\u00B4]', "'", text)
-    return re.sub(r'\s+', ' ', text.strip())
+    text = _RE_UNICODE_WS.sub(' ', text)
+    text = _RE_ZERO_WIDTH.sub('', text)
+    text = _RE_APOSTROPHE.sub("'", text)
+    return _RE_WHITESPACE.sub(' ', text.strip())
 
 
 @dataclass
@@ -63,8 +70,9 @@ def read_reference_excel(
     if openpyxl is None:
         raise ImportError("openpyxl is required")
 
+    file_size_mb = os.path.getsize(path) / (1024 * 1024)
     if progress_callback:
-        progress_callback("[1/4] Reading reference file...")
+        progress_callback(f"[1/4] Reading reference file ({file_size_mb:.1f} MB)...")
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
@@ -161,8 +169,9 @@ def read_linecheck_excel(
     if openpyxl is None:
         raise ImportError("openpyxl is required")
 
+    file_size_mb = os.path.getsize(path) / (1024 * 1024)
     if progress_callback:
-        progress_callback("[2/4] Reading LineCheck file...")
+        progress_callback(f"[2/4] Reading LineCheck file ({file_size_mb:.1f} MB)...")
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
