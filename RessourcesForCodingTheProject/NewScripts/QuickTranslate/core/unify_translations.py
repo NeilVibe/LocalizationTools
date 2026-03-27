@@ -265,11 +265,12 @@ class SelectionEntry:
     """One row in the selection log — one per unique StrOrigin."""
     str_origin: str
     correction: str
+    string_id: str
     category: str
     method: str  # "Reference", "Tiebreaker (minority)", "Tiebreaker (linebreak)"
 
 
-def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, str]:
+def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, str, str]:
     """
     Tiebreaker when reference correction doesn't help.
 
@@ -281,15 +282,16 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, st
         translations: [(translation_text, string_id), ...]
 
     Returns:
-        (best_translation_text, method_used)
+        (best_translation_text, string_id, method_used)
     """
     from collections import Counter
 
-    # Count how many StringIDs have each translation
     trans_counts = Counter(t for t, _ in translations)
+    # Build reverse lookup: translation_text → first string_id
+    trans_to_sid = {t: sid for t, sid in translations}
 
     if len(trans_counts) < 2:
-        return translations[0][0], "Tiebreaker (single variant)"
+        return translations[0][0], translations[0][1], "Tiebreaker (single variant)"
 
     sorted_variants = trans_counts.most_common()
 
@@ -297,7 +299,8 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, st
     most_common = sorted_variants[0]
 
     if least_common[1] != most_common[1]:
-        return least_common[0], "Tiebreaker (minority)"
+        winner = least_common[0]
+        return winner, trans_to_sid.get(winner, ""), "Tiebreaker (minority)"
 
     # Even split — pick the one with fewer <br/> tags
     def br_count(text: str) -> int:
@@ -305,7 +308,8 @@ def _pick_best_translation(translations: List[Tuple[str, str]]) -> Tuple[str, st
 
     candidates = [variant for variant, _ in sorted_variants]
     candidates.sort(key=br_count)
-    return candidates[0], "Tiebreaker (linebreak)"
+    winner = candidates[0]
+    return winner, trans_to_sid.get(winner, ""), "Tiebreaker (linebreak)"
 
 
 def unify(
@@ -338,27 +342,33 @@ def unify(
         key = _normalize(source)
 
         correction = None
+        selected_sid = ""
         method = ""
 
         # Try reference lookup first
         if key in reference:
             ref_correction, _ = reference[key]
             ref_norm = _normalize(ref_correction)
-            trans_norms = {_normalize(t): t for t, _ in translations}
-            if ref_norm in trans_norms:
+            # Find the StringID whose translation matches the reference
+            for t, sid in translations:
+                if _normalize(t) == ref_norm:
+                    selected_sid = sid
+                    break
+            if selected_sid:
                 correction = ref_correction
                 method = "Reference"
                 matched_ref += 1
             else:
-                correction, method = _pick_best_translation(translations)
+                correction, selected_sid, method = _pick_best_translation(translations)
                 matched_tiebreak += 1
         else:
-            correction, method = _pick_best_translation(translations)
+            correction, selected_sid, method = _pick_best_translation(translations)
             matched_tiebreak += 1
 
         selections.append(SelectionEntry(
             str_origin=source,
             correction=correction,
+            string_id=selected_sid,
             category=category,
             method=method,
         ))
@@ -473,8 +483,12 @@ def write_selection_log(
             'border': 1, 'valign': 'vcenter', 'font_color': '#E67E22', 'bold': True,
         })
 
-        headers = ['StrOrigin', 'Correction', 'Category', 'Method']
-        widths = [50, 50, 15, 25]
+        sid_fmt = wb.add_format({
+            'border': 1, 'valign': 'vcenter', 'num_format': '@',
+        })
+
+        headers = ['StrOrigin', 'Correction', 'StringID', 'Category', 'Method']
+        widths = [50, 50, 22, 15, 25]
 
         for col, h in enumerate(headers):
             ws.write(0, col, h, hdr_fmt)
@@ -483,9 +497,10 @@ def write_selection_log(
         for idx, s in enumerate(selections, 1):
             ws.write(idx, 0, s.str_origin, cell_fmt)
             ws.write(idx, 1, s.correction, cell_fmt)
-            ws.write(idx, 2, s.category, cell_fmt)
+            ws.write_string(idx, 2, str(s.string_id), sid_fmt)
+            ws.write(idx, 3, s.category, cell_fmt)
             fmt = method_ref_fmt if s.method == "Reference" else method_tie_fmt
-            ws.write(idx, 3, s.method, fmt)
+            ws.write(idx, 4, s.method, fmt)
 
         data_rows = len(selections)
         if data_rows > 0:
