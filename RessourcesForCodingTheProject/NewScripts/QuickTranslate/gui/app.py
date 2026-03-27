@@ -2915,19 +2915,19 @@ class QuickTranslateApp:
                 result_path = run_unify(
                     reference_path=ref_path,
                     linecheck_path=lc_path,
-                    progress_callback=lambda msg: self.after(0, self._log, msg),
+                    progress_callback=lambda msg: self.root.after(0, self._log, msg),
                 )
                 if result_path:
-                    self.after(0, self._log, f"SUCCESS: {os.path.basename(result_path)}", 'success')
+                    self.root.after(0, self._log, f"SUCCESS: {os.path.basename(result_path)}", 'success')
                 else:
-                    self.after(0, self._log, "No matches found — no output generated.", 'warning')
+                    self.root.after(0, self._log, "No matches found — no output generated.", 'warning')
             except ValueError as e:
-                self.after(0, self._log, f"VALIDATION ERROR: {e}", 'error')
+                self.root.after(0, self._log, f"VALIDATION ERROR: {e}", 'error')
             except Exception as e:
                 logger.exception("Unify failed")
-                self.after(0, self._log, f"ERROR: {e}", 'error')
+                self.root.after(0, self._log, f"ERROR: {e}", 'error')
             finally:
-                self.after(0, lambda: self.unify_btn.config(state='normal'))
+                self.root.after(0, lambda: self.unify_btn.config(state='normal'))
 
         threading.Thread(target=worker, daemon=True).start()
 
