@@ -282,6 +282,90 @@ def check_patterns_in_file(
     return pattern_errors, bracket_errors, empty_str_errors
 
 
+# ─── XML Health Check (auto-validation on upload) ─────────────────────────
+
+
+def check_xml_health(xml_path: Path) -> dict:
+    """Full health check on an XML languagedata file.
+
+    Runs automatically when source/target folder is selected.
+    Catches damage already present in the XML — not just corrections.
+
+    Returns dict with categorized findings:
+        empty_str: [(stringid, str_origin_preview)]  — Str empty but StrOrigin exists
+        integrity_str: [(stringid, reason)]            — Str has integrity issue
+        integrity_desc: [(stringid, reason)]           — Desc has integrity issue
+        no_translation: [(stringid, str_origin_preview)] — Str is "no translation"
+        formula_str: [(stringid, reason)]              — Str has formula/garbage text
+    """
+    from .text_utils import _SAFE_INVISIBLE_DELETE
+
+    result = {
+        "empty_str": [],
+        "integrity_str": [],
+        "integrity_desc": [],
+        "no_translation": [],
+        "formula_str": [],
+    }
+
+    try:
+        root = parse_xml_file(xml_path)
+        for elem in iter_locstr_elements(root):
+            sid = _get_attr(elem, _STRINGID_ATTRS).strip() or "(no ID)"
+            str_text = _get_attr(elem, _STR_ATTRS)
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS).strip()
+            desc_text = _get_attr(elem, _DESC_ATTRS)
+            desc_origin = _get_attr(elem, _DESCORIGIN_ATTRS).strip()
+
+            # --- Str checks ---
+            str_stripped = (str_text or "").strip()
+
+            if not str_stripped and str_origin:
+                # Empty after basic strip — flag immediately
+                result["empty_str"].append((sid, str_origin[:60]))
+                continue
+
+            if str_stripped:
+                # Check if Str is only invisible chars (would become empty after cleanup)
+                visible = str_stripped
+                for ch in _SAFE_INVISIBLE_DELETE:
+                    visible = visible.replace(ch, '')
+                visible = visible.strip()
+                if not visible and str_origin:
+                    result["empty_str"].append((sid, str_origin[:60]))
+                    continue
+
+                # "no translation" in Str
+                if ' '.join(str_stripped.split()).lower() == 'no translation':
+                    result["no_translation"].append((sid, str_origin[:60] if str_origin else ""))
+                    continue
+
+                # Formula/garbage text in Str
+                formula_reason = is_formula_text(str_stripped)
+                if formula_reason:
+                    result["formula_str"].append((sid, formula_reason))
+                    continue
+
+                # Text integrity (tabs, U+FFFC, control chars, broken br, etc.)
+                reason = is_text_integrity_issue(str_stripped, from_xml=True,
+                                                 source_text=str_origin)
+                if reason and not reason.startswith('Warning:'):
+                    result["integrity_str"].append((sid, reason))
+
+            # --- Desc checks ---
+            desc_stripped = (desc_text or "").strip()
+            if desc_stripped:
+                reason = is_text_integrity_issue(desc_stripped, from_xml=True,
+                                                 source_text=desc_origin)
+                if reason and not reason.startswith('Warning:'):
+                    result["integrity_desc"].append((sid, reason))
+
+    except Exception as e:
+        logger.warning("Health check failed for %s: %s", xml_path.name, e)
+
+    return result
+
+
 # ─── Excel Support ─────────────────────────────────────────────────────────
 
 

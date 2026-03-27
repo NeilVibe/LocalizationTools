@@ -148,6 +148,9 @@ _SAFE_INVISIBLE_DELETE = frozenset({
     '\u202c',   # Pop directional formatting
     '\u202d',   # Left-to-right override
     '\u202e',   # Right-to-left override
+    '\ufff9',   # Interlinear annotation anchor
+    '\ufffa',   # Interlinear annotation separator
+    '\ufffb',   # Interlinear annotation terminator
 })
 
 # Human-readable names for detail reporting
@@ -174,6 +177,9 @@ _SAFE_INVISIBLE_NAMES = {
     '\u202c': 'Pop directional formatting',
     '\u202d': 'LTR override',
     '\u202e': 'RTL override',
+    '\ufff9': 'Annotation anchor',
+    '\ufffa': 'Annotation separator',
+    '\ufffb': 'Annotation terminator',
 }
 
 # Bucket 3 — Grey zone: warn only (don't touch, don't block)
@@ -362,16 +368,32 @@ def is_text_integrity_issue(text: str, *, from_xml: bool = False,
     if '\ufffd' in text:
         return 'Encoding artifact: replacement character (U+FFFD)'
 
+    # 2b. Object replacement character U+FFFC (garbage from Excel/copy-paste)
+    if '\ufffc' in text:
+        return 'Garbage character: object replacement (U+FFFC)'
+
     # 3. Control characters
     m = _CONTROL_CHARS_RE.search(text)
     if m:
         return f'Control character U+{ord(m.group()):04X}'
+
+    # 3b. Tab character inside text (garbage from Excel copy-paste)
+    if '\t' in text:
+        return 'Tab character in translation text (U+0009)'
 
     # 4. Markup contamination
     markup_issue = is_markup_contamination(text, from_xml=from_xml,
                                            source_text=source_text)
     if markup_issue:
         return markup_issue
+
+    # 5. Text is ONLY invisible/whitespace characters (nothing visible remains)
+    stripped = text
+    for ch in _SAFE_INVISIBLE_DELETE:
+        stripped = stripped.replace(ch, '')
+    stripped = stripped.strip()
+    if not stripped:
+        return 'Text contains only invisible/whitespace characters'
 
     return None
 

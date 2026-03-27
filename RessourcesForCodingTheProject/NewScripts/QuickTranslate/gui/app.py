@@ -1225,9 +1225,14 @@ class QuickTranslateApp:
         """
         def target_validation_work():
             from core.xml_parser import validate_xml_load
+            from core.checker import check_xml_health
 
             total_formula = 0
             total_integrity = 0
+            total_empty_str = 0
+            total_health_integrity = 0
+            total_no_translation = 0
+            total_formula_str = 0
             total_load_fail = 0
             total_load_recovered = 0
             total = len(xml_files)
@@ -1286,6 +1291,44 @@ class QuickTranslateApp:
                         if len(crit_elems) > 10:
                             self._log(f"  ...and {len(crit_elems) - 10} more.", 'error')
 
+                # XML Health Check — empty Str, Korean, garbage Unicode, no translation, formulas
+                health = check_xml_health(xf)
+                n_empty = len(health["empty_str"])
+                n_h_integrity = len(health["integrity_str"]) + len(health["integrity_desc"])
+                n_no_trans = len(health["no_translation"])
+                n_formula = len(health["formula_str"])
+                total_empty_str += n_empty
+                total_health_integrity += n_h_integrity
+                total_no_translation += n_no_trans
+                total_formula_str += n_formula
+
+                if n_empty:
+                    self._log(f"WARNING: {xf.name} has {n_empty} empty Str with StrOrigin (untranslated/damaged)", 'warning')
+                    for sid, preview in health["empty_str"][:5]:
+                        self._log(f"  Empty Str: StringID={sid}  StrOrigin={preview}", 'error')
+                    if n_empty > 5:
+                        self._log(f"  ...and {n_empty - 5} more.", 'error')
+
+                if n_no_trans:
+                    self._log(f"WARNING: {xf.name} has {n_no_trans} 'no translation' Str (auto-replaced with StrOrigin during postprocess)", 'warning')
+                    for sid, preview in health["no_translation"][:5]:
+                        self._log(f"  No translation: StringID={sid}  StrOrigin={preview}", 'error')
+                    if n_no_trans > 5:
+                        self._log(f"  ...and {n_no_trans - 5} more.", 'error')
+
+                if n_formula:
+                    self._log(f"WARNING: {xf.name} has {n_formula} formula/garbage text in Str (cannot auto-clean, please check)", 'warning')
+                    for sid, reason in health["formula_str"][:5]:
+                        self._log(f"  Formula/garbage: StringID={sid}  {reason}", 'error')
+                    if n_formula > 5:
+                        self._log(f"  ...and {n_formula - 5} more.", 'error')
+
+                if n_h_integrity:
+                    for sid, reason in health["integrity_str"][:5]:
+                        self._log(f"  Health issue: StringID={sid}  {reason}", 'error')
+                    for sid, reason in health["integrity_desc"][:5]:
+                        self._log(f"  Health issue (Desc): StringID={sid}  {reason}", 'error')
+
             # XML Load Test summary
             if total_load_fail == 0 and total_load_recovered == 0:
                 self._log(f"XML LOAD: All {total} files loaded successfully", 'success')
@@ -1294,7 +1337,7 @@ class QuickTranslateApp:
             else:
                 self._log(f"XML LOAD: {total_load_fail} file(s) FAILED to load out of {total}", 'error')
 
-            issues = total_load_fail + total_formula + total_integrity
+            issues = total_load_fail + total_formula + total_integrity + total_empty_str + total_health_integrity + total_no_translation + total_formula_str
             if issues:
                 parts = []
                 if total_load_fail:
@@ -1305,6 +1348,14 @@ class QuickTranslateApp:
                     parts.append(f"{total_formula} formula text")
                 if total_integrity:
                     parts.append(f"{total_integrity} integrity issues")
+                if total_empty_str:
+                    parts.append(f"{total_empty_str} empty Str")
+                if total_no_translation:
+                    parts.append(f"{total_no_translation} 'no translation'")
+                if total_formula_str:
+                    parts.append(f"{total_formula_str} formula/garbage in Str")
+                if total_health_integrity:
+                    parts.append(f"{total_health_integrity} health issues")
                 logger.warning("TARGET issues: %s found", ', '.join(parts))
                 self._log(f"TARGET: {', '.join(parts)} found across {total} files", 'warning')
             else:
@@ -1347,11 +1398,13 @@ class QuickTranslateApp:
 
         def validation_work():
             from core.xml_parser import validate_xml_load
+            from core.checker import check_xml_health
 
             results = []
             all_formula_warnings = []  # Collect for end-of-log summary
             all_integrity_warnings = []  # Collect for end-of-log summary
             all_no_translation_warnings = []  # Collect for end-of-log summary
+            total_src_empty_str = 0
             # NOTE: ellipsis warnings removed — auto-fixed by postprocess
             total = len(files_to_check)
             total_xml_files = 0
@@ -1441,6 +1494,14 @@ class QuickTranslateApp:
                         if xml_no_translation_report:
                             for r in xml_no_translation_report:
                                 all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
+
+                        # Source XML Health Check — empty Str, Korean, garbage Unicode
+                        src_health = check_xml_health(filepath)
+                        n_src_empty = len(src_health["empty_str"])
+                        total_src_empty_str += n_src_empty
+                        if n_src_empty:
+                            self._log(f"  Health: {filepath.name} has {n_src_empty} empty Str with StrOrigin", 'warning')
+
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
                         integrity_report_xl = []

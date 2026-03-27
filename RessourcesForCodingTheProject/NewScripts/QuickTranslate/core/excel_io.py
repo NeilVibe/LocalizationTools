@@ -284,6 +284,8 @@ def read_corrections_from_excel(
                     continue
 
                 corrected_str = str(corrected).strip()
+                if not corrected_str:
+                    continue
 
                 # Decode double-escaped entities (&amp;lt; → &lt;) so lxml doesn't
                 # triple-escape on write. Then normalize linebreaks.
