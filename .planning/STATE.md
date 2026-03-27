@@ -1,91 +1,79 @@
 ---
 gsd_state_version: 1.0
-milestone: v13.0
-milestone_name: Production Path Resolution
-status: complete
-stopped_at: v12.0+v13.0 shipped, built, build fixes applied, Playground updated
-last_updated: "2026-03-26T13:00:00.000Z"
+milestone: v14.0
+milestone_name: — Active)
+status: executing
+stopped_at: Completed 93-01-PLAN.md
+last_updated: "2026-03-27T05:39:42Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 57
+  completed_phases: 44
+  total_plans: 101
+  completed_plans: 98
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-26)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** v13.0 complete — E2E validation pending
+**Current focus:** Phase 93 — critical-debug-fixes
 
 ## Current Position
 
-Phase: All complete
-Plan: All complete
-Status: Milestone shipped + built (Run 561 SUCCESS)
-Last activity: 2026-03-26 — Build fixes (infinite loop, test contracts), Playground auto-updated to v26.326.1907
+Phase: 93 (critical-debug-fixes) — EXECUTING
+Plan: 2 of 2 (Plan 01 complete)
 
-Progress: [██████████] 100%
+## v14.0 Plan Summary (11 items unified)
 
-## CRITICAL: What Still Needs Testing
+### IMMEDIATE — Debug/Fix (Phase 93)
 
-1. **Open a LanguageData file in the grid** — verify NO infinite loop (fixed in commit 52094717)
-2. **Branch+Drive selector** — verify dropdowns appear in toolbar, validation shows green/red
-3. **Image/Audio tabs** — verify fallback reasons display when no Perforce data
-4. **TM context search** — verify AC results appear when row selected (needs TM loaded)
+1. Codex list infinite loop — 822 API calls, $effect→$state loop
+2. Remote logger feedback loop — 825x cascade on 404 errors
+3. v13.0 E2E verification — grid, Branch+Drive, Image/Audio tabs, TM context
 
-## Build History (2026-03-26)
+### Grid & TM (Phase 94)
 
-| Run | Result | Issue | Fix |
-|-----|--------|-------|-----|
-| 557 | FAIL | Svelte 5 `$derived` export from module | Convert to `getVisibleRows()` function |
-| 558 | FAIL | `test_audio_stream_404` expects 404, gets 503 | Update mock to return AudioContext(wem_path=None) |
-| 559 | FAIL | E2E tests don't accept 503 for uninitialized service | Accept 503 in assertions |
-| 560 | SUCCESS | — | — |
-| 561 | SUCCESS | Infinite loop fix (getVisibleRows → inline $derived.by) | — |
+4. TM upload broken — infinite loading spinner
+5. TM assignment UI missing — unclear how to assign TM to file
+6. Yellow cell default color → neutral grey
+
+### Navigation (Phase 95)
+
+7. Merge button — remove from top-level nav, relocate
+
+### GameData Polish (Phase 96)
+
+8. GameData categories → auto-parsed TABS
+9. CrimsonDesert.gg visual reference style
+
+### Protocols (Apply immediately, not phases)
+
+10. Debug protocol upgrades — sequential thinking, Viking+Ruflo
+11. Playwright → Qwen+CDP for vision reviews
 
 ## Accumulated Context
 
 ### Decisions
 
-- v12.0: Dual threshold 92%/62%, AC Context Engine, 25 tests
-- v13.0: Branch+Drive selector, media fallback reasons, MegaIndex split
-- Build fix: `$derived(getVisibleRows())` causes infinite loop — must use inline `$derived.by()`
-- Code reviews: 12 issues found across v12.0+v13.0, all fixed
+- v13.0 complete: Branch+Drive, media fallback, MegaIndex split
+- v12.0 complete: Dual threshold 92%/62%, AC Context Engine
+- Build fix: `$derived(getVisibleRows())` → infinite loop, use `$derived.by()`
+- Portproxy on 8888 needs admin elevation to remove
+- Plain Map for tabCache (same pattern as rowHeightCache fix) -- eliminates reactivity cascade
+- 3-layer logger protection: re-entrancy + rate limit (10/5s) + URL filter
 
-### What Was Built (v12.0 + v13.0)
+### Key Patterns (from v13.0 debugging)
 
-**Backend:**
-- `context_searcher.py` — 3-tier AC cascade (whole/line/fuzzy)
-- `BranchDriveSelector.svelte` — always-visible toolbar selector
-- `GET /mapdata/paths/validate` — path validation endpoint
-- `POST /tm/context` — AC context search endpoint
-- `mapdata_service.py` — fallback_reason on image/audio chains
-- `mega_index.py` — split 1311→247 lines (6 mixin modules)
-- 4 v11.0 code review issues fixed
-
-**Frontend:**
-- TMTab: 4-tier color badges + context matches section
-- StatusColors: CONTEXT_THRESHOLD = 0.62
-- GridPage: debounced context fetch + BranchDriveSelector
-- ImageTab/AudioTab: fallback reason display
-
-### Deferred
-
-- LAN-01 through LAN-07: LAN Server Mode (future milestone)
-- CODEX-01 through CODEX-04: Interactive Codex + World Map (v14.0+)
-- Audio fallback_reason diagnostic detail (generic message for all failure modes)
-
-### Blockers/Concerns
-
-- Infinite loop fix needs E2E verification on real grid (committed, build passed, not yet tested in browser)
-- Portproxy on 8888 needs admin elevation to remove (can't do from WSL)
+- `$effect` → `$state` loops cause infinite API calls (BranchDriveSelector: 161k calls)
+- `$state(new Map())` in render loops = O(n²) freeze
+- `$state.snapshot` required for >10k iterations
+- CDP deep monitor catches what code review + Tribunal miss
 
 ## Session Continuity
 
-Last session: 2026-03-26
-Stopped at: Build 561 SUCCESS, Playground auto-updated, E2E browser test pending
-Next action: `/clear` → open DEV server → verify grid loads → verify Branch+Drive selector → verify TM context
+Last session: 2026-03-27
+Stopped at: Completed 93-01-PLAN.md
+Next action: Execute 93-02 — E2E verification of v13.0 features
