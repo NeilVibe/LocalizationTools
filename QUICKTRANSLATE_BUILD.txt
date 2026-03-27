@@ -1,1 +1,1 @@
-Build QuickTranslate — Unify performance + file size feedback
+Build QuickTranslate — fix self.root.after crash in Unify
