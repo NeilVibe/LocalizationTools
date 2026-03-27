@@ -6,7 +6,6 @@ Uses KR BASE mode: Korean StrOrigin as the source for comparison.
 """
 from __future__ import annotations
 
-import string
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple
 from collections import defaultdict
@@ -69,10 +68,6 @@ def run_line_check(
 
         # Skip sentences if filter enabled
         if filter_sentences and is_phrase(entry.source):
-            continue
-
-        # Skip if source contains punctuation
-        if any(ch in string.punctuation for ch in entry.source) or '…' in entry.source:
             continue
 
         # Skip if source too long
