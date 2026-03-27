@@ -1,1 +1,1 @@
-Build QuickCheck — Roman numeral fix V/X/L/C + extended to 100
+Build QuickCheck — remove hardcoded punctuation filter from LINE CHECK
