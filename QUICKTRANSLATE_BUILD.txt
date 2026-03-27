@@ -1,1 +1,1 @@
-Build QuickTranslate — fix missing callback on Only untranslated radio
+Build 026 - STRICT mode StrOrigin case-insensitive fix
