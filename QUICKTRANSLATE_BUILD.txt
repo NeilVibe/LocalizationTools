@@ -1,1 +1,1 @@
-Build QuickTranslate — Unify logging + normalization fix
+Build QuickTranslate — Unify performance + file size feedback
