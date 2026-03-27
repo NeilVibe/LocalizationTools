@@ -1,1 +1,1 @@
-Build QuickTranslate — tiebreaker + safe_log
+Build QuickTranslate — selection log + review fixes
