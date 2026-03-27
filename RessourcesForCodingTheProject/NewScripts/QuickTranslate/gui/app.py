@@ -2910,24 +2910,34 @@ class QuickTranslateApp:
 
         self.unify_btn.config(state='disabled')
 
+        def _safe_log(msg, tag='info'):
+            """Log to GUI with fallback — never crashes the worker thread."""
+            try:
+                self.root.after(0, self._log, msg, tag)
+            except Exception:
+                logger.info("[GUI log fallback] %s", msg)
+
         def worker():
             try:
                 result_path = run_unify(
                     reference_path=ref_path,
                     linecheck_path=lc_path,
-                    progress_callback=lambda msg: self.root.after(0, self._log, msg),
+                    progress_callback=lambda msg: _safe_log(msg),
                 )
                 if result_path:
-                    self.root.after(0, self._log, f"SUCCESS: {os.path.basename(result_path)}", 'success')
+                    _safe_log(f"SUCCESS: {os.path.basename(result_path)}", 'success')
                 else:
-                    self.root.after(0, self._log, "No matches found — no output generated.", 'warning')
+                    _safe_log("No matches found — no output generated.", 'warning')
             except ValueError as e:
-                self.root.after(0, self._log, f"VALIDATION ERROR: {e}", 'error')
+                _safe_log(f"VALIDATION ERROR: {e}", 'error')
             except Exception as e:
                 logger.exception("Unify failed")
-                self.root.after(0, self._log, f"ERROR: {e}", 'error')
+                _safe_log(f"ERROR: {e}", 'error')
             finally:
-                self.root.after(0, lambda: self.unify_btn.config(state='normal'))
+                try:
+                    self.root.after(0, lambda: self.unify_btn.config(state='normal'))
+                except Exception:
+                    pass
 
         threading.Thread(target=worker, daemon=True).start()
 

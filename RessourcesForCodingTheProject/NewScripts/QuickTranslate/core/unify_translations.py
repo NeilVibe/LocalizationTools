@@ -260,6 +260,49 @@ def read_linecheck_excel(
     return results
 
 
+def _pick_best_translation(translations: List[Tuple[str, str]]) -> str:
+    """
+    Tiebreaker when reference correction doesn't help.
+
+    Uses the LineCheck group translations to pick the best one:
+    1. Minority wins (odd split) — the mass-confirmed majority is likely wrong
+    2. Even split — fewer <br/> linebreaks wins (cleaner translation)
+
+    Args:
+        translations: [(translation_text, string_id), ...]
+
+    Returns:
+        The best translation text
+    """
+    from collections import Counter
+
+    # Count how many StringIDs have each translation
+    trans_counts = Counter(t for t, _ in translations)
+
+    if len(trans_counts) < 2:
+        # Only one translation variant — return it
+        return translations[0][0]
+
+    sorted_variants = trans_counts.most_common()
+
+    # Check if odd split (clear minority exists)
+    total = sum(trans_counts.values())
+    least_common = sorted_variants[-1]  # (text, count)
+    most_common = sorted_variants[0]    # (text, count)
+
+    if least_common[1] != most_common[1]:
+        # Unequal counts — minority wins
+        return least_common[0]
+
+    # Even split — pick the one with fewer <br/> tags
+    def br_count(text: str) -> int:
+        return text.lower().count('<br/>') + text.lower().count('<br />')
+
+    candidates = [variant for variant, _ in sorted_variants]
+    candidates.sort(key=br_count)
+    return candidates[0]
+
+
 def unify(
     reference: Dict[str, Tuple[str, str]],
     linecheck_groups: List[dict],
@@ -268,6 +311,10 @@ def unify(
     """
     Match LineCheck groups against reference to produce unified corrections.
 
+    Tiebreaker logic when reference correction matches none of the translations:
+    1. Minority translation wins (odd split — mass-confirmed majority is likely wrong)
+    2. Even split — fewer <br/> linebreaks wins (cleaner translation)
+
     Returns: (results, matched_count, unmatched_count)
     """
     if progress_callback:
@@ -275,6 +322,8 @@ def unify(
 
     results: List[UnifyResult] = []
     matched = 0
+    matched_ref = 0
+    matched_tiebreak = 0
     unmatched = 0
     total = len(linecheck_groups)
 
@@ -284,11 +333,26 @@ def unify(
         translations = group['translations']
         key = _normalize(source)
 
-        if key not in reference:
-            unmatched += 1
-            continue
+        correction = None
 
-        correction, _ = reference[key]
+        # Try reference lookup first
+        if key in reference:
+            ref_correction, _ = reference[key]
+            # Check if reference correction matches any translation in the group
+            ref_norm = _normalize(ref_correction)
+            trans_norms = {_normalize(t): t for t, _ in translations}
+            if ref_norm in trans_norms:
+                correction = ref_correction
+                matched_ref += 1
+            else:
+                # Reference exists but matches none — use tiebreaker
+                correction = _pick_best_translation(translations)
+                matched_tiebreak += 1
+        else:
+            # No reference — use tiebreaker
+            correction = _pick_best_translation(translations)
+            matched_tiebreak += 1
+
         matched += 1
 
         for trans_val, sid_val in translations:
@@ -305,8 +369,12 @@ def unify(
 
     if progress_callback:
         progress_callback(f"  Matched: {matched}/{total} groups")
+        if matched_ref:
+            progress_callback(f"    Reference match: {matched_ref}")
+        if matched_tiebreak:
+            progress_callback(f"    Tiebreaker (minority/linebreak): {matched_tiebreak}")
         if unmatched:
-            progress_callback(f"  No reference found: {unmatched} groups (skipped)")
+            progress_callback(f"  Skipped: {unmatched} groups")
         progress_callback(f"  Output: {len(results)} rows to write")
 
     return results, matched, unmatched
