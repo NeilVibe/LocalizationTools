@@ -1,3 +1,4 @@
 Build LocaNext — UI-101 to UI-104 grid fixes (br-tags, color pills, background, pill styling)
 Build LocaNext — fix 103k-row grid freeze (Float64Array + rowsVersion)
 Build LocaNext — .snapshot fix for 103k proxy freeze (autoresearch verified)
+Build LocaNext — fix infinite effect loop in BranchDriveSelector
