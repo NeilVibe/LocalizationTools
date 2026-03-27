@@ -1,1 +1,1 @@
-Build QuickTranslate — StringID in selection log
+Build QuickTranslate — XML health check + input validation for garbage Unicode
