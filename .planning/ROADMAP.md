@@ -6,7 +6,8 @@
 - v10.0 UI Polish + Tag Pill Redesign --- Phases 80-82 (shipped 2026-03-25)
 - v11.0 Architecture & Test Infrastructure --- Phases 83-85 (shipped 2026-03-26)
 - v12.0 TM Intelligence --- Phases 86-88 (shipped 2026-03-26)
-- **v13.0 Production Path Resolution** --- Phases 89-92 (in progress)
+- v13.0 Production Path Resolution --- Phases 89-92 (shipped 2026-03-26)
+- **v14.0 Debug & UX Overhaul** --- Phases 93-96 (planning)
 
 ## Archived Milestones
 
@@ -108,14 +109,55 @@ Plans:
 
 </details>
 
-## Phases
+## Phases (v14.0 — Active)
 
-- [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (onScrollToRow race, dead code, missing callbacks, inaccessible state) (completed 2026-03-26)
-- [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation and session persistence (completed 2026-03-26)
-- [x] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains in LanguageData grid with mock Perforce E2E tests (completed 2026-03-26)
-- [x] **Phase 92: MegaIndex Decomposition** - Split mega_index.py (1310 lines) into 5 focused domain modules (completed 2026-03-26)
+- [ ] **Phase 93: Critical Debug Fixes** — Codex infinite loop, remote logger cascade, v13.0 E2E verification
+- [ ] **Phase 94: Grid & TM UX Fixes** — TM upload, TM assignment UI, yellow cell default color
+- [ ] **Phase 95: Navigation & Merge Redesign** — Relocate Merge button from top-level nav
+- [ ] **Phase 96: GameData Category Tabs + Visual Polish** — Auto-parsed tabs, CrimsonDesert.gg style
+
+## Phases (v13.0 — Shipped)
+
+- [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (completed 2026-03-26)
+- [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation (completed 2026-03-26)
+- [x] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains (completed 2026-03-26)
+- [x] **Phase 92: MegaIndex Decomposition** - Split mega_index.py 1310→247 lines (completed 2026-03-26)
 
 ## Phase Details
+
+### Phase 93: Critical Debug Fixes
+**Goal**: Zero infinite loops, zero feedback cascades, all v13.0 features verified working in DEV browser
+**Depends on**: Nothing (first phase of v14.0)
+**Requirements**: DBG-01, DBG-02, DBG-03
+**Success Criteria** (what must be TRUE):
+  1. `/api/ldm/codex/list/` is called <=5 times on page load (CDP deep monitor verified)
+  2. Remote logger does not cascade — 404 errors logged once, not 825x
+  3. Grid loads LanguageData file without freezing
+  4. Branch+Drive selector shows dropdowns and green/red validation
+  5. Image/Audio tabs display specific fallback reasons
+  6. TM context search returns AC results on row select
+**Plans:** 2 plans
+Plans:
+- [ ] 93-01-PLAN.md --- Fix Codex tabCache $state(Map) infinite loop + remote logger feedback cascade
+- [ ] 93-02-PLAN.md --- CDP deep monitor verification + human E2E verification of all v13.0 features
+
+### Phase 94: Grid & TM UX Fixes
+**Goal**: TM upload works end-to-end, TM assignment is discoverable, grid default color is neutral
+**Depends on**: Phase 93
+**Requirements**: TMUX-01, TMUX-02, TMUX-03
+**Plans:** TBD
+
+### Phase 95: Navigation & Merge Redesign
+**Goal**: Merge is accessible but not cluttering top navigation
+**Depends on**: Phase 94
+**Requirements**: NAV-01
+**Plans:** TBD
+
+### Phase 96: GameData Category Tabs + Visual Polish
+**Goal**: GameData categories display as auto-detected tabs, visual quality moves toward CrimsonDesert.gg
+**Depends on**: Phase 95
+**Requirements**: GD-01, GD-02
+**Plans:** TBD
 
 ### Phase 89: Code Cleanup
 **Goal**: The 4 deferred v11.0 code review issues are resolved -- no dead code, no race conditions, no inaccessible state in the decomposed grid modules
