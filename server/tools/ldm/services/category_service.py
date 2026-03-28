@@ -113,13 +113,60 @@ def categorize_by_stringid(string_id: Optional[str]) -> str:
 class CategoryService:
     """Service for categorizing translation rows by content type.
 
-    Uses two-phase matching: StringID prefix → keyword fallback.
-    Ported from LanguageDataExporter's TwoTierCategoryMapper.
+    Three-phase categorization:
+    1. MegaIndex entity lookup (C7: stringid_to_entity) — most accurate
+    2. StringID prefix matching (fast path)
+    3. Keyword matching in StringID (LanguageDataExporter pattern)
     """
+
+    def __init__(self):
+        self._mega_index = None
+        self._mega_checked = False
+
+    def _get_mega_index(self):
+        """Lazy-load MegaIndex if available (built after path configure)."""
+        if self._mega_checked:
+            return self._mega_index
+        self._mega_checked = True
+        try:
+            from server.tools.ldm.services.mega_index import get_mega_index
+            mega = get_mega_index()
+            if mega._built and len(mega.stringid_to_entity) > 0:
+                self._mega_index = mega
+                logger.info(f"[CATEGORY] Using MegaIndex C7: {len(mega.stringid_to_entity)} StringID→entity mappings")
+        except Exception:
+            pass
+        return self._mega_index
+
+    def _categorize_via_megaindex(self, string_id: str) -> Optional[str]:
+        """Phase 0: Use MegaIndex C7 (stringid_to_entity) for exact categorization."""
+        mega = self._get_mega_index()
+        if not mega:
+            return None
+        entity = mega.stringid_to_entity.get(string_id)
+        if entity:
+            entity_type, _ = entity
+            # Map entity types to category names
+            TYPE_MAP = {
+                "item": "Item", "character": "Character", "knowledge": "Knowledge",
+                "skill": "Skill", "gimmick": "Gimmick", "region": "Region",
+                "faction": "Faction", "quest": "Quest",
+            }
+            return TYPE_MAP.get(entity_type.lower(), entity_type.capitalize())
+        return None
 
     def categorize_row(self, row: Dict) -> Dict:
         """Add 'category' key to a row dict."""
         string_id = row.get("string_id")
+
+        # Phase 0: MegaIndex exact match (best accuracy)
+        if string_id:
+            mega_cat = self._categorize_via_megaindex(str(string_id))
+            if mega_cat:
+                row["category"] = mega_cat
+                return row
+
+        # Phase 1+2: Prefix + keyword fallback
         row["category"] = categorize_by_stringid(string_id)
         return row
 
