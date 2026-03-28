@@ -55,6 +55,7 @@ from server.tools.ldm.schemas.gamedata import (
     TreeNode,
     TreeRequest,
 )
+from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
 from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
 from server.tools.ldm.indexing.gamedata_searcher import GameDataSearcher
 from server.tools.ldm.services.gamedata_browse_service import (
@@ -290,17 +291,13 @@ async def get_gamedata_rows(
             detail=f"File not found: {request.xml_path}",
         )
 
-    # --- parse XML -------------------------------------------------------
-    try:
-        tree = etree.parse(str(resolved))
-    except XMLSyntaxError as e:
-        logger.warning(f"[GameData API] Malformed XML: {request.xml_path}: {e}")
-        raise HTTPException(status_code=422, detail=f"Malformed XML: {e}")
-    except Exception as e:
-        logger.error(f"[GameData API] get_gamedata_rows parse failed: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-    root = tree.getroot()
+    # --- parse XML (sanitized + virtual root + dual-pass) ----------------
+    root = sanitize_and_parse(resolved)
+    if root is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Failed to parse XML: {request.xml_path}",
+        )
     entities = list(root)
 
     # --- Identifying-attribute heuristic ---------------------------------

@@ -45,43 +45,36 @@ class GameDataBrowseService:
         self.base_dir = Path(base_dir).resolve()
 
     def _validate_path(self, path: str) -> Path:
-        """Resolve path and ensure it is within the allowed base directory.
+        """Resolve path. Allow absolute paths (Perforce) and base_dir-relative paths.
 
         Resolution order:
-        1. Absolute paths → used as-is
+        1. Absolute paths → used as-is (Perforce paths outside base_dir are valid)
         2. Relative paths → try base_dir/path first
-        3. If base_dir/path doesn't exist → try CWD/path (user may type full relative path)
-        All results must be within base_dir.
+        3. If base_dir/path doesn't exist → try CWD/path
         """
         path_obj = Path(path)
         if path_obj.is_absolute():
             resolved = path_obj.resolve()
-        else:
-            # Try relative to base_dir first
-            candidate = (self.base_dir / path).resolve()
-            if candidate.exists():
-                resolved = candidate
-            else:
-                # Fall back to CWD-relative (user typed "tests/fixtures/mock_gamedata/...")
-                cwd_candidate = Path(path).resolve()
-                if cwd_candidate.exists():
-                    resolved = cwd_candidate
-                else:
-                    resolved = candidate  # Use base_dir version for error message
-        if not resolved.is_relative_to(self.base_dir):
-            raise ValueError(
-                f"Path {path} is outside allowed base directory {self.base_dir}"
-            )
-        return resolved
+            # Allow absolute paths as-is (Perforce paths outside base_dir are valid)
+            if not resolved.exists():
+                raise ValueError(f"Path does not exist: {path}")
+            return resolved
+        # Relative: try base_dir first, then CWD
+        candidate = (self.base_dir / path).resolve()
+        if candidate.exists():
+            return candidate
+        cwd_candidate = Path(path).resolve()
+        if cwd_candidate.exists():
+            return cwd_candidate
+        raise ValueError(f"Path not found: {path} (tried base_dir and CWD)")
 
     def _count_entities(self, xml_path: Path) -> int:
-        """Quick entity count via lxml -- number of direct children of root."""
-        try:
-            tree = etree.parse(str(xml_path))
-            return len(tree.getroot())
-        except Exception:
-            logger.warning(f"[GameDataBrowse] Failed to parse XML: {xml_path}")
+        """Quick entity count via sanitized parser -- number of direct children of root."""
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+        root = sanitize_and_parse(xml_path)
+        if root is None:
             return 0
+        return len(root)
 
     def scan_folder(
         self, root_path: str, max_depth: int = 4, _current_depth: int = 0
@@ -132,13 +125,11 @@ class GameDataBrowseService:
         """
         resolved = self._validate_path(xml_path)
 
-        try:
-            tree = etree.parse(str(resolved))
-        except etree.XMLSyntaxError as exc:
-            logger.warning(f"[GameDataBrowse] Malformed XML, cannot detect columns: {resolved}: {exc}")
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+        root = sanitize_and_parse(resolved)
+        if root is None:
+            logger.warning(f"[GameDataBrowse] Malformed XML, cannot detect columns: {resolved}")
             return FileColumnsResponse(columns=[], editable_attrs=[])
-
-        root = tree.getroot()
 
         if len(root) == 0:
             return FileColumnsResponse(columns=[], editable_attrs=[])
