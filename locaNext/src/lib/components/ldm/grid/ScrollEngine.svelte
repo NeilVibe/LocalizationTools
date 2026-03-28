@@ -54,6 +54,16 @@
   let lastEnsureRowsTime = 0;
   const ENSURE_ROWS_THROTTLE_MS = 100;
 
+  // Debounce rebuildCumulativeHeights — coalesce rapid calls from prefetch cascade
+  let rebuildHeightsTimer = null;
+  function debouncedRebuildHeights() {
+    if (rebuildHeightsTimer) cancelAnimationFrame(rebuildHeightsTimer);
+    rebuildHeightsTimer = requestAnimationFrame(() => {
+      rebuildHeightsTimer = null;
+      rebuildCumulativeHeights(stripColorTags);
+    });
+  }
+
   // ========================================
   // Calculate visible range using binary search
   // ========================================
@@ -113,10 +123,10 @@
     const startPage = Math.floor(start / PAGE_SIZE) + 1;
     const endPage = Math.floor(end / PAGE_SIZE) + 1;
 
-    // Load all pages needed for visible range — no artificial cap.
-    // The previous MAX_PAGES_TO_LOAD=3 caused blank rows when scrolling fast.
-    // Network requests are cheap (paginated DB queries), blank rows are not.
-    const limitedEndPage = endPage;
+    // Cap at 10 pages per call to prevent request flood on fast scroll drag.
+    // Previous cap was 3 (too low → blanks). 10 = 1000 rows = covers any viewport.
+    const MAX_PAGES_TO_LOAD = 10;
+    const limitedEndPage = Math.min(endPage, startPage + MAX_PAGES_TO_LOAD - 1);
 
     for (let page = startPage; page <= limitedEndPage; page++) {
       if (!loadedPages.has(page) && !loadingPages.has(page)) {
@@ -202,7 +212,7 @@
         // Trigger reactivity by bumping a version counter instead of spreading 100k+ array
         grid.rowsVersion++;
 
-        rebuildCumulativeHeights(stripColorTags);
+        debouncedRebuildHeights();
 
         loadedPages.add(page);
         logger.info("SMART LOAD: Page loaded", { page, count: data.rows.length, total: grid.total, indexSize: rowIndexById.size });
@@ -289,18 +299,26 @@
 
       if (response.ok) {
         const data = await response.json();
-        grid.total = data.total;
-
         const isSearching = grid.searchTerm && grid.searchTerm.trim();
-        data.rows.forEach((row, pageIndex) => {
-          const index = isSearching ? pageIndex : (row.row_num - 1);
-          const rowData = {
-            ...row,
-            id: row.id.toString()
-          };
-          grid.rows[index] = rowData;
-          rowIndexById.set(row.id.toString(), index);
-        });
+
+        // For search: replace rows array entirely to remove stale data beyond results
+        if (isSearching) {
+          const newRows = [];
+          data.rows.forEach((row, pageIndex) => {
+            newRows[pageIndex] = { ...row, id: row.id.toString() };
+            rowIndexById.set(row.id.toString(), pageIndex);
+          });
+          grid.rows = newRows;
+          rowHeightCache.clear();
+        } else {
+          data.rows.forEach((row, pageIndex) => {
+            const index = row.row_num - 1;
+            grid.rows[index] = { ...row, id: row.id.toString() };
+            rowIndexById.set(row.id.toString(), index);
+          });
+        }
+
+        grid.total = data.total;
 
         // Trigger reactivity without creating a dense copy of the sparse array
         grid.rowsVersion++;
