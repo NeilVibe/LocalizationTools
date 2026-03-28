@@ -8,6 +8,7 @@
 - v12.0 TM Intelligence --- Phases 86-88 (shipped 2026-03-26)
 - v13.0 Production Path Resolution --- Phases 89-92 (shipped 2026-03-26)
 - **v14.0 Debug & UX Overhaul** --- Phases 93-96 (planning)
+- **v15.0 MEGA Graft** --- Phase 98 (planning)
 
 ## Archived Milestones
 
@@ -152,6 +153,28 @@ Plans:
 **Requirements**: GD-01, GD-02
 **Plans:** TBD
 
+### Phase 98: MEGA Graft -- MDG/LDE Battle-Tested Techniques
+**Goal**: LocaNext GameData uses MapDataGenerator's exact XML sanitizer+virtual root wrapper+dual-pass parsing, LDE's two-tier category mapper+FileName+Korean detection, with all broken features fixed (resize, column toggles, MegaIndex, audio streaming, loading screen, Model2Vec)
+**Depends on**: Nothing (independent, new milestone)
+**Requirements**: GRAFT-01, GRAFT-02, GRAFT-03, GRAFT-04, GRAFT-05, GRAFT-06, GRAFT-07, GRAFT-08, GRAFT-09
+**Success Criteria** (what must be TRUE):
+  1. GameData XML parsing uses 5-stage sanitizer + virtual root wrapper identical to MDG core/xml_parser.py
+  2. GameData loads files with fake roots (include above root) without error
+  3. LDE two-tier category mapper assigns categories to all StringIDs with priority keyword override
+  4. FileName column shows .loc.xml stem for each row; Korean detection marks untranslated rows
+  5. GameData left panel resize drags correctly in both directions
+  6. StringID and Index column toggles actually show/hide columns in Game Dev grid
+  7. MegaIndex auto-builds on gamedata load with success/error toast visible
+  8. Audio plays via streaming endpoint in EntityCard (no raw wem_path 404)
+  9. Professional loading screen with centered progress bar and percentage replaces shimmer skeletons
+**Plans:** 5 plans
+Plans:
+- [ ] 98-01-PLAN.md --- XML sanitizer graft (MDG 5-stage) + virtual root + dual-pass + path validation fix
+- [ ] 98-02-PLAN.md --- Frontend bug fixes: resize delta, column toggles, audio streaming endpoint
+- [ ] 98-03-PLAN.md --- Professional loading screen with progress bar replacing shimmer skeletons
+- [ ] 98-04-PLAN.md --- LDE category mapper graft + FileName/Korean columns in gamedev grid
+- [ ] 98-05-PLAN.md --- MegaIndex auto-build on gamedata load with toast notifications
+
 ### Phase 89: Code Cleanup
 **Goal**: The 4 deferred v11.0 code review issues are resolved -- no dead code, no race conditions, no inaccessible state in the decomposed grid modules
 **Depends on**: Nothing (independent cleanup, first phase of v13.0)
@@ -210,10 +233,11 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 93. Critical Debug Fixes | 1/2 | ◆ Plan 01 done, Plan 02 E2E pending | — |
-| 94. Grid & TM UX Fixes + Demo Blockers | 0/? | Pending (TM-04, AUDIO-01 added) | — |
-| 95. Navigation & Merge Redesign | 0/? | Pending | — |
-| 96. GameData Category Tabs | 0/? | Pending | — |
+| 93. Critical Debug Fixes | 1/2 | Plan 01 done, Plan 02 E2E pending | -- |
+| 94. Grid & TM UX Fixes + Demo Blockers | 0/? | Pending (TM-04, AUDIO-01 added) | -- |
+| 95. Navigation & Merge Redesign | 0/? | Pending | -- |
+| 96. GameData Category Tabs | 0/? | Pending | -- |
+| 98. MEGA Graft | 0/5 | Planned | -- |
 | 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
