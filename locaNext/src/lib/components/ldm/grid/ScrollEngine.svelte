@@ -1,71 +1,44 @@
 <script>
   /**
-   * ScrollEngine.svelte -- Virtual scroll, row loading, viewport management.
+   * ScrollEngine.svelte -- BULK LOAD architecture.
    *
-   * Phase 84 Batch 1: Extracted from VirtualGrid.svelte.
-   * Renderless component (logic only, no markup). Parent delegates via bind:this.
-   *
-   * Writes to gridState: grid.rows, grid.total, grid.loading, grid.initialLoading,
-   *   grid.visibleStart, grid.visibleEnd, rowIndexById, rowHeightCache, loadedPages
+   * ONE API call loads ALL rows into memory. No page-by-page.
+   * Search/filter happens client-side via Array.filter(). Zero API calls during browsing.
+   * Virtual scroll only determines which rows to RENDER from the in-memory array.
    */
 
   import {
     grid,
     rowIndexById,
     rowHeightCache,
-    loadedPages,
     heightData,
     rebuildCumulativeHeights,
     findRowAtPosition,
     getRowTop,
     MIN_ROW_HEIGHT,
-    PAGE_SIZE,
     BUFFER_ROWS,
-    PREFETCH_PAGES,
   } from './gridState.svelte.ts';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { stripColorTags } from '$lib/utils/colorParser.js';
   import { tick } from 'svelte';
 
-  // Props from parent (configuration only, per D-05)
+  // Props from parent
   let {
     fileId = null,
     fileType = 'translator',
     activeTMs = [],
   } = $props();
 
-  // containerEl comes from gridState (set by CellRenderer via bind:this)
-  // Using $derived ensures we always have the latest reference
   let containerEl = $derived(grid.containerEl);
-
-  // API base URL
   let API_BASE = $derived(getApiBase());
-
-  // Module-local state (not shared)
-  let loadingPages = $state(new Set());
 
   // Scroll state
   let scrollTop = $state(0);
   let containerHeight = $state(400);
 
-  // Throttle state for ensureRowsLoaded
-  let ensureRowsThrottleTimer = null;
-  let lastEnsureRowsTime = 0;
-  const ENSURE_ROWS_THROTTLE_MS = 100;
-
-  // Debounce rebuildCumulativeHeights — coalesce rapid calls from prefetch cascade
-  let rebuildHeightsTimer = null;
-  function debouncedRebuildHeights() {
-    if (rebuildHeightsTimer) cancelAnimationFrame(rebuildHeightsTimer);
-    rebuildHeightsTimer = requestAnimationFrame(() => {
-      rebuildHeightsTimer = null;
-      rebuildCumulativeHeights(stripColorTags);
-    });
-  }
-
   // ========================================
-  // Calculate visible range using binary search
+  // Calculate visible range (unchanged — reads from in-memory rows)
   // ========================================
   export function calculateVisibleRange() {
     if (!containerEl) return;
@@ -73,17 +46,11 @@
     containerHeight = containerEl.clientHeight;
     scrollTop = containerEl.scrollTop;
 
-    // Sanity check
     if (containerHeight > 5000) {
-      logger.warning("Container height unusually large", {
-        containerHeight,
-        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0
-      });
       containerHeight = Math.min(containerHeight, 1200);
     }
 
     const startRow = findRowAtPosition(scrollTop);
-
     let endRow = startRow;
     const viewportBottom = scrollTop + containerHeight;
 
@@ -93,246 +60,71 @@
 
     grid.visibleStart = Math.max(0, startRow - BUFFER_ROWS);
     grid.visibleEnd = Math.min(grid.total, endRow + BUFFER_ROWS);
-
-    ensureRowsLoaded(grid.visibleStart, grid.visibleEnd);
+    // No ensureRowsLoaded — ALL rows already in memory
   }
 
   // ========================================
-  // Ensure rows in range are loaded + prefetch
-  // ========================================
-  async function ensureRowsLoaded(start, end) {
-    const now = Date.now();
-
-    if (now - lastEnsureRowsTime < ENSURE_ROWS_THROTTLE_MS) {
-      // Always update the pending range so the timer fires with LATEST position.
-      // Without this, fast scrolling loads pages for an intermediate position (stale).
-      if (ensureRowsThrottleTimer) clearTimeout(ensureRowsThrottleTimer);
-      ensureRowsThrottleTimer = setTimeout(() => {
-        ensureRowsThrottleTimer = null;
-        // Read CURRENT visible range, not stale closure values
-        ensureRowsLoadedImmediate(grid.visibleStart, grid.visibleEnd);
-      }, ENSURE_ROWS_THROTTLE_MS);
-      return;
-    }
-
-    lastEnsureRowsTime = now;
-    await ensureRowsLoadedImmediate(start, end);
-  }
-
-  async function ensureRowsLoadedImmediate(start, end) {
-    const startPage = Math.floor(start / PAGE_SIZE) + 1;
-    const endPage = Math.floor(end / PAGE_SIZE) + 1;
-
-    // Cap at 10 pages per call to prevent request flood on fast scroll drag.
-    // Previous cap was 3 (too low → blanks). 10 = 1000 rows = covers any viewport.
-    const MAX_PAGES_TO_LOAD = 10;
-    const limitedEndPage = Math.min(endPage, startPage + MAX_PAGES_TO_LOAD - 1);
-
-    for (let page = startPage; page <= limitedEndPage; page++) {
-      if (!loadedPages.has(page) && !loadingPages.has(page)) {
-        await loadPage(page);
-      }
-    }
-
-    prefetchAdjacentPages(limitedEndPage);
-  }
-
-  // ========================================
-  // Load a specific page of rows
-  // ========================================
-  async function loadPage(page) {
-    if (!fileId || loadingPages.has(page)) return;
-
-    loadingPages.add(page);
-    grid.loading = true;
-
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: PAGE_SIZE.toString()
-      });
-      if (grid.searchTerm) {
-        params.append('search', grid.searchTerm);
-        params.append('search_mode', grid.searchMode);
-        params.append('search_fields', grid.searchFields.join(','));
-      }
-      if (grid.activeFilter && grid.activeFilter !== 'all') {
-        params.append('filter', grid.activeFilter);
-      }
-      if (grid.selectedCategories.length > 0) {
-        params.append('category', grid.selectedCategories.join(','));
-      }
-
-      let response;
-      if (fileType === 'gamedev') {
-        const body = {
-          xml_path: fileId,
-          page: page,
-          limit: PAGE_SIZE,
-          search: grid.searchTerm || ""
-        };
-        if (grid.searchTerm) {
-          body.search_mode = grid.searchMode;
-          body.search_fields = grid.searchFields.join(',');
-        }
-        if (grid.activeFilter && grid.activeFilter !== 'all') {
-          body.filter = grid.activeFilter;
-        }
-        if (grid.selectedCategories.length > 0) {
-          body.category = grid.selectedCategories.join(',');
-        }
-        response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-      } else {
-        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
-          headers: getAuthHeaders()
-        });
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        grid.total = data.total;
-
-        const isSearching = grid.searchTerm && grid.searchTerm.trim();
-        const pageStartIndex = (page - 1) * PAGE_SIZE;
-        data.rows.forEach((row, pageIndex) => {
-          const index = isSearching ? (pageStartIndex + pageIndex) : (row.row_num - 1);
-          const rowData = {
-            ...row,
-            id: row.id.toString()
-          };
-          grid.rows[index] = rowData;
-          rowIndexById.set(row.id.toString(), index);
-          rowHeightCache.delete(index);
-        });
-
-        // Trigger reactivity by bumping a version counter instead of spreading 100k+ array
-        grid.rowsVersion++;
-
-        debouncedRebuildHeights();
-
-        loadedPages.add(page);
-        logger.info("SMART LOAD: Page loaded", { page, count: data.rows.length, total: grid.total, indexSize: rowIndexById.size });
-      }
-    } catch (err) {
-      logger.error("Failed to load page", { page, error: err.message });
-    } finally {
-      loadingPages.delete(page);
-      grid.loading = loadingPages.size > 0;
-      grid.initialLoading = false;
-    }
-  }
-
-  // ========================================
-  // Prefetch adjacent pages
-  // ========================================
-  function prefetchAdjacentPages(currentPage) {
-    for (let i = 1; i <= PREFETCH_PAGES; i++) {
-      const nextPage = currentPage + i;
-      const maxPage = Math.ceil(grid.total / PAGE_SIZE);
-      if (nextPage <= maxPage && !loadedPages.has(nextPage) && !loadingPages.has(nextPage)) {
-        setTimeout(() => loadPage(nextPage), i * 50);
-      }
-    }
-  }
-
-  // ========================================
-  // loadRows -- main entry point (exported)
+  // BULK LOAD — ONE call, ALL rows
   // ========================================
   export async function loadRows() {
     if (!fileId) return;
 
-    // Reset page tracking but keep rows visible until new data arrives.
-    // This prevents the "blank flash" when searching — old rows stay on screen
-    // until the API returns filtered results, then they're replaced.
-    const isSearchReload = grid.searchTerm && grid.searchTerm.trim();
-    if (!isSearchReload) {
-      // Full reload (file change): clear everything
-      grid.rows = [];
-      rowIndexById.clear();
-      rowHeightCache.clear();
-      grid.total = 0;
-    }
-    loadedPages.clear();
-    loadingPages.clear();
-    grid.initialLoading = !isSearchReload;
+    // Clear everything
+    grid.allRows = [];
+    grid.rows = [];
+    grid.total = 0;
+    rowIndexById.clear();
+    rowHeightCache.clear();
+    grid.loading = true;
+    grid.initialLoading = true;
 
     try {
-      const params = new URLSearchParams({
-        page: '1',
-        limit: PAGE_SIZE.toString()
-      });
-
-      if (grid.searchTerm && grid.searchTerm.trim()) {
-        params.append('search', grid.searchTerm.trim());
-        params.append('search_mode', grid.searchMode);
-        params.append('search_fields', grid.searchFields.join(','));
-        logger.info("loadRows with search", { searchTerm: grid.searchTerm, searchMode: grid.searchMode, searchFields: grid.searchFields });
-      }
-
       let response;
+
       if (fileType === 'gamedev') {
-        const body = {
-          xml_path: fileId,
-          page: 1,
-          limit: PAGE_SIZE,
-          search: ""
-        };
-        if (grid.searchTerm && grid.searchTerm.trim()) {
-          body.search = grid.searchTerm.trim();
-          body.search_mode = grid.searchMode;
-          body.search_fields = grid.searchFields.join(',');
-        }
+        // GameDev: use existing POST endpoint with high limit
         response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
           method: 'POST',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify({ xml_path: fileId, page: 1, limit: 999999 })
         });
       } else {
-        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
+        // Translator: use bulk endpoint
+        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows/all`, {
           headers: getAuthHeaders()
         });
       }
 
       if (response.ok) {
         const data = await response.json();
-        const isSearching = grid.searchTerm && grid.searchTerm.trim();
 
-        // For search: replace rows array entirely to remove stale data beyond results
-        if (isSearching) {
-          const newRows = [];
-          data.rows.forEach((row, pageIndex) => {
-            newRows[pageIndex] = { ...row, id: row.id.toString() };
-            rowIndexById.set(row.id.toString(), pageIndex);
-          });
-          grid.rows = newRows;
-          rowHeightCache.clear();
-        } else {
-          data.rows.forEach((row, pageIndex) => {
-            const index = row.row_num - 1;
-            grid.rows[index] = { ...row, id: row.id.toString() };
-            rowIndexById.set(row.id.toString(), index);
-          });
-        }
+        // Store ALL rows in memory
+        const allRows = data.rows.map((row, i) => {
+          const rowData = { ...row, id: row.id.toString() };
+          rowIndexById.set(row.id.toString(), i);
+          return rowData;
+        });
 
-        grid.total = data.total;
-
-        // Trigger reactivity without creating a dense copy of the sparse array
+        grid.allRows = allRows;
+        grid.rows = allRows;
+        grid.total = allRows.length;
         grid.rowsVersion++;
-        loadedPages.add(1);
 
         rebuildCumulativeHeights(stripColorTags);
 
-        logger.info("SMART LOAD: Initial page loaded", { total: grid.total, loaded: data.rows.length, indexSize: rowIndexById.size });
-
-        prefetchAdjacentPages(1);
+        logger.success("BULK LOAD complete", {
+          total: allRows.length,
+          fileId,
+          memoryMB: Math.round(JSON.stringify(allRows).length / 1024 / 1024)
+        });
+      } else {
+        const err = await response.json().catch(() => ({}));
+        logger.error("BULK LOAD failed", { status: response.status, detail: err.detail });
       }
     } catch (err) {
-      logger.error("Failed to load rows", { error: err.message });
+      logger.error("BULK LOAD error", { error: err.message });
     } finally {
+      grid.loading = false;
       grid.initialLoading = false;
     }
 
@@ -341,49 +133,130 @@
   }
 
   // ========================================
-  // handleScroll -- scroll event handler
+  // CLIENT-SIDE SEARCH — filter allRows in memory
   // ========================================
-  export function handleScroll() {
+  export function clientSearch(searchTerm, searchMode, searchFields) {
+    const term = searchTerm?.trim().toLowerCase();
+
+    if (!term) {
+      // No search — show all rows
+      grid.rows = grid.allRows;
+      grid.total = grid.allRows.length;
+    } else {
+      const fields = searchFields || ['source', 'target'];
+
+      if (searchMode === 'exact') {
+        grid.rows = grid.allRows.filter(row =>
+          fields.some(f => row[f]?.toLowerCase() === term)
+        );
+      } else if (searchMode === 'not_contain') {
+        grid.rows = grid.allRows.filter(row =>
+          fields.every(f => !row[f]?.toLowerCase().includes(term))
+        );
+      } else {
+        // contain (default)
+        grid.rows = grid.allRows.filter(row =>
+          fields.some(f => row[f]?.toLowerCase().includes(term))
+        );
+      }
+      grid.total = grid.rows.length;
+    }
+
+    // Rebuild index for filtered rows
+    rowIndexById.clear();
+    grid.rows.forEach((row, i) => {
+      rowIndexById.set(row.id.toString(), i);
+    });
+
+    rowHeightCache.clear();
+    grid.rowsVersion++;
+    rebuildCumulativeHeights(stripColorTags);
+
+    // Reset scroll to top after search
+    if (containerEl) containerEl.scrollTop = 0;
     calculateVisibleRange();
   }
 
   // ========================================
-  // scrollToRowById / scrollToRowNum
+  // CLIENT-SIDE FILTER (status, category)
+  // ========================================
+  export function clientFilter(activeFilter, selectedCategories) {
+    let filtered = grid.allRows;
+
+    // Status filter
+    if (activeFilter && activeFilter !== 'all') {
+      if (activeFilter === 'confirmed') {
+        filtered = filtered.filter(r => r.status === 'approved' || r.status === 'reviewed');
+      } else if (activeFilter === 'unconfirmed') {
+        filtered = filtered.filter(r => r.status === 'pending' || r.status === 'translated');
+      } else if (activeFilter === 'qa_flagged') {
+        filtered = filtered.filter(r => (r.qa_flag_count || 0) > 0);
+      }
+    }
+
+    // Category filter
+    if (selectedCategories && selectedCategories.length > 0) {
+      const catSet = new Set(selectedCategories);
+      filtered = filtered.filter(r => catSet.has(r.category));
+    }
+
+    // Apply current search on top of filter
+    const term = grid.searchTerm?.trim().toLowerCase();
+    if (term) {
+      const fields = grid.searchFields || ['source', 'target'];
+      filtered = filtered.filter(row =>
+        fields.some(f => row[f]?.toLowerCase().includes(term))
+      );
+    }
+
+    grid.rows = filtered;
+    grid.total = filtered.length;
+
+    rowIndexById.clear();
+    grid.rows.forEach((row, i) => {
+      rowIndexById.set(row.id.toString(), i);
+    });
+
+    rowHeightCache.clear();
+    grid.rowsVersion++;
+    rebuildCumulativeHeights(stripColorTags);
+
+    if (containerEl) containerEl.scrollTop = 0;
+    calculateVisibleRange();
+  }
+
+  // ========================================
+  // handleScroll — throttled for 60fps
+  // ========================================
+  let scrollRAF = null;
+
+  export function handleScroll() {
+    if (scrollRAF) return;
+    scrollRAF = requestAnimationFrame(() => {
+      scrollRAF = null;
+      calculateVisibleRange();
+    });
+  }
+
+  // ========================================
+  // scrollToRowById
   // ========================================
   export function scrollToRowById(rowId) {
-    const row = grid.rows[rowIndexById.get(rowId?.toString())];
-    if (!row) {
-      logger.warning("Row not found for scroll", { rowId, loadedRows: grid.rows.filter(r => r).length });
-      return false;
-    }
+    const index = rowIndexById.get(rowId?.toString());
+    if (index === undefined || !containerEl) return;
 
-    const index = rowIndexById.get(rowId.toString());
-    if (index === undefined) {
-      logger.warning("Row index not found", { rowId });
-      return false;
-    }
-
-    grid.selectedRowId = row.id;
-
-    if (containerEl) {
-      const scrollPos = getRowTop(index);
-      const centeredPos = Math.max(0, scrollPos - (containerHeight / 2) + 20);
-      containerEl.scrollTop = centeredPos;
-      logger.userAction("Scrolled to row", { rowId, index, scrollPos: centeredPos });
-    }
-
-    return true;
+    const top = getRowTop(index);
+    containerEl.scrollTop = top;
+    grid.selectedRowId = rowId.toString();
+    calculateVisibleRange();
   }
 
   export function scrollToRowNum(rowNum) {
     const index = rowNum - 1;
-    const row = grid.rows[index];
+    if (index < 0 || index >= grid.total || !containerEl) return;
 
-    if (!row) {
-      logger.warning("Row not found for scroll", { rowNum });
-      return false;
-    }
-
-    return scrollToRowById(row.id);
+    const top = getRowTop(index);
+    containerEl.scrollTop = top;
+    calculateVisibleRange();
   }
 </script>

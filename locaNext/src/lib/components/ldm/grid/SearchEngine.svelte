@@ -18,8 +18,6 @@
   import SemanticResults from '../SemanticResults.svelte';
   import {
     grid,
-    loadedPages,
-    rowIndexById,
   } from './gridState.svelte.ts';
 
   // API base URL
@@ -75,12 +73,10 @@
   // SEARCH FUNCTIONS
   // ============================================================
 
-  /** Handle search with debounce.
-   * Does NOT clear rows until new results arrive — prevents blank flash.
-   * Only clears loadedPages so loadRows() fetches fresh filtered data.
+  /** Handle search — CLIENT-SIDE filter on in-memory rows. No API calls.
+   * Debounced 150ms (shorter than before — no network delay).
    */
   function handleSearch() {
-    logger.info("handleSearch triggered", { searchTerm: grid.searchTerm, searchMode: grid.searchMode });
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       if (grid.searchMode === 'fuzzy') {
@@ -90,13 +86,9 @@
       semanticResults = [];
       semanticSearchTime = 0;
 
-      logger.info("handleSearch executing search", { searchTerm: grid.searchTerm });
-      loadedPages.clear();
-      rowIndexById.clear();  // Prevent stale scroll targets after search
-      // Don't clear grid.rows here — let loadRows() replace them with filtered results.
-      // Clearing rows caused a blank flash while the API fetched new data.
+      // Client-side search — instant, no API call
       onSearchComplete?.();
-    }, 300);
+    }, 150);
   }
 
   /** P4: Perform semantic search via API */
@@ -166,8 +158,6 @@
   /** Handle filter change */
   function handleFilterChange(event) {
     grid.activeFilter = event.detail.selectedId;
-    loadedPages.clear();
-    grid.rows = [];
     onSearchComplete?.();
     logger.userAction("Filter changed", { filter: grid.activeFilter });
   }
@@ -175,8 +165,6 @@
   /** Handle category filter change */
   function handleCategoryFilterChange(categories) {
     grid.selectedCategories = categories;
-    loadedPages.clear();
-    grid.rows = [];
     onSearchComplete?.();
     logger.userAction("Category filter changed", { categories: grid.selectedCategories });
   }

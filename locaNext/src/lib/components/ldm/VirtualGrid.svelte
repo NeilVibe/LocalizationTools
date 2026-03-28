@@ -246,7 +246,7 @@
       {fileId}
       {fileType}
       {activeTMs}
-      onSearchComplete={() => loadRows()}
+      onSearchComplete={() => scrollEngine?.clientSearch(grid.searchTerm, grid.searchMode, grid.searchFields)}
       onScrollToRow={(rowId) => scrollToRowById(rowId)}
     />
 

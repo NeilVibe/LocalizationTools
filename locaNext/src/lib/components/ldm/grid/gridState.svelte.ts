@@ -29,7 +29,8 @@
 
 // --- Core grid state (single $state object, mutate properties only) ---
 export const grid = $state({
-  rows: [] as any[],
+  allRows: [] as any[],    // ALL rows from DB (immutable after bulk load)
+  rows: [] as any[],        // DISPLAY rows (= allRows or filtered subset)
   total: 0,
   visibleStart: 0,
   visibleEnd: 50,
@@ -246,6 +247,7 @@ export function measureRowHeight(node: HTMLElement, params: { index: number }) {
 
 /** Reset all grid state for file changes */
 export function resetGridState(): void {
+  grid.allRows = [];
   grid.rows = [];
   grid.total = 0;
   grid.visibleStart = 0;

@@ -151,6 +151,38 @@ async def list_rows(
     )
 
 
+@router.get("/files/{file_id}/rows/all")
+async def get_all_rows(
+    file_id: int,
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: RowRepository = Depends(get_row_repository),
+    file_repo: FileRepository = Depends(get_file_repository)
+):
+    """Get ALL rows for a file in one response. No pagination.
+
+    Used by the bulk-load frontend architecture — loads everything into
+    client memory for instant search/scroll/filter with zero API calls.
+    """
+    if file_id >= 0:
+        file = await file_repo.get(file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+    rows, total = await repo.get_for_file(
+        file_id=file_id,
+        page=1,
+        limit=999999,
+        search=None,
+        search_mode="contain",
+        search_fields="source,target",
+    )
+
+    # Categorize all rows
+    _category_service.categorize_rows(rows)
+
+    return {"rows": rows, "total": total}
+
+
 @router.put("/rows/{row_id}", response_model=RowResponse)
 async def update_row(
     row_id: int,
