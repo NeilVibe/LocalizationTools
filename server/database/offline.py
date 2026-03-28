@@ -677,36 +677,30 @@ class OfflineDatabase:
     # =========================================================================
 
     async def save_rows(self, file_id: int, rows: List[Dict[str, Any]]):
-        """Save multiple rows to offline storage (bulk insert)."""
+        """Save multiple rows to offline storage (executemany bulk insert)."""
         async with self._get_async_connection() as conn:
             # Delete existing rows for this file first
             await conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
 
-            # Insert new rows
+            # Batch insert new rows
+            batch_data = []
             for row in rows:
                 extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
-                await conn.execute(
-                    """INSERT INTO offline_rows
-                       (id, server_id, file_id, server_file_id, row_num, string_id,
-                        source, target, memo, status, extra_data, created_at, updated_at,
-                        downloaded_at, sync_status)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'synced')""",
-                    (
-                        row["id"],
-                        row["id"],
-                        file_id,
-                        file_id,
-                        row.get("row_num", 0),
-                        row.get("string_id"),
-                        row.get("source"),
-                        row.get("target"),
-                        row.get("memo"),
-                        row.get("status", "normal"),
-                        extra_data,
-                        row.get("created_at"),
-                        row.get("updated_at"),
-                    )
-                )
+                batch_data.append((
+                    row["id"], row["id"], file_id, file_id,
+                    row.get("row_num", 0), row.get("string_id"),
+                    row.get("source"), row.get("target"),
+                    row.get("memo"), row.get("status", "normal"),
+                    extra_data, row.get("created_at"), row.get("updated_at"),
+                ))
+            await conn.executemany(
+                """INSERT INTO offline_rows
+                   (id, server_id, file_id, server_file_id, row_num, string_id,
+                    source, target, memo, status, extra_data, created_at, updated_at,
+                    downloaded_at, sync_status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'synced')""",
+                batch_data
+            )
             await conn.commit()
             logger.debug(f"Saved {len(rows)} rows for file {file_id}")
 
