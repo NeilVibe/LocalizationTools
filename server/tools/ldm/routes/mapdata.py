@@ -151,7 +151,7 @@ async def get_thumbnail(
         mtime = str(Path(dds_path).stat().st_mtime)
         etag = hashlib.md5(f"{dds_path}:{mtime}".encode()).hexdigest()[:16]
         return FileResponse(dds_path, media_type=media, headers={
-            "Cache-Control": "no-cache, must-revalidate",
+            "Cache-Control": "public, max-age=604800",
             "ETag": f'"{etag}"',
         })
 
@@ -167,7 +167,7 @@ async def get_thumbnail(
     return Response(
         content=png_bytes,
         media_type="image/png",
-        headers={"Cache-Control": "no-cache, must-revalidate"},
+        headers={"Cache-Control": "public, max-age=604800"},
     )
 
 

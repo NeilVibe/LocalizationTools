@@ -32,7 +32,7 @@ class MediaConverter:
 
     def __init__(
         self,
-        png_cache_size: int = 100,
+        png_cache_size: int = 500,
         wav_cache_dir: Optional[Path] = None,
     ) -> None:
         self._png_cache: OrderedDict[str, bytes] = OrderedDict()
