@@ -1,1 +1,1 @@
-Build QuickTranslate — detect Excel clipboard Retrieving data error
+Build QuickTranslate — fix report labels for all match modes + XML health check + Unicode validation
