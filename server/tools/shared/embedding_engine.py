@@ -140,31 +140,43 @@ class Model2VecEngine(EmbeddingEngine):
 
     @staticmethod
     def _find_local_model_path() -> Optional[Path]:
-        """Check for Model2Vec model in multiple locations (QuickTranslate pattern)."""
-        import sys
-        # Base: where the exe lives (PyInstaller) or project root (DEV)
-        if getattr(sys, 'frozen', False):
-            exe_dir = Path(sys.executable).parent
-        else:
-            exe_dir = Path(__file__).parent.parent.parent.parent
+        """Find Model2Vec model folder — robust search from install root upward.
 
-        candidates = [
-            # 1. Environment variable (explicit override)
-            Path(os.environ.get("LOCANEXT_MODELS_PATH", "")) / "Model2Vec",
-            # 2. Next to exe / app root (QuickTranslate pattern — just drop the folder)
-            exe_dir / "Model2Vec",
-            # 3. In resources/ (Electron app structure)
-            exe_dir / "resources" / "Model2Vec",
-            # 4. In resources/models/ (original LocaNext pattern)
-            exe_dir / "resources" / "models" / "Model2Vec",
-            # 5. DEV: project root / models
-            Path(__file__).parent.parent.parent.parent / "models" / "Model2Vec",
-        ]
-        for p in candidates:
+        Strategy: walk UP from this file until we find LocaNext.exe (install root)
+        or reach the filesystem root. Then check Model2Vec next to it.
+        Same concept as QuickTranslate's SCRIPT_DIR / "Model2Vec".
+        """
+        # Find the install root (where LocaNext.exe lives)
+        install_root = None
+        current = Path(__file__).resolve().parent
+        for _ in range(10):  # max 10 levels up
+            if (current / "LocaNext.exe").exists():
+                install_root = current
+                break
+            if current == current.parent:
+                break
+            current = current.parent
+
+        # DEV mode: no LocaNext.exe, use project root
+        if not install_root:
+            install_root = Path(__file__).resolve().parent.parent.parent.parent
+
+        # Env var override (highest priority)
+        env_path = os.environ.get("LOCANEXT_MODELS_PATH")
+        if env_path:
+            p = Path(env_path) / "Model2Vec"
             if p.is_dir() and (p / "config.json").exists():
-                logger.debug(f"[Model2Vec] Found at: {p}")
                 return p
-        logger.warning(f"[Model2Vec] Not found. Searched: {[str(p) for p in candidates if str(p)]}")
+
+        # Search from install root — user just drops Model2Vec folder anywhere reasonable
+        for subpath in ["Model2Vec", "models/Model2Vec", "resources/Model2Vec", "resources/models/Model2Vec"]:
+            p = install_root / subpath
+            if p.is_dir() and (p / "config.json").exists():
+                logger.info(f"[Model2Vec] Found at: {p}")
+                return p
+
+        logger.warning(f"[Model2Vec] Not found. Install root: {install_root}. "
+                       f"Place Model2Vec folder at: {install_root / 'Model2Vec'}")
         return None
 
     def load(self) -> None:
