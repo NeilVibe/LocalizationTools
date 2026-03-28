@@ -52,6 +52,9 @@ export const grid = $state({
   rowsVersion: 0,
 });
 
+// --- GameDev dynamic columns (LDE graft: category, fileName, textState) ---
+export let gameDevDynamicColumns = $state(['category', 'fileName', 'textState'] as string[]);
+
 // --- Mutable Maps/Sets ---
 export const rowIndexById = $state(new Map<string, number>());
 // CRITICAL: rowHeightCache must be a PLAIN Map (not $state).

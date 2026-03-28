@@ -21,6 +21,7 @@
     getRowTop,
     getRowHeight as gridGetRowHeight,
     getTotalHeight,
+    gameDevDynamicColumns,
   } from './gridState.svelte.ts';
   import TagText from '$lib/components/ldm/TagText.svelte';
   import QAInlineBadge from '$lib/components/ldm/QAInlineBadge.svelte';
@@ -143,7 +144,10 @@
   }
 
   function getFixedWidthAfter() {
-    if (fileType === 'gamedev') return 350;
+    if (fileType === 'gamedev') {
+      // existing 350px + new LDE columns: category(100) + fileName(120) + textState(90)
+      return 350 + 310;
+    }
     return $preferences.showReference ? referenceColumnWidth : 0;
   }
 
@@ -334,6 +338,15 @@
             </div>
           {/if}
           {#if fileType === 'gamedev'}
+            <div class="cell gamedev-category loading-cell" style="width: 100px;">
+              <div class="placeholder-shimmer"></div>
+            </div>
+            <div class="cell gamedev-filename loading-cell" style="width: 120px;">
+              <div class="placeholder-shimmer"></div>
+            </div>
+            <div class="cell gamedev-textstate loading-cell" style="width: 90px;">
+              <div class="placeholder-shimmer"></div>
+            </div>
             <div class="cell gamedev-values loading-cell" style="width: 250px;">
               <div class="placeholder-shimmer"></div>
             </div>
@@ -464,8 +477,27 @@
             </div>
           {/if}
 
-          <!-- Game Dev extra_data columns -->
+          <!-- Game Dev extra_data columns (LDE graft: category + fileName + textState) -->
           {#if fileType === 'gamedev'}
+            <div class="cell gamedev-category" style="width: 100px;">
+              {#if row.extra_data?.category}
+                <span class="gamedev-category-tag" style="background-color: {getCategoryColor(row.extra_data.category)}30; border-color: {getCategoryColor(row.extra_data.category)}; color: #ccc;">
+                  {row.extra_data.category}
+                </span>
+              {:else}
+                <span class="category-empty">-</span>
+              {/if}
+            </div>
+            <div class="cell gamedev-filename" style="width: 120px;" title={row.extra_data?.file_name || ''}>
+              <span class="cell-content gamedev-filename-text">{row.extra_data?.file_name || '-'}</span>
+            </div>
+            <div class="cell gamedev-textstate" style="width: 90px;">
+              {#if row.extra_data?.text_state === 'KOREAN'}
+                <span class="textstate-badge textstate-korean">KOREAN</span>
+              {:else}
+                <span class="textstate-badge textstate-translated">TRANSLATED</span>
+              {/if}
+            </div>
             <div class="cell gamedev-values" style="width: 250px;">
               <span class="cell-content">{row.extra_data?.values || ''}</span>
             </div>
@@ -820,7 +852,10 @@
 
   /* Game Dev Columns */
   .cell.gamedev-values,
-  .cell.gamedev-children {
+  .cell.gamedev-children,
+  .cell.gamedev-category,
+  .cell.gamedev-filename,
+  .cell.gamedev-textstate {
     background: var(--cds-layer-02);
     color: var(--cds-text-02);
     font-size: 0.8rem;
@@ -830,6 +865,52 @@
   .cell.gamedev-children {
     text-align: center;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* LDE Category tag (gamedev grid) */
+  .gamedev-category-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+  }
+
+  /* FileName column (gamedev grid) */
+  .gamedev-filename-text {
+    font-family: monospace;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* TextState badge (gamedev grid) */
+  .textstate-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .textstate-korean {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+
+  .textstate-translated {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
   }
 
   /* TM Match Column */

@@ -57,6 +57,7 @@ from server.tools.ldm.schemas.gamedata import (
 )
 from server.tools.ldm.services.mega_index import get_mega_index
 from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+from server.tools.ldm.services.category_mapper import TwoTierCategoryMapper, get_text_state
 from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
 from server.tools.ldm.indexing.gamedata_searcher import GameDataSearcher
 from server.tools.ldm.services.gamedata_browse_service import (
@@ -344,6 +345,13 @@ async def get_gamedata_rows(
                 return val
         return elem.tag
 
+    # --- Category mapper for this file (LDE two-tier algorithm) -----------
+    category_mapper = TwoTierCategoryMapper(base_folder=resolved.parent.parent)
+    file_stem = resolved.stem
+    if file_stem.endswith(".loc"):
+        file_stem = file_stem[:-4]
+    file_category = category_mapper.get_category(resolved)
+
     # --- build row dicts -------------------------------------------------
     all_rows: list[GameDataRow] = []
     search_lower = request.search.lower().strip()
@@ -362,6 +370,18 @@ async def get_gamedata_rows(
         extra = dict(attrs)
         extra["source_xml_path"] = str(resolved)
         extra["entity_index"] = idx
+
+        # LDE enrichment: category, file_name, text_state
+        extra["category"] = file_category
+        extra["file_name"] = file_stem
+        # Detect Korean in any text-like attribute for text_state
+        text_for_detection = ""
+        for text_attr in ("Str", "StrOrigin", "Name", "Desc", "DescOrigin"):
+            val = attrs.get(text_attr, "")
+            if val:
+                text_for_detection = val
+                break
+        extra["text_state"] = get_text_state(text_for_detection)
 
         all_rows.append(
             GameDataRow(
