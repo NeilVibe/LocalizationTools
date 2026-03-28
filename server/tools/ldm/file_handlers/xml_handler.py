@@ -255,3 +255,8 @@ def get_source_language() -> str:
 def get_file_format() -> str:
     """Return the file format identifier."""
     return "XML"
+
+
+def get_file_metadata() -> Dict:
+    """Return file-level metadata for XML files."""
+    return {"encoding": "utf-8", "format": "XML"}
