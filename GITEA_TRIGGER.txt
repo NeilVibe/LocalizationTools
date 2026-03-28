@@ -1,4 +1,1 @@
-Build LocaNext — fix grid freeze (rowHeightCache reactive cascade)
-Build LocaNext — fix 103k-row grid freeze (Float64Array + rowsVersion)
-Build LocaNext — .snapshot fix for 103k proxy freeze (autoresearch verified)
-Build LocaNext — fix infinite effect loop in BranchDriveSelector
+Build v14.0: debug fixes, UX polish, merge sync
