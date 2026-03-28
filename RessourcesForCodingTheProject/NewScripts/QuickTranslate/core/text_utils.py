@@ -76,7 +76,8 @@ _BROKEN_BR_RE = re.compile(
 )
 
 # Control chars that should never appear in game text
-# Excludes tab \x09, LF \x0a, CR \x0d (handled by _has_wrong_newlines)
+# Excludes tab \x09 (caught separately in step 3b with specific warning),
+# LF \x0a, CR \x0d (handled by _has_wrong_newlines)
 _CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 # ---------------------------------------------------------------------------
@@ -190,6 +191,23 @@ _GREY_ZONE_CHARS = {
     '\u200c': 'Zero-width non-joiner (ZWNJ)',
     '\u200d': 'Zero-width joiner (ZWJ)',
 }
+
+
+def strip_invisible(text: str) -> str:
+    """Strip all known invisible characters and whitespace from text.
+
+    Removes _SAFE_INVISIBLE_DELETE chars + standard whitespace.
+    Used to check if text has any VISIBLE content.
+
+    Returns:
+        Text with all invisible chars removed and stripped.
+    """
+    if not text:
+        return ""
+    result = text
+    for ch in _SAFE_INVISIBLE_DELETE:
+        result = result.replace(ch, '')
+    return result.strip()
 
 
 def is_broken_linebreak(text: str) -> Optional[str]:
@@ -391,11 +409,7 @@ def is_text_integrity_issue(text: str, *, from_xml: bool = False,
         return markup_issue
 
     # 5. Text is ONLY invisible/whitespace characters (nothing visible remains)
-    stripped = text
-    for ch in _SAFE_INVISIBLE_DELETE:
-        stripped = stripped.replace(ch, '')
-    stripped = stripped.strip()
-    if not stripped:
+    if not strip_invisible(text):
         return 'Text contains only invisible/whitespace characters'
 
     return None

@@ -298,7 +298,7 @@ def check_xml_health(xml_path: Path) -> dict:
         no_translation: [(stringid, str_origin_preview)] — Str is "no translation"
         formula_str: [(stringid, reason)]              — Str has formula/garbage text
     """
-    from .text_utils import _SAFE_INVISIBLE_DELETE
+    from .text_utils import strip_invisible
 
     result = {
         "empty_str": [],
@@ -327,11 +327,7 @@ def check_xml_health(xml_path: Path) -> dict:
 
             if str_stripped:
                 # Check if Str is only invisible chars (would become empty after cleanup)
-                visible = str_stripped
-                for ch in _SAFE_INVISIBLE_DELETE:
-                    visible = visible.replace(ch, '')
-                visible = visible.strip()
-                if not visible and str_origin:
+                if not strip_invisible(str_stripped) and str_origin:
                     result["empty_str"].append((sid, str_origin[:60]))
                     continue
 
