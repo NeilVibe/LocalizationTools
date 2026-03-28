@@ -140,16 +140,31 @@ class Model2VecEngine(EmbeddingEngine):
 
     @staticmethod
     def _find_local_model_path() -> Optional[Path]:
-        """Check for bundled Model2Vec model next to exe or in known locations."""
+        """Check for Model2Vec model in multiple locations (QuickTranslate pattern)."""
+        import sys
+        # Base: where the exe lives (PyInstaller) or project root (DEV)
+        if getattr(sys, 'frozen', False):
+            exe_dir = Path(sys.executable).parent
+        else:
+            exe_dir = Path(__file__).parent.parent.parent.parent
+
         candidates = [
-            # Bundled in Electron resources (Light/Demo builds)
+            # 1. Environment variable (explicit override)
             Path(os.environ.get("LOCANEXT_MODELS_PATH", "")) / "Model2Vec",
-            # Next to server directory (DEV mode)
+            # 2. Next to exe / app root (QuickTranslate pattern — just drop the folder)
+            exe_dir / "Model2Vec",
+            # 3. In resources/ (Electron app structure)
+            exe_dir / "resources" / "Model2Vec",
+            # 4. In resources/models/ (original LocaNext pattern)
+            exe_dir / "resources" / "models" / "Model2Vec",
+            # 5. DEV: project root / models
             Path(__file__).parent.parent.parent.parent / "models" / "Model2Vec",
         ]
         for p in candidates:
-            if p.exists() and (p / "config.json").exists():
+            if p.is_dir() and (p / "config.json").exists():
+                logger.debug(f"[Model2Vec] Found at: {p}")
                 return p
+        logger.warning(f"[Model2Vec] Not found. Searched: {[str(p) for p in candidates if str(p)]}")
         return None
 
     def load(self) -> None:
