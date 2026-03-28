@@ -167,13 +167,13 @@ Plans:
   7. MegaIndex auto-builds on gamedata load with success/error toast visible
   8. Audio plays via streaming endpoint in EntityCard (no raw wem_path 404)
   9. Professional loading screen with centered progress bar and percentage replaces shimmer skeletons
-**Plans:** 1/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
-- [ ] 98-01-PLAN.md --- XML sanitizer graft (MDG 5-stage) + virtual root + dual-pass + path validation fix
-- [ ] 98-02-PLAN.md --- Frontend bug fixes: resize delta, column toggles, audio streaming endpoint
+- [x] 98-01-PLAN.md --- XML sanitizer graft (MDG 5-stage) + virtual root + dual-pass + path validation fix
+- [x] 98-02-PLAN.md --- Frontend bug fixes: resize delta, column toggles, audio streaming endpoint
 - [x] 98-03-PLAN.md --- Professional loading screen with progress bar replacing shimmer skeletons
 - [ ] 98-04-PLAN.md --- LDE category mapper graft + FileName/Korean columns in gamedev grid
-- [ ] 98-05-PLAN.md --- MegaIndex auto-build on gamedata load with toast notifications
+- [x] 98-05-PLAN.md --- MegaIndex auto-build on gamedata load with toast notifications
 
 ### Phase 89: Code Cleanup
 **Goal**: The 4 deferred v11.0 code review issues are resolved -- no dead code, no race conditions, no inaccessible state in the decomposed grid modules
@@ -237,7 +237,7 @@ Plans:
 | 94. Grid & TM UX Fixes + Demo Blockers | 0/? | Pending (TM-04, AUDIO-01 added) | -- |
 | 95. Navigation & Merge Redesign | 0/? | Pending | -- |
 | 96. GameData Category Tabs | 0/? | Pending | -- |
-| 98. MEGA Graft | 1/5 | In Progress|  |
+| 98. MEGA Graft | 4/5 | In Progress|  |
 | 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
