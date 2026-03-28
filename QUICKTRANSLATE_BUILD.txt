@@ -1,1 +1,1 @@
-Build QuickTranslate — XML health check + input validation for garbage Unicode
+Build QuickTranslate — detect Excel clipboard Retrieving data error
