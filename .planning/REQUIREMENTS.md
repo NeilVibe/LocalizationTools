@@ -91,6 +91,42 @@ Deferred to future milestones.
 - Mapped to phases: 17
 - Unmapped: 0
 
+## v15.0 Requirements
+
+Requirements for MEGA Graft milestone.
+
+### XML Parsing Graft
+- **GRAFT-01**: GameData XML parsing MUST use MDG's exact 5-stage sanitizer (bad entities, newlines in seg, attr <, attr &, tag stack repair) + virtual root wrapper + dual-pass parsing (strict then recovery)
+- **GRAFT-02**: GameData path validation MUST allow Perforce paths outside CWD base directory (fix is_relative_to strictness)
+
+### Category & Detection Graft
+- **GRAFT-03**: LDE two-tier category mapper (STORY: 4 Dialog + 8 Sequencer types; GAME_DATA: 9 categories + System_Misc fallback) with priority keyword override MUST be grafted as a new service
+- **GRAFT-04**: FileName column (StringID -> .loc.xml stem) and Korean untranslated detection (3-range regex) MUST appear as toggleable grid columns
+
+### Bug Fixes
+- **GRAFT-05**: GameData left panel resize delta MUST be corrected (e.clientX - resizeStartX, not inverted)
+- **GRAFT-06**: StringID and Index column toggles MUST actually show/hide columns in Game Dev grid
+- **GRAFT-07**: MegaIndex MUST auto-build on gamedata load and show toast notifications (building/success/error)
+- **GRAFT-08**: EntityCard audio MUST use streaming endpoint /api/ldm/mapdata/audio/stream/{id} not raw wem_path
+
+### UX Polish
+- **GRAFT-09**: Professional loading screen with centered progress bar, percentage, and industry-grade animation MUST replace shimmer skeleton loading
+
+### Traceability
+
+| REQ | Phase |
+|-----|-------|
+| GRAFT-01 | 98 |
+| GRAFT-02 | 98 |
+| GRAFT-03 | 98 |
+| GRAFT-04 | 98 |
+| GRAFT-05 | 98 |
+| GRAFT-06 | 98 |
+| GRAFT-07 | 98 |
+| GRAFT-08 | 98 |
+| GRAFT-09 | 98 |
+- Unmapped: 0
+
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after v13.0 roadmap creation*
+*Last updated: 2026-03-29 after v15.0 MEGA Graft milestone*
