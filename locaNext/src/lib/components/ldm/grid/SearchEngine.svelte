@@ -193,11 +193,15 @@
   }
 
   // ============================================================
-  // EFFECT: Watch searchTerm changes
+  // EFFECT: Watch searchTerm changes ONLY (not other grid props)
+  // Uses $derived to isolate searchTerm from the grid $state object.
+  // Without this, ANY grid mutation (total, rows, rowsVersion) would
+  // re-trigger the effect → handleSearch → loadRows → grid mutation → LOOP.
   // ============================================================
+  let searchTermDerived = $derived(grid.searchTerm);
+
   $effect(() => {
-    const term = grid.searchTerm;
-    logger.info("searchTerm effect triggered", { searchTerm: term, hasFileId: !!fileId });
+    const term = searchTermDerived;
     if (fileId && term !== undefined) {
       handleSearch();
     }
