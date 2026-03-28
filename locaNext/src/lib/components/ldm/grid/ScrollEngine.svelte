@@ -238,14 +238,20 @@
   export async function loadRows() {
     if (!fileId) return;
 
-    // Reset state
-    grid.rows = [];
+    // Reset page tracking but keep rows visible until new data arrives.
+    // This prevents the "blank flash" when searching — old rows stay on screen
+    // until the API returns filtered results, then they're replaced.
+    const isSearchReload = grid.searchTerm && grid.searchTerm.trim();
+    if (!isSearchReload) {
+      // Full reload (file change): clear everything
+      grid.rows = [];
+      rowIndexById.clear();
+      rowHeightCache.clear();
+      grid.total = 0;
+    }
     loadedPages.clear();
     loadingPages.clear();
-    rowIndexById.clear();
-    rowHeightCache.clear();
-    grid.total = 0;
-    grid.initialLoading = true;
+    grid.initialLoading = !isSearchReload;
 
     try {
       const params = new URLSearchParams({

@@ -80,7 +80,8 @@ def _get_base_dir() -> Path:
     Priority:
     1. GAMEDATA_BASE_DIR env var (user-configured, e.g. Perforce root)
     2. In DEV mode: mock_gamedata if it exists (for testing)
-    3. Project root (allows browsing from any path under the project)
+    3. PerforcePathService configured drive root (e.g. D:\perforce\cd\cd_beta\resource)
+    4. Project root (fallback for unconfigured state)
     """
     import os
     env_dir = os.getenv("GAMEDATA_BASE_DIR")
@@ -94,6 +95,31 @@ def _get_base_dir() -> Path:
         mock_dir = _DEFAULT_BASE_DIR / "tests" / "fixtures" / "mock_gamedata"
         if mock_dir.is_dir():
             return mock_dir
+
+    # Production: use PerforcePathService drive root as base directory.
+    # This allows browsing Perforce game data outside the install directory.
+    # Uses generate_paths() directly (Windows paths) instead of resolved WSL paths,
+    # because WSL paths (/mnt/d/...) don't exist on Windows.
+    try:
+        from server.tools.ldm.services.perforce_path_service import get_perforce_path_service, generate_paths
+        path_svc = get_perforce_path_service()
+        status = path_svc.get_status()
+        drive = status["drive"]
+        branch = status["branch"]
+        if drive != "MOCK":
+            # Get native OS paths (not WSL-converted)
+            raw_paths = generate_paths(drive, branch)
+            knowledge_path = Path(raw_paths["knowledge_folder"])
+            # Go up to GameData level: .../resource/GameData/StaticInfo/knowledgeinfo → .../resource/GameData
+            gamedata_root = knowledge_path.parent.parent
+            if gamedata_root.is_dir():
+                return gamedata_root
+            # Fallback: drive root
+            drive_root = Path(f"{drive}:\\")
+            if drive_root.is_dir():
+                return drive_root
+    except Exception:
+        pass
 
     return _DEFAULT_BASE_DIR
 

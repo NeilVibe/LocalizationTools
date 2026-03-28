@@ -366,12 +366,17 @@ async def validate_paths(
     """
     path_service = get_perforce_path_service()
     status = path_service.get_status()
-    all_paths = path_service.get_all_resolved()
+
+    # Use native OS paths for validation (not WSL-converted).
+    # WSL paths (/mnt/d/...) don't exist on Windows — always fail .exists().
+    from server.tools.ldm.services.perforce_path_service import generate_paths
+    raw_paths = generate_paths(status["drive"], status["branch"])
 
     CRITICAL_KEYS = ["knowledge_folder", "loc_folder", "texture_folder"]
 
     folders = []
-    for key, path_obj in all_paths.items():
+    for key, windows_path in raw_paths.items():
+        path_obj = Path(windows_path)
         folders.append(PathFolderStatus(
             key=key,
             path=str(path_obj),

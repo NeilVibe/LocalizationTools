@@ -74,7 +74,10 @@
   // SEARCH FUNCTIONS
   // ============================================================
 
-  /** Handle search with debounce */
+  /** Handle search with debounce.
+   * Does NOT clear rows until new results arrive — prevents blank flash.
+   * Only clears loadedPages so loadRows() fetches fresh filtered data.
+   */
   function handleSearch() {
     logger.info("handleSearch triggered", { searchTerm: grid.searchTerm, searchMode: grid.searchMode });
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
@@ -88,7 +91,8 @@
 
       logger.info("handleSearch executing search", { searchTerm: grid.searchTerm });
       loadedPages.clear();
-      grid.rows = [];
+      // Don't clear grid.rows here — let loadRows() replace them with filtered results.
+      // Clearing rows caused a blank flash while the API fetched new data.
       onSearchComplete?.();
     }, 300);
   }
