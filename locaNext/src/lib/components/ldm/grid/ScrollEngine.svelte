@@ -94,12 +94,14 @@
     const now = Date.now();
 
     if (now - lastEnsureRowsTime < ENSURE_ROWS_THROTTLE_MS) {
-      if (!ensureRowsThrottleTimer) {
-        ensureRowsThrottleTimer = setTimeout(() => {
-          ensureRowsThrottleTimer = null;
-          ensureRowsLoadedImmediate(start, end);
-        }, ENSURE_ROWS_THROTTLE_MS);
-      }
+      // Always update the pending range so the timer fires with LATEST position.
+      // Without this, fast scrolling loads pages for an intermediate position (stale).
+      if (ensureRowsThrottleTimer) clearTimeout(ensureRowsThrottleTimer);
+      ensureRowsThrottleTimer = setTimeout(() => {
+        ensureRowsThrottleTimer = null;
+        // Read CURRENT visible range, not stale closure values
+        ensureRowsLoadedImmediate(grid.visibleStart, grid.visibleEnd);
+      }, ENSURE_ROWS_THROTTLE_MS);
       return;
     }
 
