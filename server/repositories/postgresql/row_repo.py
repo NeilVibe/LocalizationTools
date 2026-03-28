@@ -210,24 +210,21 @@ class PostgreSQLRowRepository(RowRepository):
         file_id: int,
         rows: List[Dict[str, Any]]
     ) -> int:
-        """Bulk create rows for a file."""
-        row_objects = [
-            LDMRow(
-                file_id=file_id,
-                row_num=r.get("row_num", i + 1),
-                source=r.get("source", ""),
-                target=r.get("target", ""),
-                string_id=r.get("string_id"),
-                status=r.get("status", "pending"),
-                extra_data=r.get("extra_data")
-            )
-            for i, r in enumerate(rows)
-        ]
-        self.db.add_all(row_objects)
-        await self.db.flush()
-        await self.db.commit()
-        logger.info(f"Bulk created {len(rows)} rows for file_id={file_id}")
-        return len(rows)
+        """Bulk create rows for a file using PostgreSQL COPY TEXT (20k+ rows/sec)."""
+        if not rows:
+            return 0
+
+        from server.database.db_utils import bulk_copy_rows
+        from server.utils.dependencies import get_db
+
+        # bulk_copy_rows uses sync COPY protocol — needs sync session
+        sync_db = next(get_db())
+        try:
+            inserted = bulk_copy_rows(sync_db, file_id, rows)
+            logger.info(f"COPY bulk created {inserted} rows for file_id={file_id}")
+            return inserted
+        finally:
+            sync_db.close()
 
     async def bulk_update(
         self,
