@@ -104,6 +104,8 @@ def execute_transfer(
     dry_run: bool = False,
     progress_callback=None,
     log_callback=None,
+    ignore_spaces: bool = False,
+    ignore_punctuation: bool = False,
 ) -> dict:
     """Execute a transfer operation using the merge engine.
 
@@ -179,6 +181,8 @@ def execute_transfer(
             log_callback=log_callback,
             only_untranslated=only_untranslated,
             stringid_all_categories=stringid_all_categories,
+            ignore_spaces=ignore_spaces,
+            ignore_punctuation=ignore_punctuation,
         )
     except Exception as exc:
         logger.error("transfer_folder_to_folder failed: {}", exc)
@@ -313,6 +317,8 @@ def execute_multi_language_transfer(
     dry_run: bool = False,
     progress_callback=None,
     log_callback=None,
+    ignore_spaces: bool = False,
+    ignore_punctuation: bool = False,
 ) -> dict:
     """
     Execute multi-language transfer: scan source, merge each language.
@@ -391,6 +397,8 @@ def execute_multi_language_transfer(
             log_callback=log_callback,
             only_untranslated=only_untranslated,
             stringid_all_categories=stringid_all_categories,
+            ignore_spaces=ignore_spaces,
+            ignore_punctuation=ignore_punctuation,
         )
     except Exception as exc:
         logger.error("transfer_folder_to_folder failed: {}", exc)
