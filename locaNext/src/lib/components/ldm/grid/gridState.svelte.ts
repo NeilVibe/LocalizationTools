@@ -267,7 +267,6 @@ export function resetGridState(): void {
   grid.rowsVersion = 0;
   rowIndexById.clear();
   rowHeightCache.clear();
-  loadedPages.clear();
   tmAppliedRows.clear();
   referenceData.clear();
   qaFlags.clear();

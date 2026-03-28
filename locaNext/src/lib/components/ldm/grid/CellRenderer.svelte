@@ -138,7 +138,7 @@
   function getFixedWidthBefore() {
     let width = 0;
     if ($preferences.showIndex) width += indexColumnWidth;
-    if ($preferences.showStringId && fileType !== 'gamedev') width += stringIdColumnWidth;
+    if ($preferences.showStringId) width += stringIdColumnWidth;
     return width;
   }
 
@@ -312,7 +312,7 @@
           {#if $preferences.showIndex}
             <div class="cell row-num" style="width: {indexColumnWidth}px;">{row.row_num}</div>
           {/if}
-          {#if $preferences.showStringId && fileType !== 'gamedev'}
+          {#if $preferences.showStringId}
             <div class="cell string-id loading-cell" style="width: {stringIdColumnWidth}px;">
               <div class="placeholder-shimmer"></div>
             </div>
@@ -349,8 +349,8 @@
             </div>
           {/if}
 
-          <!-- StringID (conditional, hidden in Game Dev mode) -->
-          {#if $preferences.showStringId && fileType !== 'gamedev'}
+          <!-- StringID (conditional) -->
+          {#if $preferences.showStringId}
             <div class="cell string-id" style="width: {stringIdColumnWidth}px;">
               {row.string_id || "-"}
             </div>
