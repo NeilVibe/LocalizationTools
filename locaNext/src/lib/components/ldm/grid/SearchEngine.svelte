@@ -192,20 +192,9 @@
     semanticSearchTime = 0;
   }
 
-  // ============================================================
-  // EFFECT: Watch searchTerm changes ONLY (not other grid props)
-  // Uses $derived to isolate searchTerm from the grid $state object.
-  // Without this, ANY grid mutation (total, rows, rowsVersion) would
-  // re-trigger the effect → handleSearch → loadRows → grid mutation → LOOP.
-  // ============================================================
-  let searchTermDerived = $derived(grid.searchTerm);
-
-  $effect(() => {
-    const term = searchTermDerived;
-    if (fileId && term !== undefined) {
-      handleSearch();
-    }
-  });
+  // NO $effect for searchTerm. The oninput handler calls handleSearch() directly.
+  // Previous approach used $effect watching grid.searchTerm which caused an infinite
+  // loop — ANY grid mutation re-triggered the effect even with $derived isolation.
 </script>
 
 <div class="search-filter-bar">
@@ -231,6 +220,7 @@
         value={grid.searchTerm}
         oninput={(e) => {
           grid.searchTerm = e.target.value;
+          handleSearch();
         }}
       />
       {#if grid.searchTerm}
@@ -239,6 +229,7 @@
           class="search-clear"
           onclick={() => {
             grid.searchTerm = "";
+            handleSearch();
           }}
           aria-label="Clear search"
         >
