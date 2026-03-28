@@ -188,8 +188,6 @@
     grid.searchTerm = "";
     semanticResults = [];
     semanticSearchTime = 0;
-    const inputEl = document.getElementById('ldm-search-input');
-    if (inputEl) inputEl.value = "";
   }
 
   // ============================================================
@@ -224,9 +222,9 @@
         id="ldm-search-input"
         class="search-input"
         placeholder="Search {grid.searchFields.join(', ')}..."
+        value={grid.searchTerm}
         oninput={(e) => {
           grid.searchTerm = e.target.value;
-          logger.info("Search oninput", { value: grid.searchTerm });
         }}
       />
       {#if grid.searchTerm}
@@ -235,8 +233,6 @@
           class="search-clear"
           onclick={() => {
             grid.searchTerm = "";
-            const inputEl = document.getElementById('ldm-search-input');
-            if (inputEl) inputEl.value = "";
           }}
           aria-label="Clear search"
         >
