@@ -4,7 +4,7 @@ Two-Tier Category Mapper -- LDE's battle-tested category classification.
 Grafted from: RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/exporter/category_mapper.py
 
 Implements two-tier clustering algorithm:
-- Tier 1 (STORY): Dialog subfolder -> 4 categories; Sequencer -> 1 category
+- Tier 1 (STORY): Dialog subfolder -> 4 categories; Sequencer prefix -> 9 categories
 - Tier 2 (GAME_DATA): Priority keywords FIRST (override folder matching),
   then standard folder/keyword patterns
 
@@ -65,7 +65,7 @@ class TwoTierCategoryMapper:
     """
     Maps GameData XML files to categories using LDE's two-tier clustering.
 
-    Tier 1 (STORY): Dialog subfolder -> 4 categories; Sequencer -> 1 category
+    Tier 1 (STORY): Dialog subfolder -> 4 categories; Sequencer prefix -> 9 categories
     Tier 2 (GAME_DATA): TWO-PHASE matching algorithm
     - Phase 1: Priority keywords (override folder matching)
     - Phase 2: Standard patterns (folder-first, then keywords)
@@ -83,6 +83,20 @@ class TwoTierCategoryMapper:
         "questdialog": "QuestDialog",
         "stageclosedialog": "QuestDialog",  # StageClose is quest-related
     }
+
+    # Sequencer filename prefix -> fine-grained STORY category
+    # ORDER MATTERS: most specific first, generic cd_seq_ LAST
+    SEQUENCER_PATTERNS: List[Tuple[str, str, str]] = [
+        ("prefix", "cd_seq_quest_", "Seq_Quest"),
+        ("prefix", "cd_seq_memory_", "Seq_Memory"),
+        ("prefix", "cd_seq_node_", "Seq_Node"),
+        ("prefix", "cd_seq_faction_", "Seq_Faction"),
+        ("prefix", "cd_seq_onetimequest_", "Seq_OneTimeQuest"),
+        ("prefix", "cd_boss_", "Seq_Boss"),
+        ("contains", "bossencounter", "Seq_BossEncounter"),
+        ("prefix", "cd_minigame_", "Seq_Minigame"),
+        ("prefix", "cd_seq_", "Seq_Other"),  # Generic fallback
+    ]
 
     # ==========================================================================
     # PRIORITY KEYWORDS - Checked FIRST, before any folder matching!
@@ -163,7 +177,7 @@ class TwoTierCategoryMapper:
         if top_level == "dialog":
             return self._categorize_dialog(relative)
         elif top_level == "sequencer":
-            return "Sequencer"
+            return self._categorize_sequencer(file_path)
 
         # Tier 2: GAME_DATA (System, World, None, Platform)
         return self._categorize_gamedata(relative, file_path)
@@ -176,6 +190,27 @@ class TwoTierCategoryMapper:
 
         subfolder = parts[1].lower()
         return self.DIALOG_CATEGORIES.get(subfolder, "AIDialog")
+
+    def _categorize_sequencer(self, file_path: Path) -> str:
+        """Categorize Sequencer files by filename prefix/pattern.
+
+        Uses LDE's exact 9-pattern matching (most specific first).
+        """
+        filename = file_path.name.lower()
+        if filename.endswith(".loc.xml"):
+            filename_base = filename[:-8]
+        elif filename.endswith(".xml"):
+            filename_base = filename[:-4]
+        else:
+            filename_base = filename
+
+        for match_type, pattern, category in self.SEQUENCER_PATTERNS:
+            if match_type == "prefix" and filename_base.startswith(pattern):
+                return category
+            elif match_type == "contains" and pattern in filename_base:
+                return category
+
+        return "Seq_Other"
 
     def _categorize_gamedata(self, relative: Path, file_path: Path) -> str:
         """Categorize GAME_DATA tier files using TWO-PHASE matching.
