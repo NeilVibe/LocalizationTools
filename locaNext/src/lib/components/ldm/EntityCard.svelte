@@ -9,6 +9,9 @@
    */
   import { Music } from "carbon-icons-svelte";
   import { Tag } from "carbon-components-svelte";
+  import { getApiBase } from '$lib/utils/api.js';
+
+  const API_BASE = getApiBase();
 
   // Props
   let { entity = null } = $props();
@@ -52,16 +55,20 @@
   {/if}
 
   <!-- Audio player -->
-  {#if entity?.audio?.wem_path}
+  {#if entity?.audio?.wem_path && entity?.strkey}
+    {@const audioUrl = `${API_BASE}/api/ldm/mapdata/audio/stream/${encodeURIComponent(entity.strkey)}?v=${Date.now()}`}
     <div class="entity-audio">
       <div class="audio-header">
         <Music size={12} />
         <span class="audio-event">{entity.audio.event_name || 'Audio'}</span>
       </div>
-      <audio controls preload="none" class="audio-player">
-        <source src={entity.audio.wem_path} />
-        Your browser does not support the audio element.
-      </audio>
+      {#key audioUrl}
+        <audio controls preload="none" class="audio-player"
+          src={audioUrl}
+          crossorigin="anonymous">
+          Your browser does not support the audio element.
+        </audio>
+      {/key}
       {#if entity.audio.script_kr || entity.audio.script_eng}
         <div class="audio-script">
           {#if entity.audio.script_kr}
