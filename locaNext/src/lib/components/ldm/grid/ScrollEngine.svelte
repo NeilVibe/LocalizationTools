@@ -47,6 +47,7 @@
     scrollTop = containerEl.scrollTop;
 
     if (containerHeight > 5000) {
+      logger.warning("Container height clamped", { original: containerHeight, clamped: 1200 });
       containerHeight = Math.min(containerHeight, 1200);
     }
 
@@ -120,9 +121,11 @@
       } else {
         const err = await response.json().catch(() => ({}));
         logger.error("BULK LOAD failed", { status: response.status, detail: err.detail });
+        grid.loadError = `Failed to load: ${err.detail || 'Server error ' + response.status}`;
       }
     } catch (err) {
       logger.error("BULK LOAD error", { error: err.message });
+      grid.loadError = `Connection error: ${err.message}`;
     } finally {
       grid.loading = false;
       grid.initialLoading = false;

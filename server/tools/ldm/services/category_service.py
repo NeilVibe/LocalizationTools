@@ -93,6 +93,7 @@ def categorize_by_stringid(string_id: Optional[str]) -> str:
     if not string_id:
         return "Uncategorized"
 
+    string_id = str(string_id)  # Guard against non-string types from DB
     upper_id = string_id.upper()
 
     # Phase 1: Prefix match (fast path)

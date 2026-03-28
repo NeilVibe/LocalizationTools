@@ -36,6 +36,7 @@ export const grid = $state({
   visibleEnd: 50,
   loading: false,
   initialLoading: true,
+  loadError: null as string | null,
   selectedRowId: null as string | null,
   hoveredRowId: null as string | null,
   hoveredCell: null as string | null,

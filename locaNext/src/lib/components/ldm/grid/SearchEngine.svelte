@@ -208,7 +208,9 @@
         value={grid.searchTerm}
         oninput={(e) => {
           grid.searchTerm = e.target.value;
-          handleSearch();
+        }}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') handleSearch();
         }}
       />
       {#if grid.searchTerm}
