@@ -1,1 +1,1 @@
-Build QuickTranslate — fix report labels for all match modes + XML health check + Unicode validation
+Build QuickTranslate — strip_invisible helper + report label fixes + clipboard error
