@@ -124,6 +124,18 @@ async def lifespan(app: FastAPI):
         logger.exception(f"Failed to initialize database: {e}")
         raise
 
+    # Initialize FTS (full-text search) GIN indexes for PostgreSQL
+    try:
+        from server.database.db_utils import add_fts_indexes, is_sqlite
+        if not is_sqlite():
+            from server.utils.dependencies import get_db
+            sync_db = next(get_db())
+            add_fts_indexes(sync_db)
+            sync_db.close()
+            logger.success("FTS GIN indexes initialized")
+    except Exception as e:
+        logger.warning(f"FTS index init skipped: {e}")
+
     logger.info("WebSocket server will be wrapped at startup")
 
     # Initialize Redis cache (optional)
