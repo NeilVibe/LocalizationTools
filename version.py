@@ -11,10 +11,10 @@ FACTORIZED: Single version format for ALL uses (datetime + semver)
 # - Human readable: Dec 13, 2025, 15:40 KST
 # - Auto-increments with time
 # - Works everywhere: electron, CI, installer, UI
-VERSION = "25.1214.2330"
+VERSION = "26.329.0300"
 
 # Version footer for UI display
-VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform | XLSTransfer + QuickSearch"
+VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform"
 
 # DEPRECATED: No longer needed - VERSION is now semver-compatible
 # Kept for backwards compatibility during transition
@@ -24,8 +24,8 @@ SEMANTIC_VERSION = VERSION  # Same as VERSION now!
 BUILD_TYPE = "LIGHT"  # FULL (with AI model) or LIGHT (without AI)
 
 # Release info
-RELEASE_DATE = "2025-12-13"
-RELEASE_NAME = "P25 TM/QA Core Backend + Integration Tests"
+RELEASE_DATE = "2026-03-29"
+RELEASE_NAME = "Performance Optimization + FTS5 + Path Fix"
 
 # Repository info
 REPOSITORY_URL = "https://github.com/NeilVibe/LocalizationTools"
