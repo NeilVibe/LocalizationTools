@@ -27,6 +27,7 @@
   import ToastContainer from "$lib/components/common/ToastContainer.svelte";
   import UserProfileModal from "$lib/components/UserProfileModal.svelte";
   import { logger } from "$lib/utils/logger.js";
+  import { addToast } from "$lib/stores/toastStore.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
   import { websocket } from "$lib/api/websocket.js";
   import SyncStatusPanel from "$lib/components/sync/SyncStatusPanel.svelte";
@@ -51,6 +52,46 @@
   let mergeMultiLanguage = $state(false);
   let mergeFolderPath = $state('');
   let checkingAuth = $state(true);
+
+  // MegaIndex auto-build with toast notifications
+  async function triggerMegaIndexBuild() {
+    try {
+      const { getApiBase, getAuthHeaders } = await import('$lib/utils/api.js');
+      const API = getApiBase();
+
+      // Check if already built
+      const statusRes = await fetch(`${API}/api/ldm/mega/status`, { headers: getAuthHeaders() });
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        if (status.built) {
+          logger.info(`MegaIndex already built: ${status.total_entries || 0} entries`);
+          return;
+        }
+      }
+
+      // Not built — trigger build with toast
+      addToast({ message: 'Building game data index (textures, audio, entities)...', kind: 'info', title: 'MegaIndex', duration: 0 });
+
+      const buildRes = await fetch(`${API}/api/ldm/mega/build`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      if (buildRes.ok) {
+        const result = await buildRes.json();
+        const count = result.total_entries || result.entity_count || 0;
+        const time = result.build_time ? `${result.build_time.toFixed(1)}s` : '';
+        addToast({ message: `${count} entries indexed ${time ? `in ${time}` : ''}`, kind: 'success', title: 'MegaIndex Ready', duration: 5000 });
+        logger.success('MegaIndex built via layout auto-trigger', result);
+      } else {
+        const err = await buildRes.json().catch(() => ({}));
+        addToast({ message: err.detail || 'Build failed — check path settings', kind: 'warning', title: 'MegaIndex', duration: 8000 });
+      }
+    } catch (e) {
+      logger.debug(`MegaIndex auto-build skipped: ${e.message}`);
+    }
+  }
 
   // Available apps
   // Apps menu - LDM removed since Files/TM tabs are always visible
@@ -285,6 +326,9 @@
         syncInitialized = true;
         logger.info("Initializing sync system after authentication");
         initSync();
+
+        // Auto-trigger MegaIndex build if not already built
+        triggerMegaIndexBuild();
       }
     } else {
       // User logged out - cleanup sync
