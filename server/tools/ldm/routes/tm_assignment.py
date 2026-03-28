@@ -329,8 +329,14 @@ def _merge_tm_trees(primary: dict, offline: dict) -> dict:
                     # Merge TMs into existing project
                     existing_proj = existing_projects_by_name[proj_name]
                     existing_proj["tms"] = existing_proj.get("tms", []) + off_project.get("tms", [])
-                    # Merge folders
-                    existing_proj["folders"] = existing_proj.get("folders", []) + off_project.get("folders", [])
+                    # Merge folders (deduplicate by name to prevent duplicates)
+                    existing_folders = existing_proj.get("folders", [])
+                    existing_folder_names = {f.get("name") for f in existing_folders}
+                    for off_folder in off_project.get("folders", []):
+                        if off_folder.get("name") not in existing_folder_names:
+                            existing_folders.append(off_folder)
+                            existing_folder_names.add(off_folder.get("name"))
+                    existing_proj["folders"] = existing_folders
                 else:
                     existing.setdefault("projects", []).append(off_project)
         else:

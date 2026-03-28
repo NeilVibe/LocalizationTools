@@ -59,6 +59,8 @@
   let matchMode = $state('strict');
   let onlyUntranslated = $state(false);
   let stringidAllCategories = $state(false);
+  let ignoreSpaces = $state(false);
+  let ignorePunctuation = $state(false);
 
   // Path state (auto-filled from project settings)
   let sourcePath = $state('');
@@ -143,6 +145,8 @@
       matchMode = 'strict';
       onlyUntranslated = false;
       stringidAllCategories = false;
+      ignoreSpaces = false;
+      ignorePunctuation = false;
       previewResult = null;
       previewLoading = false;
       previewError = '';
@@ -178,7 +182,9 @@
       match_mode: matchMode,
       only_untranslated: onlyUntranslated,
       stringid_all_categories: stringidAllCategories,
-      multi_language: multiLanguage
+      multi_language: multiLanguage,
+      ignore_spaces: ignoreSpaces,
+      ignore_punctuation: ignorePunctuation
     };
   }
 
@@ -462,6 +468,23 @@
             />
           </div>
         {/if}
+
+        <!-- Normalization options (synced from QuickTranslate) -->
+        <div class="config-section">
+          <h4>Normalization</h4>
+          <Toggle
+            bind:toggled={ignoreSpaces}
+            labelText="Ignore Spaces"
+            labelA="Exact whitespace"
+            labelB="Ignore whitespace differences"
+          />
+          <Toggle
+            bind:toggled={ignorePunctuation}
+            labelText="Ignore Punctuation"
+            labelA="Exact punctuation"
+            labelB="Ignore punctuation differences"
+          />
+        </div>
 
         <!-- Actions -->
         <div class="modal-actions">

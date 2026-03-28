@@ -715,8 +715,8 @@
 
   /* Status-based cell colors */
   .cell.target.status-translated {
-    background: rgba(198, 163, 0, 0.16);
-    border-left: 3px solid #c6a300;
+    background: rgba(141, 141, 141, 0.10);
+    border-left: 3px solid #8d8d8d;
   }
 
   .cell.target.status-reviewed {

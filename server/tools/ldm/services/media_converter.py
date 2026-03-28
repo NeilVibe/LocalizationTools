@@ -117,6 +117,18 @@ class MediaConverter:
             except OSError:
                 pass
 
+        # If .wem file is actually a WAV (RIFF header), just copy it
+        try:
+            with open(wem_path, "rb") as f:
+                header = f.read(4)
+            if header == b"RIFF":
+                import shutil
+                shutil.copy2(wem_path, wav_path)
+                logger.debug("WEM is actually WAV, copied: {}", wem_path.name)
+                return wav_path
+        except OSError:
+            pass
+
         # Find vgmstream-cli
         vgmstream = self._find_vgmstream()
         if vgmstream is None:

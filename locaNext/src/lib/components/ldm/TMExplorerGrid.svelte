@@ -175,6 +175,17 @@
     return null;
   }
 
+  // Deduplicate items by composite key (type-id) — prevents Svelte each_key_duplicate errors
+  function deduplicateItems(items) {
+    const seen = new Set();
+    return items.filter(item => {
+      const key = `${item.type}-${item.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function updateCurrentItems() {
     const currentLevel = breadcrumb[breadcrumb.length - 1];
 
@@ -211,7 +222,7 @@
         });
       }
 
-      currentItems = items;
+      currentItems = deduplicateItems(items);
     } else if (currentLevel.type === 'unassigned') {
       // Unassigned level: Show all unassigned TMs
       currentItems = (treeData.unassigned || []).map(tm => ({
@@ -287,7 +298,7 @@
         });
       }
 
-      currentItems = items;
+      currentItems = deduplicateItems(items);
     } else if (currentLevel.type === 'project') {
       // Project level: Show folders + TMs in project
       // Find the project
@@ -328,7 +339,7 @@
         });
       }
 
-      currentItems = items;
+      currentItems = deduplicateItems(items);
     } else if (currentLevel.type === 'folder') {
       // Folder level: Show child folders + TMs in folder
       const folder = findFolderById(currentLevel.id);
@@ -364,7 +375,7 @@
         });
       }
 
-      currentItems = items;
+      currentItems = deduplicateItems(items);
     }
   }
 

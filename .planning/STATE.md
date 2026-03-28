@@ -19,30 +19,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 93 — critical-debug-fixes
+**Current focus:** Merge modal sync with QuickTranslate (normalization options) + Phase 96 deferred
 
 ## Current Position
 
-Phase: 93 (critical-debug-fixes) — EXECUTING
-Plan: 2 of 2 (Plan 01 complete)
+Phase: 93 COMPLETE, 94 COMPLETE, 95 COMPLETE
+Next: Phase 96 (GameData categories → tabs, CrimsonDesert.gg style)
 
-## v14.0 Plan Summary (11 items unified)
+## v14.0 Plan Summary (11 original + 2 new from testing)
 
-### IMMEDIATE — Debug/Fix (Phase 93)
+### Phase 93 — Debug/Fix (Plan 01 DONE)
 
-1. Codex list infinite loop — 822 API calls, $effect→$state loop
-2. Remote logger feedback loop — 825x cascade on 404 errors
-3. v13.0 E2E verification — grid, Branch+Drive, Image/Audio tabs, TM context
+1. ~~Codex list infinite loop~~ ✅ FIXED (commit ecca01bf)
+2. ~~Remote logger feedback loop~~ ✅ FIXED (commit e14fe56e)
+3. v13.0 E2E verification — grid ✅, images ✅, audio ✅ (stream fix), TM ✅ (dedup fix)
 
-### Grid & TM (Phase 94)
+### Grid & TM + Demo Blockers (Phase 94)
 
-4. TM upload broken — infinite loading spinner
-5. TM assignment UI missing — unclear how to assign TM to file
-6. Yellow cell default color → neutral grey
+4. ~~TM page crash~~ ✅ FIXED — dedup filter in TMExplorerGrid.svelte (deduplicateItems helper)
+5. ~~Audio stream broken~~ ✅ FIXED — RIFF header detection bypass in media_converter.py (mock WEMs are WAVs)
+6. ~~TM upload~~ ✅ VERIFIED WORKING — endpoint + modal both functional, test upload succeeded (1 entry)
+7. TM assignment — drag-drop already built in TMExplorerGrid, Unassigned section shows uploaded TMs
+8. ~~Yellow cell default color~~ ✅ FIXED — translated status now neutral grey (#8d8d8d) instead of amber (#c6a300)
+9. (Optional) Qwen3-TTS voice generation — installed, voice profiles defined in Phase 41 CONTEXT.md
 
-### Navigation (Phase 95)
+### Navigation (Phase 95) — COMPLETE
 
-7. Merge button — remove from top-level nav, relocate
+7. ~~Merge button~~ ✅ REMOVED from top-level nav (still accessible via FilesPage context menu)
 
 ### GameData Polish (Phase 96)
 

@@ -46,6 +46,8 @@ class MergePreviewRequest(BaseModel):
     only_untranslated: bool = False
     stringid_all_categories: bool = False
     multi_language: bool = False
+    ignore_spaces: bool = False
+    ignore_punctuation: bool = False
 
 
 class MergePreviewResponse(BaseModel):
@@ -74,6 +76,8 @@ class MergeExecuteRequest(BaseModel):
     only_untranslated: bool = False
     stringid_all_categories: bool = False
     multi_language: bool = False
+    ignore_spaces: bool = False
+    ignore_punctuation: bool = False
 
 
 # ============================================================================
@@ -157,6 +161,8 @@ async def preview_merge(body: MergePreviewRequest, _user: dict = Depends(get_cur
                     match_mode=body.match_mode,
                     only_untranslated=body.only_untranslated,
                     stringid_all_categories=body.stringid_all_categories,
+                    ignore_spaces=body.ignore_spaces,
+                    ignore_punctuation=body.ignore_punctuation,
                     dry_run=True,
                 )
             return MergePreviewResponse(
@@ -177,6 +183,8 @@ async def preview_merge(body: MergePreviewRequest, _user: dict = Depends(get_cur
                     match_mode=body.match_mode,
                     only_untranslated=body.only_untranslated,
                     stringid_all_categories=body.stringid_all_categories,
+                    ignore_spaces=body.ignore_spaces,
+                    ignore_punctuation=body.ignore_punctuation,
                     dry_run=True,
                 )
 
@@ -282,6 +290,8 @@ async def execute_merge(body: MergeExecuteRequest, _user: dict = Depends(get_cur
                         match_mode=body.match_mode,
                         only_untranslated=body.only_untranslated,
                         stringid_all_categories=body.stringid_all_categories,
+                        ignore_spaces=body.ignore_spaces,
+                        ignore_punctuation=body.ignore_punctuation,
                         dry_run=False,
                         progress_callback=progress_cb,
                         log_callback=log_cb,
@@ -296,6 +306,8 @@ async def execute_merge(body: MergeExecuteRequest, _user: dict = Depends(get_cur
                         match_mode=body.match_mode,
                         only_untranslated=body.only_untranslated,
                         stringid_all_categories=body.stringid_all_categories,
+                        ignore_spaces=body.ignore_spaces,
+                        ignore_punctuation=body.ignore_punctuation,
                         dry_run=False,
                         progress_callback=progress_cb,
                         log_callback=log_cb,

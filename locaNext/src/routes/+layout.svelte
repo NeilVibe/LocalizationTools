@@ -480,6 +480,11 @@
                 <span class="item-desc">{app.description}</span>
               </button>
             {/each}
+            <hr class="dropdown-divider" />
+            <button class="compact-dropdown-item" onclick={() => { openMerge(); isAppsMenuOpen = false; }} disabled={!$selectedProject}>
+              <span class="item-title">Merge to LOCDEV</span>
+              <span class="item-desc">Transfer translations to target XML</span>
+            </button>
           </div>
         {/if}
       </div>
@@ -488,12 +493,6 @@
       <button class="tasks-button" onclick={showTasks}>
         <TaskComplete size={20} />
         <span>Tasks</span>
-      </button>
-
-      <!-- Phase 59: Merge to LOCDEV button -->
-      <button class="tasks-button" onclick={openMerge} disabled={!$selectedProject}>
-        <Merge size={20} />
-        <span>Merge</span>
       </button>
 
       <!-- P3: Sync Status Indicator -->

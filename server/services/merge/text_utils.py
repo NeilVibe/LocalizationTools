@@ -409,3 +409,17 @@ def normalize_nospace(txt: str) -> str:
         Text with all whitespace removed
     """
     return re.sub(r'\s+', '', txt)
+
+
+_PUNCTUATION_RE = re.compile(r'[.,!?:\u2026]|\.{2,}')
+
+
+def normalize_no_punctuation(txt: str) -> str:
+    """
+    Remove punctuation from text for lenient matching.
+
+    Strips common punctuation marks while preserving letters, digits,
+    and whitespace. Collapses resulting double-spaces.
+    """
+    result = _PUNCTUATION_RE.sub('', txt)
+    return re.sub(r'\s{2,}', ' ', result).strip()
