@@ -52,6 +52,9 @@ def is_formula_text(text: str) -> Optional[str]:
         return f'openpyxl object repr ({stripped[:40]})'
     if '_xlfn.' in stripped.lower():
         return f'Excel internal function ({stripped[:40]})'
+    # Excel clipboard not-ready message (copy while still calculating)
+    if 'retrieving data. wait a few' in stripped.lower():
+        return 'Excel clipboard error (Retrieving data. Wait a few seconds...)'
     return None
 
 
