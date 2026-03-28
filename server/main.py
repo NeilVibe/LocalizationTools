@@ -167,7 +167,29 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"GameData auto-index skipped: {e}")
 
-    # Auto-build MegaIndex (DEV: mock_gamedata, PROD: deferred to path configure)
+    # PROD: Restore persisted path settings and auto-build MegaIndex
+    if not config.DEV_MODE:
+        try:
+            import json as _json
+            settings_path = base_dir / "path_settings.json"
+            if settings_path.exists():
+                saved = _json.loads(settings_path.read_text())
+                drive, branch = saved.get("drive"), saved.get("branch")
+                if drive and branch:
+                    from server.tools.ldm.services.perforce_path_service import get_perforce_path_service
+                    path_svc = get_perforce_path_service()
+                    path_svc.configure(drive, branch)
+                    from server.tools.ldm.services.mega_index import get_mega_index
+                    mega = get_mega_index()
+                    mega.build()
+                    logger.success(
+                        f"[STARTUP] MegaIndex auto-built from saved paths: drive={drive}, branch={branch}, "
+                        f"{len(mega.dds_by_stem)} textures, {len(mega.wem_by_event)} audio"
+                    )
+        except Exception as e:
+            logger.warning(f"[STARTUP] MegaIndex restore skipped: {e}")
+
+    # DEV: Auto-build MegaIndex from mock_gamedata fixtures
     if config.DEV_MODE:
         try:
             from server.tools.ldm.services.perforce_path_service import get_perforce_path_service

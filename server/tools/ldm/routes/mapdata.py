@@ -343,6 +343,14 @@ async def configure_paths(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    # Persist drive+branch so server can restore on next startup
+    try:
+        import json
+        settings_path = Path(__file__).resolve().parents[4] / "path_settings.json"
+        settings_path.write_text(json.dumps({"drive": drive, "branch": branch}))
+    except Exception:
+        pass  # Non-critical
+
     # Re-initialize MapDataService with the new drive/branch
     mapdata_service = get_mapdata_service()
     mapdata_service.initialize(branch=branch, drive=drive)
