@@ -25,10 +25,13 @@
   // Validation state
   let pathStatus = $state({ ok: false, missing: [], loading: true });
 
-  // PATH-03: Validate on mount (using onMount pattern to avoid $effect infinite loop)
+  // PATH-03: Configure + Validate on mount
+  // FIX: Must call configure BEFORE validate — backend defaults to F:/mainline
+  // but user may have saved D:/cd_beta in localStorage. Without configure first,
+  // validate checks wrong paths and always shows PATHS NOT FOUND.
   import { onMount } from 'svelte';
-  onMount(() => {
-    validatePaths();
+  onMount(async () => {
+    await onSelectionChange();  // Configure backend with saved prefs, then validate
   });
 
   /**

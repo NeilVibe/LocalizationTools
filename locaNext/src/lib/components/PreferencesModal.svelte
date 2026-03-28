@@ -130,7 +130,7 @@
   modalHeading="Display Settings"
   passiveModal
   onclose={handleClose}
-  size="xs"
+  size="sm"
 >
   <div class="modal-content">
     {#if saved}

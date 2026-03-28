@@ -151,6 +151,9 @@ CREATE INDEX IF NOT EXISTS idx_offline_rows_server_id ON offline_rows(server_id)
 CREATE INDEX IF NOT EXISTS idx_offline_rows_file ON offline_rows(file_id);
 CREATE INDEX IF NOT EXISTS idx_offline_rows_string_id ON offline_rows(string_id);
 CREATE INDEX IF NOT EXISTS idx_offline_rows_qa_flagged ON offline_rows(file_id, qa_flag_count);  -- QA-SCHEMA-001: QA filter parity
+CREATE INDEX IF NOT EXISTS idx_offline_rows_file_rownum ON offline_rows(file_id, row_num);       -- Pagination ORDER BY
+CREATE INDEX IF NOT EXISTS idx_offline_rows_file_source ON offline_rows(file_id, source);        -- Search on source column
+CREATE INDEX IF NOT EXISTS idx_offline_rows_file_target ON offline_rows(file_id, target);        -- Search on target column
 
 -- -----------------------------------------------------------------------------
 -- Translation Memories (mirrors ldm_translation_memories)
