@@ -55,6 +55,7 @@ from server.tools.ldm.schemas.gamedata import (
     TreeNode,
     TreeRequest,
 )
+from server.tools.ldm.services.mega_index import get_mega_index
 from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
 from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
 from server.tools.ldm.indexing.gamedata_searcher import GameDataSearcher
@@ -172,6 +173,26 @@ async def register_browser_folder(
     """
     base_dir = _get_base_dir()
     return {"path": str(base_dir), "folder_name": request.get("folder_name", "")}
+
+
+@router.post("/gamedata/trigger-mega-build")
+async def trigger_mega_build(
+    _user=Depends(get_current_active_user_async),
+):
+    """Trigger MegaIndex build after gamedata folder is loaded.
+
+    Non-blocking response -- the frontend fires this as fire-and-forget
+    after the gamedata folder tree loads.  Returns immediately with status.
+    """
+    try:
+        mi = get_mega_index()
+        if mi.is_built:
+            return {"status": "already_built", "stats": mi.stats()}
+        mi.build()
+        return {"status": "success", "stats": mi.stats()}
+    except Exception as e:
+        logger.error(f"MegaIndex auto-build failed: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 @router.post("/gamedata/columns", response_model=FileColumnsResponse)

@@ -15,11 +15,12 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from loguru import logger
 
+from server.utils.dependencies import get_current_active_user_async
 from ..services.mega_index import get_mega_index
 
 router = APIRouter(prefix="/mega", tags=["mega_index"])
@@ -43,7 +44,10 @@ async def mega_status():
 
 
 @router.post("/build")
-async def mega_build(body: Optional[BuildRequest] = None):
+async def mega_build(
+    body: Optional[BuildRequest] = None,
+    _user=Depends(get_current_active_user_async),
+):
     """
     Trigger MegaIndex build and return stats after completion.
 
