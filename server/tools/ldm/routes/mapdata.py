@@ -347,6 +347,20 @@ async def configure_paths(
     mapdata_service = get_mapdata_service()
     mapdata_service.initialize(branch=branch, drive=drive)
 
+    # Auto-build MegaIndex with the new paths (enables Codex images, audio, entities)
+    try:
+        from server.tools.ldm.services.mega_index import get_mega_index
+        mega = get_mega_index()
+        if not mega._built:
+            mega.build()
+            logger.success(
+                f"[MAPDATA] MegaIndex auto-built after path configure: "
+                f"{len(mega.dds_by_stem)} textures, {len(mega.wem_by_event)} audio, "
+                f"{len(mega.knowledge_by_strkey)} knowledge"
+            )
+    except Exception as e:
+        logger.warning(f"[MAPDATA] MegaIndex auto-build skipped: {e}")
+
     logger.info(
         f"[MAPDATA] User {current_user['username']} configured paths: "
         f"drive={drive}, branch={branch}"

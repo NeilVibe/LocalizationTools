@@ -167,7 +167,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"GameData auto-index skipped: {e}")
 
-    # DEV mode: auto-build MegaIndex from mock_gamedata fixtures
+    # Auto-build MegaIndex (DEV: mock_gamedata, PROD: deferred to path configure)
     if config.DEV_MODE:
         try:
             from server.tools.ldm.services.perforce_path_service import get_perforce_path_service
