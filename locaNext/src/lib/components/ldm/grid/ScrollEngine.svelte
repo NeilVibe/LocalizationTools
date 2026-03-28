@@ -133,57 +133,13 @@
   }
 
   // ========================================
-  // CLIENT-SIDE SEARCH — filter allRows in memory
-  // ========================================
-  export function clientSearch(searchTerm, searchMode, searchFields) {
-    const term = searchTerm?.trim().toLowerCase();
-
-    if (!term) {
-      // No search — show all rows
-      grid.rows = grid.allRows;
-      grid.total = grid.allRows.length;
-    } else {
-      const fields = searchFields || ['source', 'target'];
-
-      if (searchMode === 'exact') {
-        grid.rows = grid.allRows.filter(row =>
-          fields.some(f => row[f]?.toLowerCase() === term)
-        );
-      } else if (searchMode === 'not_contain') {
-        grid.rows = grid.allRows.filter(row =>
-          fields.every(f => !row[f]?.toLowerCase().includes(term))
-        );
-      } else {
-        // contain (default)
-        grid.rows = grid.allRows.filter(row =>
-          fields.some(f => row[f]?.toLowerCase().includes(term))
-        );
-      }
-      grid.total = grid.rows.length;
-    }
-
-    // Rebuild index for filtered rows
-    rowIndexById.clear();
-    grid.rows.forEach((row, i) => {
-      rowIndexById.set(row.id.toString(), i);
-    });
-
-    rowHeightCache.clear();
-    grid.rowsVersion++;
-    rebuildCumulativeHeights(stripColorTags);
-
-    // Reset scroll to top after search
-    if (containerEl) containerEl.scrollTop = 0;
-    calculateVisibleRange();
-  }
-
-  // ========================================
-  // CLIENT-SIDE FILTER (status, category)
+  // CLIENT-SIDE FILTER — unified search + status + category
+  // ONE function for all filtering. No separate clientSearch.
   // ========================================
   export function clientFilter(activeFilter, selectedCategories) {
     let filtered = grid.allRows;
 
-    // Status filter
+    // 1. Status filter
     if (activeFilter && activeFilter !== 'all') {
       if (activeFilter === 'confirmed') {
         filtered = filtered.filter(r => r.status === 'approved' || r.status === 'reviewed');
@@ -194,19 +150,32 @@
       }
     }
 
-    // Category filter
+    // 2. Category filter
     if (selectedCategories && selectedCategories.length > 0) {
       const catSet = new Set(selectedCategories);
       filtered = filtered.filter(r => catSet.has(r.category));
     }
 
-    // Apply current search on top of filter
+    // 3. Search filter (mode-aware: contain, exact, not_contain)
     const term = grid.searchTerm?.trim().toLowerCase();
     if (term) {
       const fields = grid.searchFields || ['source', 'target'];
-      filtered = filtered.filter(row =>
-        fields.some(f => row[f]?.toLowerCase().includes(term))
-      );
+      const mode = grid.searchMode || 'contain';
+
+      if (mode === 'exact') {
+        filtered = filtered.filter(row =>
+          fields.some(f => row[f]?.toLowerCase() === term)
+        );
+      } else if (mode === 'not_contain') {
+        filtered = filtered.filter(row =>
+          fields.every(f => !row[f]?.toLowerCase().includes(term))
+        );
+      } else {
+        // contain (default)
+        filtered = filtered.filter(row =>
+          fields.some(f => row[f]?.toLowerCase().includes(term))
+        );
+      }
     }
 
     grid.rows = filtered;

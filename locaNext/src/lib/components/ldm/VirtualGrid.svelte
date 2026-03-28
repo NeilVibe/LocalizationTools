@@ -100,15 +100,23 @@
   function handleCellUpdates(updates) {
     let heightsChanged = false;
     updates.forEach(update => {
-      const rowIndex = getRowIndexById(update.row_id);
+      const rowId = update.row_id?.toString();
+
+      // Update display rows
+      const rowIndex = getRowIndexById(rowId);
       if (rowIndex !== undefined && grid.rows[rowIndex]) {
-        grid.rows[rowIndex] = {
+        const updated = {
           ...grid.rows[rowIndex],
           target: update.target,
           status: update.status
         };
+        grid.rows[rowIndex] = updated;
         rowHeightCache.delete(rowIndex);
         heightsChanged = true;
+
+        // MUST also update allRows — otherwise clientFilter reverts the edit
+        const allIndex = grid.allRows.findIndex(r => r?.id === rowId);
+        if (allIndex !== -1) grid.allRows[allIndex] = updated;
       }
     });
     if (heightsChanged) {
