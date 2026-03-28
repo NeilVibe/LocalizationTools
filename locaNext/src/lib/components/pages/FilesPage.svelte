@@ -2563,7 +2563,7 @@
 {#if showContextMenu && contextMenuItem}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
-    {#if contextMenuItem.type === 'file'}
+    {#if contextMenuItem.type === 'file' || contextMenuItem.type === 'local-file'}
       <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
       {#if canModifyStructure}
         <button class="context-menu-item" onclick={() => { handleCut(); closeMenus(); }}>Cut (Ctrl+X)</button>
