@@ -19,6 +19,7 @@
   import {
     grid,
     loadedPages,
+    rowIndexById,
   } from './gridState.svelte.ts';
 
   // API base URL
@@ -91,6 +92,7 @@
 
       logger.info("handleSearch executing search", { searchTerm: grid.searchTerm });
       loadedPages.clear();
+      rowIndexById.clear();  // Prevent stale scroll targets after search
       // Don't clear grid.rows here — let loadRows() replace them with filtered results.
       // Clearing rows caused a blank flash while the API fetched new data.
       onSearchComplete?.();

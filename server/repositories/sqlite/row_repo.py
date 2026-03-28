@@ -40,8 +40,13 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
             cursor.close()
             conn.close()
             self._fts_available = True
-        except Exception:
+            logger.info(f"FTS5 available: {fts_table}")
+        except sqlite3.OperationalError:
             self._fts_available = False
+            logger.info(f"FTS5 not available — falling back to LIKE search")
+        except Exception as e:
+            self._fts_available = False
+            logger.warning(f"FTS5 check failed unexpectedly: {e} — falling back to LIKE search")
         return self._fts_available
 
     def _normalize_row(self, row: Optional[Dict]) -> Optional[Dict[str, Any]]:
@@ -398,11 +403,9 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 if search_mode == "contain" and self._has_fts():
                     # FTS5 inverted index search — O(1) lookup instead of O(n) scan
                     fts_table = "offline_rows_fts" if self.schema_mode == SchemaMode.OFFLINE else "ldm_rows_fts"
-                    # Build FTS5 MATCH query: search across selected fields
-                    fts_field_queries = []
-                    for field in fields:
-                        # FTS5 column filter syntax: {column_name} : term
-                        fts_field_queries.append(f"{field} : {search}")
+                    # Escape FTS5 special chars by quoting as phrase (prevents injection of AND/OR/NOT/*/")
+                    escaped_search = '"' + search.replace('"', '""') + '"'
+                    fts_field_queries = [f"{field} : {escaped_search}" for field in fields]
                     fts_match = " OR ".join(fts_field_queries)
                     base_query += f" AND id IN (SELECT rowid FROM {fts_table} WHERE {fts_table} MATCH ?)"
                     params.append(fts_match)

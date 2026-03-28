@@ -107,19 +107,18 @@ def _get_base_dir() -> Path:
         drive = status["drive"]
         branch = status["branch"]
         if drive != "MOCK":
-            # Get native OS paths (not WSL-converted)
             raw_paths = generate_paths(drive, branch)
             knowledge_path = Path(raw_paths["knowledge_folder"])
-            # Go up to GameData level: .../resource/GameData/StaticInfo/knowledgeinfo → .../resource/GameData
-            gamedata_root = knowledge_path.parent.parent
+            gamedata_root = knowledge_path.parent.parent  # .../resource/GameData
             if gamedata_root.is_dir():
                 return gamedata_root
-            # Fallback: drive root
-            drive_root = Path(f"{drive}:\\")
-            if drive_root.is_dir():
-                return drive_root
-    except Exception:
-        pass
+            logger.warning(f"GameData root not found: {gamedata_root} — using install directory")
+    except ImportError:
+        logger.debug("PerforcePathService not available, using default base dir")
+    except (KeyError, TypeError) as e:
+        logger.warning(f"PerforcePathService misconfigured: {e} — using default base dir")
+    except Exception as e:
+        logger.error(f"Unexpected error resolving Perforce base dir: {e}")
 
     return _DEFAULT_BASE_DIR
 
