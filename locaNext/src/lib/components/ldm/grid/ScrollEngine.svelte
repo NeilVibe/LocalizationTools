@@ -111,15 +111,10 @@
     const startPage = Math.floor(start / PAGE_SIZE) + 1;
     const endPage = Math.floor(end / PAGE_SIZE) + 1;
 
-    const MAX_PAGES_TO_LOAD = 3;
-    const limitedEndPage = Math.min(endPage, startPage + MAX_PAGES_TO_LOAD - 1);
-
-    if (endPage > limitedEndPage) {
-      logger.warning("Prevented excessive page load", {
-        startPage, endPage, limitedTo: limitedEndPage,
-        visibleRange: { start, end }
-      });
-    }
+    // Load all pages needed for visible range — no artificial cap.
+    // The previous MAX_PAGES_TO_LOAD=3 caused blank rows when scrolling fast.
+    // Network requests are cheap (paginated DB queries), blank rows are not.
+    const limitedEndPage = endPage;
 
     for (let page = startPage; page <= limitedEndPage; page++) {
       if (!loadedPages.has(page) && !loadingPages.has(page)) {

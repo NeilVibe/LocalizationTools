@@ -72,7 +72,7 @@ export const LINE_HEIGHT = 26;
 export const CELL_PADDING = 24;
 export const BUFFER_ROWS = 8;
 export const PAGE_SIZE = 100;
-export const PREFETCH_PAGES = 2;
+export const PREFETCH_PAGES = 5;
 
 // --- Cross-module derived state (per D-04) ---
 // Cannot export $derived from .svelte.ts module — export function instead
