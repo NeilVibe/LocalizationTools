@@ -17,6 +17,7 @@
   import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut, CloudOffline } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
+  import FileMergeModal from '$lib/components/ldm/FileMergeModal.svelte';
   import InputModal from '$lib/components/common/InputModal.svelte';
   import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
   import { logger } from '$lib/utils/logger.js';
@@ -107,6 +108,10 @@
   let fileInput = $state(null);
   let mergeFileInput = $state(null);
   let mergeTargetFile = $state(null);
+
+  // FileMergeModal state
+  let showFileMergeModal = $state(false);
+  let fileMergeTarget = $state(null);
   let uploadTargetFolderId = $state(null);
 
   // DESIGN-001: Access control modal
@@ -1265,21 +1270,12 @@
     }
   }
 
-  // Merge
+  // Merge — opens FileMergeModal with match mode selection
   function openMerge() {
     if (!isFileType(contextMenuItem)) return;
-    const format = contextMenuItem.format?.toLowerCase() || '';
-    if (!['txt', 'xml'].includes(format)) {
-      logger.warning('Merge not supported for this format', { format });
-      closeMenus();
-      return;
-    }
-    mergeTargetFile = { ...contextMenuItem };
+    fileMergeTarget = { ...contextMenuItem };
+    showFileMergeModal = true;
     closeMenus();
-    if (mergeFileInput) {
-      mergeFileInput.accept = format === 'txt' ? '.txt,.tsv' : '.xml';
-      mergeFileInput.click();
-    }
   }
 
   async function handleMergeFileSelected(event) {
@@ -2876,6 +2872,13 @@
     onClose={() => { showPretranslateModal = false; pretranslateFile = null; }}
   />
 {/if}
+
+<!-- File Merge Modal (right-click merge with match modes) -->
+<FileMergeModal
+  bind:open={showFileMergeModal}
+  targetFile={fileMergeTarget}
+  onmerged={() => refreshCurrentView()}
+/>
 
 <!-- Upload to Server Modal -->
 <Modal
