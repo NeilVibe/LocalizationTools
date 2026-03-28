@@ -1171,43 +1171,53 @@ jobs:
           }
 
           Write-Host "Installing: $($installer.Name)"
+          Write-Host "Installer size: $([math]::Round($installer.Length / 1MB, 1)) MB"
 
-          # Run NSIS installer silently
-          Start-Process -FilePath $installer.FullName -ArgumentList "/S" -Wait -NoNewWindow
+          # Run NSIS installer silently with explicit install dir
+          # oneClick=false needs /S flag; /D= sets install dir (must be last arg, no quotes)
+          $targetDir = "$env:LOCALAPPDATA\Programs\LocaNext"
+          Write-Host "Target directory: $targetDir"
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList "/S","/D=$targetDir" -Wait -NoNewWindow -PassThru
+          Write-Host "Installer exit code: $($process.ExitCode)"
 
-          Write-Host "[OK] Installation completed"
+          if ($process.ExitCode -ne 0) {
+            Write-Host "[WARN] Installer exited with code $($process.ExitCode)"
+          }
 
-          # NSIS with oneClick=false ignores /D= flag - need to find where it installed
-          # Search possible locations in order of likelihood
-          $searchPaths = @(
-            "$env:LOCALAPPDATA\Programs\LocaNext",      # Per-user default
-            "$env:ProgramFiles\LocaNext",               # All users (unlikely without admin)
-            "${env:ProgramFiles(x86)}\LocaNext"         # x86 fallback
-          )
-
+          # Check if install succeeded
           $installDir = $null
-          foreach ($path in $searchPaths) {
-            if (Test-Path "$path\LocaNext.exe") {
-              $installDir = $path
-              Write-Host "[FOUND] Installation at: $path"
-              break
+          if (Test-Path "$targetDir\LocaNext.exe") {
+            $installDir = $targetDir
+            Write-Host "[FOUND] Installation at: $targetDir"
+          }
+
+          # Fallback: search common locations
+          if (!$installDir) {
+            $searchPaths = @(
+              "$env:LOCALAPPDATA\Programs\LocaNext",
+              "$env:ProgramFiles\LocaNext",
+              "${env:ProgramFiles(x86)}\LocaNext"
+            )
+            foreach ($path in $searchPaths) {
+              if (Test-Path "$path\LocaNext.exe") {
+                $installDir = $path
+                Write-Host "[FOUND] Installation at: $path"
+                break
+              }
             }
           }
 
+          # If NSIS silent install failed, fall back to verifying unpacked electron build
           if (!$installDir) {
-            # Fallback: search for LocaNext.exe anywhere in common locations
-            Write-Host "[DEBUG] Searching for LocaNext.exe..."
-            $found = Get-ChildItem -Path "$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}" `
-              -Filter "LocaNext.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-              $installDir = $found.Directory.FullName
-              Write-Host "[FOUND] Installation at: $installDir"
+            Write-Host "[WARN] Silent install did not place files — verifying electron build directly"
+            $unpackedDir = "locaNext\dist-electron\win-unpacked"
+            if (Test-Path "$unpackedDir\LocaNext.exe") {
+              $installDir = (Resolve-Path $unpackedDir).Path
+              Write-Host "[FALLBACK] Using unpacked build at: $installDir"
+            } else {
+              Write-Error "[ERROR] Neither installed app nor unpacked build found"
+              exit 1
             }
-          }
-
-          if (!$installDir) {
-            Write-Error "[ERROR] Could not find LocaNext.exe after installation"
-            exit 1
           }
 
           # Export for next step
