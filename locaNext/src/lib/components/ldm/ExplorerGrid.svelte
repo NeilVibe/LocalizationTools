@@ -16,6 +16,7 @@
    */
   import { Folder, Document, DocumentBlank, Table, Code, Application, Locked, TrashCan, CloudOffline } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
+  import LoadingScreen from './LoadingScreen.svelte';
 
   // Props
   let {
@@ -428,11 +429,7 @@
 
 <div class="explorer-grid" role="grid" aria-label="File explorer" oncontextmenu={handleBackgroundContextMenu}>
   {#if loading}
-    <div class="shimmer-loading" role="status" aria-label="Loading files">
-      {#each [80, 60, 80, 60, 80, 60] as width, i (i)}
-        <div class="shimmer-skeleton shimmer-file-row" style="width: {width}%"></div>
-      {/each}
-    </div>
+    <LoadingScreen message="Loading files..." progress={0} />
   {:else if items.length === 0}
     <div class="empty-state">
       <DocumentBlank size={48} />
@@ -526,29 +523,6 @@
     min-height: 0; /* Allow flex shrink */
     overflow: hidden;
     background: var(--cds-background);
-  }
-
-  .shimmer-loading {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 1rem;
-    flex: 1;
-  }
-
-  .shimmer-skeleton {
-    background: var(--skeleton-bg, var(--cds-layer-02));
-    animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  }
-
-  .shimmer-file-row {
-    height: 36px;
-    border-radius: 4px;
-  }
-
-  @keyframes skeleton-shimmer {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 0.8; }
   }
 
   .empty-state {
