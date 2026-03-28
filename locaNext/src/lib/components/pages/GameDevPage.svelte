@@ -8,6 +8,7 @@
   import { gamedevBasePath } from '$lib/stores/navigation.js';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
+  import { addToast, removeToast } from '$lib/stores/toastStore.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
   import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
   import GameDataContextPanel from '$lib/components/ldm/GameDataContextPanel.svelte';
@@ -37,6 +38,55 @@
   // NAV-04: Auto-load indicator state
   let autoLoading = $state(false);
 
+  // MegaIndex auto-build state (plain var, not $state -- no render dependency)
+  let megaBuildTriggered = false;
+
+  /**
+   * Trigger MegaIndex build when gamedata folder is loaded.
+   * Fire-and-forget -- does NOT block folder tree loading.
+   * Shows toast notifications for building/success/error states.
+   */
+  async function triggerMegaBuild() {
+    if (megaBuildTriggered) return; // Only trigger once per session
+    megaBuildTriggered = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/ldm/gamedata/trigger-mega-build`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+
+      if (data.status === 'already_built') {
+        const count = data.stats?.total_entries || 0;
+        logger.info(`MegaIndex already built: ${count} entries`);
+        // No toast for already-built (user doesn't need to know)
+        return;
+      }
+
+      if (data.status === 'success') {
+        const count = data.stats?.total_entries || data.stats?.entity_count || 0;
+        const time = data.stats?.build_time ? `${data.stats.build_time.toFixed(1)}s` : '';
+        addToast({
+          message: `${count} entries indexed ${time ? `in ${time}` : ''}`,
+          kind: 'success',
+          title: 'MegaIndex Ready',
+          duration: 5000
+        });
+      } else if (data.status === 'error') {
+        addToast({
+          message: data.error || 'Build failed -- check path settings',
+          kind: 'warning',
+          title: 'MegaIndex',
+          duration: 8000
+        });
+      }
+    } catch (e) {
+      logger.warning(`MegaIndex auto-build failed: ${e.message}`);
+      // Silent failure -- layout.svelte also triggers on auth, so this is a secondary trigger
+    }
+  }
+
   // DEV mode: auto-load mock gamedata if no path is set
   $effect(() => {
     if (!activePath && !$gamedevBasePath) {
@@ -54,6 +104,8 @@
             activePath = data.base_path;
             gamedevBasePath.set(data.base_path);
             logger.info('Auto-loaded mock gamedata path', { path: data.base_path });
+            // Fire-and-forget MegaIndex build after auto-load
+            void triggerMegaBuild();
           }
         })
         .catch(() => { /* silent — user can set path manually */ })
@@ -71,6 +123,8 @@
     // Store in localStorage via the store
     gamedevBasePath.set(trimmed);
     logger.userAction('Game Dev path set', { path: trimmed });
+    // Fire-and-forget MegaIndex build
+    void triggerMegaBuild();
   }
 
   /**
@@ -92,6 +146,7 @@
         activePath = folderPath;
         gamedevBasePath.set(folderPath);
         logger.userAction('Game Dev folder selected via Electron dialog', { path: folderPath });
+        void triggerMegaBuild();
         return;
       } catch (err) {
         logger.error('Electron folder picker failed', { error: err.message });
@@ -115,6 +170,7 @@
           activePath = pathInput;
           gamedevBasePath.set(pathInput);
           logger.userAction('Game Dev folder selected via browser picker', { path: pathInput });
+          void triggerMegaBuild();
         } else {
           // Fallback: use the folder name directly
           pathInput = dirHandle.name;
