@@ -58,7 +58,7 @@ export const rowIndexById = $state(new Map<string, number>());
 // A reactive Map triggers ALL rows to re-render when ANY entry changes,
 // creating an O(n²) cascade with measureRowHeight (50 rows × 50 re-renders = freeze).
 export const rowHeightCache = new Map<number, number>();
-export const loadedPages = $state(new Set<number>());
+// loadedPages removed — bulk load architecture loads ALL rows at once
 export const tmAppliedRows = $state(new Map<string, { match_type: string }>());
 export const referenceData = $state(new Map<string, { target: string; source: string }>());
 export const qaFlags = $state(new Map<string, number>());
