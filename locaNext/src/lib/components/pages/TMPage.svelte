@@ -303,7 +303,12 @@
     <div class="header-actions">
       <button
         class="icon-button"
-        onclick={() => showUploadModal = true}
+        onclick={() => {
+          // Get current scope from TMExplorerGrid breadcrumb
+          const scope = tmGridRef?.getCurrentScope?.() || null;
+          uploadTargetScope = scope;
+          showUploadModal = true;
+        }}
         title="Upload TM"
       >
         <Upload size={20} />

@@ -282,6 +282,14 @@
         // Filter projects belonging to this platform
         const platformProjects = allProjects.filter(p => p.platform_id === platformId);
 
+        // P9: Offline Storage — skip the nested project, go directly to its folders
+        if (platformName === 'Offline Storage' && platformProjects.length === 1 && platformProjects[0].name === 'Offline Storage') {
+          currentPath = [{ type: 'platform', id: platformId, name: platformName }];
+          selectedPlatformId = platformId;
+          await loadProjectContents(platformProjects[0].id, true);
+          return;
+        }
+
         currentItems = platformProjects.map(p => ({
           type: 'project',
           id: p.id,

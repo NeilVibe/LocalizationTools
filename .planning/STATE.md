@@ -19,7 +19,45 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Merge modal sync with QuickTranslate (normalization options) + Phase 96 deferred
+**Current focus:** Phase 97 — TM Structural Fix + Full Verification
+
+**Plan:** `.planning/milestones/v14.0-phases/97-tm-structural-fix/97-PLAN.md`
+
+### Task Status (6/10 PASS, 4 need frontend test)
+- Task 1: getCurrentScope wiring — needs frontend test (navigate to folder, click Upload, check modal heading)
+- Task 2: Upload + folder assignment — **PASS** (API verified: tm_id=796, folder=97)
+- Task 3: TM auto-activation — **PASS** (is_active=True fix applied in code + DB)
+- Task 4: FileUploader spinner — needs frontend test (select file, should show checkmark not spinner)
+- Task 5: Upload progress — needs frontend test (should reach 100%, not stuck at 90%)
+- Task 6: Projects endpoint — **PASS** (200 OK, owner_id Optional)
+- Task 7: Breadcrumb — needs frontend test (Offline Storage > folder, not doubled)
+- Task 8: Image chain — **PASS** (has_image=true)
+- Task 9: Audio chain — **PASS** (stream 200, 4454 bytes WAV)
+- Task 10: Merge modal — needs frontend test (Apps > Merge, check normalization toggles)
+
+### Code Changes NOT YET COMMITTED
+- TMExplorerGrid.svelte: dedup, getCurrentScope, removed Unassigned, breadcrumb fix
+- TMUploadModal.svelte: status="complete" on FileUploader
+- TMPage.svelte: header button passes getCurrentScope()
+- CellRenderer.svelte: yellow→grey
+- +layout.svelte: Merge to Apps dropdown
+- tm_crud.py: background indexing, _background_index_tm
+- tm_repo.py: is_active=True on assign
+- tm_assignment.py: folder dedup in merge
+- media_converter.py: RIFF header detection
+- merge.py + xml_transfer.py + text_utils.py: ignore_spaces/ignore_punctuation
+- project.py schema: owner_id Optional
+- FilesPage.svelte: Offline Storage skip nested project
+
+### DB State
+- PostgreSQL: 1 TM (id=796, Korean_TM_Test), assigned to folder 97 (Korean), is_active=true
+- SQLite offline: clean (0 TMs), stale PC platform removed
+
+### Next Session
+1. Use sequential thinking MCP (will activate on /clear)
+2. Frontend test remaining 4 tasks
+3. Commit all changes
+4. Build on Gitea (test) → GitHub Build Light (production)
 
 ## Current Position
 

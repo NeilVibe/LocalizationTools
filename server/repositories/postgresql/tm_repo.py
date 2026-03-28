@@ -249,7 +249,7 @@ class PostgreSQLTMRepository(TMRepository):
                 platform_id=target.platform_id,
                 project_id=target.project_id,
                 folder_id=target.folder_id,
-                is_active=False,
+                is_active=True,
                 priority=0,
                 assigned_at=datetime.utcnow()
             )

@@ -15,7 +15,7 @@ class ProjectResponse(BaseModel):
     id: int
     name: str
     description: Optional[str]
-    owner_id: int
+    owner_id: Optional[int] = None
     platform_id: Optional[int] = None
     created_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility
     updated_at: Optional[datetime] = None  # P9: Optional for SQLite compatibility

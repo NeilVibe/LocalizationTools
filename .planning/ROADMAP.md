@@ -109,21 +109,7 @@ Plans:
 
 </details>
 
-## Phases (v14.0 — Active)
-
-- [ ] **Phase 93: Critical Debug Fixes** — Codex infinite loop, remote logger cascade, v13.0 E2E verification
-- [ ] **Phase 94: Grid & TM UX Fixes** — TM upload, TM assignment UI, yellow cell default color
-- [ ] **Phase 95: Navigation & Merge Redesign** — Relocate Merge button from top-level nav
-- [ ] **Phase 96: GameData Category Tabs + Visual Polish** — Auto-parsed tabs, CrimsonDesert.gg style
-
-## Phases (v13.0 — Shipped)
-
-- [x] **Phase 89: Code Cleanup** - Fix 4 v11.0 code review issues (completed 2026-03-26)
-- [x] **Phase 90: Branch+Drive Configuration** - Branch/Drive selector UI with path validation (completed 2026-03-26)
-- [x] **Phase 91: Media Path Resolution + E2E Testing** - Wire StringID-to-entity-to-media chains (completed 2026-03-26)
-- [x] **Phase 92: MegaIndex Decomposition** - Split mega_index.py 1310→247 lines (completed 2026-03-26)
-
-## Phase Details
+## Phases
 
 ### Phase 93: Critical Debug Fixes
 **Goal**: Zero infinite loops, zero feedback cascades, all v13.0 features verified working in DEV browser
@@ -138,13 +124,20 @@ Plans:
   6. TM context search returns AC results on row select
 **Plans:** 2 plans
 Plans:
-- [ ] 93-01-PLAN.md --- Fix Codex tabCache $state(Map) infinite loop + remote logger feedback cascade
+- [x] 93-01-PLAN.md --- Fix Codex tabCache $state(Map) infinite loop + remote logger feedback cascade (completed 2026-03-27)
 - [ ] 93-02-PLAN.md --- CDP deep monitor verification + human E2E verification of all v13.0 features
 
-### Phase 94: Grid & TM UX Fixes
-**Goal**: TM upload works end-to-end, TM assignment is discoverable, grid default color is neutral
+### Phase 94: Grid & TM UX Fixes + Demo Blockers
+**Goal**: TM page works without crashing, audio chain resolves WEM files, TM upload works, grid default color is neutral
 **Depends on**: Phase 93
-**Requirements**: TMUX-01, TMUX-02, TMUX-03
+**Requirements**: TM-04, AUDIO-01, TMUX-01, TMUX-02, TMUX-03
+**Success Criteria** (what must be TRUE):
+  1. TM page loads without `each_key_duplicate` crash — no duplicate folder entries in tree
+  2. Selecting a LanguageData row with a voice event shows WEM audio in Audio tab
+  3. D11 (event_to_stringid) is populated from export XMLs with SoundEventName
+  4. TM upload completes without infinite spinner — TM appears in list
+  5. TM assignment is accessible through a visible UI action
+  6. Grid cells default to neutral grey, yellow only on explicit user action
 **Plans:** TBD
 
 ### Phase 95: Navigation & Merge Redesign
@@ -217,7 +210,11 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 89. Code Cleanup | 1/1 | Complete    | 2026-03-26 |
-| 90. Branch+Drive Configuration | 1/1 | Complete    | 2026-03-26 |
-| 91. Media Path Resolution + E2E Testing | 2/2 | Complete    | 2026-03-26 |
-| 92. MegaIndex Decomposition | 1/1 | Complete    | 2026-03-26 |
+| 93. Critical Debug Fixes | 1/2 | ◆ Plan 01 done, Plan 02 E2E pending | — |
+| 94. Grid & TM UX Fixes + Demo Blockers | 0/? | Pending (TM-04, AUDIO-01 added) | — |
+| 95. Navigation & Merge Redesign | 0/? | Pending | — |
+| 96. GameData Category Tabs | 0/? | Pending | — |
+| 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
+| 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
+| 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
+| 92. MegaIndex Decomposition | 1/1 | Complete | 2026-03-26 |

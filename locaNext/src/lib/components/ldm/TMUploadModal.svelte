@@ -262,6 +262,7 @@
           labelTitle="Select TM file"
           labelDescription="Supported: TXT (col 5→6), XML (StrOrigin→Str), XLSX (A→B)"
           buttonLabel="Add file"
+          status="complete"
           accept={[".txt", ".tsv", ".xml", ".xlsx", ".xls"]}
           bind:files={uploadFiles}
         />

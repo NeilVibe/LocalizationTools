@@ -8,21 +8,37 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current Milestone: v13.0 Production Path Resolution
+## Current Milestone: v14.0 Debug & UX Overhaul
 
-**Goal:** Wire real Perforce path resolution for image/audio in LanguageData grid, with Branch+Drive selection, path validation, mock testing, and fix deferred code issues.
+**Goal:** Fix all debug issues (infinite loops, logger cascade), repair TM workflow, redesign navigation, add GameData category tabs. Debug-first approach.
 
 **Target features:**
-- [ ] FIX-01: Fix 4 v11.0 code review issues (onScrollToRow race, visibleColumns dead code, onSaveComplete, tmSuggestions)
-- [ ] PATH-01: Branch + Drive selector UI (like QACompiler/MapDataGenerator)
-- [ ] PATH-02: Path validation — verify data availability (OK/NOT OK with details)
-- [ ] PATH-03: Wire LanguageData StringID → GameData entity → DDS image path resolution
-- [ ] PATH-04: Wire LanguageData StringID → GameData entity → WEM audio path resolution
-- [ ] MOCK-01: Mock Perforce paths on local machine (relative, drive-agnostic)
-- [ ] MOCK-02: E2E tests with mocked Perforce structure
-- [ ] ARCH-02: Split mega_index.py (1310 lines) into domain services
+- [ ] DBG-01: Fix Codex list infinite loop (822 API calls, $effect→$state)
+- [ ] DBG-02: Fix remote logger feedback loop (825x cascade on 404)
+- [ ] DBG-03: Verify v13.0 E2E (grid, Branch+Drive, Image/Audio, TM context)
+- [ ] TMUX-01: Fix TM upload (infinite loading spinner)
+- [ ] TMUX-02: Add TM assignment UI (how to assign TM to file)
+- [ ] TMUX-03: Fix yellow cell default → neutral grey
+- [ ] NAV-01: Relocate Merge button from top-level nav
+- [ ] GD-01: GameData categories → auto-parsed TABS
+- [ ] GD-02: CrimsonDesert.gg visual reference style
+**Research needed:** QACompiler generator tab logic (cluster/mega-root-parent), CrimsonDesert.gg data presentation patterns, TM assignment UX patterns.
 
-**Research needed:** MapDataGenerator path patterns, QACompiler branch/drive selection, LanguageDataExporter path conventions, path validation logic.
+**Protocols (apply immediately):**
+- PROTO-01: Debug protocol upgrades — sequential thinking, Viking+Ruflo wiring
+- PROTO-02: Playwright → Qwen+CDP for vision reviews
+
+## Shipped: v13.0 Production Path Resolution (2026-03-26)
+
+<details>
+<summary>v13.0 details (click to expand)</summary>
+
+- 4 phases, 5 plans
+- Branch+Drive selector, media fallback reasons, MegaIndex split, code cleanup
+- Build fixes: $derived export, test 503/404, infinite loop ($derived.by fix)
+- Gitea Run 561 SUCCESS, Playground v26.326.1907
+
+</details>
 
 ## Shipped: v12.0 TM Intelligence (2026-03-26)
 
@@ -257,4 +273,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after v13.0 milestone initialization*
+*Last updated: 2026-03-27 — v14.0 Debug & UX Overhaul milestone created*

@@ -1,5 +1,21 @@
 # Milestones
 
+## v14.0 Debug & UX Overhaul (Active: 2026-03-27)
+
+**Phases planned:** 4 phases (93-96), 0 plans yet
+**Source:** project_pending_fixes_v2.md (11 items) + STATE.md pending E2E (4 items)
+
+**Key items:**
+
+- Phase 93: Codex infinite loop (822 calls), remote logger cascade (825x), v13.0 E2E verification
+- Phase 94: TM upload broken, TM assignment UI missing, yellow cell default → grey
+- Phase 95: Merge button relocation from top-level nav
+- Phase 96: GameData categories → tabs (QACompiler pattern), CrimsonDesert.gg visual reference
+
+**Protocols (immediate):** Debug protocol upgrades, Playwright → Qwen+CDP
+
+---
+
 ## v13.0 Production Path Resolution (Shipped: 2026-03-26)
 
 **Phases completed:** 4 phases, 5 plans, 11 tasks

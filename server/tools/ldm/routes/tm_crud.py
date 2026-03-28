@@ -41,6 +41,44 @@ from server.tools.ldm.indexing.inline_updater import get_inline_updater
 router = APIRouter(tags=["LDM"])
 
 
+def _background_index_tm(tm_id: int, entry_count: int, user_id: int, username: str):
+    """Background task: build FAISS index for uploaded TM entries."""
+    try:
+        from server.database.models import LDMTMEntry
+
+        sync_db = next(get_db())
+        try:
+            entries = sync_db.query(LDMTMEntry).filter(
+                LDMTMEntry.tm_id == tm_id
+            ).all()
+            entries_for_indexing = [
+                {
+                    "id": e.id,
+                    "source_text": e.source_text,
+                    "target_text": e.target_text,
+                    "string_id": getattr(e, "string_id", None),
+                }
+                for e in entries
+                if e.source_text
+            ]
+        finally:
+            sync_db.close()
+
+        if entries_for_indexing:
+            updater = get_inline_updater(tm_id)
+            updater.add_entries_batch(entries_for_indexing)
+            logger.info(f"[TMAU-04] Background indexed {len(entries_for_indexing)} entries for TM {tm_id}")
+        else:
+            logger.warning(f"[TMAU-04] No entries to index for TM {tm_id}")
+    except Exception as e:
+        logger.warning(f"[TMAU-04] Background index failed for TM {tm_id}: {e}")
+        # Fallback to full sync
+        try:
+            trigger_auto_indexing(tm_id=tm_id, user_id=user_id, username=username, silent=True)
+        except Exception:
+            pass
+
+
 @router.post("/tm/upload", response_model=TMUploadResponse)
 async def upload_tm(
     request: Request,
@@ -151,56 +189,33 @@ async def upload_tm(
         with PerfTimer("tm_upload", file_size_bytes=file_size_bytes, filename=filename):
             result = await asyncio.to_thread(_upload_tm)
 
-        # TMAU-04: Batch inline index update (replaces full background rebuild)
+        # Return result immediately — indexing runs in background
+        upload_response = {
+            "tm_id": result.get("tm_id"),
+            "name": result.get("name", name),
+            "entry_count": result.get("entry_count", 0),
+            "status": "ready",
+            "time_seconds": result.get("time_seconds", 0),
+            "rate_per_second": result.get("rate_per_second", 0),
+            "indexing_status": "pending" if auto_index else "skipped"
+        }
+
+        # TMAU-04: Batch inline index update — run in background task
         if auto_index and result.get("tm_id"):
             tm_id = result["tm_id"]
             entry_count = result.get("entry_count", 0)
-            logger.info(f"[TMAU-04] Starting batch inline indexing for TM {tm_id} ({entry_count} entries)")
+            logger.info(f"[TMAU-04] Starting background indexing for TM {tm_id} ({entry_count} entries)")
 
-            try:
-                # Query all entries for this TM from DB for batch indexing
-                def _fetch_entries_for_indexing():
-                    sync_db = next(get_db())
-                    try:
-                        from server.database.models import LDMTMEntry
-                        entries = sync_db.query(LDMTMEntry).filter(
-                            LDMTMEntry.tm_id == tm_id
-                        ).all()
-                        return [
-                            {
-                                "id": e.id,
-                                "source_text": e.source_text,
-                                "target_text": e.target_text,
-                                "string_id": getattr(e, "string_id", None),
-                            }
-                            for e in entries
-                            if e.source_text  # Skip entries with no source
-                        ]
-                    finally:
-                        sync_db.close()
+            # Run indexing as background task — don't block the response
+            background_tasks.add_task(
+                _background_index_tm,
+                tm_id=tm_id,
+                entry_count=entry_count,
+                user_id=user_id,
+                username=username,
+            )
 
-                entries_for_indexing = await asyncio.to_thread(_fetch_entries_for_indexing)
-
-                if entries_for_indexing:
-                    updater = get_inline_updater(tm_id)
-                    # Run batch encode + FAISS add in thread to avoid blocking event loop
-                    await asyncio.to_thread(updater.add_entries_batch, entries_for_indexing)
-                    logger.info(f"[TMAU-04] Batch indexed {len(entries_for_indexing)} entries for TM {tm_id}")
-
-                result["indexing_status"] = "completed"
-            except Exception as e:
-                logger.warning(f"[TMAU-04] Batch index failed, falling back to full sync: {e}")
-                # Fallback to existing trigger_auto_indexing
-                background_tasks.add_task(
-                    trigger_auto_indexing,
-                    tm_id=tm_id,
-                    user_id=user_id,
-                    username=username,
-                    silent=True
-                )
-                result["indexing_status"] = "scheduled"
-
-        return result
+        return upload_response
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="Invalid TM data provided")

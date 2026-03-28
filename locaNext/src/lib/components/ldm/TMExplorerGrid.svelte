@@ -193,18 +193,7 @@
       // Home level: Show Unassigned section + all platforms
       const items = [];
 
-      // Unassigned section (if has TMs)
-      if (treeData.unassigned?.length > 0) {
-        items.push({
-          type: 'unassigned',
-          id: 'unassigned',
-          name: 'Unassigned',
-          tm_count: treeData.unassigned.length,
-          icon: 'archive'
-        });
-      }
-
-      // Platforms
+      // Platforms (no Unassigned section — TMs belong to folders only)
       for (const platform of treeData.platforms || []) {
         // Count TMs in platform (including in projects)
         let tmCount = platform.tms?.length || 0;
@@ -417,8 +406,11 @@
         const newBreadcrumb = [
           { type: 'home', id: null, name: 'Home' },
           { type: 'platform', id: parentInfo.platform.id, name: parentInfo.platform.name },
-          { type: 'project', id: parentInfo.project.id, name: parentInfo.project.name }
         ];
+        // P9: Skip "Offline Storage" project in breadcrumb (platform already shows it)
+        if (parentInfo.platform.name !== 'Offline Storage' || parentInfo.project.name !== 'Offline Storage') {
+          newBreadcrumb.push({ type: 'project', id: parentInfo.project.id, name: parentInfo.project.name });
+        }
 
         // Add parent folders if folder is nested
         if (parentInfo.type === 'folder') {
@@ -1055,6 +1047,12 @@
   });
 
   // Expose reload for parent components
+  export function getCurrentScope() {
+    const last = breadcrumb[breadcrumb.length - 1];
+    if (last.type === 'home') return null;
+    return { type: last.type, id: last.id, name: last.name };
+  }
+
   export function reload() {
     return loadTree();
   }
@@ -1113,7 +1111,7 @@
       headline="No items here"
       description="Right-click to create a new TM or upload"
       ctaLabel="Upload TM"
-      onaction={() => { if (onUploadTM) onUploadTM(); }}
+      onaction={() => { if (onUploadTM) onUploadTM(getCurrentScope()); }}
     />
   {:else}
     <!-- Header row -->
