@@ -1528,12 +1528,11 @@ async def _upload_to_local_storage(
         source_lang = get_source_language()
         file_metadata = get_file_metadata()
     elif ext == 'xml':
-        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language, get_file_metadata
+        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language
         file_content = await file.read()
-        rows_data = parse_xml_file(file_content, filename)
+        rows_data, file_metadata = parse_xml_file(file_content, filename)
         file_format = get_file_format()
         source_lang = get_source_language()
-        file_metadata = get_file_metadata()
     elif ext in ('xlsx', 'xls'):
         from server.tools.ldm.file_handlers.excel_handler import parse_excel_file, get_file_format, get_source_language, get_file_metadata
         file_content = await file.read()
@@ -1584,6 +1583,7 @@ async def _upload_to_local_storage(
             file_format=file_format,
             source_language=source_lang,
             target_language=None,
+            extra_data=file_metadata,  # Store file metadata (encoding, root_element, file_type, etc.)
             folder_id=folder_id  # P9-FIX: Place in specified folder
         )
         file_id = result["id"]
