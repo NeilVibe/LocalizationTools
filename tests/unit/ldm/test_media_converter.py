@@ -103,6 +103,18 @@ class TestDdsConversion:
 class TestWemConversion:
     """Tests for WEM-to-WAV conversion."""
 
+    def test_riff_wem_bypasses_vgmstream(self, tmp_path):
+        """WEM files with RIFF header (actually WAV) are copied directly without vgmstream."""
+        from server.tools.ldm.services.media_converter import MediaConverter
+        converter = MediaConverter(wav_cache_dir=tmp_path)
+
+        # WEM_FIXTURE is a WAV disguised as .wem — should be detected and copied
+        result = converter.convert_wem_to_wav(WEM_FIXTURE)
+
+        assert result is not None
+        assert isinstance(result, Path)
+        assert result.exists()
+
     def test_successful_conversion_returns_path(self, tmp_path):
         from server.tools.ldm.services.media_converter import MediaConverter
         converter = MediaConverter(wav_cache_dir=tmp_path)
@@ -126,10 +138,14 @@ class TestWemConversion:
         from server.tools.ldm.services.media_converter import MediaConverter
         converter = MediaConverter(wav_cache_dir=tmp_path)
 
+        # Use a non-RIFF WEM file (actual Wwise format) to test vgmstream failure path
+        fake_wem = tmp_path / "fake.wem"
+        fake_wem.write_bytes(b"BKHD" + b"\x00" * 40)  # Wwise header, not RIFF
+
         with patch.object(converter, "_find_vgmstream", return_value=Path("/usr/bin/vgmstream-cli")):
             with patch("server.tools.ldm.services.media_converter.subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=1, stderr="error decoding")
-                result = converter.convert_wem_to_wav(WEM_FIXTURE)
+                result = converter.convert_wem_to_wav(fake_wem)
 
         assert result is None
 
@@ -184,8 +200,12 @@ class TestGracefulFallback:
         from server.tools.ldm.services.media_converter import MediaConverter
         converter = MediaConverter(wav_cache_dir=tmp_path)
 
+        # Use a non-RIFF WEM file to test vgmstream-missing path
+        fake_wem = tmp_path / "fake.wem"
+        fake_wem.write_bytes(b"BKHD" + b"\x00" * 40)  # Wwise header, not RIFF
+
         with patch("server.tools.ldm.services.media_converter.shutil.which", return_value=None):
-            result = converter.convert_wem_to_wav(WEM_FIXTURE)
+            result = converter.convert_wem_to_wav(fake_wem)
 
         assert result is None
 
