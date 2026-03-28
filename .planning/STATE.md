@@ -8,7 +8,7 @@ progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
