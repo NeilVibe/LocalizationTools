@@ -2939,8 +2939,13 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
     width = 72
     is_strorigin = match_mode.startswith("strorigin_only")
     is_strorigin_descorigin = match_mode.startswith("strorigin_descorigin")
+    is_strorigin_filename = match_mode.startswith("strorigin_filename")
+    # True for ANY text-based mode (hides StringID-specific stats in report)
+    is_text_based = is_strorigin or is_strorigin_descorigin or is_strorigin_filename
     if is_strorigin_descorigin:
         not_found_label = "(StrOrigin + DescOrigin combo not found)"
+    elif is_strorigin_filename:
+        not_found_label = "(StrOrigin + FileName not found in target)"
     elif is_strorigin:
         not_found_label = "(StrOrigin text not found in target)"
     else:
@@ -2974,11 +2979,11 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append(V + f"   Already Correct:  {total_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if total_not_found > 0 or total_strorigin_mismatch > 0:
             lines.append(V + f"   Not Found:        {total_not_found:,}  {not_found_label}".ljust(width - 2) + V)
-        if total_strorigin_mismatch > 0 and not is_strorigin:
+        if total_strorigin_mismatch > 0 and not is_text_based:
             lines.append(V + f"   Origin Mismatch:  {total_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if total_skipped_translated > 0:
             lines.append(V + f"   Skipped:          {total_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
-        if results.get('total_skipped_empty_strorigin', 0) > 0 and not is_strorigin:
+        if results.get('total_skipped_empty_strorigin', 0) > 0 and not is_text_based:
             lines.append(V + f"   Empty StrOrigin:  {results['total_skipped_empty_strorigin']:,}  (StringID exists, StrOrigin empty in target)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
             skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
@@ -3015,7 +3020,7 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
                     parts.append(f"{f_skipped} skipped")
                 if f_not_found > 0:
                     parts.append(f"{f_not_found} not found")
-                if f_strorigin_mismatch > 0 and not is_strorigin:
+                if f_strorigin_mismatch > 0 and not is_text_based:
                     parts.append(f"{f_strorigin_mismatch} origin mismatch")
                 detail = " | ".join(parts)
                 lines.append(V + f"   {lang}: {detail}".ljust(width - 2) + V)
@@ -3038,7 +3043,7 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append(V + f"   Already Correct:  {s_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if s_not_found > 0 or s_strorigin_mismatch > 0:
             lines.append(V + f"   Not Found:        {s_not_found:,}  {not_found_label}".ljust(width - 2) + V)
-        if s_strorigin_mismatch > 0 and not is_strorigin:
+        if s_strorigin_mismatch > 0 and not is_text_based:
             lines.append(V + f"   Origin Mismatch:  {s_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if results.get('skipped_non_script', 0) > 0:
             lines.append(V + f"   Skipped:          {results.get('skipped_non_script', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
