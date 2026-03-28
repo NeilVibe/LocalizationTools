@@ -159,19 +159,10 @@ class APIClient {
     console.log('[Auth] Starting offline mode');
 
     try {
-      // First try to get an auto_token from health endpoint (if server is reachable)
-      try {
-        const health = await this.getHealth();
-        if (health.auto_token) {
-          this.setToken(health.auto_token);
-        } else {
-          // Generate a local-only token
-          this.setToken('OFFLINE_MODE_' + Date.now());
-        }
-      } catch {
-        // Server not reachable - generate local token
-        this.setToken('OFFLINE_MODE_' + Date.now());
-      }
+      // Always use OFFLINE_MODE_ prefix so backend routes to SQLite offline repos.
+      // Without this prefix, factory.py routes to PostgreSQL which doesn't have
+      // local files (negative IDs) → delete/edit/search all fail silently.
+      this.setToken('OFFLINE_MODE_' + Date.now());
 
       // Set user info for offline mode (regular user, not admin)
       user.set({
