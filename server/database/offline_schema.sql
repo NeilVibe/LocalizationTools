@@ -155,6 +155,38 @@ CREATE INDEX IF NOT EXISTS idx_offline_rows_file_rownum ON offline_rows(file_id,
 CREATE INDEX IF NOT EXISTS idx_offline_rows_file_source ON offline_rows(file_id, source);        -- Search on source column
 CREATE INDEX IF NOT EXISTS idx_offline_rows_file_target ON offline_rows(file_id, target);        -- Search on target column
 
+-- =============================================================================
+-- FTS5 Full-Text Search Index (instant search instead of LIKE scan)
+-- content= external content table: FTS5 reads from offline_rows, no data duplication
+-- =============================================================================
+
+CREATE VIRTUAL TABLE IF NOT EXISTS offline_rows_fts USING fts5(
+    string_id,
+    source,
+    target,
+    content='offline_rows',
+    content_rowid='id',
+    tokenize='unicode61 remove_diacritics 2'
+);
+
+-- Triggers to keep FTS5 index in sync with offline_rows
+CREATE TRIGGER IF NOT EXISTS offline_rows_fts_insert AFTER INSERT ON offline_rows BEGIN
+    INSERT INTO offline_rows_fts(rowid, string_id, source, target)
+    VALUES (new.id, new.string_id, new.source, new.target);
+END;
+
+CREATE TRIGGER IF NOT EXISTS offline_rows_fts_update AFTER UPDATE ON offline_rows BEGIN
+    INSERT INTO offline_rows_fts(offline_rows_fts, rowid, string_id, source, target)
+    VALUES ('delete', old.id, old.string_id, old.source, old.target);
+    INSERT INTO offline_rows_fts(rowid, string_id, source, target)
+    VALUES (new.id, new.string_id, new.source, new.target);
+END;
+
+CREATE TRIGGER IF NOT EXISTS offline_rows_fts_delete AFTER DELETE ON offline_rows BEGIN
+    INSERT INTO offline_rows_fts(offline_rows_fts, rowid, string_id, source, target)
+    VALUES ('delete', old.id, old.string_id, old.source, old.target);
+END;
+
 -- -----------------------------------------------------------------------------
 -- Translation Memories (mirrors ldm_translation_memories)
 -- SYNC-008: TM offline sync support

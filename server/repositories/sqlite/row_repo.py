@@ -26,6 +26,23 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
 
     def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
         super().__init__(schema_mode)
+        self._fts_available: Optional[bool] = None  # cached check
+
+    def _has_fts(self) -> bool:
+        """Check if FTS5 virtual table exists (cached)."""
+        if self._fts_available is not None:
+            return self._fts_available
+        try:
+            import sqlite3
+            fts_table = "offline_rows_fts" if self.schema_mode == SchemaMode.OFFLINE else "ldm_rows_fts"
+            conn = sqlite3.connect(self.db.db_path)
+            cursor = conn.execute(f"SELECT 1 FROM {fts_table} LIMIT 0")
+            cursor.close()
+            conn.close()
+            self._fts_available = True
+        except Exception:
+            self._fts_available = False
+        return self._fts_available
 
     def _normalize_row(self, row: Optional[Dict]) -> Optional[Dict[str, Any]]:
         """Normalize row dict to match PostgreSQL format."""
@@ -370,7 +387,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 elif filter_type == "qa_flagged":
                     base_query += " AND qa_flag_count > 0"
 
-            # Apply search - SQLite LIKE for now (no pg_trgm)
+            # Apply search — FTS5 for "contain" mode (instant), LIKE fallback for exact/not_contain
             if search:
                 fields = [f.strip() for f in search_fields.split(",")]
                 valid_fields = {"string_id", "source", "target"}
@@ -378,22 +395,35 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 if not fields:
                     fields = ["source", "target"]
 
-                search_conditions = []
-                for field in fields:
-                    if search_mode == "exact":
-                        search_conditions.append(f"LOWER({field}) = LOWER(?)")
-                        params.append(search)
-                    elif search_mode == "not_contain":
-                        search_conditions.append(f"LOWER({field}) NOT LIKE LOWER(?)")
-                        params.append(f"%{search}%")
-                    else:  # contain (default)
-                        search_conditions.append(f"LOWER({field}) LIKE LOWER(?)")
-                        params.append(f"%{search}%")
-
-                if search_mode == "not_contain":
-                    base_query += f" AND ({' AND '.join(search_conditions)})"
+                if search_mode == "contain" and self._has_fts():
+                    # FTS5 inverted index search — O(1) lookup instead of O(n) scan
+                    fts_table = "offline_rows_fts" if self.schema_mode == SchemaMode.OFFLINE else "ldm_rows_fts"
+                    # Build FTS5 MATCH query: search across selected fields
+                    fts_field_queries = []
+                    for field in fields:
+                        # FTS5 column filter syntax: {column_name} : term
+                        fts_field_queries.append(f"{field} : {search}")
+                    fts_match = " OR ".join(fts_field_queries)
+                    base_query += f" AND id IN (SELECT rowid FROM {fts_table} WHERE {fts_table} MATCH ?)"
+                    params.append(fts_match)
                 else:
-                    base_query += f" AND ({' OR '.join(search_conditions)})"
+                    # Fallback to LIKE for exact/not_contain modes or when FTS unavailable
+                    search_conditions = []
+                    for field in fields:
+                        if search_mode == "exact":
+                            search_conditions.append(f"LOWER({field}) = LOWER(?)")
+                            params.append(search)
+                        elif search_mode == "not_contain":
+                            search_conditions.append(f"LOWER({field}) NOT LIKE LOWER(?)")
+                            params.append(f"%{search}%")
+                        else:  # contain without FTS
+                            search_conditions.append(f"LOWER({field}) LIKE LOWER(?)")
+                            params.append(f"%{search}%")
+
+                    if search_mode == "not_contain":
+                        base_query += f" AND ({' AND '.join(search_conditions)})"
+                    else:
+                        base_query += f" AND ({' OR '.join(search_conditions)})"
 
             # Get total count
             count_cursor = await conn.execute(f"SELECT COUNT(*) as cnt {base_query}", params)
