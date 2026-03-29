@@ -155,12 +155,18 @@
     semanticSearchTime = 0;
   }
 
-  /** Handle filter change */
-  function handleFilterChange(event) {
-    grid.activeFilter = event.detail.selectedId;
-    onSearchComplete?.();
-    logger.userAction("Filter changed", { filter: grid.activeFilter });
-  }
+  // Track previous filter to detect real changes (not init)
+  let previousFilter = grid.activeFilter;
+
+  // Reactive filter change detection (replaces on:select handler)
+  $effect(() => {
+    const currentFilter = grid.activeFilter;
+    if (currentFilter !== previousFilter) {
+      previousFilter = currentFilter;
+      onSearchComplete?.();
+      logger.userAction("Filter changed", { filter: currentFilter });
+    }
+  });
 
   /** Handle category filter change */
   function handleCategoryFilterChange(categories) {
@@ -296,9 +302,8 @@
   <div class="filter-wrapper">
     <Dropdown
       size="sm"
-      selectedId={grid.activeFilter}
+      bind:selectedId={grid.activeFilter}
       items={filterOptions}
-      on:select={handleFilterChange}
       titleText=""
       hideLabel
     />
