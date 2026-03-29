@@ -25,6 +25,7 @@
   import { Merge, DocumentAdd, CheckmarkFilled, WarningAltFilled } from "carbon-icons-svelte";
   import { getApiBase, getAuthHeaders } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
+  import AppModal from '../common/AppModal.svelte';
 
   let {
     open = $bindable(false),

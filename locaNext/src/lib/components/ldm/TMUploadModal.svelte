@@ -16,6 +16,7 @@
   } from "carbon-icons-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import AppModal from '../common/AppModal.svelte';
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();

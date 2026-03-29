@@ -34,6 +34,7 @@
   import { formatDateShort } from "$lib/utils/formatters.js";
   import TMUploadModal from "./TMUploadModal.svelte";
   import TMViewer from "./TMViewer.svelte";
+  import AppModal from '../common/AppModal.svelte';
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();

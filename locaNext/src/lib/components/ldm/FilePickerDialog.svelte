@@ -15,6 +15,7 @@
   import { Folder, Document, ChevronRight } from "carbon-icons-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import AppModal from '../common/AppModal.svelte';
 
   const API_BASE = getApiBase();
 

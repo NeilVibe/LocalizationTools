@@ -3,7 +3,7 @@
     Button,
     TextInput,
     TextArea,
-    Modal,
+    // Modal removed — using AppModal wrapper for Svelte 5 compatibility
     Select,
     SelectItem,
     Slider,
@@ -17,6 +17,7 @@
     Toggle
   } from "carbon-components-svelte";
   import { Upload, Search, FolderOpen, TrashCan, Translate } from "carbon-icons-svelte";
+  import AppModal from '../common/AppModal.svelte';
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { telemetry } from "$lib/utils/telemetry.js";
@@ -705,14 +706,14 @@
   {/if}
 
   <!-- Create Dictionary Modal -->
-  <Modal
+  <AppModal
     bind:open={showCreateDictionaryModal}
     modalHeading="Create KR Similar Dictionary"
     primaryButtonText="Create"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isCreatingDictionary || createFiles.length === 0}
-    on:click:button--secondary={() => showCreateDictionaryModal = false}
-    on:click:button--primary={createDictionary}
+    onsecondary={() => showCreateDictionaryModal = false}
+    onprimary={createDictionary}
   >
     <p class="modal-description">Upload language data files to create a new embeddings dictionary.</p>
 
@@ -750,17 +751,17 @@
     {#if isCreatingDictionary}
       <InlineLoading description="Creating dictionary..." />
     {/if}
-  </Modal>
+  </AppModal>
 
   <!-- Load Dictionary Modal -->
-  <Modal
+  <AppModal
     bind:open={showLoadDictionaryModal}
     modalHeading="Load Dictionary"
     primaryButtonText="Load"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isLoadingDictionary}
-    on:click:button--secondary={() => showLoadDictionaryModal = false}
-    on:click:button--primary={loadDictionary}
+    onsecondary={() => showLoadDictionaryModal = false}
+    onprimary={loadDictionary}
   >
     <p class="modal-description">Select a dictionary type to load into memory.</p>
 
@@ -784,17 +785,17 @@
     {#if isLoadingDictionary}
       <InlineLoading description="Loading dictionary..." />
     {/if}
-  </Modal>
+  </AppModal>
 
   <!-- Extract Similar Modal -->
-  <Modal
+  <AppModal
     bind:open={showExtractSimilarModal}
     modalHeading="Extract Similar Strings"
     primaryButtonText="Extract"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isExtracting || extractFile.length === 0}
-    on:click:button--secondary={() => showExtractSimilarModal = false}
-    on:click:button--primary={extractSimilar}
+    onsecondary={() => showExtractSimilarModal = false}
+    onprimary={extractSimilar}
   >
     <p class="modal-description">Find groups of similar strings in a file for consistency checking.</p>
 
@@ -833,17 +834,17 @@
     {#if isExtracting}
       <InlineLoading description="Starting extraction..." />
     {/if}
-  </Modal>
+  </AppModal>
 
   <!-- Auto-Translate Modal -->
-  <Modal
+  <AppModal
     bind:open={showAutoTranslateModal}
     modalHeading="Auto-Translate"
     primaryButtonText="Translate"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isTranslating || translateFile.length === 0}
-    on:click:button--secondary={() => showAutoTranslateModal = false}
-    on:click:button--primary={autoTranslate}
+    onsecondary={() => showAutoTranslateModal = false}
+    onprimary={autoTranslate}
   >
     <p class="modal-description">Auto-translate a file using semantic similarity matching from the loaded dictionary.</p>
 
@@ -869,7 +870,7 @@
     {#if isTranslating}
       <InlineLoading description="Starting translation..." />
     {/if}
-  </Modal>
+  </AppModal>
 </div>
 
 <style>

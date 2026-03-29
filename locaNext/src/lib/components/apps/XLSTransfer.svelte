@@ -2,7 +2,7 @@
   import {
     Button,
     TextInput,
-    Modal,
+    // Modal removed — using AppModal wrapper for Svelte 5 compatibility
     Checkbox,
     Select,
     SelectItem,
@@ -12,6 +12,7 @@
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { api } from "$lib/api/client.js";
+  import AppModal from '../common/AppModal.svelte';
   import { serverUrl } from "$lib/stores/app.js";
 
   // API base URL from store (never hardcode!)
@@ -1633,13 +1634,13 @@
   </div>
 
   <!-- Upload Settings Modal -->
-  <Modal
+  <AppModal
     bind:open={showUploadSettings}
     modalHeading="Upload Settings"
     primaryButtonText="OK"
     secondaryButtonText="Cancel"
-    on:click:button--secondary={closeUploadSettings}
-    on:click:button--primary={executeUploadSettings}
+    onsecondary={closeUploadSettings}
+    onprimary={executeUploadSettings}
     size="lg"
   >
     <div class="upload-settings">
@@ -1673,7 +1674,7 @@
         </div>
       {/each}
     </div>
-  </Modal>
+  </AppModal>
 
   <!-- Status Notifications -->
   {#if isProcessing}
