@@ -111,26 +111,37 @@ const getAppPaths = () => {
     // 1. User-placed: <appRoot>/Model2Vec/ (like QuickTranslate — drop next to exe)
     // 2. Bundled: <resources>/models/Model2Vec/ (QA Full builds)
     // 3. Legacy: <appRoot>/models/Model2Vec/ (Build Light fallback)
-    const userModel2VecExists = fs.existsSync(path.join(appRoot, 'Model2Vec', 'config.json'));
+    const userPath = path.join(appRoot, 'Model2Vec', 'config.json');
     const bundledModelsPath = path.join(resourcesPath, 'models');
     const downloadedModelsPath = path.join(appRoot, 'models');
+    const bundledPath = path.join(bundledModelsPath, 'Model2Vec', 'config.json');
+    const legacyPath = path.join(downloadedModelsPath, 'Model2Vec', 'config.json');
     const hasBundledQwen = fs.existsSync(path.join(bundledModelsPath, 'qwen-embedding', 'config.json'));
-    const hasBundledModel2Vec = fs.existsSync(path.join(bundledModelsPath, 'Model2Vec', 'config.json'));
-    const hasLegacyModel2Vec = fs.existsSync(path.join(downloadedModelsPath, 'Model2Vec', 'config.json'));
+
+    // Log all checked paths for debugging
+    logger.info('[Model2Vec] Detection paths:', {
+      appRoot,
+      userPath,
+      userExists: fs.existsSync(userPath),
+      bundledPath,
+      bundledExists: fs.existsSync(bundledPath),
+      legacyPath,
+      legacyExists: fs.existsSync(legacyPath),
+    });
 
     let modelsPath;
-    if (userModel2VecExists) {
-      modelsPath = appRoot;  // Model2Vec next to exe (QuickTranslate pattern)
-      console.log('[Models] Found Model2Vec at app root (user-placed)');
-    } else if (hasBundledQwen || hasBundledModel2Vec) {
-      modelsPath = bundledModelsPath;  // Bundled in resources/models
-      console.log('[Models] Found bundled models in resources/models');
-    } else if (hasLegacyModel2Vec) {
-      modelsPath = downloadedModelsPath;  // Legacy: appRoot/models
-      console.log('[Models] Found Model2Vec in models/ (legacy)');
+    if (fs.existsSync(userPath)) {
+      modelsPath = appRoot;
+      logger.info('[Model2Vec] FOUND at app root (user-placed)', { modelsPath });
+    } else if (hasBundledQwen || fs.existsSync(bundledPath)) {
+      modelsPath = bundledModelsPath;
+      logger.info('[Model2Vec] FOUND bundled in resources/models', { modelsPath });
+    } else if (fs.existsSync(legacyPath)) {
+      modelsPath = downloadedModelsPath;
+      logger.info('[Model2Vec] FOUND in models/ (legacy)', { modelsPath });
     } else {
-      modelsPath = appRoot;  // Default: expect user to place Model2Vec here
-      console.log('[Models] No Model2Vec found. Place Model2Vec/ folder next to LocaNext.exe');
+      modelsPath = appRoot;
+      logger.warning('[Model2Vec] NOT FOUND. Place Model2Vec/ folder next to LocaNext.exe', { expectedPath: path.join(appRoot, 'Model2Vec') });
     }
 
     return {

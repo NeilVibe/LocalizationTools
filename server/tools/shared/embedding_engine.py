@@ -148,11 +148,15 @@ class Model2VecEngine(EmbeddingEngine):
         """
         # Priority 1: Env var from main.js (production Electron app)
         env_path = os.environ.get("LOCANEXT_MODELS_PATH")
+        logger.info(f"[Model2Vec] LOCANEXT_MODELS_PATH={env_path}")
         if env_path:
             p = Path(env_path) / "Model2Vec"
+            logger.info(f"[Model2Vec] Checking env var path: {p} (is_dir={p.is_dir()}, config={p / 'config.json'})")
             if p.is_dir() and (p / "config.json").exists():
-                logger.info(f"[Model2Vec] Found via LOCANEXT_MODELS_PATH: {p}")
+                logger.info(f"[Model2Vec] FOUND via LOCANEXT_MODELS_PATH: {p}")
                 return p
+            else:
+                logger.warning(f"[Model2Vec] Env var path exists but no Model2Vec: {p}")
 
         # Priority 2: Next to exe or project root (DEV mode / standalone)
         current = Path(__file__).resolve().parent
