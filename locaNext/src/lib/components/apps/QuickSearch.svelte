@@ -3,7 +3,7 @@
     Button,
     TextInput,
     TextArea,
-    Modal,
+    // Modal removed — using AppModal wrapper for Svelte 5 compatibility
     Select,
     SelectItem,
     RadioButtonGroup,
@@ -28,6 +28,7 @@
     ProgressBar
   } from "carbon-components-svelte";
   import { Upload, Search, FolderOpen, View, ViewOff, DocumentExport, CheckmarkOutline, WarningAlt, CharacterPatterns, StringInteger } from "carbon-icons-svelte";
+  import AppModal from '../common/AppModal.svelte';
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
@@ -1518,14 +1519,14 @@
   </Tabs>
 
   <!-- Create Dictionary Modal -->
-  <Modal
+  <AppModal
     bind:open={showCreateDictionaryModal}
     modalHeading="Create Dictionary"
     primaryButtonText="Create"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isCreatingDictionary || createFiles.length === 0}
-    on:click:button--secondary={() => { showCreateDictionaryModal = false; sourceMode = 'files'; createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
-    on:click:button--primary={createDictionary}
+    onsecondary={() => { showCreateDictionaryModal = false; sourceMode = 'files'; createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
+    onprimary={createDictionary}
   >
     <p class="modal-description">Upload XML, TXT, or TSV files to create a new dictionary.</p>
 
@@ -1576,17 +1577,17 @@
     {#if isCreatingDictionary}
       <InlineLoading description="Creating dictionary..." />
     {/if}
-  </Modal>
+  </AppModal>
 
   <!-- Load Dictionary Modal -->
-  <Modal
+  <AppModal
     bind:open={showLoadDictionaryModal}
     modalHeading="Load Dictionary"
     primaryButtonText="Load"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isLoadingDictionary}
-    on:click:button--secondary={() => showLoadDictionaryModal = false}
-    on:click:button--primary={loadDictionary}
+    onsecondary={() => showLoadDictionaryModal = false}
+    onprimary={loadDictionary}
   >
     <p class="modal-description">Select a game and language to load an existing dictionary.</p>
 
@@ -1627,17 +1628,17 @@
     {#if isLoadingDictionary}
       <InlineLoading description="Loading dictionary..." />
     {/if}
-  </Modal>
+  </AppModal>
 
   <!-- Set Reference Modal -->
-  <Modal
+  <AppModal
     bind:open={showSetReferenceModal}
     modalHeading="Set Reference Dictionary"
     primaryButtonText="Load"
     secondaryButtonText="Cancel"
     primaryButtonDisabled={isLoadingReference}
-    on:click:button--secondary={() => showSetReferenceModal = false}
-    on:click:button--primary={setReference}
+    onsecondary={() => showSetReferenceModal = false}
+    onprimary={setReference}
   >
     <p class="modal-description">Load a reference dictionary for comparison.</p>
 
@@ -1656,7 +1657,7 @@
     {#if isLoadingReference}
       <InlineLoading description="Loading reference..." />
     {/if}
-  </Modal>
+  </AppModal>
 </div>
 
 <style>
