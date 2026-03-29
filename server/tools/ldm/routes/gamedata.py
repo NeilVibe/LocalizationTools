@@ -187,7 +187,7 @@ async def trigger_mega_build(
     """
     try:
         mi = get_mega_index()
-        if mi.is_built:
+        if mi._built:
             return {"status": "already_built", "stats": mi.stats()}
         mi.build()
         return {"status": "success", "stats": mi.stats()}
