@@ -5,7 +5,7 @@
    * Clean, professional confirm dialog replacing ugly browser confirm().
    * Used for: Delete confirmation, destructive actions.
    */
-  import { Modal } from 'carbon-components-svelte';
+  import AppModal from './AppModal.svelte';
 
   // Props
   let {
@@ -30,19 +30,19 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading={title}
   primaryButtonText={confirmLabel}
   secondaryButtonText={cancelLabel}
   {danger}
-  on:click:button--primary={handleConfirm}
-  on:click:button--secondary={handleCancel}
+  onprimary={handleConfirm}
+  onsecondary={handleCancel}
   onclose={handleCancel}
   size="sm"
 >
   <p class="confirm-message">{message}</p>
-</Modal>
+</AppModal>
 
 <style>
   .confirm-message {

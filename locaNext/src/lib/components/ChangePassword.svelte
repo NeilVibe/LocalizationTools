@@ -1,12 +1,12 @@
 <script>
   import {
-    Modal,
     Form,
     FormGroup,
     TextInput,
     Button,
     InlineNotification
   } from "carbon-components-svelte";
+  import AppModal from './common/AppModal.svelte';
   import { api } from "$lib/api/client.js";
   import { logger } from "$lib/utils/logger.js";
 
@@ -71,13 +71,13 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Change Password"
   primaryButtonText="Change Password"
   secondaryButtonText="Cancel"
   primaryButtonDisabled={loading || success}
-  on:click:button--secondary={handleClose}
+  onsecondary={handleClose}
   onclose={handleClose}
   onsubmit={handleSubmit}
   size="sm"
@@ -139,7 +139,7 @@
       </FormGroup>
     </Form>
   {/if}
-</Modal>
+</AppModal>
 
 <style>
   :global(.bx--modal-content) {
