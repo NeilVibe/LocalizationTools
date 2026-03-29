@@ -1,11 +1,11 @@
 <script>
   import {
-    Modal,
     Button,
     ProgressBar,
     InlineNotification,
     Tag
   } from "carbon-components-svelte";
+  import AppModal from './common/AppModal.svelte';
   import { Renew, Checkmark, Close, Download, Restart, Rocket, Flash } from "carbon-icons-svelte";
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
@@ -293,15 +293,15 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Update Available"
   hasForm
   primaryButtonText={updateState === 'downloaded' ? 'Restart Now' : updateState === 'available' ? 'Download Update' : ''}
   secondaryButtonText={updateState === 'downloading' ? '' : 'Later'}
   primaryButtonDisabled={updateState === 'downloading' || updateState === 'error'}
-  on:click:button--primary={() => updateState === 'downloaded' ? handleRestartNow() : handleDownload()}
-  on:click:button--secondary={handleLater}
+  onprimary={() => updateState === 'downloaded' ? handleRestartNow() : handleDownload()}
+  onsecondary={handleLater}
   onclose={handleClose}
   preventCloseOnClickOutside={updateState === 'downloading'}
   size="sm"
@@ -425,7 +425,7 @@
       </p>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 <style>
   .update-content {

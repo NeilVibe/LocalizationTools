@@ -10,7 +10,6 @@
    * - StrOrigin + FileName (2-pass) — perfect/fuzzy, ignore spaces/punctuation
    */
   import {
-    Modal,
     Button,
     RadioButtonGroup,
     RadioButton,
@@ -25,6 +24,7 @@
   import { Merge, DocumentAdd, CheckmarkFilled, WarningAltFilled } from "carbon-icons-svelte";
   import { getApiBase, getAuthHeaders } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
+  import AppModal from '../common/AppModal.svelte';
 
   let {
     open = $bindable(false),
@@ -160,17 +160,17 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading={phase === 'done' ? 'Merge Complete' : `Merge into ${targetFile?.name || 'file'}`}
   primaryButtonText={phase === 'configure' ? 'Merge' : phase === 'done' ? 'Close' : ''}
   primaryButtonDisabled={phase === 'configure' && !sourceFile}
   secondaryButtonText={phase === 'done' ? '' : 'Cancel'}
-  on:click:button--primary={() => {
+  onprimary={() => {
     if (phase === 'configure') executeMerge();
     else if (phase === 'done') open = false;
   }}
-  on:click:button--secondary={() => open = false}
+  onsecondary={() => open = false}
   size="md"
 >
   {#if phase === 'configure'}
@@ -318,7 +318,7 @@
       {/if}
     </div>
   {/if}
-</Modal>
+</AppModal>
 
 <style>
   .merge-config { display: flex; flex-direction: column; gap: 1rem; }

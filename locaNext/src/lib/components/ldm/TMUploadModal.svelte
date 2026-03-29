@@ -1,6 +1,5 @@
 <script>
   import {
-    Modal,
     FileUploader,
     ProgressBar,
     InlineNotification,
@@ -16,6 +15,7 @@
   } from "carbon-icons-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import AppModal from '../common/AppModal.svelte';
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
@@ -196,14 +196,14 @@
   });
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading={targetScope ? `Upload TM to ${targetScope.name}` : "Upload Translation Memory"}
   primaryButtonText={uploadStatus === "uploading" ? "Uploading..." : "Upload TM"}
   primaryButtonDisabled={uploadStatus === "uploading" || uploadStatus === "success"}
   secondaryButtonText="Cancel"
-  on:click:button--primary={uploadTM}
-  on:click:button--secondary={handleClose}
+  onprimary={uploadTM}
+  onsecondary={handleClose}
   onclose={handleClose}
 >
   <div class="upload-form">
@@ -314,7 +314,7 @@
       </div>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 <style>
   .upload-form {

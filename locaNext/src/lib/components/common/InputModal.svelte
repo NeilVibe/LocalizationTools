@@ -5,7 +5,8 @@
    * Clean, professional input dialog replacing ugly browser prompt().
    * Used for: Create project, Create folder, Rename items.
    */
-  import { Modal, TextInput } from 'carbon-components-svelte';
+  import { TextInput } from 'carbon-components-svelte';
+  import AppModal from './AppModal.svelte';
 
   // Props
   let {
@@ -58,14 +59,14 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading={title}
   primaryButtonText={submitLabel}
   secondaryButtonText="Cancel"
   {danger}
-  on:click:button--primary={handleSubmit}
-  on:click:button--secondary={handleCancel}
+  onprimary={handleSubmit}
+  onsecondary={handleCancel}
   onclose={handleCancel}
   size="sm"
 >
@@ -76,4 +77,4 @@
     {placeholder}
     onkeydown={handleKeydown}
   />
-</Modal>
+</AppModal>

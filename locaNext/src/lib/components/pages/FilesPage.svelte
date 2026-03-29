@@ -13,7 +13,8 @@
    */
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
+  import { TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
+  import AppModal from '../common/AppModal.svelte';
   import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut, CloudOffline } from 'carbon-icons-svelte';
   import ExplorerGrid from '$lib/components/ldm/ExplorerGrid.svelte';
   import PretranslateModal from '$lib/components/ldm/PretranslateModal.svelte';
@@ -2796,13 +2797,13 @@
 />
 
 <!-- Assign Platform Modal -->
-<Modal
+<AppModal
   bind:open={showAssignPlatformModal}
   modalHeading="Assign to Platform"
   primaryButtonText="Assign"
   secondaryButtonText="Cancel"
-  on:click:button--primary={executeAssignPlatform}
-  on:click:button--secondary={() => { showAssignPlatformModal = false; assignPlatformTarget = null; }}
+  onprimary={executeAssignPlatform}
+  onsecondary={() => { showAssignPlatformModal = false; assignPlatformTarget = null; }}
 >
   <p style="margin-bottom: 1rem;">Assign project "{assignPlatformTarget?.name}" to a platform:</p>
   <Select labelText="Platform" bind:selected={assignPlatformValue}>
@@ -2811,7 +2812,7 @@
       <SelectItem value={platform.id} text={platform.name} />
     {/each}
   </Select>
-</Modal>
+</AppModal>
 
 <InputModal
   bind:open={showRenameModal}
@@ -2845,13 +2846,13 @@
 />
 
 <!-- TM Registration Modal -->
-<Modal
+<AppModal
   bind:open={showTMRegistrationModal}
   modalHeading="Register as Translation Memory"
   primaryButtonText="Register"
   secondaryButtonText="Cancel"
-  on:click:button--primary={registerAsTM}
-  on:click:button--secondary={() => { showTMRegistrationModal = false; }}
+  onprimary={registerAsTM}
+  onsecondary={() => { showTMRegistrationModal = false; }}
 >
   <TextInput labelText="TM Name" bind:value={tmName} placeholder="Enter TM name" />
   <Select labelText="Language" bind:selected={tmLanguage}>
@@ -2861,7 +2862,7 @@
     <SelectItem value="zh" text="Chinese" />
   </Select>
   <TextArea labelText="Description (optional)" bind:value={tmDescription} placeholder="Enter description" />
-</Modal>
+</AppModal>
 
 <!-- Pre-translate Modal -->
 {#if pretranslateFile}
@@ -2881,14 +2882,14 @@
 />
 
 <!-- Upload to Server Modal -->
-<Modal
+<AppModal
   bind:open={showUploadToServerModal}
   modalHeading="Upload to Central Server"
   primaryButtonText="Upload"
   primaryButtonDisabled={!uploadToServerDestination || uploadToServerLoading}
   secondaryButtonText="Cancel"
-  on:click:button--primary={executeUploadToServer}
-  on:click:button--secondary={() => { showUploadToServerModal = false; }}
+  onprimary={executeUploadToServer}
+  onsecondary={() => { showUploadToServerModal = false; }}
 >
   {#if uploadToServerLoading}
     <InlineLoading description="Loading..." />
@@ -2901,7 +2902,7 @@
       {/each}
     </Select>
   {/if}
-</Modal>
+</AppModal>
 
 <!-- DESIGN-001: Access Control Modal -->
 {#if accessControlResource}

@@ -4,7 +4,7 @@
     Toolbar,
     ToolbarContent,
     Button,
-    Modal,
+    // Modal removed — using AppModal wrapper for Svelte 5 compatibility
     InlineNotification,
     InlineLoading,
     Tag,
@@ -34,6 +34,7 @@
   import { formatDateShort } from "$lib/utils/formatters.js";
   import TMUploadModal from "./TMUploadModal.svelte";
   import TMViewer from "./TMViewer.svelte";
+  import AppModal from '../common/AppModal.svelte';
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
@@ -400,7 +401,7 @@
   ];
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Translation Memories"
   passiveModal
@@ -587,7 +588,7 @@
       </div>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 <!-- TM Upload Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
 {#if showUploadModal}
@@ -600,14 +601,14 @@
 
 <!-- Delete Confirmation Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
 {#if deleteConfirmOpen}
-<Modal
+<AppModal
   open={true}
   modalHeading="Delete Translation Memory"
   primaryButtonText="Delete"
   secondaryButtonText="Cancel"
   danger
-  on:click:button--primary={deleteTM}
-  on:click:button--secondary={() => { deleteConfirmOpen = false; tmToDelete = null; }}
+  onprimary={deleteTM}
+  onsecondary={() => { deleteConfirmOpen = false; tmToDelete = null; }}
   onclose={() => { deleteConfirmOpen = false; tmToDelete = null; }}
 >
   {#if tmToDelete}
@@ -616,18 +617,18 @@
       This will permanently delete {formatCount(tmToDelete.entry_count)} entries and all associated indexes.
     </p>
   {/if}
-</Modal>
+</AppModal>
 {/if}
 
 <!-- Build Indexes Confirmation Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
 {#if buildConfirmOpen}
-<Modal
+<AppModal
   open={true}
   modalHeading="Build TM Indexes"
   primaryButtonText="Start Processing"
   secondaryButtonText="Cancel"
-  on:click:button--primary={executeBuildIndexes}
-  on:click:button--secondary={() => { buildConfirmOpen = false; tmToBuild = null; }}
+  onprimary={executeBuildIndexes}
+  onsecondary={() => { buildConfirmOpen = false; tmToBuild = null; }}
   onclose={() => { buildConfirmOpen = false; tmToBuild = null; }}
 >
   {#if tmToBuild}
@@ -645,7 +646,7 @@
       <p class="build-hint">Progress will be tracked in the Task Manager.</p>
     </div>
   {/if}
-</Modal>
+</AppModal>
 {/if}
 
 <!-- TM Viewer Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
@@ -660,14 +661,14 @@
 
 <!-- TM Export Modal - UI-055 FIX: Use {#if} to prevent DOM bloat -->
 {#if showExportModal}
-<Modal
+<AppModal
   open={true}
   modalHeading="Export Translation Memory"
   primaryButtonText={exporting ? "Exporting..." : "Export"}
   secondaryButtonText="Cancel"
   primaryButtonDisabled={exporting}
-  on:click:button--primary={executeExport}
-  on:click:button--secondary={closeExportModal}
+  onprimary={executeExport}
+  onsecondary={closeExportModal}
   onclose={closeExportModal}
 >
   {#if tmToExport}
@@ -734,7 +735,7 @@
       {/if}
     </div>
   {/if}
-</Modal>
+</AppModal>
 {/if}
 
 <style>

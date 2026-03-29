@@ -9,7 +9,8 @@
    * - Add/remove user access
    */
   import { onMount } from 'svelte';
-  import { Modal, Toggle, Button, InlineLoading, Tag } from 'carbon-components-svelte';
+  import { Toggle, Button, InlineLoading, Tag } from 'carbon-components-svelte';
+  import AppModal from '../common/AppModal.svelte';
   import { Add, TrashCan, Locked, Unlocked, User, Close } from 'carbon-icons-svelte';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { logger } from '$lib/utils/logger.js';
@@ -165,7 +166,7 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Manage Access: {resourceName}"
   passiveModal
@@ -252,18 +253,18 @@
       {/if}
     </div>
   {/if}
-</Modal>
+</AppModal>
 
 <!-- User Picker Modal -->
-<Modal
+<AppModal
   bind:open={showUserPicker}
   modalHeading="Add User"
   primaryButtonText="Grant Access"
   primaryButtonDisabled={!selectedUserId || saving}
   secondaryButtonText="Cancel"
   size="xs"
-  on:click:button--primary={() => grantAccess(selectedUserId)}
-  on:click:button--secondary={() => { showUserPicker = false; selectedUserId = null; }}
+  onprimary={() => grantAccess(selectedUserId)}
+  onsecondary={() => { showUserPicker = false; selectedUserId = null; }}
 >
   {#if availableUsers.length === 0}
     <p>All users already have access.</p>
@@ -284,7 +285,7 @@
       {/each}
     </div>
   {/if}
-</Modal>
+</AppModal>
 
 <style>
   .loading-state {

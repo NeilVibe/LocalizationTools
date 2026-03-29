@@ -1,6 +1,5 @@
 <script>
   import {
-    Modal,
     Select,
     SelectItem,
     Slider,
@@ -23,6 +22,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
+  import AppModal from '../common/AppModal.svelte';
 
   // API base URL
   const API_BASE = getApiBase();
@@ -193,14 +193,14 @@
   });
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Pretranslate File"
   primaryButtonText={status === "running" ? "Running..." : "Pretranslate"}
   primaryButtonDisabled={status === "running" || status === "success" || !selectedTmId}
   secondaryButtonText="Cancel"
-  on:click:button--primary={runPretranslation}
-  on:click:button--secondary={handleClose}
+  onprimary={runPretranslation}
+  onsecondary={handleClose}
   onclose={handleClose}
 >
   <div class="pretranslate-form">
@@ -264,7 +264,7 @@
       </div>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 {#snippet formContent()}
   <!-- File Info -->
