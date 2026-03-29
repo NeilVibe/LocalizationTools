@@ -155,7 +155,7 @@ class DataParsersMixin:
                     )
             logger.debug(f"[MEGAINDEX] Knowledge parse: {parse_ok} OK, {parse_fail} failed out of {len(xml_files)} XMLs")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Knowledge parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Knowledge parse failed: {e}")
 
     # =========================================================================
     # Phase 3: Localization Parsers
@@ -188,7 +188,7 @@ class DataParsersMixin:
                     if strorigin:
                         self.stringid_to_strorigin[sid] = strorigin
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] StrOrigin parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] StrOrigin parse failed: {e}")
 
     def _parse_loc_translations(
         self, loc_folder: Path, langs: List[str]
@@ -227,7 +227,7 @@ class DataParsersMixin:
                         self.stringid_to_translations[sid][lang] = text
             logger.debug(f"[MEGAINDEX] Translation parse: loaded {list(langs_found.keys())}, skipped {langs_skipped}")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Translation parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Translation parse failed: {e}")
 
     def _parse_export_events(self, export_folder: Path) -> None:
         """D11+D20+D21: Parse export XMLs for event->stringid mapping."""
@@ -270,14 +270,18 @@ class DataParsersMixin:
                         self.event_to_xml_order[event_lower] = global_order  # D21
                         global_order += 1
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Export events parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Export events parse failed: {e}")
 
     def _parse_export_loc(self, export_folder: Path) -> None:
         """D17+D18: Parse export .loc.xml files for StringId sets and ordered index."""
         try:
             if not export_folder.is_dir():
+                logger.debug("[MEGAINDEX] Export folder not found for .loc.xml: %s", export_folder)
                 return
-            for xml_path in sorted(export_folder.rglob("*.loc.xml")):
+            loc_files = sorted(export_folder.rglob("*.loc.xml"))
+            logger.info(f"[MEGAINDEX] Export .loc.xml files found: {len(loc_files)}")
+            parsed_ok = 0
+            for xml_path in loc_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
@@ -309,8 +313,14 @@ class DataParsersMixin:
                             existing.setdefault(norm_text, []).extend(sid_list)
                     else:
                         self.ordered_export_index[filename_key] = kor_map
+                parsed_ok += 1
+            logger.info(
+                f"[MEGAINDEX] Export .loc.xml: {parsed_ok}/{len(loc_files)} parsed, "
+                f"{len(self.export_file_stringids)} file sets, "
+                f"{len(self.ordered_export_index)} ordered indexes"
+            )
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Export loc parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Export loc parse failed: {e}")
 
     # =========================================================================
     # Phase 5: Broad Scan

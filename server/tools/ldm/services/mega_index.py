@@ -256,5 +256,8 @@ def get_mega_index() -> MegaIndex:
     """Get or create the singleton MegaIndex instance."""
     global _mega_index
     if _mega_index is None:
+        logger.info("[MEGAINDEX] Creating singleton MegaIndex instance")
         _mega_index = MegaIndex()
+    else:
+        logger.debug("[MEGAINDEX] Returning existing MegaIndex (is_built=%s)", _mega_index._built)
     return _mega_index

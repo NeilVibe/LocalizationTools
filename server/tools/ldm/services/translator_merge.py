@@ -4,10 +4,12 @@ Translator Merge Service -- merge corrections into target rows.
 Ported from QuickTranslate core/xml_transfer.py merge logic.
 
 Match modes (strict priority order in cascade):
-1. strict       -- StringID + StrOrigin both match
-2. stringid_only -- StringID matches, StrOrigin may differ
-3. strorigin_only -- StrOrigin matches, StringID may differ
-4. fuzzy         -- Model2Vec similarity above threshold
+1. strict              -- StringID + StrOrigin both match
+2. stringid_only       -- StringID matches, StrOrigin may differ
+3. strorigin_only      -- StrOrigin matches, StringID may differ
+4. strorigin_descorigin -- StrOrigin + DescOrigin both match
+5. strorigin_filename   -- StrOrigin + FileName 2-pass (grafted from QT)
+6. fuzzy               -- Model2Vec similarity above threshold
 
 Skip guards (applied to source corrections):
 1. Korean text   -- target is Korean (untranslated)
@@ -59,6 +61,8 @@ class MergeResult:
         "strict": 0,
         "stringid_only": 0,
         "strorigin_only": 0,
+        "strorigin_descorigin": 0,
+        "strorigin_filename": 0,
         "fuzzy": 0,
     })
     updated_rows: list[dict] = field(default_factory=list)
@@ -121,6 +125,8 @@ class TranslatorMergeService:
                 "string_id": string_id,
                 "str_origin": source,
                 "corrected": target,
+                "desc_origin": (row.get("desc_origin") or "").strip(),
+                "filepath": (row.get("filepath") or "").strip(),
             })
 
         return corrections
@@ -169,6 +175,42 @@ class TranslatorMergeService:
                 lookup[origin] = c
                 lookup_ns[origin_ns] = c
             return lookup, lookup_ns
+
+        if match_mode == "strorigin_descorigin":
+            # Key: (normalized_StrOrigin, normalized_DescOrigin) tuple
+            # Grafted from QuickTranslate _build_correction_lookups L192-214
+            lookup = defaultdict(list)
+            lookup_ns = defaultdict(list)
+            for i, c in enumerate(corrections):
+                origin = normalize_for_matching(c.get("str_origin", ""))
+                if not origin:
+                    continue
+                desc = normalize_for_matching(c.get("desc_origin", ""))
+                if not desc:
+                    continue
+                origin_ns = normalize_nospace(origin)
+                desc_ns = normalize_nospace(desc)
+                lookup[(origin, desc)].append((c["corrected"], i))
+                lookup_ns[(origin_ns, desc_ns)].append((c["corrected"], i))
+            return dict(lookup), dict(lookup_ns)
+
+        if match_mode == "strorigin_filename":
+            # 2-pass: PASS1 = (StrOrigin, filepath, DescOrigin), PASS2 = (StrOrigin, filepath)
+            # Grafted from QuickTranslate _build_correction_lookups L216-239
+            pass1: dict = defaultdict(list)  # full 3-tuple
+            pass2: dict = defaultdict(list)  # 2-tuple fallback
+            for i, c in enumerate(corrections):
+                origin = normalize_for_matching(c.get("str_origin", ""))
+                if not origin:
+                    continue
+                filepath = c.get("filepath", "")
+                desc = normalize_for_matching(c.get("desc_origin", ""))
+                # PASS1: full 3-tuple (only if descorigin is present)
+                if desc:
+                    pass1[(origin, filepath, desc)].append((c["corrected"], i))
+                # PASS2: always add 2-tuple
+                pass2[(origin, filepath)].append((c["corrected"], i))
+            return dict(pass1), dict(pass2)
 
         return {}, None
 
@@ -226,6 +268,53 @@ class TranslatorMergeService:
             c = lookup_ns.get(source_ns)
             if c:
                 return c["corrected"]
+        return None
+
+    def _find_strorigin_descorigin_match(
+        self,
+        target_row: dict,
+        lookup: dict,
+        lookup_ns: Optional[dict],
+    ) -> Optional[str]:
+        """Try StrOrigin + DescOrigin match (grafted from QT L192-214)."""
+        source = normalize_for_matching(target_row.get("source", ""))
+        desc = normalize_for_matching(target_row.get("desc_origin", ""))
+        if not source or not desc:
+            return None
+        key = (source, desc)
+        entries = lookup.get(key)
+        if entries:
+            return entries[0][0]
+        # Fallback: nospace
+        if lookup_ns:
+            key_ns = (normalize_nospace(source), normalize_nospace(desc))
+            entries = lookup_ns.get(key_ns)
+            if entries:
+                return entries[0][0]
+        return None
+
+    def _find_strorigin_filename_match(
+        self,
+        target_row: dict,
+        pass1: dict,
+        pass2: Optional[dict],
+    ) -> Optional[str]:
+        """Try StrOrigin + FileName 2-pass match (grafted from QT L216-239)."""
+        source = normalize_for_matching(target_row.get("source", ""))
+        filepath = target_row.get("filepath", "")
+        desc = normalize_for_matching(target_row.get("desc_origin", ""))
+        if not source:
+            return None
+        # PASS1: (StrOrigin, filepath, DescOrigin) - most specific
+        if desc:
+            entries = pass1.get((source, filepath, desc))
+            if entries:
+                return entries[0][0]
+        # PASS2: (StrOrigin, filepath) - fallback
+        if pass2:
+            entries = pass2.get((source, filepath))
+            if entries:
+                return entries[0][0]
         return None
 
     # -----------------------------------------------------------------
@@ -322,6 +411,10 @@ class TranslatorMergeService:
             self._merge_single_mode(target_rows, corrections, "stringid_only", result)
         elif match_mode == "strorigin_only":
             self._merge_single_mode(target_rows, corrections, "strorigin_only", result)
+        elif match_mode == "strorigin_descorigin":
+            self._merge_single_mode(target_rows, corrections, "strorigin_descorigin", result)
+        elif match_mode == "strorigin_filename":
+            self._merge_single_mode(target_rows, corrections, "strorigin_filename", result)
         elif match_mode == "fuzzy":
             self._merge_fuzzy_only(target_rows, corrections, threshold, result)
         else:
@@ -355,6 +448,10 @@ class TranslatorMergeService:
                 matched_text = self._find_stringid_match(target, lookup)
             elif mode == "strorigin_only":
                 matched_text = self._find_strorigin_match(target, lookup, lookup_ns)
+            elif mode == "strorigin_descorigin":
+                matched_text = self._find_strorigin_descorigin_match(target, lookup, lookup_ns)
+            elif mode == "strorigin_filename":
+                matched_text = self._find_strorigin_filename_match(target, lookup, lookup_ns)
 
             if matched_text is not None:
                 updated = dict(target)
@@ -370,10 +467,12 @@ class TranslatorMergeService:
         threshold: float,
         result: MergeResult,
     ) -> None:
-        """Cascade: strict > stringid_only > strorigin_only > fuzzy. First match wins."""
+        """Cascade: strict > stringid_only > strorigin_only > strorigin_descorigin > strorigin_filename > fuzzy."""
         strict_lookup, strict_ns = self._build_lookups(corrections, "strict")
         stringid_lookup, _ = self._build_lookups(corrections, "stringid_only")
         strorigin_lookup, strorigin_ns = self._build_lookups(corrections, "strorigin_only")
+        descorigin_lookup, descorigin_ns = self._build_lookups(corrections, "strorigin_descorigin")
+        filename_pass1, filename_pass2 = self._build_lookups(corrections, "strorigin_filename")
 
         unmatched: list[dict] = []
 
@@ -408,6 +507,30 @@ class TranslatorMergeService:
                 result.updated_rows.append(updated)
                 result.matched += 1
                 result.match_type_counts["strorigin_only"] += 1
+                continue
+
+            # Try strorigin_descorigin
+            matched_text = self._find_strorigin_descorigin_match(
+                target, descorigin_lookup, descorigin_ns
+            )
+            if matched_text is not None:
+                updated = dict(target)
+                updated["target"] = matched_text
+                result.updated_rows.append(updated)
+                result.matched += 1
+                result.match_type_counts["strorigin_descorigin"] += 1
+                continue
+
+            # Try strorigin_filename
+            matched_text = self._find_strorigin_filename_match(
+                target, filename_pass1, filename_pass2
+            )
+            if matched_text is not None:
+                updated = dict(target)
+                updated["target"] = matched_text
+                result.updated_rows.append(updated)
+                result.matched += 1
+                result.match_type_counts["strorigin_filename"] += 1
                 continue
 
             # Collect for fuzzy

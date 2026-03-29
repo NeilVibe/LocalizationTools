@@ -88,7 +88,7 @@ class EntityParsersMixin:
                 if extracted > 0:
                     logger.debug(f"[MEGAINDEX] {xml_path.name}: +{extracted} characters")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Character parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Character parse failed: {e}")
 
     def _parse_item_info(self, item_folder: Path, knowledge_folder: Path) -> None:
         """D3+D14: Parse ItemInfo and ItemGroupInfo for items and hierarchy."""
@@ -199,7 +199,7 @@ class EntityParsersMixin:
                     )
 
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Item parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Item parse failed: {e}")
 
         # Also parse items from knowledge folder (MapDataGenerator ITEM mode)
         self._parse_items_from_knowledge(knowledge_folder)
@@ -223,11 +223,17 @@ class EntityParsersMixin:
 
             xml_files = list(faction_folder.rglob("*.xml"))
             logger.info(f"[MEGAINDEX] Faction XMLs found: {len(xml_files)}")
+            fgroups_before = len(self.faction_group_by_strkey)
+            factions_before = len(self.faction_by_strkey)
+            regions_before = len(self.region_by_strkey)
             for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
                 source_file = xml_path.name
+                fg0 = len(self.faction_group_by_strkey)
+                fc0 = len(self.faction_by_strkey)
+                rg0 = len(self.region_by_strkey)
 
                 # D6: FactionGroup entries
                 for elem in root.iter("FactionGroup"):
@@ -329,8 +335,18 @@ class EntityParsersMixin:
                                     display_name=display_name,
                                 )
 
+                fg_new = len(self.faction_group_by_strkey) - fg0
+                fc_new = len(self.faction_by_strkey) - fc0
+                rg_new = len(self.region_by_strkey) - rg0
+                if fg_new or fc_new or rg_new:
+                    logger.debug(f"[MEGAINDEX]   {source_file}: +{fg_new} groups, +{fc_new} factions, +{rg_new} regions")
+            logger.info(
+                f"[MEGAINDEX] Faction totals: {len(self.faction_group_by_strkey) - fgroups_before} groups, "
+                f"{len(self.faction_by_strkey) - factions_before} factions, "
+                f"{len(self.region_by_strkey) - regions_before} regions"
+            )
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Faction parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Faction parse failed: {e}")
 
     def _parse_skill_info(self, staticinfo_folder: Path) -> None:
         """D7: Parse SkillInfo elements from skillinfo XMLs."""
@@ -342,11 +358,13 @@ class EntityParsersMixin:
                 return
             xml_files = list(staticinfo_folder.rglob("skillinfo_*.xml"))
             logger.info(f"[MEGAINDEX] Skill XMLs found: {len(xml_files)} in {staticinfo_folder}")
+            skills_before = len(self.skill_by_strkey)
             for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
                 source_file = xml_path.name
+                sk0 = len(self.skill_by_strkey)
                 for elem in root.iter("SkillInfo"):
                     strkey = elem.get("StrKey") or ""
                     if not strkey:
@@ -358,8 +376,12 @@ class EntityParsersMixin:
                         learn_knowledge_key=elem.get("LearnKnowledgeKey") or "",
                         source_file=source_file,
                     )
+                sk_new = len(self.skill_by_strkey) - sk0
+                if sk_new:
+                    logger.debug(f"[MEGAINDEX]   {source_file}: +{sk_new} skills")
+            logger.info(f"[MEGAINDEX] Skills total: {len(self.skill_by_strkey) - skills_before} new")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Skill parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Skill parse failed: {e}")
 
     def _parse_gimmick_info(self, staticinfo_folder: Path) -> None:
         """D8: Parse GimmickGroupInfo/GimmickInfo elements."""
@@ -369,11 +391,13 @@ class EntityParsersMixin:
                 return
             xml_files = list(staticinfo_folder.rglob("gimmickinfo_*.xml"))
             logger.info(f"[MEGAINDEX] Gimmick XMLs found: {len(xml_files)} in {staticinfo_folder}")
+            gimmicks_before = len(self.gimmick_by_strkey)
             for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
                 source_file = xml_path.name
+                gk0 = len(self.gimmick_by_strkey)
                 for group_elem in root.iter("GimmickGroupInfo"):
                     gstrkey = group_elem.get("StrKey") or ""
                     gname = group_elem.get("GimmickName") or ""
@@ -402,5 +426,9 @@ class EntityParsersMixin:
                             seal_desc="",
                             source_file=source_file,
                         )
+                gk_new = len(self.gimmick_by_strkey) - gk0
+                if gk_new:
+                    logger.debug(f"[MEGAINDEX]   {source_file}: +{gk_new} gimmicks")
+            logger.info(f"[MEGAINDEX] Gimmicks total: {len(self.gimmick_by_strkey) - gimmicks_before} new")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] Gimmick parse failed: {e}")
+            logger.exception(f"[MEGAINDEX] Gimmick parse failed: {e}")

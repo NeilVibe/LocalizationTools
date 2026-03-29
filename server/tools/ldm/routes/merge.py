@@ -74,7 +74,7 @@ async def merge_files(
     """
     from server.tools.ldm.services.translator_merge import TranslatorMergeService
 
-    valid_modes = {"strict", "stringid_only", "strorigin_only", "fuzzy", "cascade"}
+    valid_modes = {"strict", "stringid_only", "strorigin_only", "strorigin_descorigin", "strorigin_filename", "fuzzy", "cascade"}
     if request.match_mode not in valid_modes:
         raise HTTPException(
             status_code=400,

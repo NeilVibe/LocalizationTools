@@ -35,7 +35,7 @@
     ref = undefined,
     onprimary = () => {},
     onsecondary = () => {},
-    onclose = undefined,
+    onclose = () => {},
     children,
     ...restProps
   } = $props();
@@ -66,7 +66,7 @@
   {...restProps}
   on:click:button--primary={onprimary}
   on:click:button--secondary={onsecondary}
-  on:close={(e) => onclose?.(e)}
+  on:close={onclose}
 >
   {@render children?.()}
 </Modal>

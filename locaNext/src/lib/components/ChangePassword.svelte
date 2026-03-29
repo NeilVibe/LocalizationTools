@@ -77,9 +77,9 @@
   primaryButtonText="Change Password"
   secondaryButtonText="Cancel"
   primaryButtonDisabled={loading || success}
+  onprimary={handleSubmit}
   onsecondary={handleClose}
   onclose={handleClose}
-  onsubmit={handleSubmit}
   size="sm"
 >
   {#if success}
