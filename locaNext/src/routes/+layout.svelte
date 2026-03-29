@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map, Merge } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map, Merge, Dashboard } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, selectedProject } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, goToStatus, selectedProject } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -99,6 +99,26 @@
     } catch (e) {
       logger.warning(`MegaIndex auto-build failed: ${e.message}`);
       addToast({ message: 'Index build skipped — will retry next session', kind: 'info', title: 'MegaIndex', duration: 3000 });
+    }
+  }
+
+  // Model2Vec status check
+  async function checkModel2VecStatus() {
+    try {
+      const { getApiBase, getAuthHeaders } = await import('$lib/utils/api.js');
+      const API = getApiBase();
+      const res = await fetch(`${API}/api/ldm/system-status`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const status = await res.json();
+        const m2v = status.model2vec;
+        if (m2v && m2v.status === 'loaded') {
+          addToast({ message: `Model2Vec ready (${m2v.dimension}-dim)`, kind: 'success', title: 'AI Models', duration: 3000 });
+        } else if (m2v && m2v.status === 'not_found') {
+          addToast({ message: 'Place Model2Vec/ folder next to LocaNext.exe for fuzzy TM matching', kind: 'warning', title: 'Model2Vec Missing', duration: 10000 });
+        }
+      }
+    } catch (e) {
+      // System status not available yet, skip
     }
   }
 
@@ -190,6 +210,14 @@
     currentApp.set('ldm');
     currentView.set('app');
     goToRegionCodex();
+  }
+
+  // System Status navigation
+  function navigateToStatus() {
+    logger.userAction("Navigate to Status page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToStatus();
   }
 
   function showTasks() {
@@ -338,6 +366,9 @@
 
         // Auto-trigger MegaIndex build if not already built
         triggerMegaIndexBuild();
+
+        // Check Model2Vec status and notify user
+        checkModel2VecStatus();
       }
     } else {
       // User logged out - cleanup sync
@@ -516,6 +547,14 @@
         >
           <Earth size={16} />
           <span>Map</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && $currentPage === 'status'}
+          onclick={navigateToStatus}
+        >
+          <Dashboard size={16} />
+          <span>Status</span>
         </button>
       </div>
 

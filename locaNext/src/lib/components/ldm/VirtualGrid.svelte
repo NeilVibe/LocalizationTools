@@ -79,6 +79,7 @@
     tmAppliedRows.clear();
     gridReferenceData.clear();
     searchEngine?.resetSearch();
+    grid.loadingFileName = fileName || '';
     return scrollEngine?.loadRows();
   }
 

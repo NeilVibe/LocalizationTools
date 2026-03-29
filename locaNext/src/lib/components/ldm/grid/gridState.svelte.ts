@@ -37,6 +37,7 @@ export const grid = $state({
   loading: false,
   initialLoading: true,
   loadError: null as string | null,
+  loadingFileName: '' as string,
   selectedRowId: null as string | null,
   hoveredRowId: null as string | null,
   hoveredCell: null as string | null,
@@ -267,6 +268,7 @@ export function resetGridState(): void {
   grid.searchTerm = '';
   grid.searchMode = 'contain';
   grid.searchFields = ['source', 'target'];
+  grid.loadingFileName = '';
   grid.rowsVersion = 0;
   rowIndexById.clear();
   rowHeightCache.clear();

@@ -133,7 +133,7 @@ const getAppPaths = () => {
     if (fs.existsSync(userPath)) {
       modelsPath = appRoot;
       logger.info('[Model2Vec] FOUND at app root (user-placed)', { modelsPath });
-    } else if (hasBundledQwen || fs.existsSync(bundledPath)) {
+    } else if (fs.existsSync(bundledPath)) {
       modelsPath = bundledModelsPath;
       logger.info('[Model2Vec] FOUND bundled in resources/models', { modelsPath });
     } else if (fs.existsSync(legacyPath)) {

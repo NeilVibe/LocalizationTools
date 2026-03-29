@@ -323,6 +323,9 @@ def get_sync_repositories(
             for file in local_files:
                 await server_repo.create(**file)
     """
+    if _is_server_local() or _is_offline_mode(None):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Sync not available in SQLite mode")
     from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
     from server.repositories.sqlite.file_repo import SQLiteFileRepository
     from server.repositories.sqlite.base import SchemaMode

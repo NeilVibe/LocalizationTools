@@ -176,6 +176,14 @@ export function goToRegionCodex() {
 }
 
 /**
+ * Navigate to System Status page
+ */
+export function goToStatus() {
+  currentPage.set('status');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {

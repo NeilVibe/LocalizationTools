@@ -10,7 +10,8 @@
    * Does NOT write to gridState (display-only).
    */
 
-  import { Tag, InlineLoading } from "carbon-components-svelte";
+  import { Tag } from "carbon-components-svelte";
+  import LoadingScreen from '$lib/components/ldm/LoadingScreen.svelte';
   import { Edit, Locked, MachineLearningModel } from "carbon-icons-svelte";
   import {
     grid,
@@ -291,7 +292,7 @@
 <div class="scroll-container" bind:this={grid.containerEl}>
 {#if grid.initialLoading}
   <div class="loading-overlay">
-    <InlineLoading description="Loading rows..." />
+    <LoadingScreen message={grid.loadingFileName ? `Loading ${grid.loadingFileName}...` : 'Loading rows...'} progress={0} showPercentage={false} />
   </div>
 {:else}
   <div class="scroll-content" style="height: {totalHeight}px;">
@@ -574,7 +575,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 200px;
+    height: 100%;
+    min-height: 300px;
   }
 
   .scroll-content {

@@ -7,7 +7,7 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
-  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, selectedProject } from "$lib/stores/navigation.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, goToStatus, selectedProject } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -35,6 +35,8 @@
   import AudioCodexPage from "$lib/components/pages/AudioCodexPage.svelte";
   // Phase 49: Region Codex page
   import RegionCodexPage from "$lib/components/pages/RegionCodexPage.svelte";
+  // System Status page
+  import StatusPage from "$lib/components/pages/StatusPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -950,6 +952,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'worldmap'}
         <!-- Phase 20: Interactive World Map -->
         <WorldMapPage />
+      {:else if $currentPage === 'status'}
+        <!-- System Status page -->
+        <StatusPage />
       {:else if $currentPage === 'tm-entries'}
         <!-- TM Entries Page: Full-page TM entries viewer -->
         <div class="tm-entries-page">
