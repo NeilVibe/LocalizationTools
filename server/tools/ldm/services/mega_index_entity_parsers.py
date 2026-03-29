@@ -53,16 +53,21 @@ class EntityParsersMixin:
     def _parse_character_info(self, character_folder: Path) -> None:
         """D2: Parse CharacterInfo elements from characterinfo XMLs."""
         try:
+            logger.info(f"[MEGAINDEX] Character folder: {character_folder} (is_dir={character_folder.is_dir()})")
             if not character_folder.is_dir():
                 logger.warning(
                     f"[MEGAINDEX] Character folder not found: {character_folder}"
                 )
                 return
-            for xml_path in character_folder.rglob("*.xml"):
+            xml_files = list(character_folder.rglob("*.xml"))
+            logger.info(f"[MEGAINDEX] Character XMLs found: {len(xml_files)}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
+                    logger.warning(f"[MEGAINDEX] Failed to parse: {xml_path.name}")
                     continue
                 source_file = xml_path.name
+                count_before = len(self.character_by_strkey)
                 for elem in root.iter("CharacterInfo"):
                     strkey = elem.get("StrKey") or ""
                     if not strkey:
@@ -89,13 +94,15 @@ class EntityParsersMixin:
         group_items: Dict[str, List[str]] = {}  # group_strkey -> items in group
 
         try:
+            logger.info(f"[MEGAINDEX] Item folder: {item_folder} (is_dir={item_folder.is_dir()})")
             if not item_folder.is_dir():
                 logger.warning(f"[MEGAINDEX] Item folder not found: {item_folder}")
-                # Also try knowledge folder for items in knowledge mode
                 self._parse_items_from_knowledge(knowledge_folder)
                 return
 
-            for xml_path in item_folder.rglob("*.xml"):
+            xml_files = list(item_folder.rglob("*.xml"))
+            logger.info(f"[MEGAINDEX] Item XMLs found: {len(xml_files)}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
@@ -196,13 +203,16 @@ class EntityParsersMixin:
     def _parse_faction_info(self, faction_folder: Path) -> None:
         """D4+D5+D6+D16: Parse FactionGroup, Faction, FactionNode, RegionInfo."""
         try:
+            logger.info(f"[MEGAINDEX] Faction folder: {faction_folder} (is_dir={faction_folder.is_dir()})")
             if not faction_folder.is_dir():
                 logger.warning(
                     f"[MEGAINDEX] Faction folder not found: {faction_folder}"
                 )
                 return
 
-            for xml_path in faction_folder.rglob("*.xml"):
+            xml_files = list(faction_folder.rglob("*.xml"))
+            logger.info(f"[MEGAINDEX] Faction XMLs found: {len(xml_files)}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue

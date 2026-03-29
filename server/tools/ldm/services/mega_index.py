@@ -153,6 +153,18 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         # Item folder = sibling of other staticinfo folders
         item_folder = staticinfo_folder / "iteminfo"
 
+        # Log ALL resolved paths for debugging
+        logger.info(f"[MEGAINDEX] Resolved paths:")
+        logger.info(f"  knowledge_folder: {knowledge_folder} (exists={knowledge_folder.is_dir() if knowledge_folder != Path('/nonexistent') else False})")
+        logger.info(f"  character_folder: {character_folder} (exists={character_folder.is_dir() if character_folder != Path('/nonexistent') else False})")
+        logger.info(f"  faction_folder:   {faction_folder} (exists={faction_folder.is_dir() if faction_folder != Path('/nonexistent') else False})")
+        logger.info(f"  item_folder:      {item_folder} (exists={item_folder.is_dir()})")
+        logger.info(f"  staticinfo_folder:{staticinfo_folder} (exists={staticinfo_folder.is_dir() if staticinfo_folder != Path('/nonexistent') else False})")
+        logger.info(f"  texture_folder:   {texture_folder} (exists={texture_folder.is_dir() if texture_folder != Path('/nonexistent') else False})")
+        logger.info(f"  audio_folder:     {audio_folder} (exists={audio_folder.is_dir() if audio_folder != Path('/nonexistent') else False})")
+        logger.info(f"  export_folder:    {export_folder} (exists={export_folder.is_dir() if export_folder != Path('/nonexistent') else False})")
+        logger.info(f"  loc_folder:       {loc_folder} (exists={loc_folder.is_dir() if loc_folder != Path('/nonexistent') else False})")
+
         logger.info("[MEGAINDEX] Starting 7-phase build pipeline...")
 
         # ----- Phase 1: Foundation -----
