@@ -1,6 +1,6 @@
-# QACompiler Active Pending Implementation Plan
+# QACompiler Active Pending Implementation Plan — COMPLETED 2026-03-25
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **STATUS: IMPLEMENTED.** See commits 1891283d, 89660e88.
 
 **Goal:** Replace the PENDING calculation so it reflects only issues living in the most recent masterfile per category, not stale QA file issues.
 
