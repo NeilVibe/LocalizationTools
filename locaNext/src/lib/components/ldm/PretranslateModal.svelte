@@ -1,6 +1,5 @@
 <script>
   import {
-    Modal,
     Select,
     SelectItem,
     Slider,
@@ -12,6 +11,7 @@
     InlineLoading,
     Tag
   } from "carbon-components-svelte";
+  import AppModal from '../common/AppModal.svelte';
   import {
     Flash,
     Renew,
@@ -193,14 +193,14 @@
   });
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Pretranslate File"
   primaryButtonText={status === "running" ? "Running..." : "Pretranslate"}
   primaryButtonDisabled={status === "running" || status === "success" || !selectedTmId}
   secondaryButtonText="Cancel"
-  on:click:button--primary={runPretranslation}
-  on:click:button--secondary={handleClose}
+  onprimary={runPretranslation}
+  onsecondary={handleClose}
   onclose={handleClose}
 >
   <div class="pretranslate-form">
@@ -264,7 +264,7 @@
       </div>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 {#snippet formContent()}
   <!-- File Info -->
