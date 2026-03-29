@@ -256,7 +256,7 @@ Plans:
 | 95. Navigation & Merge Redesign | 0/? | Pending | -- |
 | 96. GameData Category Tabs | 0/? | Pending | -- |
 | 98. MEGA Graft | 4/5 | Complete    | 2026-03-28 |
-| 99. Svelte 5 Event Migration | 2/3 | In Progress (Plan 03 done) |  |
+| 99. Svelte 5 Event Migration | 2/3 | Complete    | 2026-03-29 |
 | 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
