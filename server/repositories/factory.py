@@ -77,7 +77,6 @@ def get_tm_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_translation_memories
     - PostgreSQL available  → PostgreSQLRepo      → ldm_translation_memories
     """
-    from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
     from server.repositories.sqlite.tm_repo import SQLiteTMRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -86,6 +85,7 @@ def get_tm_repository(
     elif _is_server_local():
         return SQLiteTMRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
         return PostgreSQLTMRepository(db, current_user)
 
 
@@ -102,7 +102,6 @@ def get_file_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_files
     - PostgreSQL available  → PostgreSQLRepo      → ldm_files
     """
-    from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
     from server.repositories.sqlite.file_repo import SQLiteFileRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -111,6 +110,7 @@ def get_file_repository(
     elif _is_server_local():
         return SQLiteFileRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
         return PostgreSQLFileRepository(db, current_user)
 
 
@@ -130,20 +130,17 @@ def get_row_repository(
     RoutingRowRepository handles negative IDs (local Electron data) transparently.
     Routes never need to know about negative ID handling.
     """
-    from server.repositories.postgresql.row_repo import PostgreSQLRowRepository
     from server.repositories.sqlite.row_repo import SQLiteRowRepository
     from server.repositories.sqlite.base import SchemaMode
     from server.repositories.routing.row_repo import RoutingRowRepository
 
     if _is_offline_mode(request):
-        # Full offline mode - all IDs are negative/local
         return SQLiteRowRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
-        # Server local SQLite - wrap with routing for local IDs
         primary = SQLiteRowRepository(schema_mode=SchemaMode.SERVER)
         return RoutingRowRepository(primary)
     else:
-        # PostgreSQL primary - wrap with routing for local IDs
+        from server.repositories.postgresql.row_repo import PostgreSQLRowRepository
         primary = PostgreSQLRowRepository(db, current_user)
         return RoutingRowRepository(primary)
 
@@ -161,7 +158,6 @@ def get_project_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_projects
     - PostgreSQL available  → PostgreSQLRepo      → ldm_projects
     """
-    from server.repositories.postgresql.project_repo import PostgreSQLProjectRepository
     from server.repositories.sqlite.project_repo import SQLiteProjectRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -170,6 +166,7 @@ def get_project_repository(
     elif _is_server_local():
         return SQLiteProjectRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.project_repo import PostgreSQLProjectRepository
         return PostgreSQLProjectRepository(db, current_user)
 
 
@@ -186,7 +183,6 @@ def get_folder_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_folders
     - PostgreSQL available  → PostgreSQLRepo      → ldm_folders
     """
-    from server.repositories.postgresql.folder_repo import PostgreSQLFolderRepository
     from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -195,6 +191,7 @@ def get_folder_repository(
     elif _is_server_local():
         return SQLiteFolderRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.folder_repo import PostgreSQLFolderRepository
         return PostgreSQLFolderRepository(db, current_user)
 
 
@@ -211,7 +208,6 @@ def get_platform_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_platforms
     - PostgreSQL available  → PostgreSQLRepo      → ldm_platforms
     """
-    from server.repositories.postgresql.platform_repo import PostgreSQLPlatformRepository
     from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -220,6 +216,7 @@ def get_platform_repository(
     elif _is_server_local():
         return SQLitePlatformRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.platform_repo import PostgreSQLPlatformRepository
         return PostgreSQLPlatformRepository(db, current_user)
 
 
@@ -236,7 +233,6 @@ def get_qa_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_qa_results
     - PostgreSQL available  → PostgreSQLRepo      → ldm_qa_results
     """
-    from server.repositories.postgresql.qa_repo import PostgreSQLQAResultRepository
     from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -245,6 +241,7 @@ def get_qa_repository(
     elif _is_server_local():
         return SQLiteQAResultRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.qa_repo import PostgreSQLQAResultRepository
         return PostgreSQLQAResultRepository(db, current_user)
 
 
@@ -261,7 +258,6 @@ def get_trash_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_trash
     - PostgreSQL available  → PostgreSQLRepo      → ldm_trash
     """
-    from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
     from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
     from server.repositories.sqlite.base import SchemaMode
 
@@ -270,6 +266,7 @@ def get_trash_repository(
     elif _is_server_local():
         return SQLiteTrashRepository(schema_mode=SchemaMode.SERVER)
     else:
+        from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
         return PostgreSQLTrashRepository(db, current_user)
 
 
@@ -288,16 +285,14 @@ def get_capability_repository(
 
     Note: Capability management is admin-only and not available in SQLite modes.
     """
-    from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
     from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
-    from server.repositories.sqlite.base import SchemaMode
 
     if _is_offline_mode(request):
         return SQLiteCapabilityRepository()
     elif _is_server_local():
-        # Capability repo is a stub in SQLite modes - no user management
         return SQLiteCapabilityRepository()
     else:
+        from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
         return PostgreSQLCapabilityRepository(db, current_user)
 
 

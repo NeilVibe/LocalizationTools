@@ -87,7 +87,11 @@
         const result = await buildRes.json();
         const count = result.total_entries || result.entity_count || 0;
         const time = result.build_time ? `${result.build_time.toFixed(1)}s` : '';
-        addToast({ message: `${count} entries indexed ${time ? `in ${time}` : ''}`, kind: 'success', title: 'MegaIndex Ready', duration: 5000 });
+        if (count > 0) {
+          addToast({ message: `${count} entries indexed ${time ? `in ${time}` : ''}`, kind: 'success', title: 'MegaIndex Ready', duration: 5000 });
+        } else {
+          addToast({ message: 'No game data found — configure Perforce paths in Settings', kind: 'warning', title: 'MegaIndex', duration: 8000 });
+        }
       } else {
         const err = await buildRes.json().catch(() => ({}));
         addToast({ message: err.detail || 'Build failed — check path settings', kind: 'warning', title: 'MegaIndex', duration: 8000 });

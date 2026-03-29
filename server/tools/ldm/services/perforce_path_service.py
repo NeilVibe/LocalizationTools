@@ -51,19 +51,26 @@ LANG_TO_AUDIO_FOLDER = {
 
 
 def convert_to_wsl_path(windows_path: str) -> str:
-    """Convert Windows path to WSL path.
+    """Convert Windows path to platform-appropriate path.
 
-    F:\\perforce\\... -> /mnt/f/perforce/...
+    On WSL/Linux: F:\\perforce\\... -> /mnt/f/perforce/...
+    On Windows: F:\\perforce\\... -> F:\\perforce\\... (unchanged)
     Already-unix paths pass through unchanged.
     """
+    import sys
+
     if not windows_path:
         return ""
+
+    # On Windows (production app), keep Windows paths as-is
+    if sys.platform == "win32":
+        return windows_path
 
     # Already a Unix path
     if windows_path.startswith("/"):
         return windows_path
 
-    # Check for drive letter pattern (X:\...)
+    # WSL/Linux: Convert drive letter pattern (X:\...)
     if len(windows_path) >= 2 and windows_path[1] == ":":
         drive = windows_path[0].lower()
         rest = windows_path[2:].replace("\\", "/")

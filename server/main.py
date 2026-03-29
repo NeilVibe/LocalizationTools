@@ -350,6 +350,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"[DEV] Right Panel auto-init skipped: {e}")
 
+    # === EAGER MODEL2VEC LOAD ===
+    try:
+        from server.tools.shared.embedding_engine import get_embedding_engine
+        engine = get_embedding_engine("model2vec")
+        engine.load()
+        logger.success(f"[Model2Vec] Loaded eagerly on startup: dim={engine.dimension}")
+    except Exception as e:
+        logger.warning(f"[Model2Vec] Not available: {e}")
+
     logger.success("Server startup complete")
 
     yield  # Server runs here
