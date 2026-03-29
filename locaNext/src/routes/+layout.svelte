@@ -676,31 +676,6 @@
     outline-offset: -2px;
   }
 
-  /* Theme toggle button */
-  .theme-toggle-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.875rem;
-    background: transparent;
-    border: none;
-    color: var(--cds-text-02);
-    cursor: pointer;
-    height: 48px;
-    width: 48px;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-
-  .theme-toggle-button:hover {
-    background: var(--cds-layer-hover-01);
-    color: var(--cds-text-01);
-  }
-
-  .theme-toggle-button:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-
   /* Header title - non-clickable branding */
   :global(.bx--header__name) {
     cursor: default !important;
@@ -733,14 +708,6 @@
   .compact-dropdown-btn:focus {
     outline: 2px solid var(--cds-focus);
     outline-offset: -2px;
-  }
-
-  .user-name {
-    font-size: 0.875rem;
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .compact-dropdown-menu {

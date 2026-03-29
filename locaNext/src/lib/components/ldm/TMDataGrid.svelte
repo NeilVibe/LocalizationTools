@@ -1026,12 +1026,6 @@
     gap: 0.25rem;
   }
 
-  .field label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--cds-text-02);
-  }
-
   .readonly-value {
     padding: 0.5rem;
     background: var(--cds-layer-02);

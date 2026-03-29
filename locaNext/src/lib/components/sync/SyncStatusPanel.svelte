@@ -259,7 +259,7 @@
 >
   <span class="status-dot" class:online={$displayStatus === 'online'} class:offline={$displayStatus === 'offline'}></span>
   <span class="status-icon">
-    <svelte:component this={StatusIcon} size={16} />
+    <StatusIcon size={16} />
   </span>
   <span class="status-label">{$statusLabel}</span>
   {#if isLauncherOffline}
@@ -323,9 +323,10 @@
         <div class="subscriptions-list">
           <!-- Svelte 5: Use key (sub.id) for proper DOM diffing -->
           {#each visibleSubscriptions as sub (sub.id)}
+            {@const EntityIcon = getEntityIcon(sub.entity_type)}
             <div class="subscription-item">
               <span class="sub-icon">
-                <svelte:component this={getEntityIcon(sub.entity_type)} size={16} />
+                <EntityIcon size={16} />
               </span>
               <div class="sub-info">
                 <span class="sub-name">{sub.entity_name}</span>

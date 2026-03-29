@@ -195,6 +195,7 @@
 
 <div
   class="virtual-grid"
+  role="grid"
   onkeydown={handleGridKeydown}
   tabindex="-1"
 >

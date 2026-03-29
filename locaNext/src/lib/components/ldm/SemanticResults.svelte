@@ -86,6 +86,7 @@
         <div
           class="result-row"
           role="option"
+          aria-selected="false"
           tabindex="0"
           onclick={() => onSelect(result)}
         >

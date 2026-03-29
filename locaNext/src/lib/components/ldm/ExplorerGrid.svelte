@@ -427,7 +427,7 @@
   }
 </script>
 
-<div class="explorer-grid" role="grid" aria-label="File explorer" oncontextmenu={handleBackgroundContextMenu}>
+<div class="explorer-grid" role="grid" tabindex="0" aria-label="File explorer" oncontextmenu={handleBackgroundContextMenu}>
   {#if loading}
     <LoadingScreen message="Loading files..." progress={0} />
   {:else if items.length === 0}
@@ -446,6 +446,7 @@
     </div>
 
     <!-- Items -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="grid-body"
       bind:this={gridBody}

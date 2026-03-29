@@ -149,6 +149,7 @@
   <div
     class="palette-backdrop"
     onclick={handleBackdropClick}
+    onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }}
     transition:fade={{ duration: 150 }}
   >
     <div

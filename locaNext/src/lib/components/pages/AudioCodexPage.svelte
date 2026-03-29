@@ -278,9 +278,12 @@
               onclick={() => selectCategory(cat.full_path)}
             >
               {#if cat.children && cat.children.length > 0}
-                <button
+                <span
                   class="tree-toggle"
+                  role="button"
+                  tabindex="0"
                   onclick={(e) => toggleCategory(cat.full_path, e)}
+                  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(cat.full_path, e); } }}
                   aria-label={isExpanded ? 'Collapse' : 'Expand'}
                 >
                   {#if isExpanded}
@@ -288,7 +291,7 @@
                   {:else}
                     <ChevronRight size={14} />
                   {/if}
-                </button>
+                </span>
               {:else}
                 <span class="tree-toggle-spacer"></span>
               {/if}
@@ -306,9 +309,12 @@
                     onclick={() => selectCategory(child.full_path)}
                   >
                     {#if child.children && child.children.length > 0}
-                      <button
+                      <span
                         class="tree-toggle"
+                        role="button"
+                        tabindex="0"
                         onclick={(e) => toggleCategory(child.full_path, e)}
+                        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(child.full_path, e); } }}
                         aria-label={isChildExpanded ? 'Collapse' : 'Expand'}
                       >
                         {#if isChildExpanded}
@@ -316,7 +322,7 @@
                         {:else}
                           <ChevronRight size={14} />
                         {/if}
-                      </button>
+                      </span>
                     {:else}
                       <span class="tree-toggle-spacer"></span>
                     {/if}
@@ -379,10 +385,14 @@
           {:else}
             <div class="audio-list" role="list" aria-label="Audio entries">
               {#each items as item (item.event_name)}
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
                   class="audio-row"
                   role="listitem"
+                  tabindex="0"
                   onclick={() => selectRow(item)}
+                  onkeydown={(e) => { if (e.key === 'Enter') selectRow(item); }}
                 >
                   <!-- Play/Stop button -->
                   <button
@@ -418,7 +428,8 @@
 
                   <!-- Inline audio player (shown when playing) -->
                   {#if playingEvent === item.event_name && item.has_wem}
-                    <div class="inline-player" onclick={(e) => e.stopPropagation()}>
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div class="inline-player" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
                       {#key item.event_name}
                         <audio
                           controls

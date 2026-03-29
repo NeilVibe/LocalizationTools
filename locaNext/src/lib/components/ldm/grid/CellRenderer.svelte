@@ -275,12 +275,14 @@
 
 <!-- Resize Bars: OUTSIDE scroll container so they don't scroll -->
 {#each visibleResizeBars as column (column)}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="column-resize-bar"
     class:resize-active={isResizing && resizeColumn === column}
     style="left: {resizeBarPositions[column] || 0}px;"
     onmousedown={(e) => startResize(e, column)}
     role="separator"
+    aria-orientation="vertical"
     aria-label="Resize {column} column"
   ></div>
 {/each}
@@ -296,7 +298,6 @@
     {#each visibleRows as row, i (row.row_num)}
       {@const rowIndex = grid.visibleStart + i}
       {@const rowLock = $ldmConnected && row.id ? isRowLocked(parseInt(row.id)) : null}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div
         class="virtual-row"
         class:placeholder={row.placeholder}
@@ -307,9 +308,11 @@
           --grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
         use:measureRowHeight={{ index: rowIndex }}
         onclick={(e) => onRowClick?.(row, e)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick?.(row, e); } }}
         oncontextmenu={(e) => !row.placeholder && onCellContextMenu?.(e, row.id)}
         onmouseleave={() => onRowMouseLeave?.()}
         role="row"
+        tabindex="0"
       >
         {#if row.placeholder}
           <!-- Placeholder rows match actual column structure -->
@@ -390,6 +393,8 @@
             class:cell-selected={grid.selectedRowId === row.id}
             style="flex: {sourceWidthPercent} 1 0;{fileType === 'gamedev' ? ` padding-left: ${(row.extra_data?.depth || 0) * 20 + 8}px` : ''}"
             onmouseenter={() => onCellMouseEnter?.(row, 'source')}
+            role="gridcell"
+            tabindex="-1"
           >
             <span class="cell-content"><TagText text={row.source || ""} /></span>
             <!-- Translation source badge (AI/TM indicator) -->
@@ -431,6 +436,8 @@
                   bind:this={inlineEditTextarea}
                   contenteditable="true"
                   class="inline-edit-textarea"
+                  role="textbox"
+                  tabindex="0"
                   onkeydown={(e) => onInlineEditKeydown?.(e)}
                   onblur={() => onInlineEditBlur?.()}
                   oncontextmenu={(e) => onEditContextMenu?.(e)}
@@ -810,14 +817,6 @@
     background: rgba(218, 30, 40, 0.08);
   }
 
-  .qa-icon {
-    position: absolute;
-    right: 1.75rem;
-    color: var(--cds-support-01, #da1e28);
-    opacity: 1;
-    z-index: 1;
-  }
-
   .cell.target.qa-flagged .edit-icon {
     right: 0.35rem;
   }
@@ -911,55 +910,6 @@
     background: rgba(34, 197, 94, 0.15);
     color: #22c55e;
     border: 1px solid rgba(34, 197, 94, 0.3);
-  }
-
-  /* TM Match Column */
-  .cell.tm-result {
-    background: var(--cds-layer-02);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-    padding: 0.35rem 0.5rem;
-  }
-
-  .cell.tm-result.high-match {
-    background: rgba(36, 161, 72, 0.12);
-    border-left: 3px solid var(--cds-support-02);
-  }
-
-  .cell.tm-result.medium-match {
-    background: rgba(255, 209, 0, 0.12);
-    border-left: 3px solid var(--cds-support-03);
-  }
-
-  .cell.tm-result.low-match {
-    background: rgba(198, 198, 198, 0.12);
-    border-left: 3px solid var(--cds-border-subtle-01);
-  }
-
-  .tm-similarity {
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    background: var(--cds-layer-accent-01);
-    color: var(--cds-text-02);
-  }
-
-  .cell.tm-result.high-match .tm-similarity {
-    background: var(--cds-support-02);
-    color: white;
-  }
-
-  .cell.tm-result.medium-match .tm-similarity {
-    background: var(--cds-support-03);
-    color: var(--cds-text-inverse);
-  }
-
-  .cell.tm-result .no-match {
-    color: var(--cds-text-03);
-    font-style: italic;
-    font-size: 0.75rem;
   }
 
   .loading-cell {

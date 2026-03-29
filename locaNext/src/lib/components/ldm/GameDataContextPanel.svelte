@@ -451,6 +451,7 @@
   <div class="context-panel" class:collapsed style="width: {collapsed ? '40px' : `${width}px`};">
     <!-- Resize handle -->
     {#if !collapsed}
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
         class="resize-handle"
         onmousedown={startResize}
@@ -742,7 +743,8 @@
 
   <!-- Image overlay -->
   {#if imageOverlay}
-    <div class="overlay-backdrop" onclick={() => { imageOverlay = null; }}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="overlay-backdrop" onclick={() => { imageOverlay = null; }} onkeydown={(e) => { if (e.key === 'Escape') imageOverlay = null; }}>
       <img class="overlay-img" src={imageOverlay} alt="Full preview" />
     </div>
   {/if}
@@ -1305,23 +1307,6 @@
     white-space: nowrap;
   }
 
-  .play-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    border: 1px solid var(--panel-border);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-bright);
-    cursor: pointer;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-  .play-btn:hover { background: var(--panel-bg-hover); border-color: var(--link-color); }
-  .play-btn.playing { background: rgba(97, 175, 239, 0.15); border-color: var(--link-color); color: var(--link-color); }
-
   /* ===== MEDIA ATTRIBUTE FALLBACK ===== */
   .media-attr-row {
     display: flex;
@@ -1440,11 +1425,6 @@
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes statusPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
   }
 
   /* === Image Shimmer to Reveal (WOW-03) === */

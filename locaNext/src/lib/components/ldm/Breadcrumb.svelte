@@ -121,11 +121,6 @@
     color: var(--cds-link-primary);
   }
 
-  .breadcrumb-separator {
-    color: var(--cds-text-02);
-    flex-shrink: 0;
-  }
-
   .breadcrumb-current {
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;

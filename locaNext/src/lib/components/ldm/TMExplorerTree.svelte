@@ -483,6 +483,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="tm-explorer-tree" oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); }}>
   {#if loading}
     <div class="loading-state">Loading...</div>
@@ -496,6 +497,7 @@
     {/if}
     <div class="tree-content">
       <!-- Unassigned Section -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="tree-section"
         class:drop-target={dropTargetId === 'unassigned'}
@@ -549,6 +551,7 @@
 
       <!-- Platforms -->
       {#each treeData.platforms || [] as platform (platform.id)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="tree-section"
           class:drop-target={dropTargetId === `platform-${platform.id}`}
@@ -614,6 +617,7 @@
               <!-- Projects under platform -->
               <!-- UI-109: Filter out nested "Offline Storage" project when parent platform is also "Offline Storage" -->
               {#each (platform.projects || []).filter(p => !(platform.name === 'Offline Storage' && p.name === 'Offline Storage')) as project (project.id)}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                   class="tree-subsection"
                   class:drop-target={dropTargetId === `project-${project.id}`}
@@ -674,6 +678,7 @@
 
                       <!-- Folders under project -->
                       {#each project.folders || [] as folder (folder.id)}
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
                         <div
                           class="tree-subsection"
                           class:drop-target={dropTargetId === `folder-${folder.id}`}

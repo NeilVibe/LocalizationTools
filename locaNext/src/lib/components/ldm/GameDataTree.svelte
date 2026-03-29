@@ -764,7 +764,11 @@
     class="xml-row file-header-row"
     class:expanded={expandedNodes.has(row.fileKey)}
     style="--entity-color: {getEntityColor('')}"
+    role="treeitem"
+    aria-selected={false}
+    tabindex="0"
     onclick={() => toggleExpand(row.fileKey)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(row.fileKey); } }}
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
     <span class="fold-gutter">
@@ -788,11 +792,15 @@
     class:selected={isRowSelected(row)}
     style="--entity-color: {color}"
     data-node-id={node.node_id}
+    role="treeitem"
+    aria-selected={isRowSelected(row)}
+    tabindex="-1"
     onclick={() => selectNode(node)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(node); } }}
     oncontextmenu={(e) => handleContextMenu(e, node)}
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
-    <span class="fold-gutter" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+    <span class="fold-gutter" role="button" tabindex="-1" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleExpand(node.node_id); } }}>
       <span class="fold-arrow expanded">
         <ChevronRight size={12} />
       </span>
@@ -819,7 +827,11 @@
     class:selected={isRowSelected(row)}
     style="--entity-color: {color}"
     data-node-id={node.node_id}
+    role="treeitem"
+    aria-selected={isRowSelected(row)}
+    tabindex="-1"
     onclick={() => selectNode(node)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(node); } }}
     oncontextmenu={(e) => handleContextMenu(e, node)}
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
@@ -841,11 +853,15 @@
     class:selected={isRowSelected(row)}
     style="--entity-color: {color}"
     data-node-id={node.node_id}
+    role="treeitem"
+    aria-selected={isRowSelected(row)}
+    tabindex="-1"
     onclick={() => selectNode(node)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(node); } }}
     oncontextmenu={(e) => handleContextMenu(e, node)}
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
-    <span class="fold-gutter" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+    <span class="fold-gutter" role="button" tabindex="-1" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleExpand(node.node_id); } }}>
       <span class="fold-arrow">
         <ChevronRight size={12} />
       </span>
@@ -855,7 +871,7 @@
       <span class="t-bracket">&lt;</span><span class="t-tag" style="color: {color};">{node.tag}</span>
       {@render attributeTokens(node)}
       <span class="t-bracket">&gt;</span>
-      <span class="collapsed-indicator" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+      <span class="collapsed-indicator" role="button" tabindex="-1" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleExpand(node.node_id); } }}>
         {node.children?.length || 0} {node.children?.length === 1 ? 'child' : 'children'}
       </span>
       <span class="t-bracket">&lt;/</span><span class="t-tag" style="color: {color};">{node.tag}</span><span class="t-bracket">&gt;</span>
@@ -909,11 +925,13 @@
         role="button"
         tabindex="-1"
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+        onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAttrDoubleClick(e, node, attrName, attrValue); } }}
       >"{attrValue}"</span>{:else}<span
         class="t-value attr-val-{category}"
         role="button"
         tabindex="-1"
         onclick={(e) => copyAttrValue(e, String(attrValue))}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyAttrValue(e, String(attrValue)); } }}
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
         onmouseenter={category === 'crossref' ? (e) => onRefMouseEnter(e, String(attrValue)) : undefined}
         onmouseleave={category === 'crossref' ? onRefMouseLeave : undefined}
@@ -1295,12 +1313,7 @@
   }
 
   /* ===== ANIMATIONS ===== */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-2px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Removed: rowFadeIn, selectPulse, selectedAccentPulse — CSS animations
+  /* Removed: fadeIn, rowFadeIn, selectPulse, selectedAccentPulse — CSS animations
      replay on every Svelte re-render causing flash/stutter. Use CSS transitions
      for smooth state changes instead. */
 
@@ -1387,7 +1400,7 @@
   }
 
   /* === Search Highlight Pulse (WOW-04) === */
-  .search-highlight-pulse {
+  :global(.search-highlight-pulse) {
     animation: highlightPulse 1s ease-out;
   }
 

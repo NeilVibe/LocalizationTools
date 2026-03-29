@@ -1035,16 +1035,6 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     height: 100%;
   }
 
-  .ldm-layout {
-    display: flex;
-    flex: 1;
-    /* UI-053 FIX: Restored overflow: hidden - required for virtual scroll height constraint */
-    overflow: hidden;
-    position: relative;
-    /* Ensure flex children can't exceed this container */
-    min-height: 0;
-  }
-
   /* Phase 10: Page-based layout container */
   .ldm-pages {
     display: flex;
@@ -1105,63 +1095,6 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-  }
-
-  .ldm-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Phase 1: Grid + Side Panel Layout */
-  .grid-with-panel {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  /* Ensure VirtualGrid takes remaining space */
-  .grid-with-panel > :global(.virtual-grid) {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ldm-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: var(--cds-layer-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    min-height: 48px;
-  }
-
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .toolbar-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
-  }
-
-  .toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  /* P33 Phase 5: Go Online message */
-  .go-online-message {
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    margin-left: 0.5rem;
-    font-style: italic;
   }
 
   /* BUG-027: TM View placeholder CSS removed - now using TMDataGrid */

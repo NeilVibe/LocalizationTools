@@ -34,11 +34,4 @@
     display: inline;
   }
 
-  .colored-segment {
-    /* Color is applied via inline style */
-  }
-
-  .plain-segment {
-    /* Inherits parent color */
-  }
 </style>

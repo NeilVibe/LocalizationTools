@@ -2558,7 +2558,7 @@
 <!-- Item Context Menu -->
 {#if showContextMenu && contextMenuItem}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
+  <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px" role="menu" tabindex="0" onclick={(e) => e.stopPropagation()}>
     {#if contextMenuItem.type === 'file' || contextMenuItem.type === 'local-file'}
       <button class="context-menu-item" onclick={() => { handleCopy(); closeMenus(); }}>Copy (Ctrl+C)</button>
       {#if canModifyStructure}
@@ -2700,7 +2700,7 @@
 <!-- Background Context Menu -->
 {#if showBackgroundMenu}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="context-menu" style="left: {bgMenuX}px; top: {bgMenuY}px" role="menu" onclick={(e) => e.stopPropagation()}>
+  <div class="context-menu" style="left: {bgMenuX}px; top: {bgMenuY}px" role="menu" tabindex="0" onclick={(e) => e.stopPropagation()}>
     {#if currentPath.length === 0}
       <!-- At root: can create platform or project (but NOT in offline mode) -->
       {#if $offlineMode}

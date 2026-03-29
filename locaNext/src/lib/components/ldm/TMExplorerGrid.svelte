@@ -1061,6 +1061,7 @@
 <!-- UX-003: Global keyboard handler -->
 <svelte:window onkeydown={handleKeyDown} />
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="tm-explorer-grid" oncontextmenu={handleBackgroundContextMenu}>
   <!-- UX-003: Clipboard indicator -->
   {#if clipboardItems.length > 0}
@@ -1152,9 +1153,12 @@
         >
           <div class="grid-cell name-cell" role="gridcell">
             {#if item.type === 'tm'}
-              <button
+              <span
                 class="activation-toggle"
+                role="button"
+                tabindex="0"
                 onclick={(e) => { e.stopPropagation(); activateTM(item.tm_data, !item.is_active); }}
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); activateTM(item.tm_data, !item.is_active); } }}
                 title={item.is_active ? 'Deactivate TM' : 'Activate TM'}
               >
                 {#if item.is_active}
@@ -1162,7 +1166,7 @@
                 {:else}
                   <RadioButton size={18} class="tm-icon inactive" />
                 {/if}
-              </button>
+              </span>
             {:else}
               <Icon size={20} class="item-icon" />
             {/if}

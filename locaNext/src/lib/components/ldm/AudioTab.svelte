@@ -101,7 +101,7 @@
             crossorigin="anonymous"
             class="audio-player"
             src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?v={Date.now()}"
-          />
+          ></audio>
         {/key}
       </div>
 

@@ -285,7 +285,6 @@
   }
 
   /* Empty state */
-  .properties-panel.empty .panel-content,
   .empty-message {
     display: flex;
     align-items: center;

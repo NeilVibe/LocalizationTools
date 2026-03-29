@@ -142,6 +142,7 @@
           <button
             class="tree-node folder-node"
             role="treeitem"
+            aria-selected={false}
             aria-expanded={expandedNodes.has(folder.path)}
             style="padding-left: {depth * 16 + 8}px"
             onclick={() => toggleNode(folder.path)}
@@ -168,6 +169,7 @@
                 <button
                   class="tree-node file-node"
                   role="treeitem"
+                  aria-selected={selectedFilePath === file.path}
                   class:selected={selectedFilePath === file.path}
                   style="padding-left: {(depth + 1) * 16 + 8}px"
                   onclick={() => selectFile(file)}
@@ -354,9 +356,7 @@
     flex-shrink: 0;
   }
 
-  .tree-children {
-    /* No extra margin needed -- indentation handled via padding-left */
-  }
+  /* .tree-children — no extra margin needed, indentation handled via padding-left */
 
   .empty-hint {
     font-size: 0.75rem;

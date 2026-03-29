@@ -272,7 +272,8 @@
         </div>
       </div>
       <!-- Backdrop to close popover -->
-      <div class="settings-backdrop" onclick={() => showSearchSettings = false}></div>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="settings-backdrop" onclick={() => showSearchSettings = false} onkeydown={(e) => e.key === 'Escape' && (showSearchSettings = false)} role="presentation"></div>
     {/if}
 
     <!-- P4: Semantic Search Results Overlay (fuzzy/Similar mode) -->

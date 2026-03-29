@@ -75,6 +75,7 @@
 <div class="tmqa-panel" class:collapsed style="width: {collapsed ? '40px' : `${width}px`};">
   <!-- Resize handle (left edge) -->
   {#if !collapsed}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle"
       onmousedown={startResize}
@@ -325,6 +326,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
@@ -336,6 +338,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 3;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
   }

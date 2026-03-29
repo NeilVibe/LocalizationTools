@@ -90,8 +90,8 @@
 
 <div class="branch-drive-selector">
   <div class="selector-group">
-    <label class="selector-label">Branch</label>
-    <select class="selector-dropdown" bind:value={branch} onchange={onSelectionChange}>
+    <label class="selector-label" for="branch-select">Branch</label>
+    <select id="branch-select" class="selector-dropdown" bind:value={branch} onchange={onSelectionChange}>
       {#each KNOWN_BRANCHES as b (b)}
         <option value={b}>{b}</option>
       {/each}
@@ -99,8 +99,8 @@
   </div>
 
   <div class="selector-group">
-    <label class="selector-label">Drive</label>
-    <select class="selector-dropdown drive-select" bind:value={drive} onchange={onSelectionChange}>
+    <label class="selector-label" for="drive-select">Drive</label>
+    <select id="drive-select" class="selector-dropdown drive-select" bind:value={drive} onchange={onSelectionChange}>
       {#each KNOWN_DRIVES as d (d)}
         <option value={d}>{d}:</option>
       {/each}

@@ -171,7 +171,7 @@
       ></div>
 
       <!-- Popover -->
-      <div class="qa-popover" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="QA Issues">
+      <div class="qa-popover" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && closePopover()} role="dialog" tabindex="-1" aria-label="QA Issues">
         <div class="qa-popover-header">
           <span class="qa-popover-title">QA Issues ({issues.length})</span>
           <button class="qa-popover-close" onclick={(e) => { e.stopPropagation(); closePopover(); }} aria-label="Close">

@@ -142,6 +142,7 @@
           <button
             class="search-result"
             role="option"
+            aria-selected="false"
             aria-label="{result.entity.name} ({result.entity.entity_type}) -- {(result.similarity * 100).toFixed(0)}% match"
             onclick={() => selectResult(result)}
           >

@@ -1796,17 +1796,6 @@
     border-radius: 4px;
   }
 
-  .available-dicts ul {
-    margin: 0.5rem 0 0 1.5rem;
-    padding: 0;
-  }
-
-  .available-dicts li {
-    margin: 0.25rem 0;
-    font-size: 0.875rem;
-    color: var(--cds-text-02);
-  }
-
   .dict-list {
     display: flex;
     flex-direction: column;

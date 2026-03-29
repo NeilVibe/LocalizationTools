@@ -241,6 +241,7 @@
             class:folder={node.type === 'folder'}
             style="padding-left: {depth * 16 + 8}px;"
             onclick={() => handleNodeClick(node)}
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNodeClick(node); } }}
             role="button"
             tabindex="0"
           >

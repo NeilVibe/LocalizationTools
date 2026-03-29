@@ -280,6 +280,7 @@
             onmouseenter={() => selectedIndex = i}
           >
             <div class="result-icon" style="background: {getTypeColor(result.type)}15; color: {getTypeColor(result.type)}">
+              <!-- svelte-ignore svelte_component_deprecated -->
               <svelte:component this={getIcon(result.type)} size={20} />
             </div>
 
@@ -310,10 +311,12 @@
 
   <!-- Context Menu -->
   {#if showContextMenu && contextMenuItem}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="context-menu"
       style="left: {contextMenuX}px; top: {contextMenuY}px;"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => { if (e.key === 'Escape') closeContextMenu(); }}
     >
       <button class="context-menu-item" onclick={() => handleSelect(contextMenuItem)}>
         <Launch size={16} /> Open
