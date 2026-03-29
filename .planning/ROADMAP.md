@@ -8,7 +8,25 @@
 - v12.0 TM Intelligence --- Phases 86-88 (shipped 2026-03-26)
 - v13.0 Production Path Resolution --- Phases 89-92 (shipped 2026-03-26)
 - **v14.0 Debug & UX Overhaul** --- Phases 93-96 (planning)
-- **v15.0 MEGA Graft** --- Phase 98 (planning)
+- **v15.0 MEGA Graft** --- Phase 98 (shipped 2026-03-29)
+- **v16.0 Windows App Polish** --- Phase 99 (planning)
+
+### Phase 99: Svelte 4-to-5 Event Migration
+**Goal**: All Svelte 4 on:event patterns migrated to Svelte 5 syntax via AppModal wrapper pattern, isolating Carbon 0.95 compat boundary to one file
+**Depends on**: Phase 98
+**Requirements**: EVT-01, EVT-02, EVT-03, EVT-04, EVT-05, EVT-06, EVT-07
+**Success Criteria** (what must be TRUE):
+  1. Zero Svelte 4 `on:event` patterns remain in locaNext/src/ except AppModal.svelte (grep returns 0 matches)
+  2. AppModal.svelte wrapper exists, exposing onprimary/onsecondary/onclose callback props
+  3. All Carbon Modal buttons (primary/secondary) fire their handlers via AppModal
+  4. Carbon Dropdown on:select replaced with bind:selectedId in SearchEngine
+  5. Carbon Button on:click replaced with onclick in ProjectSettingsModal
+  6. Build succeeds with zero errors, svelte-check passes with zero warnings
+**Plans:** 3 plans
+Plans:
+- [ ] 99-01-PLAN.md --- Create AppModal wrapper + migrate Button on:click and Dropdown on:select
+- [ ] 99-02-PLAN.md --- Migrate 10 small/medium modal files to AppModal
+- [ ] 99-03-PLAN.md --- Migrate 4 large app/page files to AppModal + full codebase verification
 
 ## Archived Milestones
 
@@ -238,6 +256,7 @@ Plans:
 | 95. Navigation & Merge Redesign | 0/? | Pending | -- |
 | 96. GameData Category Tabs | 0/? | Pending | -- |
 | 98. MEGA Graft | 4/5 | Complete    | 2026-03-28 |
+| 99. Svelte 5 Event Migration | 0/3 | Planned | -- |
 | 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |

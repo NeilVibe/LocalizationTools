@@ -39,58 +39,6 @@ Requirements for Production Path Resolution milestone.
 
 - [x] **ARCH-02**: mega_index.py split from 1310 lines into 5 focused modules (entity, media, cross-ref, search, build)
 
-## Future Requirements
-
-Deferred to future milestones.
-
-### Interactive Codex (v14.0+)
-
-- **CODEX-01**: Per-generator Codex pages (Quest, Item, Character, Region) with QACompiler tab structure
-- **CODEX-02**: Interactive world map with Region boundaries from MapPlot data
-- **CODEX-03**: Entity pins on map from WorldPosition, color-coded by type
-- **CODEX-04**: crimsondesert.gg-style visual quality for map and entity cards
-
-### Infrastructure
-
-- **LAN-01 through LAN-07**: LAN Server Mode -- installer sets up machine as PostgreSQL LAN server
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Perforce client integration | Branch list is hardcoded (matches all 3 NewScripts apps) |
-| Auto-detect drive letter | User selects manually (matches QACompiler/MapDataGenerator pattern) |
-| Real Perforce sync/checkout | Read-only access to local files, no P4 commands |
-| Multi-user branch/drive | v13.0 is single-user; multi-user deferred to LAN milestone |
-| Codex enhancements | Deferred to v14.0+ (needs path resolution working first) |
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| FIX-01 | Phase 89 | Complete |
-| FIX-02 | Phase 89 | Complete |
-| FIX-03 | Phase 89 | Complete |
-| FIX-04 | Phase 89 | Complete |
-| PATH-01 | Phase 90 | Complete |
-| PATH-02 | Phase 90 | Complete |
-| PATH-03 | Phase 90 | Complete |
-| PATH-04 | Phase 90 | Complete |
-| MEDIA-01 | Phase 91 | Complete |
-| MEDIA-02 | Phase 91 | Complete |
-| MEDIA-03 | Phase 91 | Complete |
-| MEDIA-04 | Phase 91 | Complete |
-| MOCK-01 | Phase 91 | Complete |
-| MOCK-02 | Phase 91 | Complete |
-| MOCK-03 | Phase 91 | Complete |
-| MOCK-04 | Phase 91 | Complete |
-| ARCH-02 | Phase 92 | Complete |
-
-**Coverage:**
-- v13.0 requirements: 17 total
-- Mapped to phases: 17
-- Unmapped: 0
-
 ## v15.0 Requirements
 
 Requirements for MEGA Graft milestone.
@@ -127,6 +75,86 @@ Requirements for MEGA Graft milestone.
 | GRAFT-09 | 98 |
 - Unmapped: 0
 
+## v16.0 Requirements
+
+Requirements for Windows App Polish milestone.
+
+### Svelte 5 Event Migration
+
+- **EVT-01**: AppModal.svelte wrapper MUST exist that wraps Carbon Modal 0.95 and exposes onprimary/onsecondary/onclose callback props (Svelte 5 pattern), isolating the Svelte 4 compat boundary to ONE file
+- **EVT-02**: Carbon Button on:click events MUST be migrated to onclick (Svelte 5 DOM event syntax) in all application files
+- **EVT-03**: Carbon Dropdown on:select events MUST be migrated to bind:selectedId with $effect for change detection
+- **EVT-04**: All common/shared modal files (ConfirmModal, InputModal, ChangePassword, UpdateModal, AccessControl) MUST use AppModal instead of Carbon Modal directly, with onprimary/onsecondary callback props
+- **EVT-05**: All LDM modal files (TMUploadModal, FilePickerDialog, PretranslateModal, FileMergeModal, TMManager) MUST use AppModal instead of Carbon Modal directly
+- **EVT-06**: All app files (KRSimilar, QuickSearch, XLSTransfer) MUST use AppModal instead of Carbon Modal directly
+- **EVT-07**: FilesPage MUST use AppModal instead of Carbon Modal directly. After migration, grep for on:click/on:select/on:submit in locaNext/src/ (excluding AppModal.svelte) MUST return 0 results
+
+### Traceability
+
+| REQ | Phase |
+|-----|-------|
+| EVT-01 | 99 |
+| EVT-02 | 99 |
+| EVT-03 | 99 |
+| EVT-04 | 99 |
+| EVT-05 | 99 |
+| EVT-06 | 99 |
+| EVT-07 | 99 |
+- Unmapped: 0
+
+## Future Requirements
+
+Deferred to future milestones.
+
+### Interactive Codex (v14.0+)
+
+- **CODEX-01**: Per-generator Codex pages (Quest, Item, Character, Region) with QACompiler tab structure
+- **CODEX-02**: Interactive world map with Region boundaries from MapPlot data
+- **CODEX-03**: Entity pins on map from WorldPosition, color-coded by type
+- **CODEX-04**: crimsondesert.gg-style visual quality for map and entity cards
+
+### Infrastructure
+
+- **LAN-01 through LAN-07**: LAN Server Mode -- installer sets up machine as PostgreSQL LAN server
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Perforce client integration | Branch list is hardcoded (matches all 3 NewScripts apps) |
+| Auto-detect drive letter | User selects manually (matches QACompiler/MapDataGenerator pattern) |
+| Real Perforce sync/checkout | Read-only access to local files, no P4 commands |
+| Multi-user branch/drive | v13.0 is single-user; multi-user deferred to LAN milestone |
+| Codex enhancements | Deferred to v14.0+ (needs path resolution working first) |
+| Carbon Components upgrade | v0.95 is Svelte 4; upgrade to v1.0 deferred until stable release |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FIX-01 | Phase 89 | Complete |
+| FIX-02 | Phase 89 | Complete |
+| FIX-03 | Phase 89 | Complete |
+| FIX-04 | Phase 89 | Complete |
+| PATH-01 | Phase 90 | Complete |
+| PATH-02 | Phase 90 | Complete |
+| PATH-03 | Phase 90 | Complete |
+| PATH-04 | Phase 90 | Complete |
+| MEDIA-01 | Phase 91 | Complete |
+| MEDIA-02 | Phase 91 | Complete |
+| MEDIA-03 | Phase 91 | Complete |
+| MEDIA-04 | Phase 91 | Complete |
+| MOCK-01 | Phase 91 | Complete |
+| MOCK-02 | Phase 91 | Complete |
+| MOCK-03 | Phase 91 | Complete |
+| MOCK-04 | Phase 91 | Complete |
+| ARCH-02 | Phase 92 | Complete |
+
+**Coverage:**
+- v13.0 requirements: 17 total
+- Mapped to phases: 17
+- Unmapped: 0
+
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-29 after v15.0 MEGA Graft milestone*
+*Last updated: 2026-03-29 after v16.0 Phase 99 planning*
