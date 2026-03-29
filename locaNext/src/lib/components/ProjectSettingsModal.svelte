@@ -6,12 +6,12 @@
    * Validates paths against the backend endpoint and persists to localStorage.
    */
   import {
-    Modal,
     TextInput,
     Button,
     InlineNotification,
     InlineLoading
   } from "carbon-components-svelte";
+  import AppModal from './common/AppModal.svelte';
   import { getProjectSettings, setProjectSettings } from "$lib/stores/projectSettings.js";
   import { getApiBase, getAuthHeaders } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
@@ -133,13 +133,13 @@
   }
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading="Project Settings — {projectName || 'Unknown'}"
   primaryButtonText="Save"
   secondaryButtonText="Cancel"
-  on:click:button--primary={handleSave}
-  on:click:button--secondary={handleClose}
+  onprimary={handleSave}
+  onsecondary={handleClose}
   onclose={handleClose}
   size="sm"
 >
@@ -175,7 +175,7 @@
         <Button
           kind="ghost"
           size="small"
-          on:click={() => validatePath(locPath, 'loc')}
+          onclick={() => validatePath(locPath, 'loc')}
           disabled={validating}
         >
           Validate
@@ -211,7 +211,7 @@
         <Button
           kind="ghost"
           size="small"
-          on:click={() => validatePath(exportPath, 'export')}
+          onclick={() => validatePath(exportPath, 'export')}
           disabled={validating}
         >
           Validate
@@ -228,7 +228,7 @@
       {/if}
     </div>
   </div>
-</Modal>
+</AppModal>
 
 <style>
   .modal-content {

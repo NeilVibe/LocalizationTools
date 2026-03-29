@@ -24,7 +24,7 @@
   6. Build succeeds with zero errors, svelte-check passes with zero warnings
 **Plans:** 3 plans
 Plans:
-- [ ] 99-01-PLAN.md --- Create AppModal wrapper + migrate Button on:click and Dropdown on:select
+- [x] 99-01-PLAN.md --- Create AppModal wrapper + migrate Button on:click and Dropdown on:select
 - [ ] 99-02-PLAN.md --- Migrate 10 small/medium modal files to AppModal
 - [ ] 99-03-PLAN.md --- Migrate 4 large app/page files to AppModal + full codebase verification
 
@@ -256,7 +256,7 @@ Plans:
 | 95. Navigation & Merge Redesign | 0/? | Pending | -- |
 | 96. GameData Category Tabs | 0/? | Pending | -- |
 | 98. MEGA Graft | 4/5 | Complete    | 2026-03-28 |
-| 99. Svelte 5 Event Migration | 0/3 | Planned | -- |
+| 99. Svelte 5 Event Migration | 1/3 | In Progress|  |
 | 89. Code Cleanup | 1/1 | Complete | 2026-03-26 |
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
