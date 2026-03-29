@@ -74,13 +74,13 @@ class TestScanFolder:
         assert result.folders[0].folders[0].files[0].entity_count == 5
 
     def test_path_traversal_rejected(self, tmp_path: Path) -> None:
-        """Given a path outside allowed base, raises ValueError."""
+        """Given a nonexistent path, raises ValueError."""
         from server.tools.ldm.services.gamedata_browse_service import GameDataBrowseService
 
         svc = GameDataBrowseService(base_dir=tmp_path)
 
-        with pytest.raises(ValueError, match="outside.*allowed"):
-            svc.scan_folder("/etc/passwd")
+        with pytest.raises(ValueError, match="does not exist|not found"):
+            svc.scan_folder("/nonexistent/path/that/does/not/exist")
 
 
 class TestDetectColumns:

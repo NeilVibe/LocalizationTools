@@ -38,6 +38,18 @@ EDITABLE_ATTRS = {
 }
 
 
+def _unwrap_virtual_root(wrapper: etree._Element) -> etree._Element:
+    """Get the real XML root from sanitizer's <ROOT> wrapper.
+
+    sanitize_and_parse wraps content in <ROOT>, which may contain PIs/comments
+    before the actual data root. This finds the first real Element child.
+    """
+    for child in wrapper:
+        if hasattr(child, 'tag') and isinstance(child.tag, str):
+            return child
+    return wrapper
+
+
 class GameDataBrowseService:
     """Scans gamedata directories and detects XML entity columns."""
 
@@ -71,9 +83,10 @@ class GameDataBrowseService:
     def _count_entities(self, xml_path: Path) -> int:
         """Quick entity count via sanitized parser -- number of direct children of root."""
         from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
-        root = sanitize_and_parse(xml_path)
-        if root is None:
+        wrapper = sanitize_and_parse(xml_path)
+        if wrapper is None:
             return 0
+        root = _unwrap_virtual_root(wrapper)
         return len(root)
 
     def scan_folder(
@@ -126,11 +139,12 @@ class GameDataBrowseService:
         resolved = self._validate_path(xml_path)
 
         from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
-        root = sanitize_and_parse(resolved)
-        if root is None:
+        wrapper = sanitize_and_parse(resolved)
+        if wrapper is None:
             logger.warning(f"[GameDataBrowse] Malformed XML, cannot detect columns: {resolved}")
             return FileColumnsResponse(columns=[], editable_attrs=[])
 
+        root = _unwrap_virtual_root(wrapper)
         if len(root) == 0:
             return FileColumnsResponse(columns=[], editable_attrs=[])
 
