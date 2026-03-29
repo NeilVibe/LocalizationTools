@@ -57,6 +57,21 @@
     }
   });
 
+  // Save when checkboxes change
+  $effect(() => {
+    // Read all three to create dependency
+    const idx = showIndex;
+    const sid = showStringId;
+    const ref = showReference;
+    // Only save if modal is open (avoid saving on initial load)
+    if (open) {
+      preferences.setColumn('showIndex', idx);
+      preferences.setColumn('showStringId', sid);
+      preferences.setColumn('showReference', ref);
+      showSaved();
+    }
+  });
+
   onMount(() => {
     loadFromStore();
   });
@@ -86,18 +101,15 @@
     <div class="checkbox-list">
       <Checkbox
         labelText="Index Number"
-        checked={showIndex}
-        oncheck={(e) => { showIndex = e.detail; handleColumnToggle('showIndex', e.detail); }}
+        bind:checked={showIndex}
       />
       <Checkbox
         labelText="String ID"
-        checked={showStringId}
-        oncheck={(e) => { showStringId = e.detail; handleColumnToggle('showStringId', e.detail); }}
+        bind:checked={showStringId}
       />
       <Checkbox
         labelText="Reference Column"
-        checked={showReference}
-        oncheck={(e) => { showReference = e.detail; handleColumnToggle('showReference', e.detail); }}
+        bind:checked={showReference}
       />
     </div>
 
