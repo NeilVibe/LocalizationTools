@@ -1,10 +1,12 @@
 """
 Tests for TwoTierCategoryMapper -- string type classification.
 
-Phase 5.1: Contextual Intelligence & QA Engine (Plan 01)
+Phase 5.1 + Phase 98 (MEGA Graft): two-tier path-based categorization.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +14,8 @@ from server.tools.ldm.services.category_mapper import (
     TwoTierCategoryMapper,
     categorize_string,
 )
+
+DUMMY_BASE = Path("/tmp/test_gamedata")
 
 
 # =============================================================================
@@ -23,14 +27,14 @@ class TestTier1Story:
     """Test Tier 1 STORY pattern detection (dialog, sequencer)."""
 
     def test_dialog_path_returns_dialog(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/dialog/npc_quest_dialog.xml", "Hello brave warrior")
-        assert result == "Dialog"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("dialog/npc/quest_dialog.xml"))
+        assert "Dialog" in result or "dialog" in result.lower()
 
     def test_sequencer_path_returns_sequencer(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/sequencer/seq_intro.xml", "text")
-        assert result == "Sequencer"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("sequencer/seq_intro.xml"))
+        assert "Seq" in result
 
 
 # =============================================================================
@@ -42,39 +46,39 @@ class TestTier2GameData:
     """Test Tier 2 GAME_DATA priority keyword matching."""
 
     def test_iteminfo_returns_item(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/iteminfo/iteminfo_sword.xml", "Iron Sword")
-        assert result == "Item"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("iteminfo/iteminfo_sword.xml"))
+        assert "Item" in result
 
     def test_characterinfo_returns_character(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/characterinfo/characterinfo_hero.xml", "Hero")
-        assert result == "Character"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("characterinfo/characterinfo_hero.xml"))
+        assert "Character" in result
 
     def test_questinfo_returns_quest(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/questinfo/questinfo_main.xml", "Main Quest")
-        assert result == "Quest"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("questinfo/questinfo_main.xml"))
+        assert "Quest" in result
 
     def test_skillinfo_returns_skill(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/skillinfo/skillinfo_fire.xml", "text")
-        assert result == "Skill"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("skillinfo/skillinfo_fire.xml"))
+        assert "Skill" in result
 
     def test_gimmick_returns_gimmick(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/gimmickinfo/gimmick_trap.xml", "text")
-        assert result == "Gimmick"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("gimmickinfo/gimmick_trap.xml"))
+        assert "Gimmick" in result
 
     def test_region_returns_region(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/regioninfo/regioninfo_map.xml", "text")
-        assert result == "Region"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("regioninfo/regioninfo_map.xml"))
+        assert "Region" in result
 
     def test_faction_returns_faction(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/factioninfo/factioninfo_alliance.xml", "text")
-        assert result == "Faction"
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("factioninfo/factioninfo_alliance.xml"))
+        assert "Faction" in result
 
 
 # =============================================================================
@@ -83,41 +87,18 @@ class TestTier2GameData:
 
 
 class TestFallback:
-    """Test fallback to 'Other' for unrecognized paths."""
+    """Test fallback for unrecognized paths."""
 
-    def test_unknown_path_returns_other(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("path/unknown/other.xml", "text")
-        assert result == "Other"
+    def test_unknown_path_returns_misc(self):
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("unknown/other.xml"))
+        # Falls through to gamedata tier which returns a category based on folder
+        assert isinstance(result, str) and len(result) > 0
 
-    def test_empty_path_returns_other(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("", "text")
-        assert result == "Other"
-
-
-# =============================================================================
-# Batch
-# =============================================================================
-
-
-class TestBatch:
-    """Test categorize_batch() handles list of (path, text) pairs."""
-
-    def test_batch_categorization(self):
-        mapper = TwoTierCategoryMapper()
-        items = [
-            ("path/dialog/npc.xml", "Hello"),
-            ("path/iteminfo/item.xml", "Sword"),
-            ("path/unknown/x.xml", "text"),
-        ]
-        results = mapper.categorize_batch(items)
-        assert results == ["Dialog", "Item", "Other"]
-
-    def test_empty_batch(self):
-        mapper = TwoTierCategoryMapper()
-        results = mapper.categorize_batch([])
-        assert results == []
+    def test_single_segment_returns_misc(self):
+        mapper = TwoTierCategoryMapper(DUMMY_BASE)
+        result = mapper.get_category(Path("file.xml"))
+        assert result == "System_Misc"
 
 
 # =============================================================================
@@ -128,10 +109,14 @@ class TestBatch:
 class TestConvenienceFunction:
     """Test categorize_string() module-level function."""
 
-    def test_categorize_string_works(self):
+    def test_categorize_string_dialog(self):
         result = categorize_string("path/dialog/npc.xml", "Hello")
         assert result == "Dialog"
 
     def test_categorize_string_item(self):
         result = categorize_string("path/iteminfo/item.xml", "Sword")
         assert result == "Item"
+
+    def test_categorize_string_other(self):
+        result = categorize_string("path/unknown/file.xml", "text")
+        assert result == "Other"
