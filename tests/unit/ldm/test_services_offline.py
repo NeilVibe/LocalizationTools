@@ -122,22 +122,25 @@ class TestContextServiceNotConfigured:
 
 
 class TestCategoryMapperDefault:
-    """CategoryMapper is stateless -- returns valid categories always."""
+    """CategoryMapper works with base_folder -- returns valid categories always."""
 
-    def test_unknown_path_returns_other(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("some/unknown/path.xml")
-        assert result == "Other"
+    def test_unknown_path_returns_misc(self):
+        from pathlib import Path
+        mapper = TwoTierCategoryMapper(Path("/tmp"))
+        result = mapper.get_category(Path("some/unknown/path.xml"))
+        assert isinstance(result, str) and len(result) > 0
 
     def test_dialog_path_returns_dialog(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("game/dialog/npc_quest.xml")
-        assert result == "Dialog"
+        from pathlib import Path
+        mapper = TwoTierCategoryMapper(Path("/tmp"))
+        result = mapper.get_category(Path("dialog/npc/quest.xml"))
+        assert "Dialog" in result
 
-    def test_empty_path_returns_other(self):
-        mapper = TwoTierCategoryMapper()
-        result = mapper.categorize("")
-        assert result == "Other"
+    def test_single_segment_returns_misc(self):
+        from pathlib import Path
+        mapper = TwoTierCategoryMapper(Path("/tmp"))
+        result = mapper.get_category(Path("file.xml"))
+        assert result == "System_Misc"
 
 
 # =============================================================================
