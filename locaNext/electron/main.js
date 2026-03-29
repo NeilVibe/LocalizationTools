@@ -107,16 +107,31 @@ const getAppPaths = () => {
     const resourcesPath = path.join(app.getAppPath(), '..');
     const appRoot = path.join(resourcesPath, '..');
 
-    // QA FULL builds bundle models in resources/models (extraResources)
-    // LIGHT/DEMO builds bundle Model2Vec in resources/models
-    // Check bundled location first, fall back to download location
+    // Model2Vec detection — priority order:
+    // 1. User-placed: <appRoot>/Model2Vec/ (like QuickTranslate — drop next to exe)
+    // 2. Bundled: <resources>/models/Model2Vec/ (QA Full builds)
+    // 3. Legacy: <appRoot>/models/Model2Vec/ (Build Light fallback)
+    const userModel2VecExists = fs.existsSync(path.join(appRoot, 'Model2Vec', 'config.json'));
     const bundledModelsPath = path.join(resourcesPath, 'models');
     const downloadedModelsPath = path.join(appRoot, 'models');
     const hasBundledQwen = fs.existsSync(path.join(bundledModelsPath, 'qwen-embedding', 'config.json'));
     const hasBundledModel2Vec = fs.existsSync(path.join(bundledModelsPath, 'Model2Vec', 'config.json'));
-    const modelsPath = (hasBundledQwen || hasBundledModel2Vec)
-      ? bundledModelsPath  // Bundled model found
-      : downloadedModelsPath;  // Fallback: downloaded model
+    const hasLegacyModel2Vec = fs.existsSync(path.join(downloadedModelsPath, 'Model2Vec', 'config.json'));
+
+    let modelsPath;
+    if (userModel2VecExists) {
+      modelsPath = appRoot;  // Model2Vec next to exe (QuickTranslate pattern)
+      console.log('[Models] Found Model2Vec at app root (user-placed)');
+    } else if (hasBundledQwen || hasBundledModel2Vec) {
+      modelsPath = bundledModelsPath;  // Bundled in resources/models
+      console.log('[Models] Found bundled models in resources/models');
+    } else if (hasLegacyModel2Vec) {
+      modelsPath = downloadedModelsPath;  // Legacy: appRoot/models
+      console.log('[Models] Found Model2Vec in models/ (legacy)');
+    } else {
+      modelsPath = appRoot;  // Default: expect user to place Model2Vec here
+      console.log('[Models] No Model2Vec found. Place Model2Vec/ folder next to LocaNext.exe');
+    }
 
     return {
       projectRoot: appRoot,
