@@ -6,12 +6,12 @@
    * Part of UI-096: Reference file picker overhaul
    */
   import {
-    Modal,
     Select,
     SelectItem,
     InlineLoading,
     Tag
   } from "carbon-components-svelte";
+  import AppModal from '../common/AppModal.svelte';
   import { Folder, Document, ChevronRight } from "carbon-icons-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -186,14 +186,14 @@
   });
 </script>
 
-<Modal
+<AppModal
   bind:open
   modalHeading={title}
   primaryButtonText="Select"
   primaryButtonDisabled={!selectedFile}
   secondaryButtonText="Cancel"
-  on:click:button--primary={confirmSelection}
-  on:click:button--secondary={handleClose}
+  onprimary={confirmSelection}
+  onsecondary={handleClose}
   onclose={handleClose}
   size="sm"
 >
@@ -280,7 +280,7 @@
       </div>
     {/if}
   </div>
-</Modal>
+</AppModal>
 
 <style>
   .file-picker {
