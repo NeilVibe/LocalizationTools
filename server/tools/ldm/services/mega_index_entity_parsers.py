@@ -84,6 +84,9 @@ class EntityParsersMixin:
                         ui_icon_path=elem.get("UIIconPath") or "",
                         source_file=source_file,
                     )
+                extracted = len(self.character_by_strkey) - count_before
+                if extracted > 0:
+                    logger.debug(f"[MEGAINDEX] {xml_path.name}: +{extracted} characters")
         except Exception as e:
             logger.warning(f"[MEGAINDEX] Character parse failed: {e}")
 
@@ -105,8 +108,11 @@ class EntityParsersMixin:
             for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
+                    logger.debug(f"[MEGAINDEX] Item XML parse failed: {xml_path.name}")
                     continue
                 source_file = xml_path.name
+                items_before = len(self.item_by_strkey)
+                groups_before = len(self.item_group_hierarchy)
 
                 # D14: ItemGroupInfo hierarchy
                 for elem in root.iter("ItemGroupInfo"):
@@ -174,6 +180,11 @@ class EntityParsersMixin:
                         source_file=source_file,
                         inspect_entries=tuple(inspect_entries),
                     )
+
+                items_added = len(self.item_by_strkey) - items_before
+                groups_added = len(self.item_group_hierarchy) - groups_before
+                if items_added > 0 or groups_added > 0:
+                    logger.debug(f"[MEGAINDEX] {xml_path.name}: +{items_added} items, +{groups_added} groups")
 
             # Update item_group_hierarchy with child_strkeys
             for gstrkey, node in list(self.item_group_hierarchy.items()):
@@ -329,7 +340,9 @@ class EntityParsersMixin:
                     f"[MEGAINDEX] StaticInfo folder not found: {staticinfo_folder}"
                 )
                 return
-            for xml_path in staticinfo_folder.rglob("skillinfo_*.xml"):
+            xml_files = list(staticinfo_folder.rglob("skillinfo_*.xml"))
+            logger.info(f"[MEGAINDEX] Skill XMLs found: {len(xml_files)} in {staticinfo_folder}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
@@ -352,8 +365,11 @@ class EntityParsersMixin:
         """D8: Parse GimmickGroupInfo/GimmickInfo elements."""
         try:
             if not staticinfo_folder.is_dir():
+                logger.warning(f"[MEGAINDEX] StaticInfo folder not found for gimmicks: {staticinfo_folder}")
                 return
-            for xml_path in staticinfo_folder.rglob("gimmickinfo_*.xml"):
+            xml_files = list(staticinfo_folder.rglob("gimmickinfo_*.xml"))
+            logger.info(f"[MEGAINDEX] Gimmick XMLs found: {len(xml_files)} in {staticinfo_folder}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 from loguru import logger
-from lxml import etree
 
 
 # =============================================================================
@@ -69,21 +68,22 @@ def _get_export_key(filename: str) -> str:
 
 
 def _safe_parse_xml(xml_path: Path) -> Optional[Any]:
-    """Parse XML file with error handling. Returns root element or None."""
+    """Parse XML file using the battle-tested sanitizer pipeline.
+
+    Uses sanitize_and_parse() from xml_sanitizer.py which provides:
+    - 5-stage sanitization (bad entities, seg newlines, attr escaping, tag repair)
+    - Virtual ROOT wrapper for multi-root files
+    - Dual-pass parsing (strict first, recovery fallback)
+    - Control character removal
+
+    Returns root element (the virtual ROOT wrapper) or None on failure.
+    """
     try:
-        tree = etree.parse(str(xml_path))
-        return tree.getroot()
-    except etree.XMLSyntaxError:
-        try:
-            tree = etree.parse(
-                str(xml_path), parser=etree.XMLParser(recover=True, huge_tree=True)
-            )
-            return tree.getroot()
-        except Exception:
-            logger.warning(f"[MEGAINDEX] Failed to parse XML: {xml_path}")
-            return None
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+
+        return sanitize_and_parse(xml_path)
     except Exception as e:
-        logger.warning(f"[MEGAINDEX] Error reading {xml_path}: {e}")
+        logger.warning(f"[MEGAINDEX] Error parsing {xml_path}: {e}")
         return None
 
 

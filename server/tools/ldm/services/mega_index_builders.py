@@ -9,7 +9,9 @@ Extracted from mega_index.py during ARCH-02 decomposition.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from loguru import logger
 
 from server.tools.ldm.services.mega_index_helpers import (
     _ENTITY_TYPE_MAP,
@@ -78,6 +80,7 @@ class BuildersMixin:
                 if name:
                     result.setdefault(name, []).append((entity_type, strkey))
         self.name_kr_to_strkeys = result
+        logger.debug(f"[MEGAINDEX] R1 name_kr_to_strkeys: {len(result)} unique names")
 
     def _build_knowledge_key_to_entities(self) -> None:
         """R2: Scan D2, D3, D4, D7 for knowledge_key references."""
@@ -96,6 +99,7 @@ class BuildersMixin:
                 if kk:
                     result.setdefault(kk, []).append((entity_type, strkey))
         self.knowledge_key_to_entities = result
+        logger.debug(f"[MEGAINDEX] R2 knowledge_key_to_entities: {len(result)} keys")
 
     def _build_stringid_to_event(self) -> None:
         """R3: Invert D11 (event_to_stringid)."""
@@ -103,6 +107,7 @@ class BuildersMixin:
         for event_lower, sid in self.event_to_stringid.items():
             result[sid] = event_lower
         self.stringid_to_event = result
+        logger.debug(f"[MEGAINDEX] R3 stringid_to_event: {len(result)} mappings")
 
     def _build_ui_texture_to_strkeys(self) -> None:
         """R4: Invert D1.ui_texture_name (lowercased)."""
@@ -112,6 +117,7 @@ class BuildersMixin:
             if tex:
                 result.setdefault(tex.lower(), []).append(strkey)
         self.ui_texture_to_strkeys = result
+        logger.debug(f"[MEGAINDEX] R4 ui_texture_to_strkeys: {len(result)} textures")
 
     def _build_source_file_to_strkeys(self) -> None:
         """R5: Scan all entity dicts for source_file grouping."""
@@ -123,6 +129,7 @@ class BuildersMixin:
                 if sf:
                     result.setdefault(sf, []).append((entity_type, strkey))
         self.source_file_to_strkeys = result
+        logger.debug(f"[MEGAINDEX] R5 source_file_to_strkeys: {len(result)} files")
 
     def _build_strorigin_to_stringids(self) -> None:
         """R6: Invert D12 with StrOrigin normalization."""
@@ -132,6 +139,7 @@ class BuildersMixin:
             if normalized:
                 result.setdefault(normalized, []).append(sid)
         self.strorigin_to_stringids = result
+        logger.debug(f"[MEGAINDEX] R6 strorigin_to_stringids: {len(result)} unique origins")
 
     def _build_group_key_to_items(self) -> None:
         """R7: From D3, accumulate items per group_key."""
@@ -141,19 +149,75 @@ class BuildersMixin:
             if gk:
                 result.setdefault(gk, []).append(strkey)
         self.group_key_to_items = result
+        logger.debug(f"[MEGAINDEX] R7 group_key_to_items: {len(result)} groups")
 
     # =========================================================================
     # Phase 7: Composed Dict Builders
     # =========================================================================
 
+    def _find_dds(self, ui_texture_name: str) -> Optional[Path]:
+        """GRAFTED from MDG DDSIndex.find() — exact same lookup chain.
+
+        1. Strip path components (/ or \\)
+        2. Try stem without extension
+        3. Try with original casing
+        4. Try stem + .dds
+        5. FALLBACK: substring match (either direction)
+        """
+        if not ui_texture_name:
+            return None
+        name = ui_texture_name.lower().strip()
+
+        # Strip path components (MDG: remove everything before last / or \\)
+        if "/" in name or "\\" in name:
+            name = name.replace("\\", "/").split("/")[-1]
+
+        # Remove .dds extension for lookup
+        lookup_name = name
+        if lookup_name.endswith(".dds"):
+            lookup_name = lookup_name[:-4]
+
+        # Attempt 1: stem without extension
+        if lookup_name in self.dds_by_stem:
+            return self.dds_by_stem[lookup_name]
+
+        # Attempt 2: with .dds extension (hits dual-key slot)
+        if name in self.dds_by_stem:
+            return self.dds_by_stem[name]
+
+        # Attempt 3: add .dds
+        name_with_ext = lookup_name + ".dds"
+        if name_with_ext in self.dds_by_stem:
+            return self.dds_by_stem[name_with_ext]
+
+        # Attempt 4: FALLBACK — substring match (MDG safety net)
+        for key in self.dds_by_stem:
+            if lookup_name in key or key in lookup_name:
+                logger.debug(f"[MEGAINDEX] DDS fuzzy match: '{ui_texture_name}' -> '{key}'")
+                return self.dds_by_stem[key]
+
+        logger.debug(f"[MEGAINDEX] DDS NOT FOUND: '{ui_texture_name}' (tried: '{lookup_name}')")
+        return None
+
     def _build_strkey_to_image_path(self) -> None:
-        """C1: StrKey -> KnowledgeInfo.UITextureName -> DDS path."""
+        """C1: StrKey -> KnowledgeInfo.UITextureName -> DDS path.
+
+        Uses _find_dds() which is GRAFTED from MDG DDSIndex.find() —
+        multi-attempt lookup with path stripping and fuzzy fallback.
+        """
+        misses_with_texture = 0
         for strkey, entry in self.knowledge_by_strkey.items():
             tex = entry.ui_texture_name
             if tex:
-                dds = self.dds_by_stem.get(tex.lower())
+                dds = self._find_dds(tex)
                 if dds:
                     self.strkey_to_image_path[strkey] = dds
+                else:
+                    misses_with_texture += 1
+        logger.debug(
+            f"[MEGAINDEX] C1 strkey_to_image_path: {len(self.strkey_to_image_path)} resolved, "
+            f"{misses_with_texture} misses (had UITextureName but DDS not found)"
+        )
 
     def _build_strkey_to_audio_path(self) -> None:
         """C2: Entity StrKey -> knowledge_key -> event -> WEM path (complex chain)."""
@@ -173,6 +237,7 @@ class BuildersMixin:
                 wem = self.wem_by_event.get(sk_lower)
                 if wem:
                     self.strkey_to_audio_path[strkey] = wem
+        logger.debug(f"[MEGAINDEX] C2 strkey_to_audio_path: {len(self.strkey_to_audio_path)} resolved")
 
     def _build_stringid_to_audio_path(self) -> None:
         """C3: StringId -> event_name (R3) -> WEM path (D10)."""
@@ -180,6 +245,7 @@ class BuildersMixin:
             wem = self.wem_by_event.get(event_lower)
             if wem:
                 self.stringid_to_audio_path[sid] = wem
+        logger.debug(f"[MEGAINDEX] C3 stringid_to_audio_path: {len(self.stringid_to_audio_path)} resolved")
 
     def _build_event_to_script_kr(self) -> None:
         """C4: event -> StringId (D11) -> StrOrigin (D12)."""
@@ -187,6 +253,7 @@ class BuildersMixin:
             origin = self.stringid_to_strorigin.get(sid)
             if origin:
                 self.event_to_script_kr[event_lower] = origin
+        logger.debug(f"[MEGAINDEX] C4 event_to_script_kr: {len(self.event_to_script_kr)} scripts")
 
     def _build_event_to_script_eng(self) -> None:
         """C5: event -> StringId (D11) -> ENG translation (D13)."""
@@ -195,6 +262,7 @@ class BuildersMixin:
             eng = translations.get("eng")
             if eng:
                 self.event_to_script_eng[event_lower] = eng
+        logger.debug(f"[MEGAINDEX] C5 event_to_script_eng: {len(self.event_to_script_eng)} scripts")
 
     def _build_entity_strkey_to_stringids(self) -> None:
         """C6: Entity StrKey -> source_file -> export StringIds + Korean text matching."""
@@ -231,6 +299,7 @@ class BuildersMixin:
 
                 if matched_sids:
                     self.entity_strkey_to_stringids[strkey] = matched_sids
+        logger.debug(f"[MEGAINDEX] C6 entity_strkey_to_stringids: {len(self.entity_strkey_to_stringids)} entities mapped to StringIDs")
 
     def _build_stringid_to_entity_map(self) -> None:
         """C7: Invert C6 -- StringId -> (entity_type, strkey)."""
@@ -241,3 +310,4 @@ class BuildersMixin:
                 for sid in sids:
                     if sid not in self.stringid_to_entity:
                         self.stringid_to_entity[sid] = (entity_type, strkey)
+        logger.debug(f"[MEGAINDEX] C7 stringid_to_entity: {len(self.stringid_to_entity)} StringIDs mapped to entities")

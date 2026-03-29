@@ -78,8 +78,12 @@ class WorldMapService:
             logger.warning(f"[WorldMap] FactionInfo XML not found: {xml_path}")
             return
 
-        tree = etree.parse(str(xml_path))
-        root = tree.getroot()
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+
+        root = sanitize_and_parse(xml_path)
+        if root is None:
+            logger.warning(f"[WorldMap] Failed to parse FactionInfo XML: {xml_path}")
+            return
 
         for node_el in root.iter("FactionNode"):
             strkey = node_el.get("StrKey")
@@ -151,8 +155,12 @@ class WorldMapService:
             logger.warning(f"[WorldMap] NodeWaypointInfo XML not found: {xml_path}")
             return
 
-        tree = etree.parse(str(xml_path))
-        root = tree.getroot()
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+
+        root = sanitize_and_parse(xml_path)
+        if root is None:
+            logger.warning(f"[WorldMap] Failed to parse NodeWaypointInfo XML: {xml_path}")
+            return
 
         for waypoint_el in root.iter("NodeWaypointInfo"):
             from_node = waypoint_el.get("FromNodeKey", "")

@@ -365,9 +365,18 @@ class GameDevMergeService:
         Returns:
             GameDevMergeResult with counts and output_xml bytes
         """
-        # Parse original XML
-        parser = etree.XMLParser(recover=True, remove_blank_text=False)
-        root = etree.fromstring(original_xml, parser=parser)
+        # Parse original XML — intentionally NOT using sanitize_and_parse() because
+        # merge must preserve exact tree structure for write-back. Use text-level
+        # sanitization (bad entities, control chars) then recovery-mode parse.
+        import re
+        raw_text = original_xml.decode("utf-8", errors="ignore")
+        # Stage 0: Remove invalid control chars (MDG pattern)
+        raw_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw_text)
+        # Stage 1: Fix bad entity references (MDG pattern)
+        raw_text = re.sub(r'&(?!lt;|gt;|amp;|apos;|quot;)', '&amp;', raw_text)
+        sanitized_bytes = raw_text.encode("utf-8")
+        parser = etree.XMLParser(recover=True, remove_blank_text=False, huge_tree=True)
+        root = etree.fromstring(sanitized_bytes, parser=parser)
 
         # Detect original encoding
         encoding = "utf-8"

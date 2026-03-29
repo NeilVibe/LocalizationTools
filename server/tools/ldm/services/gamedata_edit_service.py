@@ -51,10 +51,19 @@ class GameDataEditService:
         """
         resolved = self._validate_path(xml_path)
 
+        # NOTE: Intentionally NOT using sanitize_and_parse() here.
+        # Edit service must preserve exact XML structure for write-back fidelity.
+        # sanitize_and_parse() wraps in <ROOT> and normalizes, which would corrupt
+        # the file on tree.write(). Same reason MDG's edit path uses raw parsing.
         try:
             tree = etree.parse(str(resolved))
-        except etree.XMLSyntaxError as exc:
-            raise ValueError(f"Malformed XML in {resolved.name}: {exc}") from exc
+        except etree.XMLSyntaxError:
+            # Fallback: try recovery mode (like MDG)
+            try:
+                parser = etree.XMLParser(recover=True, huge_tree=True)
+                tree = etree.parse(str(resolved), parser=parser)
+            except Exception as exc:
+                raise ValueError(f"Malformed XML in {resolved.name}: {exc}") from exc
 
         root = tree.getroot()
         entities = list(root)

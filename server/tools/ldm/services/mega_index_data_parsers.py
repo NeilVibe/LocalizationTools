@@ -48,14 +48,28 @@ class DataParsersMixin:
     # =========================================================================
 
     def _scan_dds_textures(self, texture_folder: Path) -> None:
-        """D9: Scan texture folder for DDS files. Key=stem.lower(), Value=Path."""
+        """D9: Scan texture folder for DDS files.
+
+        GRAFTED from MDG DDSIndex.scan_folder() — dual-key strategy:
+        Key 1 = stem.lower() (e.g. "character_varon")
+        Key 2 = full filename.lower() (e.g. "character_varon.dds")
+        First-seen-wins dedup per key slot.
+        """
         try:
             if not texture_folder.is_dir():
                 logger.warning(f"[MEGAINDEX] Texture folder not found: {texture_folder}")
                 return
-            for dds_path in texture_folder.rglob("*.dds"):
+            count = 0
+            for dds_path in sorted(texture_folder.rglob("*.dds")):
+                # MDG dual-key: index by BOTH stem and full filename
                 stem_lower = dds_path.stem.lower()
-                self.dds_by_stem[stem_lower] = dds_path
+                name_lower = dds_path.name.lower()
+                if stem_lower not in self.dds_by_stem:
+                    self.dds_by_stem[stem_lower] = dds_path
+                if name_lower not in self.dds_by_stem:
+                    self.dds_by_stem[name_lower] = dds_path
+                count += 1
+            logger.debug(f"[MEGAINDEX] DDS scan: {count} files, {len(self.dds_by_stem)} index keys from {texture_folder}")
         except Exception as e:
             logger.warning(f"[MEGAINDEX] DDS scan failed: {e}")
 
@@ -65,9 +79,16 @@ class DataParsersMixin:
             if not audio_folder.is_dir():
                 logger.warning(f"[MEGAINDEX] Audio folder not found: {audio_folder}")
                 return
+            count = 0
+            dupes = 0
             for wem_path in audio_folder.rglob("*.wem"):
                 stem_lower = wem_path.stem.lower()
+                if stem_lower in self.wem_by_event:
+                    dupes += 1
+                    continue  # MDG pattern: first-seen-wins dedup
                 self.wem_by_event[stem_lower] = wem_path
+                count += 1
+            logger.debug(f"[MEGAINDEX] WEM scan: {count} files indexed ({dupes} duplicate stems) from {audio_folder}")
         except Exception as e:
             logger.warning(f"[MEGAINDEX] WEM scan failed: {e}")
 
@@ -79,22 +100,37 @@ class DataParsersMixin:
                     f"[MEGAINDEX] Knowledge folder not found: {knowledge_folder}"
                 )
                 return
-            for xml_path in knowledge_folder.rglob("*.xml"):
+            xml_files = list(knowledge_folder.rglob("*.xml"))
+            logger.debug(f"[MEGAINDEX] Knowledge XMLs found: {len(xml_files)}")
+            parse_ok = 0
+            parse_fail = 0
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
+                    parse_fail += 1
+                    logger.debug(f"[MEGAINDEX] Knowledge XML parse failed: {xml_path.name}")
                     continue
+                parse_ok += 1
                 source_file = xml_path.name
 
                 # D1: KnowledgeInfo entries
+                # GRAFTED from MDG: "best value wins" dedup — if existing entry
+                # has UITextureName and new one doesn't, KEEP the existing entry.
                 for elem in root.iter("KnowledgeInfo"):
                     strkey = elem.get("StrKey") or ""
                     if not strkey:
+                        continue
+                    ui_texture = elem.get("UITextureName") or ""
+                    existing = self.knowledge_by_strkey.get(strkey)
+                    if existing and existing.ui_texture_name and not ui_texture:
+                        # MDG pattern: keep the one with image data
+                        logger.debug(f"[MEGAINDEX] Keeping existing UITexture for {strkey}: '{existing.ui_texture_name}' (skipping empty)")
                         continue
                     self.knowledge_by_strkey[strkey] = KnowledgeEntry(
                         strkey=strkey,
                         name=elem.get("Name") or "",
                         desc=elem.get("Desc") or "",
-                        ui_texture_name=elem.get("UITextureName") or "",
+                        ui_texture_name=ui_texture,
                         group_key=elem.get("KnowledgeGroupKey")
                         or elem.get("GroupKey")
                         or "",
@@ -117,6 +153,7 @@ class DataParsersMixin:
                         group_name=elem.get("GroupName") or elem.get("Name") or "",
                         child_strkeys=tuple(child_strkeys),
                     )
+            logger.debug(f"[MEGAINDEX] Knowledge parse: {parse_ok} OK, {parse_fail} failed out of {len(xml_files)} XMLs")
         except Exception as e:
             logger.warning(f"[MEGAINDEX] Knowledge parse failed: {e}")
 
@@ -138,6 +175,7 @@ class DataParsersMixin:
                     f for f in loc_folder.rglob("*.xml")
                     if "kor" in f.stem.lower() and "languagedata" in f.stem.lower()
                 ]
+            logger.debug(f"[MEGAINDEX] Korean loc files found: {len(kor_files)} — {[f.name for f in kor_files]}")
             for kor_path in kor_files:
                 root = _safe_parse_xml(kor_path)
                 if root is None:
@@ -158,7 +196,10 @@ class DataParsersMixin:
         """D13: Parse languagedata_{code}.xml for each preloaded language."""
         try:
             if not loc_folder.is_dir():
+                logger.warning(f"[MEGAINDEX] Loc folder not found for translations: {loc_folder}")
                 return
+            langs_found: Dict[str, str] = {}  # lang -> filename
+            langs_skipped: List[str] = []
             for xml_path in loc_folder.rglob("*.xml"):
                 stem = xml_path.stem.lower()
                 if not stem.startswith("languagedata_"):
@@ -168,7 +209,10 @@ class DataParsersMixin:
                 if lang == "kor":
                     continue  # Korean is strorigin, not translation
                 if lang not in langs:
+                    if lang not in langs_skipped:
+                        langs_skipped.append(lang)
                     continue
+                langs_found[lang] = xml_path.name
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
@@ -181,6 +225,7 @@ class DataParsersMixin:
                         if sid not in self.stringid_to_translations:
                             self.stringid_to_translations[sid] = {}
                         self.stringid_to_translations[sid][lang] = text
+            logger.debug(f"[MEGAINDEX] Translation parse: loaded {list(langs_found.keys())}, skipped {langs_skipped}")
         except Exception as e:
             logger.warning(f"[MEGAINDEX] Translation parse failed: {e}")
 
@@ -193,7 +238,11 @@ class DataParsersMixin:
                 )
                 return
             global_order = 0
-            for xml_path in sorted(export_folder.rglob("*.xml")):
+            export_xmls = sorted(export_folder.rglob("*.xml"))
+            export_data_count = sum(1 for f in export_xmls if not f.name.endswith(".loc.xml"))
+            export_loc_count = sum(1 for f in export_xmls if f.name.endswith(".loc.xml"))
+            logger.debug(f"[MEGAINDEX] Export folder: {len(export_xmls)} XMLs total ({export_data_count} data, {export_loc_count} .loc.xml)")
+            for xml_path in export_xmls:
                 # Skip .loc.xml files (handled by _parse_export_loc)
                 if xml_path.name.endswith(".loc.xml"):
                     continue
@@ -275,7 +324,9 @@ class DataParsersMixin:
                     f"[MEGAINDEX] StaticInfo folder not found: {staticinfo_folder}"
                 )
                 return
-            for xml_path in staticinfo_folder.rglob("*.xml"):
+            xml_files = list(staticinfo_folder.rglob("*.xml"))
+            logger.debug(f"[MEGAINDEX] DevMemo broad scan: {len(xml_files)} XMLs in {staticinfo_folder}")
+            for xml_path in xml_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue

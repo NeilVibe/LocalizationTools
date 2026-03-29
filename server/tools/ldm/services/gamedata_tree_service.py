@@ -166,18 +166,20 @@ class GameDataTreeService:
     # -- XML parsing ----------------------------------------------------------
 
     def _parse_xml(self, path: Path) -> etree._Element:
-        """Parse XML, falling back to recover mode for malformed files."""
-        try:
-            tree = etree.parse(str(path))
-            return tree.getroot()
-        except etree.XMLSyntaxError:
-            logger.warning(
-                f"[TreeService] Standard parse failed for {path.name}, "
-                "retrying with recover=True"
+        """Parse XML using battle-tested sanitizer pipeline (GRAFTED from MDG).
+
+        Uses sanitize_and_parse() which provides 5-stage sanitization,
+        virtual ROOT wrapper, and dual-pass (strict then recovery) parsing.
+        The returned element is the virtual ROOT — iterate children for entities.
+        """
+        from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
+
+        root = sanitize_and_parse(path)
+        if root is None:
+            raise etree.XMLSyntaxError(
+                f"Failed to parse {path.name} even with sanitization + recovery", 0, 0, 0
             )
-            parser = etree.XMLParser(recover=True)
-            tree = etree.parse(str(path), parser=parser)
-            return tree.getroot()
+        return root
 
     # -- Tree building --------------------------------------------------------
 
