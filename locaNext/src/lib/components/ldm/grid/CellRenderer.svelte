@@ -77,7 +77,7 @@
   const translatorColumns = {
     row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
     string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
-    category: { key: "category", label: "Category", width: 100, minWidth: 80, prefKey: "showCategory" },
+    category: { key: "category", label: "Category", width: 140, minWidth: 80, prefKey: "showCategory" },
     source: { key: "source", label: "Source (KR)", width: 350, always: true },
     target: { key: "target", label: "Target", width: 350, always: true },
     reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
@@ -110,6 +110,7 @@
   // Column widths (px for fixed, % for source/target split)
   let indexColumnWidth = $state(60);
   let stringIdColumnWidth = $state(150);
+  let categoryColumnWidth = $state(140);
   let sourceWidthPercent = $state(50);
   let referenceColumnWidth = $state(300);
 
@@ -117,6 +118,7 @@
   const COLUMN_LIMITS = {
     index: { min: 40, max: 120 },
     stringId: { min: 80, max: 300 },
+    category: { min: 80, max: 250 },
     source: { min: 20, max: 80 }, // percentage
     reference: { min: 150, max: 500 }
   };
@@ -141,6 +143,7 @@
     let width = 0;
     if ($preferences.showIndex) width += indexColumnWidth;
     if ($preferences.showStringId) width += stringIdColumnWidth;
+    if ($preferences.showCategory && fileType !== 'gamedev') width += categoryColumnWidth;
     return width;
   }
 
@@ -157,6 +160,7 @@
     const bars = [];
     if ($preferences.showIndex) bars.push('index');
     if ($preferences.showStringId) bars.push('stringId');
+    if ($preferences.showCategory && fileType !== 'gamedev') bars.push('category');
     bars.push('source');
     if ($preferences.showReference) bars.push('reference');
     return bars;
@@ -175,6 +179,11 @@
     if ($preferences.showStringId) {
       positions['stringId'] = pos + stringIdColumnWidth;
       pos += stringIdColumnWidth;
+    }
+
+    if ($preferences.showCategory && fileType !== 'gamedev') {
+      positions['category'] = pos + categoryColumnWidth;
+      pos += categoryColumnWidth;
     }
 
     const fixedAfter = $preferences.showReference ? referenceColumnWidth : 0;
@@ -199,6 +208,8 @@
       resizeStartValue = indexColumnWidth;
     } else if (column === 'stringId') {
       resizeStartValue = stringIdColumnWidth;
+    } else if (column === 'category') {
+      resizeStartValue = categoryColumnWidth;
     } else if (column === 'reference') {
       resizeStartValue = referenceColumnWidth;
     }
@@ -235,6 +246,9 @@
     } else if (resizeColumn === 'stringId') {
       const newWidth = resizeStartValue + deltaX;
       stringIdColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
+    } else if (resizeColumn === 'category') {
+      const newWidth = resizeStartValue + deltaX;
+      categoryColumnWidth = Math.max(limits.min, Math.min(limits.max, newWidth));
     }
   }
 
@@ -326,7 +340,7 @@
             </div>
           {/if}
           {#if $preferences.showCategory && fileType !== 'gamedev'}
-            <div class="cell category loading-cell" style="width: 100px;">
+            <div class="cell category loading-cell" style="width: {categoryColumnWidth}px;">
               <div class="placeholder-shimmer"></div>
             </div>
           {/if}
@@ -375,7 +389,7 @@
 
           <!-- Category column (translator mode only) -->
           {#if $preferences.showCategory && fileType !== 'gamedev'}
-            <div class="cell category" style="width: 100px;">
+            <div class="cell category" style="width: {categoryColumnWidth}px;">
               {#if row.category}
                 <Tag type="outline" size="sm" style="--cds-tag-background-color: {getCategoryColor(row.category)}; --cds-tag-color: #333; background-color: {getCategoryColor(row.category)}30; border-color: {getCategoryColor(row.category)};">
                   {row.category}
