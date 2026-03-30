@@ -17,13 +17,21 @@ from loguru import logger
 # Constants
 # =============================================================================
 
-# Case-insensitive StringId attribute extraction (from STRINGID_AUDIO_CHAIN.md)
-STRINGID_ATTRS = ["StringId", "StringID", "stringid"]
-
 # StrOrigin normalization patterns (from QACompiler base.py)
 _BR_TAG_RE = re.compile(r"<br\s*/?>", flags=re.IGNORECASE)
 _PLACEHOLDER_SUFFIX_RE = re.compile(r"\{([^#}]+)#[^}]+\}")
 _WHITESPACE_RE = re.compile(r"\s+", flags=re.UNICODE)
+
+# MDG config.py:192-201 — Language-to-audio-folder routing
+# Latin-script languages -> English(US) audio
+# Korean/Japanese/ZHO-TW -> Korean audio
+# ZHO-CN -> Chinese(PRC) audio
+LANG_TO_AUDIO = {
+    "eng": "en", "fre": "en", "ger": "en", "spa-es": "en", "spa-mx": "en",
+    "por-br": "en", "ita": "en", "rus": "en", "tur": "en", "pol": "en",
+    "kor": "kr", "jpn": "kr", "zho-tw": "kr",
+    "zho-cn": "zh",
+}
 
 # Entity type -> dict attribute mapping for generic access
 _ENTITY_TYPE_MAP = {
@@ -44,22 +52,20 @@ _ENTITY_TYPE_MAP = {
 
 
 def _get_stringid(elem: Any) -> str:
-    """Extract StringId from XML element with case-insensitive attr matching."""
-    for attr in STRINGID_ATTRS:
-        val = elem.get(attr)
-        if val:
-            return val
-    return ""
+    """Extract StringId from XML element — case-insensitive attrs AND value."""
+    attrs = {k.lower(): v for k, v in elem.attrib.items()}
+    val = attrs.get("stringid") or ""
+    return val.strip().lower()
 
 
 def _normalize_strorigin(text: str) -> str:
-    """Normalize StrOrigin for reverse lookup: strip # suffixes, br->space, collapse ws."""
+    """Normalize StrOrigin for reverse lookup: strip # suffixes, br->space, collapse ws, lowercase."""
     if not text:
         return ""
     text = _PLACEHOLDER_SUFFIX_RE.sub(r"{\1}", text)
     text = _BR_TAG_RE.sub(" ", text)
     text = _WHITESPACE_RE.sub(" ", text).strip()
-    return text
+    return text.lower()
 
 
 def _get_export_key(filename: str) -> str:
@@ -105,16 +111,16 @@ def _parse_world_position(wp_str: str) -> Optional[Tuple[float, float, float]]:
 
 
 def _find_knowledge_key(elem: Any) -> str:
-    """Search element and direct children for KnowledgeKey or RewardKnowledgeKey."""
-    for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
-        val = elem.get(attr) or ""
-        if val:
-            return val
+    """Search element and children for KnowledgeKey — case-insensitive attrs AND value."""
+    attrs = {k.lower(): v for k, v in elem.attrib.items()}
+    val = attrs.get("knowledgekey") or attrs.get("rewardknowledgekey") or ""
+    if val:
+        return val.strip().lower()
     for child in elem:
         if child.tag in ("InspectData", "PageData"):
             continue
-        for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
-            val = child.get(attr) or ""
-            if val:
-                return val
+        cattrs = {k.lower(): v for k, v in child.attrib.items()}
+        val = cattrs.get("knowledgekey") or cattrs.get("rewardknowledgekey") or ""
+        if val:
+            return val.strip().lower()
     return ""
