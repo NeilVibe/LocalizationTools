@@ -158,7 +158,43 @@ class ContextService:
 
         if knowledge is None:
             logger.debug(f"[CONTEXT] Chain broke at step 1: StrKey={strkey} not in knowledge table")
-            return {"steps": steps, "result": None, "partial": False}
+
+            # Step 1b: Fallback — try Korean text (StrOrigin) -> R1 -> entity -> image
+            from server.tools.ldm.services.mega_index import get_mega_index
+            mega = get_mega_index()
+            korean_text = None
+            if mega._built:
+                korean_text = mega.stringid_to_strorigin.get(strkey.lower())
+
+            if korean_text:
+                kr_matches = mega.find_by_korean_name(korean_text)
+                steps.append({
+                    "step": "1b",
+                    "name": "Korean text (R1) -> entity fallback",
+                    "found": len(kr_matches) > 0,
+                    "value": f"{len(kr_matches)} matches for '{korean_text[:30]}...'" if kr_matches else None,
+                })
+
+                if kr_matches:
+                    # Take first match, resolve its image
+                    entity_type, entity_strkey = kr_matches[0]
+                    fallback_knowledge = mapdata_svc.get_knowledge_lookup(entity_strkey)
+                    if fallback_knowledge and fallback_knowledge.ui_texture_name:
+                        fallback_image = mapdata_svc.get_image_context(entity_strkey)
+                        if fallback_image and fallback_image.has_image:
+                            logger.debug(
+                                f"[CONTEXT] Korean text fallback: '{korean_text[:30]}' -> "
+                                f"{entity_strkey} -> {fallback_image.dds_path}"
+                            )
+                            return {
+                                "steps": steps,
+                                "result": fallback_image,
+                                "partial": False,
+                                "match_method": "korean_text",
+                                "matched_entity": entity_strkey,
+                            }
+
+            return {"steps": steps, "result": None, "partial": False, "match_method": None}
 
         # Step 2: KnowledgeLookup -> UITextureName
         texture_name = knowledge.ui_texture_name
@@ -172,7 +208,7 @@ class ContextService:
 
         if not has_texture:
             logger.debug(f"[CONTEXT] Chain broke at step 2: StrKey={strkey} has no UITextureName")
-            return {"steps": steps, "result": None, "partial": True}
+            return {"steps": steps, "result": None, "partial": True, "match_method": None}
 
         # Step 3: UITextureName -> DDS path (via image context)
         image = mapdata_svc.get_image_context(strkey)
@@ -188,10 +224,10 @@ class ContextService:
                 f"[CONTEXT] Chain broke at step 3: StrKey={strkey}, "
                 f"UITextureName={texture_name} not in DDS index"
             )
-            return {"steps": steps, "result": None, "partial": True}
+            return {"steps": steps, "result": None, "partial": True, "match_method": None}
 
         logger.debug(f"[CONTEXT] Chain resolved: StrKey={strkey} -> {image.dds_path}")
-        return {"steps": steps, "result": image, "partial": False}
+        return {"steps": steps, "result": image, "partial": False, "match_method": "stringid"}
 
     def resolve_context_for_row(self, string_id: str, source_text: str, file_language: str = "eng") -> EntityContext:
         """Resolve context combining StringID-direct lookups with text detection.
