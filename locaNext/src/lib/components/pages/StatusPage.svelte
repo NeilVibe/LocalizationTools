@@ -92,8 +92,24 @@
       const mi = data.mega_index;
       const details = [
         { label: "Status", value: mi.status },
-        { label: "Entries", value: String(mi.entries?.toLocaleString?.() ?? mi.entries ?? 0) },
       ];
+      // Per-type entry counts if available
+      if (mi.counts) {
+        const c = mi.counts;
+        if (c.knowledge) details.push({ label: "Knowledge", value: c.knowledge.toLocaleString() });
+        if (c.characters) details.push({ label: "Characters", value: c.characters.toLocaleString() });
+        if (c.items) details.push({ label: "Items", value: c.items.toLocaleString() });
+        if (c.regions) details.push({ label: "Regions", value: c.regions.toLocaleString() });
+        if (c.factions) details.push({ label: "Factions", value: c.factions.toLocaleString() });
+        if (c.skills) details.push({ label: "Skills", value: c.skills.toLocaleString() });
+        if (c.gimmicks) details.push({ label: "Gimmicks", value: c.gimmicks.toLocaleString() });
+        if (c.dds) details.push({ label: "DDS Textures", value: c.dds.toLocaleString() });
+        if (c.wem) details.push({ label: "WEM Audio", value: c.wem.toLocaleString() });
+        if (c.strorigins) details.push({ label: "StrOrigins", value: c.strorigins.toLocaleString() });
+      } else if (mi.entries != null) {
+        details.push({ label: "Total Entries", value: String(mi.entries?.toLocaleString?.() ?? mi.entries ?? 0) });
+      }
+      if (mi.build_time) details.push({ label: "Build Time", value: `${mi.build_time}s` });
       if (mi.error) details.push({ label: "Error", value: mi.error });
       list.push({
         id: "mega_index",
@@ -134,6 +150,37 @@
         status: data.websocket.status,
         severity: getSeverity(data.websocket.status),
         details: [{ label: "Status", value: data.websocket.status }]
+      });
+    }
+
+    // Database
+    if (data.database) {
+      const db = data.database;
+      const dbDetails = [
+        { label: "Mode", value: db.mode || "unknown" },
+      ];
+      if (db.table_count) dbDetails.push({ label: "Tables", value: String(db.table_count) });
+      if (db.total_rows) dbDetails.push({ label: "Total Rows", value: db.total_rows.toLocaleString() });
+      list.push({
+        id: "database",
+        title: "Database",
+        status: db.mode || "unknown",
+        severity: getSeverity(db.mode === "postgresql" ? "connected" : "fallback"),
+        details: dbDetails
+      });
+    }
+
+    // Version
+    if (data.version) {
+      list.push({
+        id: "version",
+        title: "Version",
+        status: "ok",
+        severity: "success",
+        details: [
+          { label: "App Version", value: data.version },
+          { label: "Build", value: data.build || "unknown" },
+        ]
       });
     }
 
