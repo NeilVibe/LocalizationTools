@@ -1,1 +1,1 @@
-Build QACompiler — complete phantom check across all manager stat paths
+Build QACompiler — debug pending diagnostics
