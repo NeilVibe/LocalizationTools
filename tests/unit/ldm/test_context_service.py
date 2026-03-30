@@ -195,7 +195,7 @@ class TestResolveContextForRow:
         mock_mapdata.get_image_context.side_effect = lambda key: (
             SAMPLE_IMAGE if key == "ROW_STR_001" else None
         )
-        mock_mapdata.get_audio_context.side_effect = lambda key: (
+        mock_mapdata.get_audio_context.side_effect = lambda key, file_language="eng": (
             SAMPLE_AUDIO if key == "ROW_STR_001" else None
         )
 
