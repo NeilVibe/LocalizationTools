@@ -264,11 +264,11 @@ Plans:
 
 ### Phase 100: Windows App Bugfix Sprint
 
-**Goal:** Fix 5 remaining issues from PEARL PC Windows app testing: (1) Multi-language audio — 3 folders EN/KR/ZH with language routing like MDG, (2) Image Korean text fallback when StringID has no match using R1 + badge, (3) LocaNext Status menu — dedicated view NOT in Preferences with AI/MegaIndex/DB status, (4) Merge direction — right-click=SOURCE file-dialog=TARGET, (5) Category column — wider default + resize handle.
-**Requirements**: BUG-5, BUG-6, BUG-7, BUG-8, BUG-9
+**Goal:** Fix 12 issues from PEARL PC Windows app testing. FIX-1 to FIX-4 committed. Case-insensitive MegaIndex done. 8 remaining: multi-language audio, image Korean fallback, StatusPage nav, merge direction, category column, dead Project Settings, About version, About cleanup.
+**Requirements**: FIX-1, FIX-2, FIX-3, FIX-4, CASE-INSENSITIVE, BUG-5, BUG-6, BUG-7, BUG-8, BUG-9, BUG-10, BUG-11, BUG-12
 **Depends on:** Phase 99
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 100-01-PLAN.md --- Backend: multi-language audio (3 folders EN/KR/ZH) + image Korean text fallback (R1)
-- [ ] 100-02-PLAN.md --- Frontend: StatusPage enhancement + merge direction fix + category column width+resize
+- [ ] 100-01-PLAN.md --- Backend: case-insensitive MegaIndex (DONE) + multi-language audio (3 folders EN/KR/ZH) + image Korean text fallback (R1)
+- [x] 100-02-PLAN.md --- Frontend: StatusPage enhancement + merge direction fix + category column width+resize + dead Project Settings + About version+cleanup+credits
