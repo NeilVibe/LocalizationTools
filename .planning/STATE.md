@@ -107,18 +107,21 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 
 ## Session Continuity
 
-Last session: 2026-03-30T07:05:15.705Z
-GitHub Build Light: SUCCESS (run 23727131467)
-Working tree has 4 uncommitted fixes (FIX-1 through FIX-4)
-Next actions:
+Last session: 2026-03-30
+Phase 100: COMPLETE — Build 23734591694 GREEN. Post-review fixes pushed (not yet built).
+Phase 101: PLANNED — QuickTranslate Merge Deep Graft (11 bugs)
 
-1. Commit case-insensitivity fix
-2. Implement BUG-5 multi-language audio (HIGH — 3 folders EN/KR/ZH)
-3. Implement BUG-6 image Korean fallback (MEDIUM)
-4. Implement BUG-7 LocaNext Status menu (MEDIUM — StatusPage exists, wire nav + enhance)
-5. Implement BUG-8 merge direction fix (HIGH)
-6. Implement BUG-9 category column fix (LOW — width + resize handle)
-7. Implement BUG-10 dead Project Settings (LOW)
-8. Implement BUG-11 About version auto-detect (MEDIUM)
-9. Implement BUG-12 About cleanup + credits (LOW)
-10. Commit all, push, trigger build, test on PEARL PC
+### PEARL PC Round 2 Testing Results (2026-03-30 evening)
+- Merge COMPLETELY BROKEN: target file not modified after "successful" merge (BUG-21)
+- Merge matches 169,650 identical rows instead of skipping (BUG-13)
+- QT core/transfer.py logic NOT grafted into translator_merge.py (BUG-23)
+- No progress feedback during 42s merge (BUG-14)
+- Merge options silently dropped by backend (BUG-16)
+- Inline editor Space/Enter: FIXED (commit 75fd23a9)
+- TM suggest spam during editing: NOT FIXED (BUG-19)
+
+Next actions:
+1. /gsd:plan-phase 101 — research QT merge logic with 8 parallel agents
+2. Execute Phase 101 — deep graft QT transfer.py into translator_merge.py
+3. Retrigger build with all Phase 100 post-review fixes + Phase 101
+4. Test merge on PEARL PC — verify target file actually modified

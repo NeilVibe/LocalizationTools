@@ -272,3 +272,20 @@ Plans:
 Plans:
 - [x] 100-01-PLAN.md --- Backend: case-insensitive MegaIndex (DONE) + multi-language audio (3 folders EN/KR/ZH) + image Korean text fallback (R1)
 - [x] 100-02-PLAN.md --- Frontend: StatusPage enhancement + merge direction fix + category column width+resize + dead Project Settings + About version+cleanup+credits
+
+### Phase 101: QuickTranslate Merge Deep Graft
+
+**Goal:** Merge system works EXACTLY like QuickTranslate — skip identical rows, only transfer corrections, progress feedback, per-row logging, dry run, make_file_writable, transfer scope/category filtering. Fix broken merge (target file not modified). Fix TM spam during editing.
+**Requirements**: BUG-13, BUG-14, BUG-15, BUG-16, BUG-19, BUG-21, BUG-22, BUG-23
+**Depends on:** Phase 100
+**Success Criteria** (what must be TRUE):
+  1. Merge ONLY updates rows where target text DIFFERS from correction (identical rows skipped)
+  2. Target file is visibly modified after merge — user can see changed translations
+  3. Merge modal shows live progress (row count, percentage, match type breakdown)
+  4. merge logging uses f-strings with actual values, per-row old→new logged
+  5. MergeRequest accepts and enforces transfer_scope, category filter, non_script_only options
+  6. make_file_writable() called before any file write operation
+  7. Dry run mode available — preview changes before committing
+  8. TM suggest does NOT fire during active inline editing
+  9. All merge logic matches QuickTranslate core/transfer.py exactly
+**Plans:** TBD — needs /gsd:plan-phase 101
