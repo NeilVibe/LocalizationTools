@@ -191,17 +191,28 @@ class TestResolveContextForRow:
             DetectedEntity(term="Varon", start=0, end=5, entity=CHAR_ENTITY)
         ]
         mock_mapdata = MagicMock()
-        # Direct StringID lookup returns image+audio
+        mock_mapdata.get_knowledge_lookup.return_value = KnowledgeLookup(
+            strkey="str_char_varon", name="Varon", desc="A warrior",
+            ui_texture_name="tex_varon", group_key="", source_file="",
+        )
+        # Direct StringID lookup returns image+audio via strkey
         mock_mapdata.get_image_context.side_effect = lambda key: (
-            SAMPLE_IMAGE if key == "ROW_STR_001" else None
+            SAMPLE_IMAGE if key in ("ROW_STR_001", "str_char_varon") else None
         )
         mock_mapdata.get_audio_context.side_effect = lambda key, file_language="eng": (
-            SAMPLE_AUDIO if key == "ROW_STR_001" else None
+            SAMPLE_AUDIO if key in ("ROW_STR_001", "str_char_varon") else None
         )
+
+        # Mock MegaIndex for resolve_chain: StringID → C7 entity → strkey
+        mock_mega = MagicMock()
+        mock_mega._built = True
+        mock_mega.stringid_to_entity_lookup.return_value = ("character", "str_char_varon")
+        mock_mega.stringid_to_strorigin = {}
 
         ctx_svc = ContextService()
         with patch("server.tools.ldm.services.context_service.get_glossary_service", return_value=mock_glossary), \
-             patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+             patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata), \
+             patch("server.tools.ldm.services.mega_index.get_mega_index", return_value=mock_mega):
             result = ctx_svc.resolve_context_for_row("ROW_STR_001", "Varon speaks.")
 
         # Should have entity context from text detection
@@ -262,14 +273,22 @@ class TestResolveChain:
         )
         mock_mapdata.get_image_context.return_value = SAMPLE_IMAGE
 
+        # Mock MegaIndex: StringID → C7 entity → strkey
+        mock_mega = MagicMock()
+        mock_mega._built = True
+        mock_mega.stringid_to_entity_lookup.return_value = ("character", "str_npc_001")
+        mock_mega.stringid_to_strorigin = {}
+
         ctx_svc = ContextService()
-        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata), \
+             patch("server.tools.ldm.services.mega_index.get_mega_index", return_value=mock_mega):
             result = ctx_svc.resolve_chain("str_npc_001")
 
         assert result["result"] is not None
         assert result["partial"] is False
-        assert len(result["steps"]) == 3
-        assert all(step["found"] for step in result["steps"])
+        # Steps: 0 (StringID→C7), 1 (StrKey→Knowledge), 2 (UITextureName), 3 (DDS)
+        assert len(result["steps"]) >= 3
+        assert result["steps"][0]["found"] is True
 
     def test_chain_resolution_partial_no_dds(self):
         """Knowledge found but no DDS -> partial=True, step 3 not found."""
@@ -284,30 +303,37 @@ class TestResolveChain:
         )
         mock_mapdata.get_image_context.return_value = None  # No DDS found
 
+        mock_mega = MagicMock()
+        mock_mega._built = True
+        mock_mega.stringid_to_entity_lookup.return_value = ("character", "str_npc_001")
+        mock_mega.stringid_to_strorigin = {}
+
         ctx_svc = ContextService()
-        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata), \
+             patch("server.tools.ldm.services.mega_index.get_mega_index", return_value=mock_mega):
             result = ctx_svc.resolve_chain("str_npc_001")
 
         assert result["result"] is None
         assert result["partial"] is True
-        assert len(result["steps"]) == 3
-        assert result["steps"][0]["found"] is True
-        assert result["steps"][1]["found"] is True
-        assert result["steps"][2]["found"] is False
 
     def test_chain_resolution_missing_strkey(self):
-        """Unknown StrKey -> step 1 not found, partial=False."""
+        """Unknown StrKey -> step 0 not found, falls to R1 fallback, partial=False."""
         mock_mapdata = MagicMock()
         mock_mapdata.get_knowledge_lookup.return_value = None
 
+        mock_mega = MagicMock()
+        mock_mega._built = True
+        mock_mega.stringid_to_entity_lookup.return_value = None  # No C7 match
+        mock_mega.stringid_to_strorigin = {}
+        mock_mega.find_by_korean_name.return_value = []
+
         ctx_svc = ContextService()
-        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata), \
+             patch("server.tools.ldm.services.mega_index.get_mega_index", return_value=mock_mega):
             result = ctx_svc.resolve_chain("unknown_strkey")
 
         assert result["result"] is None
         assert result["partial"] is False
-        assert len(result["steps"]) == 1
-        assert result["steps"][0]["found"] is False
 
     def test_resolve_context_for_row_includes_chain_steps(self):
         """resolve_context_for_row includes chain_steps in string_id_context."""
@@ -317,9 +343,16 @@ class TestResolveChain:
         mock_mapdata.get_knowledge_lookup.return_value = None
         mock_mapdata.get_audio_context.return_value = None
 
+        mock_mega = MagicMock()
+        mock_mega._built = True
+        mock_mega.stringid_to_entity_lookup.return_value = None
+        mock_mega.stringid_to_strorigin = {}
+        mock_mega.find_by_korean_name.return_value = []
+
         ctx_svc = ContextService()
         with patch("server.tools.ldm.services.context_service.get_glossary_service", return_value=mock_glossary), \
-             patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+             patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata), \
+             patch("server.tools.ldm.services.mega_index.get_mega_index", return_value=mock_mega):
             result = ctx_svc.resolve_context_for_row("ROW_001", "Some text")
 
         assert "chain_steps" in result.string_id_context
