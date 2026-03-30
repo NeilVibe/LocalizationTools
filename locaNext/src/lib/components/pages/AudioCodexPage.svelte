@@ -7,53 +7,43 @@
    *
    * UNIQUE layout: Two-column with sidebar tree + list (text-heavy entries).
    *
-   * Phase 48: Audio Codex UI (Plan 02)
+   * Phase 102: Bulk load conversion (no pagination)
    */
   import { InlineLoading } from "carbon-components-svelte";
   import { Music, ArrowLeft, Search, ChevronRight, ChevronDown, PlayFilledAlt, StopFilledAlt } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import AudioCodexDetail from "$lib/components/ldm/AudioCodexDetail.svelte";
-  import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import { PageHeader, ErrorState } from "$lib/components/common";
   import { onMount } from "svelte";
 
   const API_BASE = getApiBase();
-  const PAGE_SIZE = 50;
 
   // State
   let categories = $state([]);
   let activeCategory = $state(null);
-  let items = $state([]);
-  let totalItems = $state(0);
+  let allItems = $state([]);
   let selectedAudio = $state(null);
   let searchQuery = $state("");
   let loadingCategories = $state(true);
-  let loadingList = $state(false);
-  let loadingMore = $state(false);
+  let loadingList = $state(true);
   let apiError = $state(null);
-  let currentPage = $state(0);
-  let hasMore = $state(true);
   let totalEvents = $state(0);
   let expandedCategories = $state(new Set());
   let playingEvent = $state(null);
 
-  // Debounce search
-  let searchTimer = null;
-  let abortController = null;
-
-  // Debounced search via $effect
-  $effect(() => {
-    const q = searchQuery;
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      currentPage = 0;
-      hasMore = true;
-      fetchItems(0, activeCategory, q);
-    }, 300);
-    return () => {
-      if (searchTimer) clearTimeout(searchTimer);
-    };
+  // Derived: client-side filtered items by category + search
+  let filteredItems = $derived.by(() => {
+    return allItems.filter(item => {
+      if (activeCategory && item.export_path && !item.export_path.startsWith(activeCategory)) return false;
+      if (activeCategory && !item.export_path) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const searchable = `${item.event_name || ''} ${item.script_kr || ''} ${item.script_eng || ''} ${item.string_id || ''}`.toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+      return true;
+    });
   });
 
   /**
@@ -80,52 +70,25 @@
   }
 
   /**
-   * Fetch paginated audio entries with optional category/search filtering
+   * Fetch all audio entries in a single request (bulk load)
    */
-  async function fetchItems(page, category, query) {
-    if (abortController) abortController.abort();
-    abortController = new AbortController();
-
-    if (page === 0) {
-      loadingList = true;
-      items = [];
-    } else {
-      loadingMore = true;
-    }
-
+  async function fetchAllItems() {
+    loadingList = true;
     try {
-      const params = new URLSearchParams();
-      params.set('offset', String(page * PAGE_SIZE));
-      params.set('limit', String(PAGE_SIZE));
-      if (category) params.set('category', category);
-      if (query) params.set('q', query);
-
       const response = await fetch(
-        `${API_BASE}/api/ldm/codex/audio?${params.toString()}`,
-        { headers: getAuthHeaders(), signal: abortController.signal }
+        `${API_BASE}/api/ldm/codex/audio`,
+        { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      const batch = data.items || [];
-
-      if (page === 0) {
-        items = batch;
-      } else {
-        items = [...items, ...batch];
-      }
-      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
-      currentPage = page;
-      totalItems = data.total ?? totalItems;
-
-      logger.info('Audio Codex items loaded', { page, count: batch.length, total: data.total });
+      allItems = data.items || [];
+      logger.info('Audio Codex bulk loaded', { total: allItems.length });
     } catch (err) {
-      if (err.name === 'AbortError') return;
       logger.error('Failed to fetch audio items', { error: err.message });
-      if (page === 0) apiError = 'Failed to load audio entries';
+      apiError = 'Failed to load audio entries';
     } finally {
       loadingList = false;
-      loadingMore = false;
     }
   }
 
@@ -147,23 +110,11 @@
   }
 
   /**
-   * Load more items (InfiniteScroll callback)
-   */
-  function loadMore() {
-    if (hasMore && !loadingMore) {
-      fetchItems(currentPage + 1, activeCategory, searchQuery);
-    }
-  }
-
-  /**
    * Handle category tree node click -- filter list by that category
    */
   function selectCategory(fullPath) {
     activeCategory = fullPath;
     selectedAudio = null;
-    currentPage = 0;
-    hasMore = true;
-    fetchItems(0, fullPath, searchQuery);
   }
 
   /**
@@ -231,9 +182,8 @@
   }
 
   onMount(() => {
-    fetchCategories().then(() => {
-      fetchItems(0, null, "");
-    });
+    fetchCategories();
+    fetchAllItems();
   });
 </script>
 
@@ -243,7 +193,7 @@
 
   {#if apiError}
     <div class="audio-codex-state-container">
-      <ErrorState message={apiError} onretry={() => { fetchCategories(); fetchItems(0, null, ""); }} />
+      <ErrorState message={apiError} onretry={() => { fetchCategories(); fetchAllItems(); }} />
     </div>
   {:else if loadingCategories}
     <div class="audio-codex-loading" role="status" aria-live="polite">
@@ -374,7 +324,7 @@
                 aria-label="Search audio entries"
               />
             </div>
-            <span class="result-count">{totalItems} entries</span>
+            <span class="result-count">{filteredItems.length} entries</span>
           </div>
 
           <!-- Audio List -->
@@ -384,7 +334,7 @@
             </div>
           {:else}
             <div class="audio-list" role="list" aria-label="Audio entries">
-              {#each items as item (item.event_name)}
+              {#each filteredItems as item (item.event_name)}
                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
@@ -449,25 +399,13 @@
                 </div>
               {/each}
 
-              {#if items.length === 0 && !loadingList}
+              {#if filteredItems.length === 0 && !loadingList}
                 <div class="no-entries">
                   <Music size={32} />
                   <p>No audio entries found{searchQuery ? ` matching "${searchQuery}"` : ''}{activeCategory ? ` in "${activeCategory}"` : ''}</p>
                 </div>
               {/if}
             </div>
-
-            <InfiniteScroll
-              onloadmore={loadMore}
-              loading={loadingMore}
-              {hasMore}
-            />
-
-            {#if loadingMore}
-              <div class="audio-loading-more">
-                <InlineLoading description="Loading more..." />
-              </div>
-            {/if}
           {/if}
         {/if}
       </div>
@@ -675,11 +613,6 @@
     align-items: center;
     justify-content: center;
     padding: 32px;
-  }
-
-  .audio-loading-more {
-    padding: 12px;
-    text-align: center;
   }
 
   /* Audio list rows */

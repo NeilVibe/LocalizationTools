@@ -43,6 +43,7 @@ _ENTITY_TYPE_MAP = {
     "faction_group": "faction_group_by_strkey",
     "skill": "skill_by_strkey",
     "gimmick": "gimmick_by_strkey",
+    "quest": "quest_by_strkey",
 }
 
 

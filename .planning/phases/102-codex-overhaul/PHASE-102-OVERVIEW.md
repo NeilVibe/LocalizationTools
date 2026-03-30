@@ -2,102 +2,96 @@
 
 ## Goal
 
-Replace the current broken/incomplete Codex with a fully functional system that:
+Replace the current fragmented Codex (5 separate nav buttons, broken pagination) with a unified system that:
 1. Uses QACompiler's battle-tested category clustering logic
 2. Bulk-loads all entities client-side (no pagination bugs)
-3. Has a single "Codex" nav button with a dropdown menu for entity types
-4. Properly categorizes Items, Quests, Characters, Gimmicks (defer Regions/Map)
+3. Has a single "Codex" dropdown menu for ALL entity types
+4. Properly categorizes Items, Quests, Characters, Skills, Gimmicks, Knowledge
 
 ## Architecture
 
 ### Navigation: Codex Dropdown Menu
 ```
 [Codex ▾]
-  ├── Items        (QAC ItemType clustering)
-  ├── Quests       (QAC QuestType clustering) ← NEW, currently missing
-  ├── Characters   (QAC CharacterType + Job/Race/Gender)
-  ├── Gimmicks     (existing, needs category)
-  └── Knowledge    (existing, works)
+  ├── Items        (group hierarchy from ItemGroupNode)
+  ├── Characters   (filename type + race/gender from use_macro)
+  ├── Audio        (export path category tree)
+  ├── Regions      (faction group hierarchy)
+  ├── Quests       ← NEW (QAC quest_type: main/faction/challenge/minigame)
+  ├── Skills       ← NEW (schema exists, needs route + UI)
+  ├── Gimmicks     ← NEW (schema exists, needs route + UI)
+  └── Knowledge    ← NEW (repurpose legacy CodexPage)
 ```
-Region/Map → DEFERRED (interactive map needs proper design)
+Game Data, Map, Status → remain as separate top-level buttons.
 
-### Data Pipeline: QACompiler → MegaIndex → Codex
+### Data Pipeline
 ```
 Game XML files (StaticInfo/)
-  ↓ MegaIndex entity parsers (graft QAC extraction)
-  ↓ Entity schemas (add type/category fields)
+  ↓ MegaIndex entity parsers (graft QAC extraction patterns)
+  ↓ Entity schemas (frozen dataclasses)
   ↓ Codex routes (bulk-load, no pagination)
-  ↓ Frontend (client-side search/filter/scroll)
+  ↓ Frontend (client-side $derived search/filter + card grid)
 ```
 
-## Plans
+## Plans (6 plans, 3 waves)
 
-### Plan 102-01: Schema + Parser Graft (Wave 1)
-**Files:** `mega_index_schemas.py`, `mega_index_entity_parsers.py`
+### Wave 1 (parallel): Backend Bulk Load + Dropdown Nav
 
-- **ItemEntry**: Add `item_type` field (Weapon, Armor, Consumable, Quest, Material, Equipment, etc.)
-  - Parser: extract `ItemType` attribute from `<ItemInfo>` XML elements
-  - Graft from: `QACompilerNEW/generators/item.py`
+**Plan 102-01: Remove Pagination from 4 Existing Routes**
+- codex_items.py, codex_characters.py, codex_audio.py, codex_regions.py
+- Remove offset/limit/has_more from routes + schemas
+- Return ALL entities in one response
 
-- **CharacterEntry**: Add `character_type`, `race`, `gender` fields
-  - Parser: extract `CharacterType`, `Race`, `Gender` from `<CharacterInfo>` XML
-  - Graft from: `QACompilerNEW/generators/region.py` (character extraction)
+**Plan 102-02: Codex Dropdown Navigation**
+- +layout.svelte: replace 5 buttons with 1 dropdown (8 entries)
+- navigation.js: add goToQuestCodex, goToSkillCodex, goToGimmickCodex, goToKnowledgeCodex
 
-- **NEW QuestEntry**: Create schema + parser for `<QuestInfo>` elements
-  - Fields: `strkey`, `name`, `desc`, `quest_type` (Main/Sub/Daily/Challenge/Minigame), `source_file`
-  - Parser: extract from `questinfo*.xml` files
-  - Graft from: `QACompilerNEW/generators/quest.py`
-  - Register as D7 entity type in MegaIndex (currently placeholder)
+### Wave 2 (parallel): Quest + Skills + Gimmicks Backend
 
-- **GimmickEntry**: Add `gimmick_type` if available in XML
+**Plan 102-03: QuestEntry Schema + Parser (QACompiler Graft)**
+- mega_index_schemas.py: add QuestEntry (strkey, name, desc, quest_type, quest_subtype, faction_key, source_file)
+- mega_index_entity_parsers.py: add _parse_quest_info() — classify by subfolder + StrKey pattern
+- mega_index.py: wire quest_by_strkey into build pipeline
 
-### Plan 102-02: Codex Routes — Bulk Load (Wave 1)
-**Files:** `codex_items.py`, `codex_characters.py`, `codex_audio.py`, `codex_regions.py`, NEW `codex_quests.py`
+**Plan 102-04: New Codex Routes (Quest + Skills + Gimmicks)**
+- NEW codex_quests.py (3 endpoints: types, detail, list)
+- NEW codex_skills.py (2 endpoints: detail, list)
+- NEW codex_gimmicks.py (2 endpoints: detail, list)
+- NEW schemas for all 3
+- router.py: mount all 3
 
-- Remove pagination (offset/limit/has_more) from all Codex list endpoints
-- Return ALL entities in one response (they're already in MegaIndex memory)
-- Add category/type filter query params
-- Add quest list endpoint
-- Expose region `node_type` for filtering
+### Wave 3 (sequential): Frontend Bulk Load + New Pages
 
-### Plan 102-03: Frontend — Codex Dropdown + Bulk Client-Side (Wave 2)
-**Files:** `+layout.svelte`, `CodexPage.svelte`, all Codex pages
+**Plan 102-05: Convert 4 Existing Pages to Bulk Load**
+- Remove infinite scroll from ItemCodexPage, CharacterCodexPage, AudioCodexPage, RegionCodexPage
+- Single fetch on mount, $derived for client-side filtering
+- Keep category sidebars (client-side matching)
 
-- Replace individual Codex nav tabs with single "Codex" dropdown button
-- Dropdown shows: Items, Quests, Characters, Gimmicks, Knowledge
-- Each page: bulk-load all entities on mount, client-side search/filter
-- Category sidebar filter (like QACompiler's folder tree)
-- Remove infinite scroll / pagination logic
-- Virtual scroll for large lists (Items: 6k, Characters: 8k)
-
-### Plan 102-04: QACompiler Clustering Logic (Wave 2)
-**Files:** NEW `server/tools/ldm/services/codex_clustering.py`
-
-- Graft QACompiler's clustering thresholds:
-  - `MERGE_UP_THRESHOLD = 50` (groups <50 items merge into parent)
-  - `FOLDER_MIN_THRESHOLD = 100` (folders <100 items merge into "Others")
-- Item depth-based color coding
-- Quest source-folder classification
-- Character job/race grouping
-
-## Deferred
-
-- **Region/Map**: Interactive map needs proper design (current implementation unclear)
-- **Audio Codex**: Works but could use WEM preview player
-- **Skill Codex**: Not yet built (1,722 skills in MegaIndex)
+**Plan 102-06: 4 New Codex Pages**
+- NEW QuestCodexPage.svelte (tabs by quest type, sub-tabs for faction subtypes)
+- NEW SkillCodexPage.svelte (search + card grid)
+- NEW GimmickCodexPage.svelte (search + card grid)
+- Repurpose CodexPage.svelte as Knowledge browser (knowledge group tree nav)
+- LDM.svelte: add routing for all 4 new pages
 
 ## Dependencies
 
-- MegaIndex must be built (already auto-builds on first request)
+- MegaIndex must be built (auto-builds on first request)
 - QACompiler source at `RFC/NewScripts/QACompilerNEW/` (reference only, not runtime)
-- Game XML fixtures at `tests/fixtures/mock_gamedata/` for testing
+- Quest XML at `staticinfo_quest/` subfolder (main/, faction/, Challenge/, contents/)
 
 ## Success Criteria
 
-1. Single Codex dropdown in nav → 5 entity types accessible
-2. Items show ItemType category (Weapon, Armor, etc.) with sidebar filter
-3. Quests fully functional (Main/Sub/Daily/Challenge)
-4. Characters show CharacterType + Job + Race/Gender
-5. All pages bulk-load (no pagination, no infinite scroll bugs)
-6. Client-side search across all entity fields
-7. QACompiler clustering thresholds applied
+1. Single Codex dropdown in nav → 8 entity types accessible
+2. ALL pages bulk-load (no pagination, no infinite scroll bugs)
+3. Client-side search across all entity fields (instant, no API calls)
+4. Quests fully functional with type/subtype classification
+5. Skills + Gimmicks browsable
+6. Knowledge browsable with group hierarchy
+7. QACompiler category patterns matched (filename types, quest subtypes, group hierarchy)
+
+## Deferred
+- Region/Map interactive visualization (needs design)
+- Quest prerequisite chain visualization
+- Audio WEM preview improvements
+- VirtualList (add if perf needs it — CSS grid may suffice for <10k items)

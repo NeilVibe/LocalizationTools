@@ -69,6 +69,9 @@ from .routes.codex_items import router as codex_items_router  # Phase 46: Item C
 from .routes.codex_characters import router as codex_characters_router  # Phase 47: Character Codex
 from .routes.codex_audio import router as codex_audio_router  # Phase 48: Audio Codex
 from .routes.codex_regions import router as codex_regions_router  # Phase 49: Region Codex
+from .routes.codex_quests import router as codex_quests_router  # Phase 102: Quest Codex
+from .routes.codex_skills import router as codex_skills_router  # Phase 102: Skill Codex
+from .routes.codex_gimmicks import router as codex_gimmicks_router  # Phase 102: Gimmick Codex
 
 # =============================================================================
 # Include all routers
@@ -114,6 +117,9 @@ router.include_router(codex_items_router)  # Phase 46: Item Codex
 router.include_router(codex_characters_router)  # Phase 47: Character Codex
 router.include_router(codex_audio_router)  # Phase 48: Audio Codex
 router.include_router(codex_regions_router)  # Phase 49: Region Codex
+router.include_router(codex_quests_router)  # Phase 102: Quest Codex
+router.include_router(codex_skills_router)  # Phase 102: Skill Codex
+router.include_router(codex_gimmicks_router)  # Phase 102: Gimmick Codex
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)

@@ -121,6 +121,19 @@ class GimmickEntry:
     source_file: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class QuestEntry:
+    """Quest entity from quest XMLs."""
+
+    strkey: str = ""
+    name: str = ""  # Quest Name (Korean)
+    desc: str = ""  # Quest description
+    quest_type: str = ""  # "main", "faction", "challenge", "minigame"
+    quest_subtype: str = ""  # "daily", "region", "politics", "others" (faction quests only)
+    faction_key: str = ""  # Associated faction StrKey (for faction quests)
+    source_file: str = ""
+
+
 # =============================================================================
 # Group/Tree Node Schemas
 # =============================================================================
@@ -159,6 +172,7 @@ SCHEMA_REGISTRY = {
     "faction_group": FactionGroupEntry,
     "skill": SkillEntry,
     "gimmick": GimmickEntry,
+    "quest": QuestEntry,
     "item_group": ItemGroupNode,
     "knowledge_group": KnowledgeGroupNode,
 }

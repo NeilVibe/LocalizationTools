@@ -26,6 +26,7 @@ from server.tools.ldm.services.mega_index_schemas import (
     ItemGroupNode,
     KnowledgeEntry,
     KnowledgeGroupNode,
+    QuestEntry,
     RegionEntry,
     SkillEntry,
 )
@@ -43,6 +44,7 @@ class ApiMixin:
     faction_group_by_strkey: Dict[str, FactionGroupEntry]
     skill_by_strkey: Dict[str, SkillEntry]
     gimmick_by_strkey: Dict[str, GimmickEntry]
+    quest_by_strkey: Dict[str, QuestEntry]
     dds_by_stem: Dict[str, Path]
     wem_by_event: Dict[str, Path]
     wem_by_event_en: Dict[str, Path]
@@ -107,6 +109,10 @@ class ApiMixin:
         """O(1) gimmick entity lookup by StrKey."""
         return self.gimmick_by_strkey.get(strkey.lower())
 
+    def get_quest(self, strkey: str) -> Optional[QuestEntry]:
+        """O(1) quest entity lookup by StrKey."""
+        return self.quest_by_strkey.get(strkey.lower())
+
     def get_entity(self, entity_type: str, strkey: str) -> Optional[Any]:
         """O(1) entity lookup by type and StrKey."""
         entity_type = entity_type.lower()
@@ -121,8 +127,12 @@ class ApiMixin:
     # =========================================================================
 
     def get_image_path(self, strkey: str) -> Optional[Path]:
-        """C1: StrKey -> image DDS path."""
+        """C1: StrKey -> first image DDS path (backward compat)."""
         return self.strkey_to_image_path.get(strkey.lower())
+
+    def get_image_paths(self, strkey: str) -> List[Path]:
+        """C1: StrKey -> ALL image DDS paths (greedy, unique, deduped by stem)."""
+        return self.strkey_to_image_paths.get(strkey.lower(), [])
 
     def get_audio_path_by_event(self, event_name: str) -> Optional[Path]:
         """D10: Event name -> WEM audio path."""
@@ -269,6 +279,7 @@ class ApiMixin:
             "faction_group": len(self.faction_group_by_strkey),
             "skill": len(self.skill_by_strkey),
             "gimmick": len(self.gimmick_by_strkey),
+            "quest": len(self.quest_by_strkey),
         }
 
     def stats(self) -> Dict[str, Any]:
@@ -289,6 +300,7 @@ class ApiMixin:
                 "D6_faction_group": len(self.faction_group_by_strkey),
                 "D7_skill": len(self.skill_by_strkey),
                 "D8_gimmick": len(self.gimmick_by_strkey),
+                "D7b_quest": len(self.quest_by_strkey),
                 "D9_dds": len(self.dds_by_stem),
                 "D10_wem": len(self.wem_by_event),
                 "D10_wem_en": len(self.wem_by_event_en),

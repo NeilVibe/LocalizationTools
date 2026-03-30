@@ -56,7 +56,9 @@ class BuildersMixin:
     ui_texture_to_strkeys: Dict[str, List[str]]
     source_file_to_strkeys: Dict[str, List[Tuple[str, str]]]
     group_key_to_items: Dict[str, List[str]]
+    strkey_to_image_paths: Dict[str, List[Path]]
     strkey_to_image_path: Dict[str, Path]
+    entity_texture_refs: Dict[str, List[str]]
     strkey_to_audio_path: Dict[str, Path]
     stringid_to_audio_path: Dict[str, Path]
     stringid_to_audio_path_en: Dict[str, Path]
@@ -206,23 +208,76 @@ class BuildersMixin:
         return None
 
     def _build_strkey_to_image_path(self) -> None:
-        """C1: StrKey -> KnowledgeInfo.UITextureName -> DDS path.
+        """C1: Greedy multi-source DDS image resolution.
 
-        Uses _find_dds() which is GRAFTED from MDG DDSIndex.find() —
-        multi-attempt lookup with path stripping and fuzzy fallback.
+        Three-phase image lookup:
+          Phase A: KnowledgeEntry.ui_texture_name (original, highest priority)
+          Phase B: entity_texture_refs collected during parsing (greedy scan of all
+                   texture/icon/image attributes from XML nodes + immediate children)
+          Phase C: Korean name R1 fallback — if entity has same Korean name as another
+                   entity that HAS images, inherit those images
+
+        Result: strkey_to_image_paths[strkey] = [Path, ...] (unique, deduped by stem)
+        Backward compat: strkey_to_image_path[strkey] = first Path
         """
-        misses_with_texture = 0
+        # Phase A: Knowledge UITextureName (original path)
+        phase_a_hits = 0
         for strkey, entry in self.knowledge_by_strkey.items():
             tex = entry.ui_texture_name
             if tex:
                 dds = self._find_dds(tex)
                 if dds:
-                    self.strkey_to_image_path[strkey] = dds
-                else:
-                    misses_with_texture += 1
-        logger.debug(
-            f"[MEGAINDEX] C1 strkey_to_image_path: {len(self.strkey_to_image_path)} resolved, "
-            f"{misses_with_texture} misses (had UITextureName but DDS not found)"
+                    self.strkey_to_image_paths.setdefault(strkey, []).append(dds)
+                    phase_a_hits += 1
+
+        # Phase B: Greedy texture refs from entity parsing
+        phase_b_hits = 0
+        for strkey, refs in self.entity_texture_refs.items():
+            for ref_val in refs:
+                dds = self._find_dds(ref_val)
+                if dds:
+                    existing = self.strkey_to_image_paths.setdefault(strkey, [])
+                    # Dedup by stem
+                    if not any(p.stem == dds.stem for p in existing):
+                        existing.append(dds)
+                        phase_b_hits += 1
+
+        # Phase C: Korean name R1 fallback — entities with matching Korean names share images
+        phase_c_hits = 0
+        all_entity_dicts = [
+            self.character_by_strkey, self.item_by_strkey,
+            self.skill_by_strkey, self.gimmick_by_strkey,
+        ]
+        for entity_dict in all_entity_dicts:
+            for strkey, entry in entity_dict.items():
+                if strkey in self.strkey_to_image_paths:
+                    continue  # Already has images
+                name_kr = getattr(entry, "name", "").strip().lower()
+                if not name_kr:
+                    continue
+                # Look up entities with same Korean name via R1
+                matches = self.name_kr_to_strkeys.get(name_kr, [])
+                for match_type, match_strkey in matches:
+                    if match_strkey == strkey:
+                        continue
+                    donor_images = self.strkey_to_image_paths.get(match_strkey, [])
+                    if donor_images:
+                        existing = self.strkey_to_image_paths.setdefault(strkey, [])
+                        for dds in donor_images:
+                            if not any(p.stem == dds.stem for p in existing):
+                                existing.append(dds)
+                                phase_c_hits += 1
+                        break  # One donor is enough
+
+        # Backward compat: strkey_to_image_path = first image
+        for strkey, paths in self.strkey_to_image_paths.items():
+            if paths:
+                self.strkey_to_image_path[strkey] = paths[0]
+
+        total = len(self.strkey_to_image_paths)
+        logger.info(
+            f"[MEGAINDEX] C1 greedy images: {total} entities with images "
+            f"(A={phase_a_hits} knowledge, B={phase_b_hits} greedy attrs, C={phase_c_hits} kr-name fallback)"
         )
 
     def _build_strkey_to_audio_path(self) -> None:

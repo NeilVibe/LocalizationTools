@@ -3,9 +3,9 @@
    * ItemCodexPage.svelte - Item Codex encyclopedia page
    *
    * Browse, search, and inspect game items with card grid, group tabs,
-   * infinite scroll, and knowledge resolution detail panel.
+   * client-side filtering, and knowledge resolution detail panel.
    *
-   * Phase 46: Item Codex UI (Plan 02)
+   * Phase 102: Bulk load conversion (no pagination)
    */
   import { InlineLoading } from "carbon-components-svelte";
   import { Catalog, ArrowLeft } from "carbon-icons-svelte";
@@ -13,51 +13,40 @@
   import { logger } from "$lib/utils/logger.js";
   import CodexCard from "$lib/components/ldm/CodexCard.svelte";
   import ItemCodexDetail from "$lib/components/ldm/ItemCodexDetail.svelte";
-  import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
   import { PageHeader, ErrorState } from "$lib/components/common";
   import { onMount } from "svelte";
 
   const API_BASE = getApiBase();
-  const PAGE_SIZE = 50;
 
   // State
   let groups = $state([]);
   let activeGroup = $state(null);
-  let items = $state([]);
-  let totalItems = $state(0);
+  let allItems = $state([]);
   let selectedItem = $state(null);
   let searchQuery = $state("");
   let loadingGroups = $state(true);
-  let loadingList = $state(false);
+  let loadingList = $state(true);
   let loadingDetail = $state(false);
   let apiError = $state(null);
   let failedImages = $state(new Set());
-  let currentPage = $state(0);
-  let hasMore = $state(true);
-  let loadingMore = $state(false);
-
-  // Debounce search
-  let searchTimer = null;
-  let abortController = null;
 
   // Derived: total item count for "All" tab
   let allItemCount = $derived(
     groups.reduce((sum, g) => sum + (g.item_count || 0), 0)
   );
 
-  // Debounced search via $effect
-  $effect(() => {
-    const q = searchQuery;
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      currentPage = 0;
-      hasMore = true;
-      fetchItems(0, activeGroup, q);
-    }, 300);
-    return () => {
-      if (searchTimer) clearTimeout(searchTimer);
-    };
+  // Derived: client-side filtered items by group + search
+  let filteredItems = $derived.by(() => {
+    return allItems.filter(item => {
+      if (activeGroup && item.group !== activeGroup) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const searchable = `${item.name_kr || ''} ${item.name_translated || ''} ${item.strkey || ''} ${item.desc_kr || ''}`.toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+      return true;
+    });
   });
 
   /**
@@ -73,8 +62,7 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       groups = data.groups || [];
-      totalItems = data.total_items || 0;
-      logger.info('Item Codex groups loaded', { count: groups.length, totalItems });
+      logger.info('Item Codex groups loaded', { count: groups.length, totalItems: data.total_items });
     } catch (err) {
       logger.error('Failed to fetch item groups', { error: err.message });
       apiError = 'Item Codex unavailable -- ensure gamedata folder is configured';
@@ -84,52 +72,25 @@
   }
 
   /**
-   * Fetch paginated items with optional group/search filtering
+   * Fetch all items in a single request (bulk load)
    */
-  async function fetchItems(page, group, query) {
-    if (abortController) abortController.abort();
-    abortController = new AbortController();
-
-    if (page === 0) {
-      loadingList = true;
-      items = [];
-    } else {
-      loadingMore = true;
-    }
-
+  async function fetchAllItems() {
+    loadingList = true;
     try {
-      const params = new URLSearchParams();
-      params.set('offset', String(page * PAGE_SIZE));
-      params.set('limit', String(PAGE_SIZE));
-      if (group) params.set('group', group);
-      if (query) params.set('q', query);
-
       const response = await fetch(
-        `${API_BASE}/api/ldm/codex/items?${params.toString()}`,
-        { headers: getAuthHeaders(), signal: abortController.signal }
+        `${API_BASE}/api/ldm/codex/items`,
+        { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      const batch = data.items || [];
-
-      if (page === 0) {
-        items = batch;
-      } else {
-        items = [...items, ...batch];
-      }
-      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
-      currentPage = page;
-      totalItems = data.total ?? totalItems;
-
-      logger.info('Item Codex items loaded', { page, count: batch.length, total: data.total });
+      allItems = data.items || [];
+      logger.info('Item Codex bulk loaded', { total: allItems.length });
     } catch (err) {
-      if (err.name === 'AbortError') return;
       logger.error('Failed to fetch items', { error: err.message });
-      if (page === 0) apiError = 'Failed to load items';
+      apiError = 'Failed to load items';
     } finally {
       loadingList = false;
-      loadingMore = false;
     }
   }
 
@@ -154,23 +115,11 @@
   }
 
   /**
-   * Load more items (InfiniteScroll callback)
-   */
-  function loadMore() {
-    if (hasMore && !loadingMore) {
-      fetchItems(currentPage + 1, activeGroup, searchQuery);
-    }
-  }
-
-  /**
    * Handle group tab selection
    */
   function selectGroup(groupStrkey) {
     activeGroup = groupStrkey;
     selectedItem = null;
-    currentPage = 0;
-    hasMore = true;
-    fetchItems(0, groupStrkey, searchQuery);
   }
 
   /**
@@ -206,15 +155,15 @@
         ? item.name_translated + (item.desc_kr ? '\n' + item.desc_kr : '')
         : item.desc_kr || '',
       image_texture: null,
-      ai_image_url: item.image_url || null,
+      ai_image_url: item.image_urls?.length ? item.image_urls[0] : null,
+      ai_image_urls: item.image_urls || [],
       related_entities: []
     };
   }
 
   onMount(() => {
-    fetchGroups().then(() => {
-      fetchItems(0, null, "");
-    });
+    fetchGroups();
+    fetchAllItems();
   });
 </script>
 
@@ -235,7 +184,7 @@
 
   {#if apiError}
     <div class="item-codex-state-container">
-      <ErrorState message={apiError} onretry={() => { fetchGroups(); fetchItems(0, null, ""); }} />
+      <ErrorState message={apiError} onretry={() => { fetchGroups(); fetchAllItems(); }} />
     </div>
   {:else if loadingGroups}
     <div class="item-codex-loading" role="status" aria-live="polite">
@@ -295,10 +244,10 @@
       {:else}
         <!-- Card Grid -->
         <div class="entity-grid">
-          {#each items as item (item.strkey)}
+          {#each filteredItems as item (item.strkey)}
             <CodexCard
               entity={toCardEntity(item)}
-              index={items.indexOf(item)}
+              index={filteredItems.indexOf(item)}
               apiBase={API_BASE}
               {failedImages}
               onclick={() => selectCard(item)}
@@ -310,24 +259,12 @@
             />
           {/each}
 
-          {#if items.length === 0 && !loadingList}
+          {#if filteredItems.length === 0 && !loadingList}
             <div class="no-entities">
-              <p>No items found{searchQuery ? ` matching "${searchQuery}"` : ''} -- ensure gamedata files are loaded and indexed.</p>
+              <p>No items found{searchQuery ? ` matching "${searchQuery}"` : ''}{activeGroup ? ` in this group` : ''} -- ensure gamedata files are loaded and indexed.</p>
             </div>
           {/if}
         </div>
-
-        <InfiniteScroll
-          onloadmore={loadMore}
-          loading={loadingMore}
-          {hasMore}
-        />
-
-        {#if loadingMore}
-          <div class="skeleton-loading-grid">
-            <SkeletonCard count={6} />
-          </div>
-        {/if}
       {/if}
     </div>
   {/if}
@@ -484,8 +421,4 @@
     font-size: 0.875rem;
   }
 
-  .skeleton-loading-grid {
-    padding: 0;
-    margin-top: 12px;
-  }
 </style>

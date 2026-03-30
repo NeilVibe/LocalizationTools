@@ -2,7 +2,7 @@
 
 Phase 49: Region Codex UI + Interactive Map -- Pydantic v2 models for region
 card grid, detail view with knowledge resolution passes, faction hierarchy tree,
-and paginated region list.
+and bulk region list.
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ class RegionCardResponse(BaseModel):
     world_position: Optional[Tuple[float, float, float]] = None
     faction_name: Optional[str] = None
     faction_group_name: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
 
 
@@ -93,7 +93,7 @@ class RegionDetailResponse(BaseModel):
     world_position: Optional[Tuple[float, float, float]] = None
     faction_name: Optional[str] = None
     faction_group_name: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
     knowledge_key: Optional[str] = None
     desc_kr: Optional[str] = None
@@ -104,16 +104,13 @@ class RegionDetailResponse(BaseModel):
 
 
 # =============================================================================
-# Paginated list
+# Bulk list
 # =============================================================================
 
 
 class RegionListResponse(BaseModel):
-    """Paginated region list response."""
+    """Bulk region list response."""
 
     items: List[RegionCardResponse]
     total: int
-    offset: int
-    limit: int
-    has_more: bool
     faction_group_filter: Optional[str] = None

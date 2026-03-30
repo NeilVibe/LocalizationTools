@@ -30,6 +30,7 @@ from server.tools.ldm.services.mega_index_schemas import (
     ItemGroupNode,
     KnowledgeEntry,
     KnowledgeGroupNode,
+    QuestEntry,
     RegionEntry,
     SkillEntry,
 )
@@ -82,8 +83,11 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         self.faction_group_by_strkey: Dict[str, FactionGroupEntry] = {}  # D6
         self.skill_by_strkey: Dict[str, SkillEntry] = {}  # D7
         self.gimmick_by_strkey: Dict[str, GimmickEntry] = {}  # D8
+        self.quest_by_strkey: Dict[str, QuestEntry] = {}  # D7b (quests)
         self.item_group_hierarchy: Dict[str, ItemGroupNode] = {}  # D14
         self.region_display_names: Dict[str, str] = {}  # D16
+        # Greedy DDS: texture refs collected during entity parsing
+        self.entity_texture_refs: Dict[str, List[str]] = {}  # strkey -> [texture_value, ...]
 
         # === Phase 3: Localization ===
         self.event_to_stringid: Dict[str, str] = {}  # D11
@@ -107,7 +111,8 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         self.group_key_to_items: Dict[str, List[str]] = {}  # R7
 
         # === Phase 7: Composed Dicts ===
-        self.strkey_to_image_path: Dict[str, Path] = {}  # C1
+        self.strkey_to_image_paths: Dict[str, List[Path]] = {}  # C1 (greedy: multiple images per entity)
+        self.strkey_to_image_path: Dict[str, Path] = {}  # C1 compat (first image only)
         self.strkey_to_audio_path: Dict[str, Path] = {}  # C2
         self.stringid_to_audio_path: Dict[str, Path] = {}  # C3 (backward compat -> English)
         self.stringid_to_audio_path_en: Dict[str, Path] = {}  # C3a
@@ -195,11 +200,12 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         self._parse_faction_info(faction_folder)
         self._parse_skill_info(staticinfo_folder)
         self._parse_gimmick_info(staticinfo_folder)
+        self._parse_quest_info(staticinfo_folder)
         logger.info(
             f"[MEGAINDEX] Phase 2 complete: {len(self.character_by_strkey)} characters, "
             f"{len(self.item_by_strkey)} items, {len(self.region_by_strkey)} regions, "
             f"{len(self.faction_by_strkey)} factions, {len(self.skill_by_strkey)} skills, "
-            f"{len(self.gimmick_by_strkey)} gimmicks"
+            f"{len(self.gimmick_by_strkey)} gimmicks, {len(self.quest_by_strkey)} quests"
         )
 
         # ----- Phase 3: Localization -----

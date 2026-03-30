@@ -2,7 +2,7 @@
 
 Phase 48: Audio Codex UI -- Pydantic v2 models for audio card grid,
 detail view, category tree from D20 export_path grouping,
-and paginated audio list with streaming support.
+and bulk audio list with streaming support.
 """
 
 from __future__ import annotations
@@ -70,16 +70,13 @@ class AudioCategoryTreeResponse(BaseModel):
 
 
 # =============================================================================
-# Paginated list
+# Bulk list
 # =============================================================================
 
 
 class AudioListResponse(BaseModel):
-    """Paginated audio list response."""
+    """Bulk audio list response."""
 
     items: List[AudioCardResponse]
     total: int
-    offset: int
-    limit: int
-    has_more: bool
     category_filter: Optional[str] = None

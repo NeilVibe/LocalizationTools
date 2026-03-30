@@ -68,15 +68,19 @@
   <div class="character-detail">
     <!-- Top: Image + Metadata -->
     <div class="detail-layout">
-      <!-- Left: Image -->
+      <!-- Left: Image(s) -->
       <div class="detail-image">
-        {#if character.image_url && !imageError}
-          <img
-            src="{API_BASE}{character.image_url}?v={Date.now()}"
-            alt={character.name_kr}
-            class="entity-image"
-            onerror={() => { imageError = true; }}
-          />
+        {#if character.image_urls?.length && !imageError}
+          <div class="detail-images">
+            {#each character.image_urls as url (url)}
+              <img
+                src="{API_BASE}{url}?v={Date.now()}"
+                alt={character.name_kr}
+                class="entity-image"
+                onerror={() => { imageError = true; }}
+              />
+            {/each}
+          </div>
         {:else}
           <div class="placeholder-wrapper">
             <PlaceholderImage entityType="character" entityName={character.name_kr} />
@@ -284,9 +288,8 @@
     flex-shrink: 0;
     width: 160px;
     min-height: 120px;
-    max-height: 160px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     background: var(--cds-layer-02);
     border-radius: 4px;
@@ -294,9 +297,17 @@
     overflow: hidden;
   }
 
+  .detail-images {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
   .entity-image {
     width: 100%;
-    height: 100%;
+    height: auto;
+    max-height: 200px;
     object-fit: contain;
     display: block;
   }

@@ -2,7 +2,7 @@
 
 Phase 46: Item Codex UI -- Pydantic v2 models for item card grid,
 detail view with knowledge resolution passes, group hierarchy tree,
-and paginated item list.
+and bulk item list.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class ItemCardResponse(BaseModel):
     desc_kr: Optional[str] = None
     group_name: Optional[str] = None
     group_key: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
 
 
@@ -66,7 +66,7 @@ class ItemDetailResponse(BaseModel):
     desc_kr: Optional[str] = None
     group_name: Optional[str] = None
     group_key: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
     knowledge_key: str = ""
     knowledge_pass_0: List[KnowledgePassEntry] = []
@@ -101,16 +101,13 @@ class ItemGroupTreeResponse(BaseModel):
 
 
 # =============================================================================
-# Paginated list
+# Bulk list
 # =============================================================================
 
 
 class ItemListResponse(BaseModel):
-    """Paginated item list response."""
+    """Bulk item list response."""
 
     items: List[ItemCardResponse]
     total: int
-    offset: int
-    limit: int
-    has_more: bool
     group_filter: Optional[str] = None

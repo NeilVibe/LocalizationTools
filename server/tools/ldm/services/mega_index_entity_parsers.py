@@ -26,6 +26,7 @@ from server.tools.ldm.services.mega_index_schemas import (
     ItemEntry,
     ItemGroupNode,
     KnowledgeEntry,
+    QuestEntry,
     RegionEntry,
     SkillEntry,
 )
@@ -34,6 +35,11 @@ from server.tools.ldm.services.mega_index_schemas import (
 def _ci_attrs(elem) -> dict:
     """Case-insensitive XML attribute extraction — lowercase keys."""
     return {k.lower(): v for k, v in elem.attrib.items()}
+
+
+
+# Attribute names (lowercase) that commonly reference DDS textures
+_TEXTURE_ATTR_KEYWORDS = {"texture", "icon", "image", "dds", "portrait", "thumbnail"}
 
 
 class EntityParsersMixin:
@@ -48,6 +54,38 @@ class EntityParsersMixin:
     faction_group_by_strkey: Dict[str, FactionGroupEntry]
     skill_by_strkey: Dict[str, SkillEntry]
     gimmick_by_strkey: Dict[str, GimmickEntry]
+    entity_texture_refs: Dict[str, List[str]]
+
+    def _collect_texture_refs(self, strkey: str, elem, include_children: bool = True) -> None:
+        """Greedy DDS scan: collect ALL texture/icon/image attribute values from XML element.
+
+        Scans the element and its immediate children for attributes whose name
+        contains texture/icon/image keywords. Stores raw values for later DDS resolution.
+        """
+        if not strkey:
+            return
+        refs = []
+        # Scan this element's attributes
+        for attr_name, attr_val in elem.attrib.items():
+            attr_lower = attr_name.lower()
+            if any(kw in attr_lower for kw in _TEXTURE_ATTR_KEYWORDS):
+                val = attr_val.strip()
+                if val:
+                    refs.append(val)
+        # Scan immediate children
+        if include_children:
+            for child in elem:
+                for attr_name, attr_val in child.attrib.items():
+                    attr_lower = attr_name.lower()
+                    if any(kw in attr_lower for kw in _TEXTURE_ATTR_KEYWORDS):
+                        val = attr_val.strip()
+                        if val:
+                            refs.append(val)
+        if refs:
+            existing = self.entity_texture_refs.get(strkey, [])
+            existing.extend(refs)
+            self.entity_texture_refs[strkey] = existing
+    quest_by_strkey: Dict[str, QuestEntry]
     item_group_hierarchy: Dict[str, ItemGroupNode]
     region_display_names: Dict[str, str]
 
@@ -90,6 +128,7 @@ class EntityParsersMixin:
                         ui_icon_path=a.get("uiiconpath") or "",
                         source_file=source_file,
                     )
+                    self._collect_texture_refs(strkey, elem)
                 extracted = len(self.character_by_strkey) - count_before
                 if extracted > 0:
                     logger.debug(f"[MEGAINDEX] {xml_path.name}: +{extracted} characters")
@@ -191,6 +230,7 @@ class EntityParsersMixin:
                         source_file=source_file,
                         inspect_entries=tuple(inspect_entries),
                     )
+                    self._collect_texture_refs(strkey, elem)
 
                 items_added = len(self.item_by_strkey) - items_before
                 groups_added = len(self.item_group_hierarchy) - groups_before
@@ -331,6 +371,7 @@ class EntityParsersMixin:
                         source_file=source_file,
                         display_name="",
                     )
+                    self._collect_texture_refs(nstrkey, node_elem)
 
                 # D16: RegionInfo -> display names
                 for elem in root.iter("RegionInfo"):
@@ -395,6 +436,7 @@ class EntityParsersMixin:
                         learn_knowledge_key=(a.get("learnknowledgekey") or "").lower(),
                         source_file=source_file,
                     )
+                    self._collect_texture_refs(strkey, elem)
                 sk_new = len(self.skill_by_strkey) - sk0
                 if sk_new:
                     logger.debug(f"[MEGAINDEX]   {source_file}: +{sk_new} skills")
@@ -439,6 +481,7 @@ class EntityParsersMixin:
                             seal_desc=seal_desc,
                             source_file=source_file,
                         )
+                        self._collect_texture_refs(strkey, gimmick_elem)
                     # If no inner GimmickInfo, store the group itself
                     if gstrkey and gstrkey not in self.gimmick_by_strkey:
                         self.gimmick_by_strkey[gstrkey] = GimmickEntry(
@@ -454,3 +497,84 @@ class EntityParsersMixin:
             logger.info(f"[MEGAINDEX] Gimmicks total: {len(self.gimmick_by_strkey) - gimmicks_before} new")
         except Exception as e:
             logger.exception(f"[MEGAINDEX] Gimmick parse failed: {e}")
+
+    def _parse_quest_info(self, staticinfo_folder: Path) -> None:
+        """Parse quest elements from quest XML files."""
+        try:
+            # Quest XMLs can be in staticinfo_quest/ or under StaticInfo/questinfo/
+            # Try both locations
+            quest_folder = staticinfo_folder / "questinfo"
+            if not quest_folder.is_dir():
+                # Try sibling staticinfo_quest folder
+                quest_folder = staticinfo_folder.parent / "staticinfo_quest"
+            if not quest_folder.is_dir():
+                logger.info("[MEGAINDEX] No quest folder found, skipping quest parse")
+                return
+
+            xml_files = list(quest_folder.rglob("*.xml"))
+            logger.info(f"[MEGAINDEX] Quest XMLs found: {len(xml_files)} in {quest_folder}")
+            quests_before = len(self.quest_by_strkey)
+
+            for xml_path in xml_files:
+                root = _safe_parse_xml(xml_path)
+                if root is None:
+                    continue
+                source_file = xml_path.name
+                relative_path = str(xml_path.relative_to(quest_folder))
+
+                # Determine quest_type from subfolder path
+                quest_type = "main"  # default
+                quest_subtype = ""
+                rel_lower = relative_path.lower()
+                if "faction" in rel_lower:
+                    quest_type = "faction"
+                elif "challenge" in rel_lower:
+                    quest_type = "challenge"
+                elif "minigame" in rel_lower or "contents_minigame" in source_file.lower():
+                    quest_type = "minigame"
+
+                q0 = len(self.quest_by_strkey)
+
+                # Look for quest-like elements: QuestNode, Quest, QuestInfo
+                for tag in ["QuestNode", "Quest", "QuestInfo"]:
+                    for elem in root.iter(tag):
+                        a = _ci_attrs(elem)
+                        strkey = (a.get("strkey") or a.get("key") or "").lower()
+                        if not strkey:
+                            continue
+
+                        name = a.get("name") or a.get("questname") or ""
+                        desc = a.get("desc") or a.get("questdesc") or ""
+                        faction_key = (a.get("factionkey") or a.get("endquestkey") or "").lower()
+
+                        # Faction subtype classification by StrKey pattern (from QACompiler quest.py)
+                        subtype = quest_subtype
+                        if quest_type == "faction":
+                            strkey_upper = strkey.upper()
+                            if strkey_upper.endswith("_DAILY") or a.get("group", "").lower() == "daily":
+                                subtype = "daily"
+                            elif strkey_upper.endswith("_REQUEST"):
+                                subtype = "region"
+                            elif strkey_upper.endswith("_SITUATION"):
+                                subtype = "politics"
+                            else:
+                                subtype = "others"
+
+                        self.quest_by_strkey[strkey] = QuestEntry(
+                            strkey=strkey,
+                            name=name,
+                            desc=desc,
+                            quest_type=quest_type,
+                            quest_subtype=subtype,
+                            faction_key=faction_key,
+                            source_file=source_file,
+                        )
+                        self._collect_texture_refs(strkey, elem)
+
+                q_new = len(self.quest_by_strkey) - q0
+                if q_new:
+                    logger.debug(f"[MEGAINDEX]   {source_file}: +{q_new} quests ({quest_type})")
+
+            logger.info(f"[MEGAINDEX] Quests total: {len(self.quest_by_strkey) - quests_before} new")
+        except Exception as e:
+            logger.exception(f"[MEGAINDEX] Quest parse failed: {e}")

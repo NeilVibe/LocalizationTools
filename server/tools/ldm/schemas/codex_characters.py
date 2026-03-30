@@ -2,7 +2,7 @@
 
 Phase 47: Character Codex UI -- Pydantic v2 models for character card grid,
 detail view with knowledge resolution passes, filename-based categories,
-and paginated character list.
+and bulk character list.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class CharacterCardResponse(BaseModel):
     category: Optional[str] = None
     race: Optional[str] = None
     gender: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
 
 
@@ -48,7 +48,7 @@ class CharacterDetailResponse(BaseModel):
     category: Optional[str] = None
     race: Optional[str] = None
     gender: Optional[str] = None
-    image_url: Optional[str] = None
+    image_urls: List[str] = []
     source_file: str = ""
     age: Optional[str] = None
     job: Optional[str] = None
@@ -80,16 +80,13 @@ class CharacterCategoryResponse(BaseModel):
 
 
 # =============================================================================
-# Paginated list
+# Bulk list
 # =============================================================================
 
 
 class CharacterListResponse(BaseModel):
-    """Paginated character list response."""
+    """Bulk character list response."""
 
     characters: List[CharacterCardResponse]
     total: int
-    offset: int
-    limit: int
-    has_more: bool
     category_filter: Optional[str] = None

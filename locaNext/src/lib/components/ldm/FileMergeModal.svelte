@@ -143,6 +143,9 @@
           only_untranslated: transferScope === 'untranslated',
           ignore_spaces: ignoreSpaces,
           ignore_punctuation: ignorePunctuation,
+          all_categories: allCategories,
+          non_script_only: nonScriptOnly,
+          unique_only: uniqueOnly,
         };
 
         const mergeRes = await fetch(`${API_BASE}/api/ldm/merge/to-file`, {
@@ -176,6 +179,7 @@
         uploadedFileId = uploaded.id;
 
         mergeStep = 'Matching corrections...';
+        mergeLogs = [];
         const mergeBody = {
           source_file_id: sourceFile.id,
           match_mode: matchPrecision === 'fuzzy' ? 'fuzzy' : matchType,
@@ -189,26 +193,71 @@
           unique_only: uniqueOnly,
         };
 
-        const mergeRes = await fetch(`${API_BASE}/api/ldm/merge/to-file`, {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(mergeBody)
-        });
-        // Fallback: use old DB merge if to-file fails (no path)
-        if (!mergeRes.ok) {
-          const mergeRes2 = await fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge`, {
+        // BUG-14 fix: Use SSE streaming endpoint for live progress
+        result = await new Promise((resolve, reject) => {
+          fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge-stream`, {
             method: 'POST',
             headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
             body: JSON.stringify(mergeBody)
-          });
-          if (!mergeRes2.ok) {
-            const err = await mergeRes2.json().catch(() => ({}));
-            throw new Error(err.detail || 'Merge failed');
-          }
-          result = await mergeRes2.json();
-        } else {
-          result = await mergeRes.json();
-        }
+          }).then(async (streamRes) => {
+            if (!streamRes.ok) {
+              // Fallback to non-streaming endpoint
+              const mergeRes2 = await fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge`, {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(mergeBody)
+              });
+              if (!mergeRes2.ok) {
+                const err = await mergeRes2.json().catch(() => ({}));
+                reject(new Error(err.detail || 'Merge failed'));
+                return;
+              }
+              resolve(await mergeRes2.json());
+              return;
+            }
+
+            // Parse SSE stream
+            const reader = streamRes.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+
+              // Process complete SSE events
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              let eventType = '';
+              for (const line of lines) {
+                if (line.startsWith('event: ')) {
+                  eventType = line.slice(7).trim();
+                } else if (line.startsWith('data: ') && eventType) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    if (eventType === 'progress') {
+                      mergeStep = `${data.phase || 'Matching'}: ${data.matched || 0} matched, ${data.updated || 0} updated`;
+                    } else if (eventType === 'log') {
+                      mergeStep = data.message || '';
+                      mergeLogs = [...mergeLogs, data.message];
+                    } else if (eventType === 'complete') {
+                      resolve(data);
+                      return;
+                    } else if (eventType === 'error') {
+                      reject(new Error(data.message || 'Merge failed'));
+                      return;
+                    }
+                  } catch (e) { /* ignore parse errors */ }
+                  eventType = '';
+                }
+              }
+            }
+            // If stream ended without complete event
+            reject(new Error('Merge stream ended unexpectedly'));
+          }).catch(reject);
+        });
 
         // Cleanup uploaded artifact
         if (uploadedFileId) {

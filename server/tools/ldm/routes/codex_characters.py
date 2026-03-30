@@ -1,4 +1,4 @@
-"""Character Codex API endpoints -- paginated list, category filtering, detail, search.
+"""Character Codex API endpoints -- bulk list, category filtering, detail, search.
 
 Phase 47: Character Codex UI -- thin wrappers around MegaIndex O(1) lookups.
 All data comes from MegaIndex (built in Phase 45).
@@ -6,7 +6,7 @@ All data comes from MegaIndex (built in Phase 45).
 Endpoints:
   GET /codex/characters/categories  - Filename-based character categories with counts
   GET /codex/characters/{strkey}    - Full character detail with knowledge resolution passes
-  GET /codex/characters             - Paginated character list with category/search filtering
+  GET /codex/characters             - Bulk character list with category/search filtering
 """
 
 from __future__ import annotations
@@ -111,16 +111,14 @@ def _build_character_card(
             if name_translated:
                 break
 
-    # Image URL from knowledge UITextureName
-    image_url = None
-    if entry.knowledge_key:
+    # Image URLs from greedy DDS scan, fallback to knowledge UITextureName, then ui_icon_path
+    image_urls = [str(p) for p in mega.get_image_paths(strkey)]
+    if not image_urls and entry.knowledge_key:
         knowledge = mega.get_knowledge(entry.knowledge_key)
         if knowledge and knowledge.ui_texture_name:
-            image_url = f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"
-
-    # Fallback: ui_icon_path
-    if not image_url and entry.ui_icon_path:
-        image_url = f"/api/ldm/mapdata/thumbnail/{entry.ui_icon_path}"
+            image_urls = [f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"]
+    if not image_urls and entry.ui_icon_path:
+        image_urls = [f"/api/ldm/mapdata/thumbnail/{entry.ui_icon_path}"]
 
     # Parse race/gender from use_macro
     race, gender = _parse_use_macro(entry.use_macro)
@@ -136,7 +134,7 @@ def _build_character_card(
         category=category,
         race=race,
         gender=gender,
-        image_url=image_url,
+        image_urls=image_urls,
         source_file=entry.source_file,
     )
 
@@ -267,7 +265,7 @@ async def get_character_detail(
             category=_extract_category(entry.source_file),
             race=race,
             gender=gender,
-            image_url=card.image_url if card else None,
+            image_urls=card.image_urls if card else [],
             source_file=entry.source_file,
             age=entry.age or None,
             job=entry.job or None,
@@ -287,14 +285,12 @@ async def get_character_detail(
 
 @router.get("/", response_model=CharacterListResponse)
 async def list_characters(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
     category: Optional[str] = Query(None, description="Filter by filename-based category"),
     q: Optional[str] = Query(None, description="Search across name, StrKey, use_macro, age, job"),
     lang: str = Query("eng"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get paginated character list with optional category filtering and text search.
+    """Get all characters with optional category filtering and text search.
 
     - category: filters characters by filename-based category (e.g. NPC, MONSTER)
     - q: searches across Korean name, translated name, StrKey, use_macro, age, job
@@ -351,15 +347,9 @@ async def list_characters(
         # Sort by Korean name
         cards.sort(key=lambda c: c.name_kr)
 
-        total = len(cards)
-        paginated = cards[offset: offset + limit]
-
         return CharacterListResponse(
-            characters=paginated,
-            total=total,
-            offset=offset,
-            limit=limit,
-            has_more=len(paginated) == limit,
+            characters=cards,
+            total=len(cards),
             category_filter=category,
         )
     except Exception as exc:

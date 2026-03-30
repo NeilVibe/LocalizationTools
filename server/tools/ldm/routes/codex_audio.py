@@ -1,10 +1,10 @@
-"""Audio Codex API endpoints -- paginated list, category tree, detail, WEM streaming.
+"""Audio Codex API endpoints -- bulk list, category tree, detail, WEM streaming.
 
 Phase 48: Audio Codex UI -- thin wrappers around MegaIndex O(1) lookups.
 All data comes from MegaIndex D10/D11/D20/D21/C4/C5 dicts.
 
 Endpoints:
-  GET /codex/audio            - Paginated audio list with category/search filtering
+  GET /codex/audio            - Bulk audio list with category/search filtering
   GET /codex/audio/categories - Category tree from D20 export_path grouping
   GET /codex/audio/stream/{event_name} - WEM-to-WAV streaming (unauthenticated for <audio>)
   GET /codex/audio/{event_name}        - Full audio detail
@@ -226,13 +226,11 @@ async def get_audio_detail(
 
 @router.get("/", response_model=AudioListResponse)
 async def list_audio(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
     category: Optional[str] = Query(None, description="Filter by D20 export_path prefix"),
     q: Optional[str] = Query(None, description="Search across event_name, script, stringid"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get paginated audio list with optional category filtering and text search.
+    """Get all audio events with optional category filtering and text search.
 
     - category: filters by D20 export_path prefix (e.g. "Dialog/QuestDialog")
     - q: searches across event_name, script_kr (C4), script_eng (C5), string_id (D11)
@@ -286,18 +284,12 @@ async def list_audio(
 
         all_events.sort(key=_sort_key)
 
-        total = len(all_events)
-        paginated = all_events[offset: offset + limit]
-
-        # Build cards
-        items = [_build_audio_card(ev, mega) for ev in paginated]
+        # Build cards for ALL matching events
+        items = [_build_audio_card(ev, mega) for ev in all_events]
 
         return AudioListResponse(
             items=items,
-            total=total,
-            offset=offset,
-            limit=limit,
-            has_more=len(items) == limit,
+            total=len(items),
             category_filter=category,
         )
     except Exception as exc:

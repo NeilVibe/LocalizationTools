@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map, Merge, Dashboard } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth, Catalog, UserMultiple, Music, Map, Merge, Dashboard, ChevronDown, Flash, Notebook, Idea } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, goToStatus, selectedProject } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, goToQuestCodex, goToSkillCodex, goToGimmickCodex, goToKnowledgeCodex, goToStatus, selectedProject } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -52,6 +52,7 @@
   let mergeMultiLanguage = $state(false);
   let mergeFolderPath = $state('');
   let checkingAuth = $state(true);
+  let isCodexMenuOpen = $state(false);
 
   // MegaIndex auto-build with toast notifications
   async function triggerMegaIndexBuild() {
@@ -212,6 +213,38 @@
     goToRegionCodex();
   }
 
+  // Phase 102: Quest Codex navigation
+  function navigateToQuestCodex() {
+    logger.userAction("Navigate to Quest Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToQuestCodex();
+  }
+
+  // Phase 102: Skill Codex navigation
+  function navigateToSkillCodex() {
+    logger.userAction("Navigate to Skill Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToSkillCodex();
+  }
+
+  // Phase 102: Gimmick Codex navigation
+  function navigateToGimmickCodex() {
+    logger.userAction("Navigate to Gimmick Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToGimmickCodex();
+  }
+
+  // Phase 102: Knowledge Codex navigation
+  function navigateToKnowledgeCodex() {
+    logger.userAction("Navigate to Knowledge Codex page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToKnowledgeCodex();
+  }
+
   // System Status navigation
   function navigateToStatus() {
     logger.userAction("Navigate to Status page");
@@ -279,6 +312,10 @@
     // Don't close if clicking on a dropdown button or menu
     if (event.target.closest('.compact-dropdown')) {
       return;
+    }
+    // Close codex dropdown if clicking outside it
+    if (isCodexMenuOpen && !event.target.closest('.codex-dropdown')) {
+      isCodexMenuOpen = false;
     }
     isSettingsMenuOpen = false;
     isAppsMenuOpen = false;
@@ -500,46 +537,46 @@
           <GameConsole size={16} />
           <span>Game Data</span>
         </button>
-        <button
-          class="ldm-nav-tab"
-          class:active={$currentApp === 'ldm' && $currentPage === 'codex'}
-          onclick={navigateToCodex}
-        >
-          <Book size={16} />
-          <span>Codex</span>
-        </button>
-        <button
-          class="ldm-nav-tab"
-          class:active={$currentApp === 'ldm' && $currentPage === 'item-codex'}
-          onclick={navigateToItemCodex}
-        >
-          <Catalog size={16} />
-          <span>Items</span>
-        </button>
-        <button
-          class="ldm-nav-tab"
-          class:active={$currentApp === 'ldm' && $currentPage === 'character-codex'}
-          onclick={navigateToCharacterCodex}
-        >
-          <UserMultiple size={16} />
-          <span>Characters</span>
-        </button>
-        <button
-          class="ldm-nav-tab"
-          class:active={$currentApp === 'ldm' && $currentPage === 'audio-codex'}
-          onclick={navigateToAudioCodex}
-        >
-          <Music size={16} />
-          <span>Audio</span>
-        </button>
-        <button
-          class="ldm-nav-tab"
-          class:active={$currentApp === 'ldm' && $currentPage === 'region-codex'}
-          onclick={navigateToRegionCodex}
-        >
-          <Map size={16} />
-          <span>Regions</span>
-        </button>
+        <!-- Phase 102: Codex dropdown (replaces 5 separate buttons) -->
+        <div class="codex-dropdown">
+          <button
+            class="ldm-nav-tab"
+            class:active={$currentApp === 'ldm' && ['codex', 'item-codex', 'character-codex', 'audio-codex', 'region-codex', 'quest-codex', 'skill-codex', 'gimmick-codex', 'knowledge-codex'].includes($currentPage)}
+            onclick={() => { isCodexMenuOpen = !isCodexMenuOpen; }}
+          >
+            <Book size={16} />
+            <span>Codex</span>
+            <ChevronDown size={12} />
+          </button>
+          {#if isCodexMenuOpen}
+            <div class="codex-dropdown-menu">
+              <button class="codex-dropdown-item" class:active={$currentPage === 'item-codex'} onclick={() => { navigateToItemCodex(); isCodexMenuOpen = false; }}>
+                <Catalog size={14} /> Items
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'character-codex'} onclick={() => { navigateToCharacterCodex(); isCodexMenuOpen = false; }}>
+                <UserMultiple size={14} /> Characters
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'audio-codex'} onclick={() => { navigateToAudioCodex(); isCodexMenuOpen = false; }}>
+                <Music size={14} /> Audio
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'region-codex'} onclick={() => { navigateToRegionCodex(); isCodexMenuOpen = false; }}>
+                <Map size={14} /> Regions
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'quest-codex'} onclick={() => { navigateToQuestCodex(); isCodexMenuOpen = false; }}>
+                <TaskComplete size={14} /> Quests
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'skill-codex'} onclick={() => { navigateToSkillCodex(); isCodexMenuOpen = false; }}>
+                <Flash size={14} /> Skills
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'gimmick-codex'} onclick={() => { navigateToGimmickCodex(); isCodexMenuOpen = false; }}>
+                <Idea size={14} /> Gimmicks
+              </button>
+              <button class="codex-dropdown-item" class:active={$currentPage === 'knowledge-codex'} onclick={() => { navigateToKnowledgeCodex(); isCodexMenuOpen = false; }}>
+                <Notebook size={14} /> Knowledge
+              </button>
+            </div>
+          {/if}
+        </div>
         <button
           class="ldm-nav-tab"
           class:active={$currentApp === 'ldm' && $currentPage === 'worldmap'}
@@ -869,5 +906,47 @@
     outline: 2px solid var(--cds-focus);
     outline-offset: -2px;
     z-index: 1;
+  }
+
+  /* Phase 102: Codex dropdown */
+  .codex-dropdown {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .codex-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 9000;
+    background: var(--cds-layer-01, #262626);
+    border: 1px solid var(--cds-border-subtle-01, #393939);
+    border-radius: 4px;
+    padding: 0.25rem 0;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .codex-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: var(--cds-text-primary, #f4f4f4);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .codex-dropdown-item:hover {
+    background: var(--cds-layer-hover-01, #353535);
+  }
+
+  .codex-dropdown-item.active {
+    background: var(--cds-layer-selected-01, #393939);
+    color: var(--cds-link-primary, #78a9ff);
   }
 </style>

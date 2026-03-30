@@ -1,4 +1,4 @@
-"""Region Codex API endpoints -- paginated list, faction tree, detail with knowledge passes.
+"""Region Codex API endpoints -- bulk list, faction tree, detail with knowledge passes.
 
 Phase 49: Region Codex UI + Interactive Map -- thin wrappers around MegaIndex O(1) lookups.
 All data comes from MegaIndex D4/D5/D6/D16/C1 dicts.
@@ -6,7 +6,7 @@ All data comes from MegaIndex D4/D5/D6/D16/C1 dicts.
 Endpoints:
   GET /codex/regions/tree      - FactionGroup->Faction->Region hierarchy tree
   GET /codex/regions/{strkey}  - Full region detail with knowledge resolution passes
-  GET /codex/regions/          - Paginated region list with faction_group/search filtering
+  GET /codex/regions/          - Bulk region list with faction_group/search filtering
 """
 
 from __future__ import annotations
@@ -79,12 +79,12 @@ def _build_region_card(
             if name_translated:
                 break
 
-    # Image URL from knowledge UITextureName
-    image_url = None
-    if entry.knowledge_key:
+    # Image URLs from greedy DDS scan, fallback to knowledge UITextureName
+    image_urls = [str(p) for p in mega.get_image_paths(strkey)]
+    if not image_urls and entry.knowledge_key:
         knowledge = mega.get_knowledge(entry.knowledge_key)
         if knowledge and knowledge.ui_texture_name:
-            image_url = f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"
+            image_urls = [f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"]
 
     # Resolve faction and faction group names
     faction_name, faction_group_name = _find_faction_for_region(strkey, mega)
@@ -98,7 +98,7 @@ def _build_region_card(
         world_position=entry.world_position,
         faction_name=faction_name,
         faction_group_name=faction_group_name,
-        image_url=image_url,
+        image_urls=image_urls,
         source_file=entry.source_file,
     )
 
@@ -268,7 +268,7 @@ async def get_region_detail(
             world_position=entry.world_position,
             faction_name=card.faction_name if card else None,
             faction_group_name=card.faction_group_name if card else None,
-            image_url=card.image_url if card else None,
+            image_urls=card.image_urls if card else [],
             source_file=entry.source_file,
             knowledge_key=entry.knowledge_key or None,
             desc_kr=entry.desc or None,
@@ -286,14 +286,12 @@ async def get_region_detail(
 
 @router.get("/", response_model=RegionListResponse)
 async def list_regions(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
     faction_group: Optional[str] = Query(None, description="Filter by FactionGroup StrKey"),
     q: Optional[str] = Query(None, description="Search across names, StrKey, description"),
     lang: str = Query("eng"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get paginated region list with optional faction_group filtering and text search.
+    """Get all regions with optional faction_group filtering and text search.
 
     - faction_group: filters regions by FactionGroupEntry membership (all factions in group)
     - q: searches across Korean name, display_name, StrKey, and description
@@ -353,15 +351,9 @@ async def list_regions(
         # Sort by Korean name
         cards.sort(key=lambda c: c.name_kr)
 
-        total = len(cards)
-        paginated = cards[offset: offset + limit]
-
         return RegionListResponse(
-            items=paginated,
-            total=total,
-            offset=offset,
-            limit=limit,
-            has_more=len(paginated) == limit,
+            items=cards,
+            total=len(cards),
             faction_group_filter=faction_group,
         )
     except Exception as exc:

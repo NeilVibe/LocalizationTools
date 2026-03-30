@@ -176,6 +176,38 @@ export function goToRegionCodex() {
 }
 
 /**
+ * Phase 102: Navigate to Quest Codex page
+ */
+export function goToQuestCodex() {
+  currentPage.set('quest-codex');
+  openFile.set(null);
+}
+
+/**
+ * Phase 102: Navigate to Skill Codex page
+ */
+export function goToSkillCodex() {
+  currentPage.set('skill-codex');
+  openFile.set(null);
+}
+
+/**
+ * Phase 102: Navigate to Gimmick Codex page
+ */
+export function goToGimmickCodex() {
+  currentPage.set('gimmick-codex');
+  openFile.set(null);
+}
+
+/**
+ * Phase 102: Navigate to Knowledge Codex page
+ */
+export function goToKnowledgeCodex() {
+  currentPage.set('knowledge-codex');
+  openFile.set(null);
+}
+
+/**
  * Navigate to System Status page
  */
 export function goToStatus() {

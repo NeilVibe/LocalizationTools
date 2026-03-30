@@ -294,7 +294,12 @@ class DataParsersMixin:
             logger.exception(f"[MEGAINDEX] Export events parse failed: {e}")
 
     def _parse_export_loc(self, export_folder: Path) -> None:
-        """D17+D18: Parse export .loc.xml files for StringId sets and ordered index."""
+        """D17+D18+D11: Parse export .loc.xml files for StringId sets, ordered index, and audio links.
+
+        CRITICAL FIX: Uses RELATIVE PATH (not just filename) as D17 key so that
+        categorize_by_export_path() can detect Sequencer/Dialog from the path prefix.
+        Also extracts SoundEventName → D11 event_to_stringid for audio linking.
+        """
         try:
             if not export_folder.is_dir():
                 logger.debug("[MEGAINDEX] Export folder not found for .loc.xml: %s", export_folder)
@@ -302,12 +307,32 @@ class DataParsersMixin:
             loc_files = sorted(export_folder.rglob("*.loc.xml"))
             logger.info(f"[MEGAINDEX] Export .loc.xml files found: {len(loc_files)}")
             parsed_ok = 0
+            audio_links = 0
             for xml_path in loc_files:
                 root = _safe_parse_xml(xml_path)
                 if root is None:
                     continue
 
-                filename_key = _get_export_key(xml_path.name)
+                # Use RELATIVE PATH as key (preserves Sequencer/Dialog/ prefix for categorization)
+                try:
+                    rel_path = str(xml_path.relative_to(export_folder))
+                    # Normalize: forward slashes, remove .loc.xml extension
+                    filename_key = rel_path.replace("\\", "/").lower()
+                    if filename_key.endswith(".loc.xml"):
+                        filename_key = filename_key[:-8]  # strip .loc.xml
+                    elif filename_key.endswith(".xml"):
+                        filename_key = filename_key[:-4]
+                except ValueError:
+                    filename_key = _get_export_key(xml_path.name)
+
+                # Also compute the relative directory for D20 (export_path category)
+                try:
+                    rel_dir = str(xml_path.relative_to(export_folder).parent)
+                    if rel_dir == ".":
+                        rel_dir = ""
+                except ValueError:
+                    rel_dir = ""
+
                 sids: Set[str] = set()
                 kor_map: Dict[str, List[str]] = {}
 
@@ -321,6 +346,14 @@ class DataParsersMixin:
                         norm = _normalize_strorigin(origin)
                         if norm:
                             kor_map.setdefault(norm, []).append(sid)
+
+                    # Extract SoundEventName → D11 audio linking (CRITICAL FIX)
+                    if sid:
+                        sound_event = (a.get("soundeventname") or "").strip().lower()
+                        if sound_event and sound_event not in self.event_to_stringid:
+                            self.event_to_stringid[sound_event] = sid  # D11
+                            self.event_to_export_path[sound_event] = rel_dir  # D20
+                            audio_links += 1
 
                 if sids:
                     if filename_key in self.export_file_stringids:
@@ -339,7 +372,8 @@ class DataParsersMixin:
             logger.info(
                 f"[MEGAINDEX] Export .loc.xml: {parsed_ok}/{len(loc_files)} parsed, "
                 f"{len(self.export_file_stringids)} file sets, "
-                f"{len(self.ordered_export_index)} ordered indexes"
+                f"{len(self.ordered_export_index)} ordered indexes, "
+                f"{audio_links} SoundEventName→StringID audio links (D11)"
             )
         except Exception as e:
             logger.exception(f"[MEGAINDEX] Export loc parse failed: {e}")

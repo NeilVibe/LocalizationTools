@@ -1,10 +1,10 @@
-"""Item Codex API endpoints -- paginated list, group filtering, detail, group tree, search.
+"""Item Codex API endpoints -- bulk list, group filtering, detail, group tree, search.
 
 Phase 46: Item Codex UI -- thin wrappers around MegaIndex O(1) lookups.
 All data comes from MegaIndex (built in Phase 45).
 
 Endpoints:
-  GET /codex/items           - Paginated item list with group/search filtering
+  GET /codex/items           - Bulk item list with group/search filtering
   GET /codex/items/groups    - Item group hierarchy tree for tab navigation
   GET /codex/items/{strkey}  - Full item detail with knowledge resolution passes
 """
@@ -57,12 +57,12 @@ def _build_item_card(
             if name_translated:
                 break
 
-    # Image URL from knowledge UITextureName
-    image_url = None
-    if entry.knowledge_key:
+    # Image URLs from greedy DDS scan, fallback to knowledge UITextureName
+    image_urls = [str(p) for p in mega.get_image_paths(strkey)]
+    if not image_urls and entry.knowledge_key:
         knowledge = mega.get_knowledge(entry.knowledge_key)
         if knowledge and knowledge.ui_texture_name:
-            image_url = f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"
+            image_urls = [f"/api/ldm/mapdata/thumbnail/{knowledge.ui_texture_name}"]
 
     # Group name
     group_name = None
@@ -78,7 +78,7 @@ def _build_item_card(
         desc_kr=entry.desc or None,
         group_name=group_name,
         group_key=entry.group_key or None,
-        image_url=image_url,
+        image_urls=image_urls,
         source_file=entry.source_file,
     )
 
@@ -254,7 +254,7 @@ async def get_item_detail(
             desc_kr=entry.desc or None,
             group_name=card.group_name if card else None,
             group_key=entry.group_key or None,
-            image_url=card.image_url if card else None,
+            image_urls=card.image_urls if card else [],
             source_file=entry.source_file,
             knowledge_key=entry.knowledge_key,
             knowledge_pass_0=pass_0,
@@ -272,14 +272,12 @@ async def get_item_detail(
 
 @router.get("/", response_model=ItemListResponse)
 async def list_items(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
     group: Optional[str] = Query(None, description="Filter by ItemGroupInfo StrKey"),
     q: Optional[str] = Query(None, description="Search across names, StrKey, description"),
     lang: str = Query("eng"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get paginated item list with optional group filtering and text search.
+    """Get all items with optional group filtering and text search.
 
     - group: filters items by ItemGroupNode membership (including descendants)
     - q: searches across Korean name, translated name, StrKey, and description
@@ -334,15 +332,9 @@ async def list_items(
         # Sort by Korean name
         cards.sort(key=lambda c: c.name_kr)
 
-        total = len(cards)
-        paginated = cards[offset : offset + limit]
-
         return ItemListResponse(
-            items=paginated,
-            total=total,
-            offset=offset,
-            limit=limit,
-            has_more=len(paginated) == limit,
+            items=cards,
+            total=len(cards),
             group_filter=group,
         )
     except Exception as exc:

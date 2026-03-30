@@ -35,6 +35,10 @@
   import AudioCodexPage from "$lib/components/pages/AudioCodexPage.svelte";
   // Phase 49: Region Codex page
   import RegionCodexPage from "$lib/components/pages/RegionCodexPage.svelte";
+  // Phase 102: New codex pages
+  import QuestCodexPage from "$lib/components/pages/QuestCodexPage.svelte";
+  import SkillCodexPage from "$lib/components/pages/SkillCodexPage.svelte";
+  import GimmickCodexPage from "$lib/components/pages/GimmickCodexPage.svelte";
   // System Status page
   import StatusPage from "$lib/components/pages/StatusPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
@@ -949,6 +953,18 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'region-codex'}
         <!-- Phase 49: Region Codex -->
         <RegionCodexPage />
+      {:else if $currentPage === 'quest-codex'}
+        <!-- Phase 102: Quest Codex -->
+        <QuestCodexPage />
+      {:else if $currentPage === 'skill-codex'}
+        <!-- Phase 102: Skill Codex -->
+        <SkillCodexPage />
+      {:else if $currentPage === 'gimmick-codex'}
+        <!-- Phase 102: Gimmick Codex -->
+        <GimmickCodexPage />
+      {:else if $currentPage === 'knowledge-codex'}
+        <!-- Phase 102: Knowledge Codex (reuses legacy CodexPage) -->
+        <CodexPage />
       {:else if $currentPage === 'worldmap'}
         <!-- Phase 20: Interactive World Map -->
         <WorldMapPage />

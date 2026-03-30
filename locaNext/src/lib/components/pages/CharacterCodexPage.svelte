@@ -3,9 +3,9 @@
    * CharacterCodexPage.svelte - Character Codex encyclopedia page
    *
    * Browse, search, and inspect game characters with card grid, category tabs,
-   * infinite scroll, and knowledge resolution detail panel.
+   * client-side filtering, and knowledge resolution detail panel.
    *
-   * Phase 47: Character Codex UI (Plan 02)
+   * Phase 102: Bulk load conversion (no pagination)
    */
   import { InlineLoading } from "carbon-components-svelte";
   import { UserMultiple, ArrowLeft } from "carbon-icons-svelte";
@@ -13,51 +13,40 @@
   import { logger } from "$lib/utils/logger.js";
   import CodexCard from "$lib/components/ldm/CodexCard.svelte";
   import CharacterCodexDetail from "$lib/components/ldm/CharacterCodexDetail.svelte";
-  import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
   import { PageHeader, ErrorState } from "$lib/components/common";
   import { onMount } from "svelte";
 
   const API_BASE = getApiBase();
-  const PAGE_SIZE = 50;
 
   // State
   let categories = $state([]);
   let activeCategory = $state(null);
-  let characters = $state([]);
-  let totalCharacters = $state(0);
+  let allCharacters = $state([]);
   let selectedCharacter = $state(null);
   let searchQuery = $state("");
   let loadingCategories = $state(true);
-  let loadingList = $state(false);
+  let loadingList = $state(true);
   let loadingDetail = $state(false);
   let apiError = $state(null);
   let failedImages = $state(new Set());
-  let currentPage = $state(0);
-  let hasMore = $state(true);
-  let loadingMore = $state(false);
-
-  // Debounce search
-  let searchTimer = null;
-  let abortController = null;
 
   // Derived: total character count for "All" tab
   let allCharacterCount = $derived(
     categories.reduce((sum, c) => sum + (c.count || 0), 0)
   );
 
-  // Debounced search via $effect
-  $effect(() => {
-    const q = searchQuery;
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      currentPage = 0;
-      hasMore = true;
-      fetchCharacters(0, activeCategory, q);
-    }, 300);
-    return () => {
-      if (searchTimer) clearTimeout(searchTimer);
-    };
+  // Derived: client-side filtered characters by category + search
+  let filteredCharacters = $derived.by(() => {
+    return allCharacters.filter(char => {
+      if (activeCategory && char.category !== activeCategory) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const searchable = `${char.name_kr || ''} ${char.name_translated || ''} ${char.strkey || ''} ${char.race || ''} ${char.gender || ''} ${char.desc_kr || ''}`.toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+      return true;
+    });
   });
 
   /**
@@ -73,8 +62,7 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       categories = data.categories || [];
-      totalCharacters = data.total_characters || 0;
-      logger.info('Character Codex categories loaded', { count: categories.length, totalCharacters });
+      logger.info('Character Codex categories loaded', { count: categories.length, totalCharacters: data.total_characters });
     } catch (err) {
       logger.error('Failed to fetch character categories', { error: err.message });
       apiError = 'Character Codex unavailable -- ensure gamedata folder is configured';
@@ -84,52 +72,25 @@
   }
 
   /**
-   * Fetch paginated characters with optional category/search filtering
+   * Fetch all characters in a single request (bulk load)
    */
-  async function fetchCharacters(page, category, query) {
-    if (abortController) abortController.abort();
-    abortController = new AbortController();
-
-    if (page === 0) {
-      loadingList = true;
-      characters = [];
-    } else {
-      loadingMore = true;
-    }
-
+  async function fetchAllCharacters() {
+    loadingList = true;
     try {
-      const params = new URLSearchParams();
-      params.set('offset', String(page * PAGE_SIZE));
-      params.set('limit', String(PAGE_SIZE));
-      if (category) params.set('category', category);
-      if (query) params.set('q', query);
-
       const response = await fetch(
-        `${API_BASE}/api/ldm/codex/characters?${params.toString()}`,
-        { headers: getAuthHeaders(), signal: abortController.signal }
+        `${API_BASE}/api/ldm/codex/characters`,
+        { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      const batch = data.characters || [];
-
-      if (page === 0) {
-        characters = batch;
-      } else {
-        characters = [...characters, ...batch];
-      }
-      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
-      currentPage = page;
-      totalCharacters = data.total ?? totalCharacters;
-
-      logger.info('Character Codex characters loaded', { page, count: batch.length, total: data.total });
+      allCharacters = data.characters || [];
+      logger.info('Character Codex bulk loaded', { total: allCharacters.length });
     } catch (err) {
-      if (err.name === 'AbortError') return;
       logger.error('Failed to fetch characters', { error: err.message });
-      if (page === 0) apiError = 'Failed to load characters';
+      apiError = 'Failed to load characters';
     } finally {
       loadingList = false;
-      loadingMore = false;
     }
   }
 
@@ -154,23 +115,11 @@
   }
 
   /**
-   * Load more characters (InfiniteScroll callback)
-   */
-  function loadMore() {
-    if (hasMore && !loadingMore) {
-      fetchCharacters(currentPage + 1, activeCategory, searchQuery);
-    }
-  }
-
-  /**
    * Handle category tab selection
    */
   function selectCategory(categoryName) {
     activeCategory = categoryName;
     selectedCharacter = null;
-    currentPage = 0;
-    hasMore = true;
-    fetchCharacters(0, categoryName, searchQuery);
   }
 
   /**
@@ -207,15 +156,15 @@
         ? char.name_translated + (badges ? ' (' + badges + ')' : '')
         : badges || char.desc_kr || '',
       image_texture: null,
-      ai_image_url: char.image_url || null,
+      ai_image_url: char.image_urls?.length ? char.image_urls[0] : null,
+      ai_image_urls: char.image_urls || [],
       related_entities: []
     };
   }
 
   onMount(() => {
-    fetchCategories().then(() => {
-      fetchCharacters(0, null, "");
-    });
+    fetchCategories();
+    fetchAllCharacters();
   });
 </script>
 
@@ -236,7 +185,7 @@
 
   {#if apiError}
     <div class="character-codex-state-container">
-      <ErrorState message={apiError} onretry={() => { fetchCategories(); fetchCharacters(0, null, ""); }} />
+      <ErrorState message={apiError} onretry={() => { fetchCategories(); fetchAllCharacters(); }} />
     </div>
   {:else if loadingCategories}
     <div class="character-codex-loading" role="status" aria-live="polite">
@@ -296,10 +245,10 @@
       {:else}
         <!-- Card Grid -->
         <div class="entity-grid">
-          {#each characters as char (char.strkey)}
+          {#each filteredCharacters as char (char.strkey)}
             <CodexCard
               entity={toCardEntity(char)}
-              index={characters.indexOf(char)}
+              index={filteredCharacters.indexOf(char)}
               apiBase={API_BASE}
               {failedImages}
               onclick={() => selectCard(char)}
@@ -311,24 +260,12 @@
             />
           {/each}
 
-          {#if characters.length === 0 && !loadingList}
+          {#if filteredCharacters.length === 0 && !loadingList}
             <div class="no-entities">
-              <p>No characters found{searchQuery ? ` matching "${searchQuery}"` : ''} -- ensure gamedata files are loaded and indexed.</p>
+              <p>No characters found{searchQuery ? ` matching "${searchQuery}"` : ''}{activeCategory ? ` in "${activeCategory}"` : ''} -- ensure gamedata files are loaded and indexed.</p>
             </div>
           {/if}
         </div>
-
-        <InfiniteScroll
-          onloadmore={loadMore}
-          loading={loadingMore}
-          {hasMore}
-        />
-
-        {#if loadingMore}
-          <div class="skeleton-loading-grid">
-            <SkeletonCard count={6} />
-          </div>
-        {/if}
       {/if}
     </div>
   {/if}
@@ -485,8 +422,4 @@
     font-size: 0.875rem;
   }
 
-  .skeleton-loading-grid {
-    padding: 0;
-    margin-top: 12px;
-  }
 </style>

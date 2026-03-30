@@ -43,6 +43,9 @@ class MergeToFileRequest(BaseModel):
     only_untranslated: bool = Field(default=False, description="Only fill empty/Korean targets")
     ignore_spaces: bool = Field(default=False)
     ignore_punctuation: bool = Field(default=False)
+    all_categories: bool = Field(default=False, description="StringID Only: include ALL categories")
+    non_script_only: bool = Field(default=False, description="Strict: exclude SCRIPT categories")
+    unique_only: bool = Field(default=False, description="StrOrigin Only: skip duplicate source texts")
 
 
 class MergeToFolderRequest(BaseModel):
@@ -146,6 +149,40 @@ async def merge_to_file(
     if not corrections:
         return {"matched": 0, "updated": 0, "not_found": 0, "message": "No valid corrections after filtering"}
 
+    # BUG-16 fix: Apply option-based pre-filtering (same logic as TranslatorMergeService)
+    original_count = len(corrections)
+
+    # non_script_only: exclude SCRIPT categories (Dialog, Sequencer)
+    if request.non_script_only:
+        script_cats = {"dialog", "sequencer", "script"}
+        corrections = [c for c in corrections if (c.get("category") or "").lower() not in script_cats]
+
+    # all_categories=False (default) + stringid_only → restrict to SCRIPT categories only
+    if request.match_mode == "stringid_only" and not request.all_categories:
+        script_cats = {"dialog", "sequencer", "script"}
+        corrections = [c for c in corrections if (c.get("category") or "").lower() in script_cats]
+
+    # unique_only: deduplicate by str_origin (keep first occurrence)
+    if request.unique_only:
+        seen = set()
+        unique = []
+        for c in corrections:
+            key = (c.get("str_origin") or "").strip().lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(c)
+        corrections = unique
+
+    if len(corrections) != original_count:
+        logger.info(
+            "[MERGE-TO-DISK] Pre-filter: %d → %d corrections (non_script=%s, all_cat=%s, unique=%s)",
+            original_count, len(corrections), request.non_script_only,
+            request.all_categories, request.unique_only,
+        )
+
+    if not corrections:
+        return {"matched": 0, "updated": 0, "not_found": 0, "message": "No corrections after option filtering"}
+
     logger.info(
         "[MERGE-TO-DISK] file: source=%d (%d corrections) → %s, mode=%s",
         request.source_file_id, len(corrections), target_path.name, request.match_mode,
@@ -156,9 +193,15 @@ async def merge_to_file(
 
     def _do_merge():
         if mode == "stringid_only":
+            # Build StringID→Category mapping from corrections
+            sid_to_cat = {
+                (c.get("string_id") or "").strip(): (c.get("category") or "Uncategorized")
+                for c in corrections if c.get("string_id")
+            }
             return merge_corrections_stringid_only(
                 xml_path=target_path,
                 corrections=corrections,
+                stringid_to_category=sid_to_cat,
                 dry_run=request.dry_run,
                 only_untranslated=request.only_untranslated,
             )

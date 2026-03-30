@@ -93,16 +93,17 @@
     };
   });
 
-  // Image resolution: ai_image_url > image_texture thumbnail > PlaceholderImage
+  // Image resolution: ai_image_urls (first) > ai_image_url > image_texture thumbnail > PlaceholderImage
   let aiImageKey = $derived('ai_' + entity.strkey);
   let textureKey = $derived(entity.strkey);
-  let useAiImage = $derived(entity.ai_image_url && !failedImages.has(aiImageKey));
+  let firstAiUrl = $derived(entity.ai_image_urls?.length ? entity.ai_image_urls[0] : entity.ai_image_url);
+  let useAiImage = $derived(firstAiUrl && !failedImages.has(aiImageKey));
   let useTexture = $derived(!useAiImage && entity.image_texture && !failedImages.has(textureKey));
   let usePlaceholder = $derived(!useAiImage && !useTexture);
 
   let imageSrc = $derived(
     useAiImage
-      ? `${apiBase}${entity.ai_image_url}?v=${Date.now()}`
+      ? `${apiBase}${firstAiUrl}?v=${Date.now()}`
       : useTexture
         ? `${apiBase}/api/ldm/mapdata/thumbnail/${entity.image_texture}?v=${Date.now()}`
         : null
