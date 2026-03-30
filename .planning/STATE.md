@@ -18,7 +18,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Windows App Bugfix Sprint — 9 issues from PEARL PC testing
+**Current focus:** Phase 100 — Windows App Bugfix Sprint (5 remaining issues from PEARL PC)
 
 ## v14.0 Completion Status
 

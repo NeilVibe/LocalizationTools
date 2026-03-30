@@ -261,3 +261,13 @@ Plans:
 | 90. Branch+Drive Configuration | 1/1 | Complete | 2026-03-26 |
 | 91. Media Path Resolution + E2E Testing | 2/2 | Complete | 2026-03-26 |
 | 92. MegaIndex Decomposition | 1/1 | Complete | 2026-03-26 |
+
+### Phase 100: Windows App Bugfix Sprint
+
+**Goal:** Fix 5 remaining issues from PEARL PC Windows app testing: (1) Multi-language audio — 3 folders EN/KR/ZH with language routing like MDG, (2) Image Korean text fallback when StringID has no match using R1 + badge, (3) LocaNext Status menu — dedicated view NOT in Preferences with AI/MegaIndex/DB status, (4) Merge direction — right-click=SOURCE file-dialog=TARGET, (5) Category column — wider default + resize handle.
+**Requirements**: BUG-5, BUG-6, BUG-7, BUG-8, BUG-9
+**Depends on:** Phase 99
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 100 to break down)
