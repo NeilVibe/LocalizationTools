@@ -257,12 +257,14 @@ class DataParsersMixin:
                     rel_dir = ""
 
                 for elem in root.iter():
+                    # Case-insensitive attribute extraction (grafted from MDG load_event_mappings)
+                    attrs = {k.lower(): v for k, v in elem.attrib.items()}
                     event_name = (
-                        elem.get("SoundEventName")
-                        or elem.get("EventName")
+                        attrs.get("soundeventname")
+                        or attrs.get("eventname")
                         or ""
-                    )
-                    sid = _get_stringid(elem)
+                    ).strip()
+                    sid = (attrs.get("stringid") or "").strip()
                     if event_name and sid:
                         event_lower = event_name.lower()
                         self.event_to_stringid[event_lower] = sid  # D11

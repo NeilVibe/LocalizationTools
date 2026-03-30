@@ -9,6 +9,8 @@
  *   if (isAvailable('embeddings')) { ... }
  */
 
+import { getApiBase } from '$lib/utils/api.js';
+
 export type AICapability = "available" | "unavailable" | "checking";
 
 export interface AICapabilities {
@@ -38,7 +40,7 @@ let aiCapabilities = $state<AICapabilities>({
  */
 async function refreshCapabilities(): Promise<void> {
 	try {
-		const resp = await fetch("/api/ldm/ai-capabilities");
+		const resp = await fetch(`${getApiBase()}/api/ldm/ai-capabilities`);
 		if (!resp.ok) {
 			throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		}

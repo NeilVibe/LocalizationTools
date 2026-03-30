@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-last_updated: "2026-03-29T19:04:20.887Z"
+status: in_progress
+last_updated: "2026-03-30T12:00:00.000Z"
 progress:
   total_phases: 10
   completed_phases: 2
@@ -15,10 +15,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-28)
+See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 99 — svelte5-event-migration
+**Current focus:** Windows App Bugfix Sprint — 9 issues from PEARL PC testing
 
 ## v14.0 Completion Status
 
@@ -32,52 +32,73 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 
 ### Phase 97 — TM Structural Fix — COMPLETE (10/10 PASS)
 
+### Phase 98 — MEGA Graft MDG+LDE — COMPLETE (9/9 verified)
+
+### Phase 99 — Svelte 4→5 Event Migration — COMPLETE (3/3 plans)
+
 **Builds:**
 
-- GitHub Build Light v14.0 — SUCCESS (2026-03-28, with Model2Vec bundled)
-- GitHub Build QA v14.0 — SUCCESS (2026-03-28, full test suite 1599 passed)
+- GitHub Build Light v14.0 — SUCCESS (2026-03-30, run 23727131467, 5/5 jobs green)
+- Gitea CI — Run 571 triggered (2026-03-30)
 
-## What Was Done This Session (2026-03-28)
+## Session 2026-03-30 — MEGA Session
 
-1. **Phase 97 frontend verification** — 4 remaining tasks tested via Playwright, all PASS
-2. **Committed Phase 97** — 16 files, 543 insertions (commit 5ce120cc)
-3. **Fixed merge test failure** — `transfer_adapter.py` missing `ignore_spaces`/`ignore_punctuation` passthrough (commit 1b48ebc3)
-4. **CI trigger format fix** — `BUILD_TRIGGER.txt` requires EXACT match (`Build Light`, not `Build Light v14.0`)
-5. **Build Light workflow change** — removed Model2Vec download from CI (commit 30f4c623). User places model files manually at `<install>\resources\models\Model2Vec\`
-6. **Memory audit** — deleted 7 stale/duplicate files, merged 2 CI rules, updated 4 files. 93→86 files.
+### Phase 99 Execution (COMPLETE)
+- 3 plans, 2 waves, parallel agent execution
+- AppModal wrapper isolates Carbon Modal Svelte 4 compatibility to ONE file
+- 50+ deprecated on:event patterns migrated across 16+ files
+- 5 duplicate AppModal imports from parallel agents fixed (build was failing)
+- 1 pre-existing test fixed (SkillTreeInfo → SkillTreeInfoList root wrapper)
 
-## Uncommitted Changes
+### QT Merge Graft (COMPLETE)
+- 2 missing match modes implemented: strorigin_descorigin, strorigin_filename
+- Both wired into cascade, single-mode dispatch, route validation
+- parse_corrections now passes desc_origin/filepath fields
+- 6-agent parallel code review caught 4 critical + 2 important issues, all fixed
 
-- `test_multi_language_merge` still fails locally (same `ignore_spaces` passthrough issue in a different code path)
-- `.planning/STATE.md` (this file)
+### MDG Graft Audit (VERIFIED)
+- FULL MATCH on all MDG patterns (virtual WRAP, XML sanitization, DDS fuzzy, data extraction)
+- MegaIndex adds 8 new entity types + 7 reverse lookups + 7 composed dicts beyond MDG
 
-## Next Session
+### MegaIndex Logging (UPGRADED)
+- 95%+ coverage, logger.exception for tracebacks
+- Per-file extraction counts for faction/skill/gimmick
+- Export loc and singleton init logging added
 
-1. Fix `test_multi_language_merge` (same pattern as transfer_adapter fix)
-2. Phase 96 (GameData tabs) or new work
-3. Test Build Light installer on offline PC (place Model2Vec at `resources\models\Model2Vec\`)
+### Windows App Testing (PEARL PC) — 9 Issues Found
+**Plan:** `docs/superpowers/plans/2026-03-30-windows-app-bugfix-plan.md`
 
-## DB State
+**IN WORKING TREE (4 fixes, not yet committed):**
+1. FIX-1: AI capabilities fetch URL (relative → getApiBase) — fixes "Model2Vec UNAVAILABLE" display
+2. FIX-2: Factory.py deadlock — eager SQLite imports prevent _ModuleLock crash
+3. FIX-3: Event parser case-sensitivity — grafted MDG lowercase attr pattern
+4. FIX-4: MegaIndex logging improvements
 
-- PostgreSQL: 1 TM (id=796, Korean_TM_Test), folder 97 (Korean), is_active=true
-- SQLite offline: clean
+**NEEDS IMPLEMENTATION (5 issues):**
+5. BUG-5: Multi-language audio (3 folders: English/Korean/Chinese like MDG)
+6. BUG-6: Image Korean fallback (StringID miss → try Korean text via R1 → badge)
+7. BUG-7: LocaNext Status menu (NOT in Preferences — dedicated view)
+8. BUG-8: Merge direction (right-click = SOURCE, file dialog = TARGET)
+9. BUG-9: Category column (too narrow + resize handle broken)
 
-## Key Lessons This Session
-
-- **BUILD_TRIGGER.txt** = EXACT match only (`Build`, `Build QA`, `Build Light`, `TROUBLESHOOT`). No extra text.
-- **Default = Build Light** (offline). Never use `Build` unless user explicitly says QA mode.
-- **Model2Vec NOT bundled in Build Light** — user has files, places manually after install at `resources\models\Model2Vec\`
-- **Grill yourself immediately** — after doing A, verify A worked before moving to B
-- **Check individual job statuses** — a "successful" run can have all jobs skipped
+## What WORKS (confirmed by PEARL PC log)
+- Model2Vec loaded: dim=256 ✓
+- MegaIndex 7-phase build: 15.06s ✓
+- Knowledge: 5,288 + 513 groups, Characters: 7,998, Items: 6,158
+- Regions: 1,158, Factions: 135, Skills: 1,722, Gimmicks: 13,540
+- DDS: 21,142, WEM: 57,535, StrOrigins: 173,675
+- Images (C1): 3,005, Entity↔StringID (C6/C7): 26,251/55,552
+- SQLite offline mode, WebSocket, GameData browse
 
 ## Session Continuity
 
-Last session: 2026-03-28T21:18:04.831Z
-Build Light RUNNING: run ID 23686307001 (includes xml_handler fix + transfer_adapter fix)
+Last session: 2026-03-30
+GitHub Build Light: SUCCESS (run 23727131467)
+Working tree has 4 uncommitted fixes (FIX-1 through FIX-4)
 Next actions:
-
-1. Confirm sequential-thinking MCP works (`/clear` or restart Claude Code)
-2. Check build result: `gh run view 23686307001`
-3. Test installer on offline PC — place Model2Vec at `resources\models\Model2Vec\`
-4. Fix test_multi_language_merge (pre-existing, not in CI)
-5. Phase 96 or new work
+1. Implement BUG-5 multi-language audio (highest priority)
+2. Implement BUG-6 image Korean fallback
+3. Implement BUG-7 LocaNext Status menu
+4. Implement BUG-8 merge direction fix
+5. Implement BUG-9 category column fix
+6. Commit all, push, trigger build, test on PEARL PC

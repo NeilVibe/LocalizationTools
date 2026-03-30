@@ -31,6 +31,21 @@ from server.repositories.interfaces.qa_repository import QAResultRepository
 from server.repositories.interfaces.trash_repository import TrashRepository
 from server.repositories.interfaces.capability_repository import CapabilityRepository
 
+# Eager imports for SQLite repos — prevents _ModuleLock deadlock when
+# concurrent requests trigger lazy imports simultaneously.
+# PostgreSQL imports stay lazy (only needed when PG is available).
+from server.repositories.sqlite.base import SchemaMode
+from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+from server.repositories.sqlite.file_repo import SQLiteFileRepository
+from server.repositories.sqlite.row_repo import SQLiteRowRepository
+from server.repositories.sqlite.project_repo import SQLiteProjectRepository
+from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
+from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
+from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
+from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
+from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
+from server.repositories.routing.row_repo import RoutingRowRepository
+
 
 # =============================================================================
 # Mode Detection
@@ -77,9 +92,6 @@ def get_tm_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_translation_memories
     - PostgreSQL available  → PostgreSQLRepo      → ldm_translation_memories
     """
-    from server.repositories.sqlite.tm_repo import SQLiteTMRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteTMRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -102,9 +114,6 @@ def get_file_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_files
     - PostgreSQL available  → PostgreSQLRepo      → ldm_files
     """
-    from server.repositories.sqlite.file_repo import SQLiteFileRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteFileRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -130,10 +139,6 @@ def get_row_repository(
     RoutingRowRepository handles negative IDs (local Electron data) transparently.
     Routes never need to know about negative ID handling.
     """
-    from server.repositories.sqlite.row_repo import SQLiteRowRepository
-    from server.repositories.sqlite.base import SchemaMode
-    from server.repositories.routing.row_repo import RoutingRowRepository
-
     if _is_offline_mode(request):
         return SQLiteRowRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -158,9 +163,6 @@ def get_project_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_projects
     - PostgreSQL available  → PostgreSQLRepo      → ldm_projects
     """
-    from server.repositories.sqlite.project_repo import SQLiteProjectRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteProjectRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -183,9 +185,6 @@ def get_folder_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_folders
     - PostgreSQL available  → PostgreSQLRepo      → ldm_folders
     """
-    from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteFolderRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -208,9 +207,6 @@ def get_platform_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_platforms
     - PostgreSQL available  → PostgreSQLRepo      → ldm_platforms
     """
-    from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLitePlatformRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -233,9 +229,6 @@ def get_qa_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_qa_results
     - PostgreSQL available  → PostgreSQLRepo      → ldm_qa_results
     """
-    from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteQAResultRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -258,9 +251,6 @@ def get_trash_repository(
     - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_trash
     - PostgreSQL available  → PostgreSQLRepo      → ldm_trash
     """
-    from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
-    from server.repositories.sqlite.base import SchemaMode
-
     if _is_offline_mode(request):
         return SQLiteTrashRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_server_local():
@@ -285,8 +275,6 @@ def get_capability_repository(
 
     Note: Capability management is admin-only and not available in SQLite modes.
     """
-    from server.repositories.sqlite.capability_repo import SQLiteCapabilityRepository
-
     if _is_offline_mode(request):
         return SQLiteCapabilityRepository()
     elif _is_server_local():
@@ -327,8 +315,6 @@ def get_sync_repositories(
         from fastapi import HTTPException
         raise HTTPException(status_code=503, detail="Sync not available in SQLite mode")
     from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
-    from server.repositories.sqlite.file_repo import SQLiteFileRepository
-    from server.repositories.sqlite.base import SchemaMode
 
     server_repo = PostgreSQLFileRepository(db, current_user)
     local_repo = SQLiteFileRepository(schema_mode=SchemaMode.OFFLINE)
