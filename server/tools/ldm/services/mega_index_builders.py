@@ -74,21 +74,31 @@ class BuildersMixin:
     # =========================================================================
 
     def _build_name_kr_to_strkeys(self) -> None:
-        """R1: Invert name fields from D1, D2, D3, D4. Keys lowercased."""
+        """R1: Invert name AND desc fields from D1-D8. Keys lowercased.
+
+        Indexes both name and desc so that Korean source text matching
+        works whether the row contains an entity's name OR description.
+        """
         result: Dict[str, List[Tuple[str, str]]] = {}
         entity_dicts = [
             ("knowledge", self.knowledge_by_strkey),
             ("character", self.character_by_strkey),
             ("item", self.item_by_strkey),
             ("region", self.region_by_strkey),
+            ("skill", self.skill_by_strkey),
+            ("gimmick", self.gimmick_by_strkey),
+            ("quest", self.quest_by_strkey),
         ]
         for entity_type, d in entity_dicts:
             for strkey, entry in d.items():
-                name = entry.name
+                name = getattr(entry, "name", "")
                 if name:
                     result.setdefault(name.lower(), []).append((entity_type, strkey))
+                desc = getattr(entry, "desc", "")
+                if desc and desc != name:  # Avoid duplicate if name == desc
+                    result.setdefault(desc.lower(), []).append((entity_type, strkey))
         self.name_kr_to_strkeys = result
-        logger.debug(f"[MEGAINDEX] R1 name_kr_to_strkeys: {len(result)} unique names")
+        logger.debug(f"[MEGAINDEX] R1 name_kr_to_strkeys: {len(result)} unique texts (name+desc)")
 
     def _build_knowledge_key_to_entities(self) -> None:
         """R2: Scan D2, D3, D4, D7 for knowledge_key references. Keys lowercased."""
@@ -242,16 +252,33 @@ class BuildersMixin:
                         existing.append(dds)
                         phase_b_hits += 1
 
-        # Phase C: Korean name R1 fallback — entities with matching Korean names share images
+        # Phase C: knowledge_key chain — entity → KnowledgeEntry → UITextureName → DDS
         phase_c_hits = 0
         all_entity_dicts = [
             self.character_by_strkey, self.item_by_strkey,
-            self.skill_by_strkey, self.gimmick_by_strkey,
+            self.region_by_strkey, self.skill_by_strkey,
+            self.gimmick_by_strkey, self.quest_by_strkey,
         ]
         for entity_dict in all_entity_dicts:
             for strkey, entry in entity_dict.items():
+                kk = getattr(entry, "knowledge_key", "") or getattr(entry, "learn_knowledge_key", "")
+                if not kk:
+                    continue
+                # Check if the linked knowledge entry has images
+                knowledge_images = self.strkey_to_image_paths.get(kk.lower(), [])
+                if knowledge_images:
+                    existing = self.strkey_to_image_paths.setdefault(strkey, [])
+                    for dds in knowledge_images:
+                        if not any(p.stem == dds.stem for p in existing):
+                            existing.append(dds)
+                            phase_c_hits += 1
+
+        # Phase D: Korean name R1 fallback — entities with matching Korean names share images
+        phase_d_hits = 0
+        for entity_dict in all_entity_dicts:
+            for strkey, entry in entity_dict.items():
                 if strkey in self.strkey_to_image_paths:
-                    continue  # Already has images
+                    continue  # Already has images from A/B/C
                 name_kr = getattr(entry, "name", "").strip().lower()
                 if not name_kr:
                     continue
@@ -266,7 +293,7 @@ class BuildersMixin:
                         for dds in donor_images:
                             if not any(p.stem == dds.stem for p in existing):
                                 existing.append(dds)
-                                phase_c_hits += 1
+                                phase_d_hits += 1
                         break  # One donor is enough
 
         # Backward compat: strkey_to_image_path = first image
@@ -277,7 +304,8 @@ class BuildersMixin:
         total = len(self.strkey_to_image_paths)
         logger.info(
             f"[MEGAINDEX] C1 greedy images: {total} entities with images "
-            f"(A={phase_a_hits} knowledge, B={phase_b_hits} greedy attrs, C={phase_c_hits} kr-name fallback)"
+            f"(A={phase_a_hits} knowledge, B={phase_b_hits} greedy attrs, "
+            f"C={phase_c_hits} knowledge_key chain, D={phase_d_hits} kr-name fallback)"
         )
 
     def _build_strkey_to_audio_path(self) -> None:
