@@ -427,9 +427,14 @@
       e.stopPropagation();
       cancelInlineEdit();
       return;
-    } else if (e.key === 'Enter' && !e.shiftKey) {
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+Enter = save and confirm
       e.preventDefault();
       saveInlineEdit(true);
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Enter = insert <br/> linebreak (translation tool standard)
+      e.preventDefault();
+      document.execCommand('insertText', false, '<br/>');
     } else if (e.key === 'Tab') {
       e.preventDefault();
       saveInlineEdit(true);

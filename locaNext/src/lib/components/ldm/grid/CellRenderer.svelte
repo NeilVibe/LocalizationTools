@@ -323,7 +323,7 @@
           --grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
         use:measureRowHeight={{ index: rowIndex }}
         onclick={(e) => onRowClick?.(row, e)}
-        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick?.(row, e); } }}
+        onkeydown={(e) => { if (!inlineEditingRowId && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onRowClick?.(row, e); } }}
         oncontextmenu={(e) => !row.placeholder && onCellContextMenu?.(e, row.id)}
         onmouseleave={() => onRowMouseLeave?.()}
         role="row"
