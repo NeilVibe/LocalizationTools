@@ -267,7 +267,8 @@ Plans:
 **Goal:** Fix 5 remaining issues from PEARL PC Windows app testing: (1) Multi-language audio — 3 folders EN/KR/ZH with language routing like MDG, (2) Image Korean text fallback when StringID has no match using R1 + badge, (3) LocaNext Status menu — dedicated view NOT in Preferences with AI/MegaIndex/DB status, (4) Merge direction — right-click=SOURCE file-dialog=TARGET, (5) Category column — wider default + resize handle.
 **Requirements**: BUG-5, BUG-6, BUG-7, BUG-8, BUG-9
 **Depends on:** Phase 99
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 100 to break down)
+- [ ] 100-01-PLAN.md --- Backend: multi-language audio (3 folders EN/KR/ZH) + image Korean text fallback (R1)
+- [ ] 100-02-PLAN.md --- Frontend: StatusPage enhancement + merge direction fix + category column width+resize
