@@ -31,6 +31,11 @@ from server.tools.ldm.services.mega_index_schemas import (
 )
 
 
+def _ci_attrs(elem) -> dict:
+    """Case-insensitive XML attribute extraction — lowercase keys."""
+    return {k.lower(): v for k, v in elem.attrib.items()}
+
+
 class EntityParsersMixin:
     """Mixin providing Phase 2 entity parsing methods."""
 
@@ -69,19 +74,20 @@ class EntityParsersMixin:
                 source_file = xml_path.name
                 count_before = len(self.character_by_strkey)
                 for elem in root.iter("CharacterInfo"):
-                    strkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
                     knowledge_key = _find_knowledge_key(elem)
                     self.character_by_strkey[strkey] = CharacterEntry(
                         strkey=strkey,
-                        name=elem.get("CharacterName") or "",
-                        desc=elem.get("CharacterDesc") or "",
+                        name=a.get("charactername") or "",
+                        desc=a.get("characterdesc") or "",
                         knowledge_key=knowledge_key,
-                        use_macro=elem.get("UseMacro") or "",
-                        age=elem.get("Age") or "",
-                        job=elem.get("Job") or "",
-                        ui_icon_path=elem.get("UIIconPath") or "",
+                        use_macro=a.get("usemacro") or "",
+                        age=a.get("age") or "",
+                        job=a.get("job") or "",
+                        ui_icon_path=a.get("uiiconpath") or "",
                         source_file=source_file,
                     )
                 extracted = len(self.character_by_strkey) - count_before
@@ -116,11 +122,12 @@ class EntityParsersMixin:
 
                 # D14: ItemGroupInfo hierarchy
                 for elem in root.iter("ItemGroupInfo"):
-                    gstrkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    gstrkey = (a.get("strkey") or "").lower()
                     if not gstrkey:
                         continue
-                    parent_sk = elem.get("ParentStrKey") or ""
-                    gname = elem.get("GroupName") or ""
+                    parent_sk = (a.get("parentstrkey") or "").lower()
+                    gname = a.get("groupname") or ""
 
                     # Track children of parent
                     if parent_sk:
@@ -129,7 +136,8 @@ class EntityParsersMixin:
                     # Collect items directly under this group
                     items_in_group: List[str] = []
                     for item_elem in elem.iter("ItemInfo"):
-                        isk = item_elem.get("StrKey") or ""
+                        ia = _ci_attrs(item_elem)
+                        isk = (ia.get("strkey") or "").lower()
                         if isk:
                             items_in_group.append(isk)
                     group_items[gstrkey] = items_in_group
@@ -144,7 +152,8 @@ class EntityParsersMixin:
 
                 # D3: ItemInfo entries
                 for elem in root.iter("ItemInfo"):
-                    strkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
                     knowledge_key = _find_knowledge_key(elem)
@@ -153,8 +162,9 @@ class EntityParsersMixin:
                     inspect_entries: List[Tuple[str, str, str, str]] = []
                     for inspect in elem.iter("InspectData"):
                         for page in inspect.iter("PageData"):
-                            p_desc = page.get("Desc") or ""
-                            rk = page.get("RewardKnowledgeKey") or ""
+                            pa = _ci_attrs(page)
+                            p_desc = pa.get("desc") or ""
+                            rk = (pa.get("rewardknowledgekey") or "").lower()
                             k_name = ""
                             k_desc = ""
                             k_src = ""
@@ -169,12 +179,13 @@ class EntityParsersMixin:
                     group_key = ""
                     parent = elem.getparent()
                     if parent is not None and parent.tag == "ItemGroupInfo":
-                        group_key = parent.get("StrKey") or ""
+                        pa = _ci_attrs(parent)
+                        group_key = (pa.get("strkey") or "").lower()
 
                     self.item_by_strkey[strkey] = ItemEntry(
                         strkey=strkey,
-                        name=elem.get("ItemName") or "",
-                        desc=elem.get("ItemDesc") or "",
+                        name=a.get("itemname") or "",
+                        desc=a.get("itemdesc") or "",
                         knowledge_key=knowledge_key,
                         group_key=group_key,
                         source_file=source_file,
@@ -237,30 +248,34 @@ class EntityParsersMixin:
 
                 # D6: FactionGroup entries
                 for elem in root.iter("FactionGroup"):
-                    gstrkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    gstrkey = (a.get("strkey") or "").lower()
                     if not gstrkey:
                         continue
                     faction_strkeys: List[str] = []
                     for faction_elem in elem.iter("Faction"):
-                        fsk = faction_elem.get("StrKey") or ""
+                        fa = _ci_attrs(faction_elem)
+                        fsk = (fa.get("strkey") or "").lower()
                         if fsk:
                             faction_strkeys.append(fsk)
                     self.faction_group_by_strkey[gstrkey] = FactionGroupEntry(
                         strkey=gstrkey,
-                        group_name=elem.get("GroupName") or elem.get("Name") or "",
-                        knowledge_key=elem.get("KnowledgeKey") or "",
+                        group_name=a.get("groupname") or a.get("name") or "",
+                        knowledge_key=(a.get("knowledgekey") or "").lower(),
                         source_file=source_file,
                         faction_strkeys=tuple(faction_strkeys),
                     )
 
                 # D5: Faction entries
                 for elem in root.iter("Faction"):
-                    fstrkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    fstrkey = (a.get("strkey") or "").lower()
                     if not fstrkey:
                         continue
                     node_strkeys: List[str] = []
                     for node_elem in elem.iter("FactionNode"):
-                        nsk = node_elem.get("StrKey") or ""
+                        na = _ci_attrs(node_elem)
+                        nsk = (na.get("strkey") or "").lower()
                         if nsk:
                             node_strkeys.append(nsk)
 
@@ -268,12 +283,13 @@ class EntityParsersMixin:
                     group_strkey = ""
                     parent = elem.getparent()
                     if parent is not None and parent.tag == "FactionGroup":
-                        group_strkey = parent.get("StrKey") or ""
+                        pa = _ci_attrs(parent)
+                        group_strkey = (pa.get("strkey") or "").lower()
 
                     self.faction_by_strkey[fstrkey] = FactionEntry(
                         strkey=fstrkey,
-                        name=elem.get("Name") or "",
-                        knowledge_key=elem.get("KnowledgeKey") or "",
+                        name=a.get("name") or "",
+                        knowledge_key=(a.get("knowledgekey") or "").lower(),
                         group_strkey=group_strkey,
                         source_file=source_file,
                         node_strkeys=tuple(node_strkeys),
@@ -281,14 +297,15 @@ class EntityParsersMixin:
 
                 # D4: FactionNode entries (regions)
                 for elem in root.iter("FactionNode"):
-                    nstrkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    nstrkey = (a.get("strkey") or "").lower()
                     if not nstrkey:
                         continue
-                    knowledge_key = elem.get("KnowledgeKey") or ""
-                    wp = _parse_world_position(elem.get("WorldPosition") or "")
+                    knowledge_key = (a.get("knowledgekey") or "").lower()
+                    wp = _parse_world_position(a.get("worldposition") or "")
 
                     # Get name from knowledge table if available
-                    name = elem.get("AliasName") or elem.get("Name") or ""
+                    name = a.get("aliasname") or a.get("name") or ""
                     desc = ""
                     if knowledge_key and knowledge_key in self.knowledge_by_strkey:
                         ke = self.knowledge_by_strkey[knowledge_key]
@@ -300,7 +317,8 @@ class EntityParsersMixin:
                     parent_strkey = ""
                     parent = elem.getparent()
                     if parent is not None and parent.tag == "FactionNode":
-                        parent_strkey = parent.get("StrKey") or ""
+                        pa = _ci_attrs(parent)
+                        parent_strkey = (pa.get("strkey") or "").lower()
 
                     self.region_by_strkey[nstrkey] = RegionEntry(
                         strkey=nstrkey,
@@ -308,7 +326,7 @@ class EntityParsersMixin:
                         desc=desc,
                         knowledge_key=knowledge_key,
                         world_position=wp,
-                        node_type=elem.get("Type") or "",
+                        node_type=a.get("type") or "",
                         parent_strkey=parent_strkey,
                         source_file=source_file,
                         display_name="",
@@ -316,11 +334,11 @@ class EntityParsersMixin:
 
                 # D16: RegionInfo -> display names
                 for elem in root.iter("RegionInfo"):
-                    kk = elem.get("KnowledgeKey") or ""
-                    display_name = elem.get("DisplayName") or ""
+                    a = _ci_attrs(elem)
+                    kk = (a.get("knowledgekey") or "").lower()
+                    display_name = a.get("displayname") or ""
                     if kk and display_name:
                         self.region_display_names[kk] = display_name
-                        # Update region entry display_name if it exists
                         for rstrkey, rentry in self.region_by_strkey.items():
                             if rentry.knowledge_key == kk and not rentry.display_name:
                                 self.region_by_strkey[rstrkey] = RegionEntry(
@@ -366,14 +384,15 @@ class EntityParsersMixin:
                 source_file = xml_path.name
                 sk0 = len(self.skill_by_strkey)
                 for elem in root.iter("SkillInfo"):
-                    strkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
                     self.skill_by_strkey[strkey] = SkillEntry(
                         strkey=strkey,
-                        name=elem.get("SkillName") or "",
-                        desc=elem.get("Desc") or elem.get("SkillDesc") or "",
-                        learn_knowledge_key=elem.get("LearnKnowledgeKey") or "",
+                        name=a.get("skillname") or "",
+                        desc=a.get("desc") or a.get("skilldesc") or "",
+                        learn_knowledge_key=(a.get("learnknowledgekey") or "").lower(),
                         source_file=source_file,
                     )
                 sk_new = len(self.skill_by_strkey) - sk0
@@ -399,21 +418,24 @@ class EntityParsersMixin:
                 source_file = xml_path.name
                 gk0 = len(self.gimmick_by_strkey)
                 for group_elem in root.iter("GimmickGroupInfo"):
-                    gstrkey = group_elem.get("StrKey") or ""
-                    gname = group_elem.get("GimmickName") or ""
+                    ga = _ci_attrs(group_elem)
+                    gstrkey = (ga.get("strkey") or "").lower()
+                    gname = ga.get("gimmickname") or ""
                     # Extract inner GimmickInfo with SealData
                     for gimmick_elem in group_elem.iter("GimmickInfo"):
-                        inner_strkey = gimmick_elem.get("StrKey") or ""
+                        ia = _ci_attrs(gimmick_elem)
+                        inner_strkey = (ia.get("strkey") or "").lower()
                         strkey = inner_strkey or gstrkey
                         if not strkey:
                             continue
                         seal_desc = ""
                         for seal in gimmick_elem.iter("SealData"):
-                            seal_desc = seal.get("Desc") or ""
+                            sa = _ci_attrs(seal)
+                            seal_desc = sa.get("desc") or ""
                         self.gimmick_by_strkey[strkey] = GimmickEntry(
                             strkey=strkey,
-                            name=gname or gimmick_elem.get("GimmickName") or "",
-                            desc=gimmick_elem.get("Desc") or "",
+                            name=gname or ia.get("gimmickname") or "",
+                            desc=ia.get("desc") or "",
                             seal_desc=seal_desc,
                             source_file=source_file,
                         )
