@@ -24,6 +24,7 @@ from config import (
     CLUSTER_CONFIG,
     DIALOG_SEQUENCER_EXCLUSION,
     GAMEDATA_EXCLUSION,
+    NOSCRIPT_PLUS_NARRATION_EXCLUSION,
     KNOWN_BRANCHES,
     VOICE_RECORDING_FOLDER,
     get_audio_folder,
@@ -86,7 +87,7 @@ class LanguageDataExporterGUI:
         self.lang_vars: dict[str, tk.BooleanVar] = {}
         self.all_var = tk.BooleanVar(value=True)
 
-        # Export mode: "No Script" | "Full Export" | "Script Only"
+        # Export mode: "No Script" | "Non-Script+NarrationDialog" | "Full Export" | "Script Only"
         self.export_mode_var = tk.StringVar(value="No Script")
 
         self._build_ui()
@@ -320,9 +321,9 @@ class LanguageDataExporterGUI:
         self.export_mode_combo = ttk.Combobox(
             mode_frame,
             textvariable=self.export_mode_var,
-            values=["No Script", "Full Export", "Script Only"],
+            values=["No Script", "Non-Script+NarrationDialog", "Full Export", "Script Only"],
             state="readonly",
-            width=14,
+            width=28,
         )
         self.export_mode_combo.pack(side="left", padx=5)
 
@@ -360,6 +361,7 @@ class LanguageDataExporterGUI:
         mode = self.export_mode_var.get()
         hints = {
             "No Script": "Excludes Script/Dialog for all languages",
+            "Non-Script+NarrationDialog": "No Script but keeps NarrationDialog",
             "Full Export": "All categories included for all languages",
             "Script Only": "Only Sequencer/Dialog lines (all languages)",
         }
@@ -481,6 +483,8 @@ class LanguageDataExporterGUI:
                         excluded_categories = GAMEDATA_EXCLUSION
                     elif export_mode == "No Script":
                         excluded_categories = DIALOG_SEQUENCER_EXCLUSION
+                    elif export_mode == "Non-Script+NarrationDialog":
+                        excluded_categories = NOSCRIPT_PLUS_NARRATION_EXCLUSION
 
                     # Build WEM index for this language (cached)
                     wem_index = None

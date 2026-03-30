@@ -249,6 +249,10 @@ STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
 # Categories to EXCLUDE in "No Script" mode (script/dialog content)
 DIALOG_SEQUENCER_EXCLUSION = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
 
+# Categories to EXCLUDE in "Non-Script+NarrationDialog" mode
+# Same as No Script but KEEPS NarrationDialog
+NOSCRIPT_PLUS_NARRATION_EXCLUSION = {"Sequencer", "AIDialog", "QuestDialog"}
+
 # Inverse exclusion: everything that ISN'T script/dialog (for "Script Only" export)
 GAMEDATA_EXCLUSION = {
     "Item", "Quest", "Character", "Gimmick", "Skill",
