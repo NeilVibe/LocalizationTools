@@ -129,6 +129,26 @@ For Korean file (languagedata_KOR.loc.xml):
 2. Verify `resizable: true` in column definition
 3. Check if resize handle CSS is missing or broken for that column
 
+### BUG-10: "Project Settings" Menu Item is DEAD
+**Severity:** LOW — dead UI
+**Current:** Clicking "Project Settings" in settings menu leads to nothing.
+**Fix:** Either wire it properly or remove the dead menu item.
+
+### BUG-11: About LocaNext Version is Hardcoded/Outdated
+**Severity:** MEDIUM — confusing for users
+**Fix:** Auto-detect version from `window.electronAPI.getVersion()` or build-time injection. Must always match the actual build version (e.g., "26.329.0300").
+
+### BUG-12: About LocaNext Cleanup
+**Severity:** LOW — polish
+**Remove:**
+- "XLS Transfer + QuickSearch + KRSimilar" tool listing (internal, not user-facing)
+- "Localization Team" section at bottom
+- "Release: Production" label
+**Add:**
+- "Created by Neil Schmitt"
+**Keep:**
+- LocaNext name/logo, auto version, brief description
+
 ---
 
 ## Priority Order for Implementation
@@ -141,9 +161,12 @@ For Korean file (languagedata_KOR.loc.xml):
 | 4 | FIX-4: Logging improvements | DONE in working tree | - |
 | 5 | BUG-5: Multi-language audio | NEW — implement | HIGH |
 | 6 | BUG-6: Image Korean fallback | NEW — implement | MEDIUM |
-| 7 | BUG-7: LocaNext Status menu | NEW — implement | MEDIUM |
-| 8 | BUG-8: Merge direction | NEW — implement | LOW |
+| 7 | BUG-7: Remove dead AI Status from Preferences (StatusPage exists!) | NEW — cleanup | LOW |
+| 8 | BUG-8: Merge direction | NEW — implement | HIGH |
 | 9 | BUG-9: Category column | NEW — implement | LOW |
+| 10 | BUG-10: Dead "Project Settings" menu item | NEW — cleanup | LOW |
+| 11 | BUG-11: About version auto-detect | NEW — implement | MEDIUM |
+| 12 | BUG-12: About cleanup + "Created by Neil Schmitt" | NEW — cleanup | LOW |
 
 ---
 
