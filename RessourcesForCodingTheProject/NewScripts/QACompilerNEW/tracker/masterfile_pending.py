@@ -210,6 +210,8 @@ def _read_master_statuses(
             status_value_tracker: Dict[str, Dict[str, int]] = {}  # user -> {status_value: count}
             sample_rows: Dict[str, List[str]] = {}  # user -> first 5 sample rows
             phantom_tracker: Dict[str, int] = {}  # user -> count of phantom issues (ISSUE without comment)
+            # Track unrecognized STATUS values that fall through to "pending"
+            fallthrough_tracker: Dict[str, Dict[str, int]] = {}  # user -> {raw_value: count}
 
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if not any(row):
@@ -276,6 +278,13 @@ def _read_master_statuses(
 
                     classification = _classify_status(manager_status)
 
+                    # Track unrecognized STATUS values that became "pending"
+                    if classification == "pending" and manager_status is not None and str(manager_status).strip() != "":
+                        raw_val = str(manager_status).strip()
+                        if username not in fallthrough_tracker:
+                            fallthrough_tracker[username] = {}
+                        fallthrough_tracker[username][raw_val] = fallthrough_tracker[username].get(raw_val, 0) + 1
+
                     if classification == "checking":
                         counts["checking"] += 1
                         counts["pending"] += 1
@@ -289,6 +298,14 @@ def _read_master_statuses(
                 debug_log.append(f"      PHANTOM ISSUES (ISSUE without comment → auto-nonissue): {total_phantoms}")
                 for u in sorted(phantom_tracker.keys()):
                     debug_log.append(f"        {u}: {phantom_tracker[u]} phantom issues")
+            # Log unrecognized STATUS values that fell through to "pending"
+            if fallthrough_tracker:
+                total_fallthrough = sum(sum(v.values()) for v in fallthrough_tracker.values())
+                debug_log.append(f"      *** UNRECOGNIZED STATUS VALUES (treated as PENDING): {total_fallthrough} rows ***")
+                for u in sorted(fallthrough_tracker.keys()):
+                    for val, cnt in sorted(fallthrough_tracker[u].items(), key=lambda x: -x[1]):
+                        debug_log.append(f"        {u}: '{val}' × {cnt} (NOT in whitelist → counted as pending!)")
+
             for u in sorted(status_value_tracker.keys()):
                 debug_log.append(f"      {u} STATUS values (for REAL ISSUE rows only):")
                 for sv, cnt in sorted(status_value_tracker[u].items(), key=lambda x: -x[1]):
@@ -384,6 +401,17 @@ def build_pending_from_masterfiles(
         grand_active += user_active
         grand_pending += user_pending
     debug_log.append(f"\n  {'=== GRAND TOTAL ===':20s} | {'ALL':25s} | issues={grand_active:4d} pending={grand_pending:4d}")
+
+    # PENDING BREAKDOWN — where does "pending" come from?
+    grand_checking_as_pending = sum(
+        c["checking"] for cats in result.values() for c in cats.values()
+    )
+    grand_truly_pending = grand_pending - grand_checking_as_pending
+    debug_log.append(f"\n  PENDING BREAKDOWN:")
+    debug_log.append(f"    Total pending:             {grand_pending}")
+    debug_log.append(f"    - Truly pending (no status): {grand_truly_pending}")
+    debug_log.append(f"    - CHECKING (also pending):   {grand_checking_as_pending}")
+    debug_log.append(f"  (If 'truly pending' is too high, check UNRECOGNIZED STATUS VALUES above)")
     debug_log.append("=" * 80)
 
     # Write to file AND print — use SCRIPT_DIR/logs/ for PyInstaller compat
@@ -401,3 +429,34 @@ def build_pending_from_masterfiles(
     print("\n".join(debug_log))
 
     return result
+
+
+if __name__ == "__main__":
+    """Standalone debug: run ONLY masterfile pending analysis."""
+    import argparse
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from config import TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN, MASTER_FOLDER_EN, MASTER_FOLDER_CN
+
+    parser = argparse.ArgumentParser(description="Debug masterfile pending counts")
+    parser.add_argument("--en", type=str, default=None, help="EN masterfile folder path")
+    parser.add_argument("--cn", type=str, default=None, help="CN masterfile folder path")
+    parser.add_argument("--use-main", action="store_true", help="Use Masterfolder_EN/CN instead of TrackerUpdateFolder")
+    args = parser.parse_args()
+
+    if args.en and args.cn:
+        en_path = Path(args.en)
+        cn_path = Path(args.cn)
+    elif args.use_main:
+        en_path = MASTER_FOLDER_EN
+        cn_path = MASTER_FOLDER_CN
+    else:
+        en_path = TRACKER_UPDATE_MASTER_EN
+        cn_path = TRACKER_UPDATE_MASTER_CN
+
+    print(f"EN folder: {en_path}")
+    print(f"CN folder: {cn_path}")
+    print(f"EN exists: {en_path.exists()}")
+    print(f"CN exists: {cn_path.exists()}")
+
+    result = build_pending_from_masterfiles(en_path, cn_path)
+    print(f"\nDone. Check logs/MASTERFILE_PENDING_DEBUG.log for full details.")
