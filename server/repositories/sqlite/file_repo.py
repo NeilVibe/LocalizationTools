@@ -517,6 +517,18 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
         if not row:
             return None
 
+        # Parse extra_data from JSON string (SQLite stores as TEXT)
+        raw_extra = row.get("extra_data")
+        if isinstance(raw_extra, str):
+            try:
+                extra_data = json.loads(raw_extra)
+            except (json.JSONDecodeError, TypeError):
+                extra_data = {}
+        elif isinstance(raw_extra, dict):
+            extra_data = raw_extra
+        else:
+            extra_data = {}
+
         result = {
             "id": row.get("id"),
             "file_id": row.get("file_id"),
@@ -526,7 +538,7 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
             "target": row.get("target"),
             "memo": row.get("memo"),
             "status": row.get("status"),
-            "extra_data": row.get("extra_data"),
+            "extra_data": extra_data,
             "created_at": row.get("created_at"),
             "updated_at": row.get("updated_at"),
         }
