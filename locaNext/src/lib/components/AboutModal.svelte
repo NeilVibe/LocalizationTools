@@ -1,33 +1,15 @@
 <script>
-  import {
-    Modal,
-    StructuredList,
-    StructuredListHead,
-    StructuredListRow,
-    StructuredListCell,
-    StructuredListBody,
-    Button,
-    InlineNotification,
-    Loading
-  } from "carbon-components-svelte";
-  import { Renew, CheckmarkFilled, WarningAltFilled } from "carbon-icons-svelte";
+  import { Modal } from "carbon-components-svelte";
   import { api } from "$lib/api/client.js";
   import { logger } from "$lib/utils/logger.js";
 
   // Svelte 5 Runes
   let { open = $bindable(false) } = $props();
 
-  // Version info (fetched from backend /health)
-  let versionInfo = $state({
-    version: "Loading...",
-    build_type: "LIGHT",
-    release_date: "-",
-    release_name: "-"
-  });
-
-  let checkingUpdate = $state(false);
-  let updateStatus = $state(null); // null | 'up-to-date' | 'update-available' | 'error'
-  let updateMessage = $state("");
+  // Version info (fetched from backend /health or Electron API)
+  let version = $state("Loading...");
+  let buildDate = $state("-");
+  let buildType = $state("");
 
   // Fetch version when modal opens
   $effect(() => {
@@ -38,60 +20,62 @@
 
   async function fetchVersionInfo() {
     try {
+      // Try Electron API first (most accurate for desktop app)
+      if (window.electronAPI?.getVersion) {
+        const electronVersion = await window.electronAPI.getVersion();
+        if (electronVersion) {
+          version = electronVersion;
+          buildDate = formatVersionDate(electronVersion);
+          return;
+        }
+      }
+
+      // Fallback to backend /health
       const health = await api.getHealth();
       if (health.version) {
-        versionInfo = {
-          version: health.version,
-          build_type: health.build_type || "LIGHT",
-          release_date: formatVersionDate(health.version),
-          release_name: health.release_name || "Production"
-        };
+        version = health.version;
+        buildDate = formatVersionDate(health.version);
+        buildType = health.build_type || "";
       }
     } catch (err) {
       logger.error("Failed to fetch version info", { error: err.message });
+      version = "Unknown";
     }
   }
 
-  function formatVersionDate(version) {
-    // Version format: YYMMDDHHMM (e.g., 2512011310)
-    if (!version || version.length !== 10) return "-";
-    const year = "20" + version.substring(0, 2);
-    const month = version.substring(2, 4);
-    const day = version.substring(4, 6);
-    const hour = version.substring(6, 8);
-    const min = version.substring(8, 10);
-    return `${year}-${month}-${day} ${hour}:${min}`;
-  }
-
-  async function checkForUpdates() {
-    checkingUpdate = true;
-    updateStatus = null;
-    updateMessage = "";
-
-    try {
-      logger.userAction("Check for updates clicked");
-
-      // Call backend to check for updates (placeholder - you can implement GitHub release check)
-      const health = await api.getHealth();
-
-      // For now, just show "up to date"
-      updateStatus = 'up-to-date';
-      updateMessage = `You are running the latest version (${health.version})`;
-
-      logger.info("Update check complete", { status: 'up-to-date', version: health.version });
-    } catch (err) {
-      updateStatus = 'error';
-      updateMessage = `Could not check for updates: ${err.message}`;
-      logger.error("Update check failed", { error: err.message });
-    } finally {
-      checkingUpdate = false;
+  function formatVersionDate(v) {
+    // Version format: YYMMDDHHMM (e.g., 2512011310) or YY.DDD.HHMM (e.g., 26.329.0300)
+    if (!v) return "-";
+    // Handle dot-separated format: YY.DDD.HHMM
+    if (v.includes('.')) {
+      const parts = v.split('.');
+      if (parts.length === 3) {
+        const year = "20" + parts[0];
+        const dayOfYear = parseInt(parts[1], 10);
+        const time = parts[2];
+        const d = new Date(parseInt(year), 0);
+        d.setDate(dayOfYear);
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = time.substring(0, 2);
+        const min = time.substring(2, 4);
+        return `${year}-${month}-${day} ${hour}:${min}`;
+      }
     }
+    // Handle compact format: YYMMDDHHMM
+    if (v.length === 10 && !isNaN(v)) {
+      const year = "20" + v.substring(0, 2);
+      const month = v.substring(2, 4);
+      const day = v.substring(4, 6);
+      const hour = v.substring(6, 8);
+      const min = v.substring(8, 10);
+      return `${year}-${month}-${day} ${hour}:${min}`;
+    }
+    return "-";
   }
 
   function handleClose() {
     open = false;
-    updateStatus = null;
-    updateMessage = "";
   }
 </script>
 
@@ -105,71 +89,30 @@
   <div class="about-content">
     <div class="app-logo">
       <h2>LocaNext</h2>
-      <p class="tagline">AI-Powered Localization Platform</p>
+      <p class="tagline">Desktop Localization Platform</p>
     </div>
 
-    <StructuredList>
-      <StructuredListBody>
-        <StructuredListRow>
-          <StructuredListCell>Version</StructuredListCell>
-          <StructuredListCell><strong>{versionInfo.version}</strong></StructuredListCell>
-        </StructuredListRow>
-        <StructuredListRow>
-          <StructuredListCell>Build Type</StructuredListCell>
-          <StructuredListCell>{versionInfo.build_type}</StructuredListCell>
-        </StructuredListRow>
-        <StructuredListRow>
-          <StructuredListCell>Build Date</StructuredListCell>
-          <StructuredListCell>{versionInfo.release_date}</StructuredListCell>
-        </StructuredListRow>
-        <StructuredListRow>
-          <StructuredListCell>Release</StructuredListCell>
-          <StructuredListCell>{versionInfo.release_name}</StructuredListCell>
-        </StructuredListRow>
-      </StructuredListBody>
-    </StructuredList>
-
-    {#if updateStatus === 'up-to-date'}
-      <InlineNotification
-        kind="success"
-        title="Up to date"
-        subtitle={updateMessage}
-        hideCloseButton
-      />
-    {:else if updateStatus === 'update-available'}
-      <InlineNotification
-        kind="info"
-        title="Update available"
-        subtitle={updateMessage}
-        hideCloseButton
-      />
-    {:else if updateStatus === 'error'}
-      <InlineNotification
-        kind="warning"
-        title="Check failed"
-        subtitle={updateMessage}
-        hideCloseButton
-      />
-    {/if}
-
-    <div class="update-button">
-      <Button
-        kind="tertiary"
-        icon={Renew}
-        onclick={checkForUpdates}
-        disabled={checkingUpdate}
-      >
-        {#if checkingUpdate}
-          Checking...
-        {:else}
-          Check for Updates
-        {/if}
-      </Button>
+    <div class="version-info">
+      <div class="version-row">
+        <span class="version-label">Version</span>
+        <span class="version-value">{version}</span>
+      </div>
+      {#if buildDate !== "-"}
+        <div class="version-row">
+          <span class="version-label">Build Date</span>
+          <span class="version-value">{buildDate}</span>
+        </div>
+      {/if}
+      {#if buildType}
+        <div class="version-row">
+          <span class="version-label">Build</span>
+          <span class="version-value">{buildType}</span>
+        </div>
+      {/if}
     </div>
 
     <div class="footer-info">
-      <p>XLSTransfer + QuickSearch + KR Similar</p>
-      <p class="copyright">Localization Team</p>
+      <p class="creator">Created by Neil Schmitt</p>
     </div>
   </div>
 </Modal>
@@ -196,34 +139,45 @@
     color: var(--cds-text-02);
   }
 
-  .update-button {
+  .version-info {
+    background: var(--cds-layer-01, #262626);
+    border: 1px solid var(--cds-border-subtle-01, #393939);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .version-row {
     display: flex;
-    justify-content: center;
-    margin: 1.5rem 0;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.375rem 0;
+    font-size: 0.875rem;
+  }
+
+  .version-row + .version-row {
+    border-top: 1px solid var(--cds-border-subtle-01, #393939);
+  }
+
+  .version-label {
+    color: var(--cds-text-03, #6f6f6f);
+  }
+
+  .version-value {
+    color: var(--cds-text-01, #f4f4f4);
+    font-weight: 600;
   }
 
   .footer-info {
     text-align: center;
-    margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--cds-border-subtle);
   }
 
-  .footer-info p {
-    margin: 0.25rem 0;
-    font-size: 0.75rem;
+  .creator {
+    margin: 0;
+    font-size: 0.8125rem;
     color: var(--cds-text-02);
-  }
-
-  .copyright {
-    opacity: 0.7;
-  }
-
-  :global(.bx--structured-list) {
-    margin-bottom: 0;
-  }
-
-  :global(.bx--inline-notification) {
-    margin: 1rem 0;
+    font-weight: 500;
   }
 </style>
