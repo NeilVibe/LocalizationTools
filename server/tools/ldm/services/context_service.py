@@ -132,23 +132,47 @@ class ContextService:
             detected_in_text=detected,
         )
 
-    def resolve_chain(self, strkey: str) -> Dict:
-        """Resolve the full StrKey -> Knowledge -> UITextureName -> DDS chain.
+    def resolve_chain(self, string_id: str, source_text: str = "") -> Dict:
+        """Resolve StringID -> entity -> Knowledge -> UITextureName -> DDS chain.
 
-        Tracks each step for debugging "No Image" issues. Returns partial
-        results so callers know exactly where the chain broke.
+        Chain: StringID -> C7 entity -> StrKey -> Knowledge -> UITextureName -> DDS.
+        Fallback: Korean source text -> R1 name match -> entity -> image.
 
         Args:
-            strkey: The StrKey to resolve.
+            string_id: The row's StringID.
+            source_text: Korean source text for fallback matching.
 
         Returns:
             Dict with "steps" list, "result" (ImageContext or None), "partial" bool.
         """
+        from server.tools.ldm.services.mega_index import get_mega_index
         mapdata_svc = get_mapdata_service()
+        mega = get_mega_index()
         steps = []
 
+        # Step 0: StringID -> C7 entity -> StrKey
+        strkey = None
+        if mega._built:
+            entity_info = mega.stringid_to_entity_lookup(string_id)
+            if entity_info:
+                _, strkey = entity_info
+                steps.append({
+                    "step": 0,
+                    "name": "StringID -> C7 entity",
+                    "found": True,
+                    "value": strkey,
+                })
+
+        if not strkey:
+            steps.append({
+                "step": 0,
+                "name": "StringID -> C7 entity",
+                "found": False,
+                "value": None,
+            })
+
         # Step 1: StrKey -> KnowledgeLookup
-        knowledge = mapdata_svc.get_knowledge_lookup(strkey)
+        knowledge = mapdata_svc.get_knowledge_lookup(strkey) if strkey else None
         steps.append({
             "step": 1,
             "name": "StrKey -> KnowledgeLookup",
@@ -157,26 +181,26 @@ class ContextService:
         })
 
         if knowledge is None:
-            logger.debug(f"[CONTEXT] Chain broke at step 1: StrKey={strkey} not in knowledge table")
+            logger.debug(f"[CONTEXT] Chain broke at step 1: StringID={string_id}, StrKey={strkey}")
 
-            # Step 1b: Fallback — try Korean text (StrOrigin) -> R1 -> entity -> image
-            from server.tools.ldm.services.mega_index import get_mega_index
-            mega = get_mega_index()
+            # Step 1b: Fallback — Korean text -> R1 -> entity -> image
+            # Try StrOrigin from MegaIndex first, then fall back to source_text from row
             korean_text = None
             if mega._built:
-                korean_text = mega.stringid_to_strorigin.get(strkey.lower())
+                korean_text = mega.stringid_to_strorigin.get(string_id.lower())
+            if not korean_text and source_text:
+                korean_text = source_text
 
-            if korean_text:
+            if korean_text and mega._built:
                 kr_matches = mega.find_by_korean_name(korean_text)
                 steps.append({
                     "step": "1b",
                     "name": "Korean text (R1) -> entity fallback",
                     "found": len(kr_matches) > 0,
-                    "value": f"{len(kr_matches)} matches for '{korean_text[:30]}...'" if kr_matches else None,
+                    "value": f"{len(kr_matches)} matches for '{korean_text[:30]}'" if kr_matches else None,
                 })
 
                 if kr_matches:
-                    # Take first match, resolve its image
                     entity_type, entity_strkey = kr_matches[0]
                     fallback_knowledge = mapdata_svc.get_knowledge_lookup(entity_strkey)
                     if fallback_knowledge and fallback_knowledge.ui_texture_name:
@@ -249,7 +273,7 @@ class ContextService:
 
         # Second: direct StringID media lookup via chain resolution
         mapdata_svc = get_mapdata_service()
-        chain = self.resolve_chain(string_id)
+        chain = self.resolve_chain(string_id, source_text)
         direct_image = chain.get("result")
         direct_audio = mapdata_svc.get_audio_context(string_id, file_language)
 
