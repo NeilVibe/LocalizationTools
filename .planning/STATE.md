@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 100
-last_updated: "2026-03-30T07:05:15.709Z"
+status: Phase 101 COMPLETE — needs commit + build
+last_updated: "2026-03-30T20:00:00.000Z"
 progress:
-  total_phases: 11
-  completed_phases: 3
-  total_plans: 10
+  total_phases: 12
+  completed_phases: 4
+  total_plans: 12
   completed_plans: 10
 ---
 
@@ -18,7 +18,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Real, working localization workflows with zero cloud dependency
-**Current focus:** Phase 100 — windows-app-bugfix-sprint
+**Current focus:** Phase 101 — merge-deep-graft
 
 ## v14.0 Completion Status
 
@@ -108,20 +108,52 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 ## Session Continuity
 
 Last session: 2026-03-30
-Phase 100: COMPLETE — Build 23734591694 GREEN. Post-review fixes pushed (not yet built).
-Phase 101: PLANNED — QuickTranslate Merge Deep Graft (11 bugs)
+Phase 100: COMPLETE — Build 23734591694 GREEN.
+Phase 100b: EDITING PERF FIXES (session 2026-03-30 evening):
+- FIXED: Enter linebreak — was inserting literal `<br/>` text, now inserts HTML `<br>` element
+- FIXED: TM spam during editing (BUG-19) — `isEditing` flag skips TM fetch
+- FIXED: Save freeze — optimistic UI (instant local update, async API, revert on fail)
+- FIXED: Blur+keyboard double-save race — `isSaving` mutex guard
+- FIXED: Hotkey bar labels updated (Enter=Linebreak, Ctrl+Enter=Save & Next)
+- NOT YET BUILT — needs commit + build trigger
 
-### PEARL PC Round 2 Testing Results (2026-03-30 evening)
-- Merge COMPLETELY BROKEN: target file not modified after "successful" merge (BUG-21)
-- Merge matches 169,650 identical rows instead of skipping (BUG-13)
-- QT core/transfer.py logic NOT grafted into translator_merge.py (BUG-23)
-- No progress feedback during 42s merge (BUG-14)
-- Merge options silently dropped by backend (BUG-16)
-- Inline editor Space/Enter: FIXED (commit 75fd23a9)
-- TM suggest spam during editing: NOT FIXED (BUG-19)
+Phase 101: PLANNED — Merge Deep Graft (2 plans, 2 waves)
+
+### Phase 101 Scope (from research)
+
+**Root cause of BUG-21 + BUG-13:** Merge has NO identical-skip check. All 169,650 matched rows get "updated" in DB with the SAME value. Nothing visibly changed.
+
+**BUG-15 (format string):** FALSE ALARM — Python % formatting is correct.
+**BUG-22 (make file writable):** N/A — LocaNext writes to PostgreSQL, not disk files.
+
+| Plan | Bugs | Wave | Scope | Status |
+|------|------|------|-------|--------|
+| 101-01 | BUG-21, BUG-13, BUG-23 | 1 | Identical-skip + detailed results | DONE |
+| 101-02 | BUG-16, BUG-14 | 2 | Options wiring + progress + SSE | DONE |
+| 101-03 | Merge architecture | 3 | QT-style disk write + folder merge | DONE |
+| 101-04 | File explorer | 4 | Refresh button + delete artifact fix | DONE |
+
+Phase 101-03 DETAILS (QT-style merge-to-disk):
+- NEW endpoint: POST /api/ldm/merge/to-file — source DB rows → target file on disk
+- NEW endpoint: POST /api/ldm/merge/to-folder — source folder → target folder (suffix matching)
+- Uses QT's xml_transfer.py engine (merge_corrections_to_xml) for actual XML manipulation
+- Electron: native file/folder dialog → gets PATH → backend reads, merges, writes back
+- Browser fallback: old upload-based flow (for DEV mode)
+- No more ghost files / upload artifacts
+- Folder merge: right-click folder → pick target folder → matches by language suffix
+
+Phase 101-04 DETAILS (File explorer fixes):
+- Refresh button in right-click context menu (both item + background)
+- Delete failure → refreshCurrentView() (no more stale optimistic state)
+- Uploaded merge artifacts auto-cleaned after merge
+
+Code review findings (tmx_tools.py — PRE-EXISTING, not from this session):
+- `lang == 'ko'` should be `lang.startswith('ko')` for BCP-47
+- Missing `is_desc` detection pipeline
+- StringID column missing `num_format: '@'`
+- These are tmx_tools sync issues, NOT blocking Phase 101
 
 Next actions:
-1. /gsd:plan-phase 101 — research QT merge logic with 8 parallel agents
-2. Execute Phase 101 — deep graft QT transfer.py into translator_merge.py
-3. Retrigger build with all Phase 100 post-review fixes + Phase 101
-4. Test merge on PEARL PC — verify target file actually modified
+1. Commit all changes (13 files + 1 new)
+2. Trigger build (needs user approval)
+3. Test on PEARL PC

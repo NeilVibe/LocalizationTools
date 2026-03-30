@@ -1040,6 +1040,67 @@
     closeMenus();
   }
 
+  /**
+   * Merge folder to folder on disk — QT-style suffix matching.
+   * Right-click folder → pick target folder → merge files by language suffix.
+   */
+  async function mergeFolderToDisk() {
+    if (!contextMenuItem || contextMenuItem.type !== 'folder') return;
+
+    // Get target folder path via Electron dialog
+    let targetFolderPath;
+    if (window.electronAPI?.showOpenDialog) {
+      const result = await window.electronAPI.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Select target folder to merge corrections into'
+      });
+      if (!result || result.canceled || !result.filePaths?.length) return;
+      targetFolderPath = result.filePaths[0];
+    } else {
+      logger.error('Folder merge requires Electron (filesystem access)');
+      return;
+    }
+
+    // Collect all file IDs in the source folder
+    const folderId = contextMenuItem.id;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/folders/${folderId}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to load folder contents');
+      const data = await response.json();
+      const fileIds = (data.files || []).map(f => f.id);
+
+      if (fileIds.length === 0) {
+        logger.warning('No files in source folder');
+        return;
+      }
+
+      logger.info(`Merging ${fileIds.length} files from folder into ${targetFolderPath}`);
+
+      const mergeRes = await fetch(`${API_BASE}/api/ldm/merge/to-folder`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_file_ids: fileIds,
+          target_folder_path: targetFolderPath,
+          match_mode: 'strict',
+        })
+      });
+
+      if (!mergeRes.ok) {
+        const err = await mergeRes.json().catch(() => ({}));
+        logger.error('Folder merge failed', { error: err.detail });
+        return;
+      }
+
+      const result = await mergeRes.json();
+      logger.success(`Folder merge complete: ${result.files_processed} files, ${result.total_updated} rows updated`);
+    } catch (err) {
+      logger.error('Folder merge error', { error: err.message });
+    }
+  }
+
   // DESIGN-001: Open access control modal
   function openAccessControl() {
     if (!contextMenuItem) return;
@@ -1931,9 +1992,9 @@
 
     // Handle results
     if (failures.length > 0) {
-      // OPTIMISTIC UI: Partial rollback - restore failed items
-      currentItems = [...currentItems, ...failures];
-      logger.warning(`${failures.length} item(s) failed to delete`);
+      // Refresh from backend to get authoritative state (not optimistic guessing)
+      await refreshCurrentView();
+      logger.warning(`${failures.length} item(s) failed to delete — refreshed from server`);
     }
 
     if (failures.length < itemsToDelete.length) {
@@ -2613,8 +2674,11 @@
         <div class="context-menu-divider"></div>
         <button class="context-menu-item danger" onclick={openDelete}><TrashCan size={16} /> Delete</button>
       {/if}
-      <!-- Phase 59: Merge folder to LOCDEV (outside canModifyStructure — merge writes to external LOCDEV path) -->
+      <!-- Merge options (outside canModifyStructure — merge writes to external paths) -->
       <div class="context-menu-divider"></div>
+      <button class="context-menu-item" onclick={() => { mergeFolderToDisk(); closeMenus(); }}>
+        <Merge size={16} /> Merge Folder to Folder...
+      </button>
       <button class="context-menu-item" onclick={openMergeFolderToLocdev}>
         <Merge size={16} /> Merge Folder to LOCDEV
       </button>
@@ -2695,6 +2759,11 @@
         <TrashCan size={16} /> Delete Permanently
       </button>
     {/if}
+    <!-- Refresh (always available) -->
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick={() => { refreshCurrentView(); closeMenus(); }}>
+      <Renew size={16} /> Refresh
+    </button>
   </div>
 {/if}
 
@@ -2759,6 +2828,11 @@
         </div>
       {/if}
     {/if}
+    <!-- Refresh (always available in background menu) -->
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick={() => { refreshCurrentView(); closeMenus(); }}>
+      <Renew size={16} /> Refresh
+    </button>
   </div>
 {/if}
 

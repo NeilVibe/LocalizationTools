@@ -206,12 +206,20 @@ All committed and built. Post-build review found + fixed: frontend language wiri
 ### BUG-17: Inline editor Space blocked (FIXED — commit 75fd23a9)
 Row onkeydown intercepted Space during editing. Fixed with !inlineEditingRowId guard.
 
-### BUG-18: Inline editor Enter saves instead of linebreak (FIXED — commit 75fd23a9)
-Enter now inserts `<br/>`. Ctrl+Enter saves. CAT tool standard.
+### BUG-18: Inline editor Enter saves instead of linebreak (FIXED — commit 75fd23a9 + session fix)
+Enter now inserts visual linebreak. **Session fix:** `document.execCommand('insertText', '<br/>')` was inserting LITERAL TEXT. Changed to `insertHTML '<br>'` for actual HTML line break.
 
-### BUG-19: TM suggest spam loop during editing (MEDIUM)
-**Severity:** MEDIUM — same TM suggest call fires 4-5x/second during editing, causes clunkiness
-**Fix:** Skip TM fetch while inlineEditingRowId is active, or debounce
+### BUG-19: TM suggest spam loop during editing (FIXED — session 2026-03-30 evening)
+**Root cause:** Every save-and-move-next called `onRowSelect({row})` → triggered TM+context API calls.
+**Fix:** Added `isEditing: true` flag to onRowSelect from InlineEditor. GridPage skips TM fetch when flag is set.
+
+### BUG-19b: Save freeze during editing (FIXED — session 2026-03-30 evening)
+**Root cause:** `saveRowToAPI` awaited HTTP PUT before updating local state. 200-500ms freeze per save. Then `rebuildCumulativeHeights` fired synchronously on 100k+ rows.
+**Fix:** Optimistic UI — local state updates instantly, API fires async, revert on failure. Height rebuild deferred to `requestAnimationFrame`.
+
+### BUG-19c: Blur+keyboard double-save race (FIXED — session 2026-03-30 evening)
+**Root cause:** Tab/Enter fires keyboard save AND contenteditable blur fires another save simultaneously.
+**Fix:** Added `isSaving` boolean mutex guard to `saveInlineEdit` and `confirmInlineEdit`.
 
 ### BUG-20: Cell distortion / addRange() warning during editing (LOW)
 **Severity:** LOW — `addRange(): The given range isn't in document` renderer warning
@@ -256,15 +264,27 @@ Enter now inserts `<br/>`. Ctrl+Enter saves. CAT tool standard.
 
 | Priority | Issue | Status | Phase |
 |----------|-------|--------|-------|
-| 1 | BUG-21: Merge completely broken (target unchanged) | TODO — INVESTIGATE | 101 |
-| 2 | BUG-23: QT merge logic not grafted | TODO — RESEARCH+GRAFT | 101 |
-| 3 | BUG-13: Merge matches identical strings | TODO (part of QT graft) | 101 |
-| 4 | BUG-14: Merge no progress feedback | TODO | 101 |
-| 5 | BUG-15: Merge format string bug | TODO | 101 |
-| 6 | BUG-16: Merge options silently dropped | TODO (part of QT graft) | 101 |
-| 7 | BUG-22: Make file writable not grafted | TODO (part of QT graft) | 101 |
-| 8 | BUG-19: TM suggest spam during editing | TODO | 101 |
-| 9 | BUG-20: Cell distortion | MAYBE FIXED | verify |
+| 1 | BUG-21: Merge target unchanged | **ROOT CAUSE FOUND** — no identical-skip | 101-01 |
+| 2 | BUG-13: Merge matches identical strings | **SAME ROOT CAUSE** as BUG-21 | 101-01 |
+| 3 | BUG-23: QT merge logic not grafted | **PLAN WRITTEN** — identical-skip graft | 101-01 |
+| 4 | BUG-16: Merge options silently dropped | **PLAN WRITTEN** — extend MergeRequest | 101-02 |
+| 5 | BUG-14: Merge no progress feedback | **PLAN WRITTEN** — detailed results | 101-02 |
+| 6 | BUG-15: Merge format string bug | **FALSE ALARM** — Python % format is correct | N/A |
+| 7 | BUG-22: Make file writable not grafted | **N/A** — LocaNext writes to DB, not disk | N/A |
+| 8 | BUG-19: TM suggest spam during editing | **FIXED** (session 2026-03-30 evening) | done |
+| 9 | BUG-19b: Save freeze during editing | **FIXED** (optimistic UI) | done |
+| 10 | BUG-19c: Blur+keyboard double-save | **FIXED** (isSaving guard) | done |
+| 11 | BUG-20: Cell distortion | MAYBE FIXED | verify |
+
+### Research Findings (2026-03-30 evening)
+
+**BUG-21 + BUG-13 ROOT CAUSE:** `translator_merge.py` has NO identical-skip check. When `matched_text == existing target`, it still adds to `updated_rows` and bulk_updates DB. All 169,650 rows got "updated" with the same value. Nothing visibly changed. QT has `if new_str != old_str: update else: UNCHANGED` (xml_transfer.py L574).
+
+**BUG-15 FALSE ALARM:** The `%d/%s` logging in merge.py uses Python % formatting which loguru handles correctly. Not a bug.
+
+**BUG-22 N/A:** QT's `make_file_writable()` is for on-disk XML writes. LocaNext merge writes to PostgreSQL via `RowRepository.bulk_update()`. No file permission issue.
+
+**GSD Plans:** `.planning/phases/101-merge-deep-graft/101-01-PLAN.md` (core fix) + `101-02-PLAN.md` (options + progress)
 
 ---
 

@@ -2,6 +2,7 @@
 Merge endpoints -- translator merge and Game Dev merge.
 
 POST /api/ldm/files/{file_id}/merge          -- Translator merge (corrections)
+POST /api/ldm/files/{file_id}/merge-stream   -- SSE streaming merge with live progress
 POST /api/ldm/files/{file_id}/gamedev-merge   -- Game Dev XML merge (tree diff)
 
 Transactional: computes all changes first, then bulk_update at once.
@@ -10,10 +11,12 @@ Transactional: computes all changes first, then bulk_update at once.
 from __future__ import annotations
 
 import base64
+import json
 
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -41,15 +44,45 @@ class MergeRequest(BaseModel):
         default=False,
         description="CJK language flag for postprocess pipeline",
     )
+    # BUG-16: Options that frontend sends — previously silently dropped
+    transfer_scope: str = Field(
+        default="all",
+        description="'all' (overwrite) or 'untranslated' (only empty/Korean targets)",
+    )
+    ignore_spaces: bool = Field(
+        default=False,
+        description="Whitespace-insensitive matching (nospace fallback first)",
+    )
+    ignore_punctuation: bool = Field(
+        default=False,
+        description="Ignore sentence-ending punctuation during matching",
+    )
+    all_categories: bool = Field(
+        default=False,
+        description="StringID mode: include ALL categories (not just SCRIPT)",
+    )
+    non_script_only: bool = Field(
+        default=False,
+        description="Strict mode: exclude SCRIPT categories",
+    )
+    unique_only: bool = Field(
+        default=False,
+        description="StrOrigin mode: skip duplicate source texts",
+    )
 
 
 class MergeResponse(BaseModel):
     """Response from merge endpoint."""
 
     matched: int
-    skipped: int
+    updated: int = 0          # Rows actually changed (new != old)
+    unchanged: int = 0        # Matched but identical (skipped write)
+    skipped: int              # Source rows filtered by skip guards
+    skipped_translated: int = 0  # Skipped by transfer_scope=untranslated
+    not_found: int = 0        # Target rows with no matching correction
     total: int
     match_type_counts: dict
+    by_category: dict = {}    # Per-category breakdown
     rows_updated: int
 
 
@@ -113,6 +146,12 @@ async def merge_files(
         match_mode=request.match_mode,
         threshold=request.threshold,
         is_cjk=request.is_cjk,
+        transfer_scope=request.transfer_scope,
+        ignore_spaces=request.ignore_spaces,
+        ignore_punctuation=request.ignore_punctuation,
+        all_categories=request.all_categories,
+        non_script_only=request.non_script_only,
+        unique_only=request.unique_only,
     )
 
     # Transactional bulk update
@@ -125,8 +164,10 @@ async def merge_files(
         rows_updated = await row_repo.bulk_update(updates)
 
     logger.info(
-        "[MERGE] Complete: matched=%d, skipped=%d, total=%d, rows_updated=%d, types=%s",
+        "[MERGE] Complete: matched=%d, updated=%d, unchanged=%d, skipped=%d, total=%d, rows_updated=%d, types=%s",
         result.matched,
+        result.updated,
+        result.unchanged,
         result.skipped,
         result.total,
         rows_updated,
@@ -135,10 +176,135 @@ async def merge_files(
 
     return MergeResponse(
         matched=result.matched,
+        updated=result.updated,
+        unchanged=result.unchanged,
         skipped=result.skipped,
+        skipped_translated=result.skipped_translated,
+        not_found=result.not_found,
         total=result.total,
         match_type_counts=result.match_type_counts,
+        by_category=result.by_category,
         rows_updated=rows_updated,
+    )
+
+
+# =============================================================================
+# SSE Streaming Merge (live progress)
+# =============================================================================
+
+
+@router.post("/files/{file_id}/merge-stream")
+async def merge_files_stream(
+    file_id: int,
+    request: MergeRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+    row_repo=Depends(get_row_repository),
+):
+    """SSE streaming merge — same as /merge but with live progress events.
+
+    Events:
+      - progress: {phase, processed, matched, updated, unchanged}
+      - log: {message, level}
+      - complete: full MergeResponse JSON
+      - error: {message}
+    """
+    from server.tools.ldm.services.translator_merge import TranslatorMergeService
+
+    valid_modes = {"strict", "stringid_only", "strorigin_only", "strorigin_descorigin", "strorigin_filename", "fuzzy", "cascade"}
+    if request.match_mode not in valid_modes:
+        raise HTTPException(status_code=400, detail=f"Invalid match_mode '{request.match_mode}'")
+
+    source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    if not source_rows:
+        raise HTTPException(status_code=404, detail=f"No rows for source file {request.source_file_id}")
+
+    target_rows = await row_repo.get_all_for_file(file_id)
+    if not target_rows:
+        raise HTTPException(status_code=404, detail=f"No rows for target file {file_id}")
+
+    # Async queue for progress events from the CPU-bound merge thread
+    progress_queue: asyncio.Queue = asyncio.Queue()
+
+    def progress_callback(data: dict):
+        """Called from merge thread — puts events into async queue."""
+        progress_queue.put_nowait(data)
+
+    async def event_generator():
+        """SSE event stream."""
+        try:
+            # Emit start
+            yield f"event: log\ndata: {json.dumps({'message': f'Starting merge: {len(source_rows)} source → {len(target_rows)} target rows', 'level': 'info'})}\n\n"
+
+            # Run merge in thread with progress callback
+            svc = TranslatorMergeService()
+            merge_task = asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: svc.merge_files(
+                    source_rows=source_rows,
+                    target_rows=target_rows,
+                    match_mode=request.match_mode,
+                    threshold=request.threshold,
+                    is_cjk=request.is_cjk,
+                    transfer_scope=request.transfer_scope,
+                    ignore_spaces=request.ignore_spaces,
+                    ignore_punctuation=request.ignore_punctuation,
+                    all_categories=request.all_categories,
+                    non_script_only=request.non_script_only,
+                    unique_only=request.unique_only,
+                    progress_callback=progress_callback,
+                ),
+            )
+
+            # Stream progress events while merge runs
+            while not merge_task.done():
+                try:
+                    data = await asyncio.wait_for(progress_queue.get(), timeout=0.5)
+                    yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send keepalive ping
+                    yield f"event: ping\ndata: {{}}\n\n"
+
+            result = merge_task.result()
+
+            # Drain remaining progress events
+            while not progress_queue.empty():
+                data = progress_queue.get_nowait()
+                yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+
+            # Bulk update DB
+            yield f"event: log\ndata: {json.dumps({'message': f'Writing {len(result.updated_rows)} changed rows to database...', 'level': 'info'})}\n\n"
+
+            rows_updated = 0
+            if result.updated_rows:
+                updates = [
+                    {"id": row["id"], "target": row["target"], "status": "translated"}
+                    for row in result.updated_rows
+                ]
+                rows_updated = await row_repo.bulk_update(updates)
+
+            # Emit complete
+            complete_data = {
+                "matched": result.matched,
+                "updated": result.updated,
+                "unchanged": result.unchanged,
+                "skipped": result.skipped,
+                "skipped_translated": result.skipped_translated,
+                "not_found": result.not_found,
+                "total": result.total,
+                "match_type_counts": result.match_type_counts,
+                "by_category": result.by_category,
+                "rows_updated": rows_updated,
+            }
+            yield f"event: complete\ndata: {json.dumps(complete_data)}\n\n"
+
+        except Exception as exc:
+            logger.exception("[MERGE-STREAM] Error during merge")
+            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

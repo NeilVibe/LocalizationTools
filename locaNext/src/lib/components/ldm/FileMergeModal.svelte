@@ -18,7 +18,6 @@
     Slider,
     InlineNotification,
     ProgressBar,
-    FileUploaderDropContainer,
     Tag
   } from "carbon-components-svelte";
   import AppModal from '../common/AppModal.svelte';
@@ -62,6 +61,9 @@
 
   // Progress
   let merging = $state(false);
+  let mergeStep = $state('');
+  let mergeLogs = $state([]);
+  let uploadedFileId = $state(null);  // Track uploaded artifact for cleanup
   let result = $state(null);
   let error = $state('');
 
@@ -89,14 +91,38 @@
       ignorePunctuation = false;
       uniqueOnly = false;
       merging = false;
+      mergeStep = '';
+      mergeLogs = [];
+      uploadedFileId = null;
       result = null;
       error = '';
     }
   });
 
-  function handleFileAdd(e) {
-    const files = e.detail;
-    if (files?.length > 0) targetFile = files[0];
+  /** Pick target file via Electron file dialog or browser file input */
+  async function pickTargetFile() {
+    // Electron: use native file dialog to get path
+    if (window.electronAPI?.showOpenDialog) {
+      const result = await window.electronAPI.showOpenDialog({
+        properties: ['openFile'],
+        filters: [
+          { name: 'Localization Files', extensions: ['xml', 'txt', 'tsv', 'xlsx'] }
+        ]
+      });
+      if (result && !result.canceled && result.filePaths?.length > 0) {
+        targetFile = { name: result.filePaths[0].split(/[\\/]/).pop(), path: result.filePaths[0] };
+      }
+    } else {
+      // Browser fallback: use file input (gets File object, not path)
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.xml,.txt,.tsv,.xlsx';
+      input.onchange = (e) => {
+        const files = e.target.files;
+        if (files?.length > 0) targetFile = files[0];
+      };
+      input.click();
+    }
   }
 
   async function executeMerge() {
@@ -106,56 +132,106 @@
     error = '';
 
     try {
-      // Step 1: Upload TARGET file (the file to merge corrections INTO)
-      const formData = new FormData();
-      formData.append('file', targetFile);
-      formData.append('storage', 'local');
+      // Electron mode: merge directly to disk via path
+      if (targetFile.path) {
+        mergeStep = 'Merging corrections directly to file...';
+        const mergeBody = {
+          source_file_id: sourceFile.id,
+          target_path: targetFile.path,
+          match_mode: matchPrecision === 'fuzzy' ? 'fuzzy' : matchType,
+          dry_run: false,
+          only_untranslated: transferScope === 'untranslated',
+          ignore_spaces: ignoreSpaces,
+          ignore_punctuation: ignorePunctuation,
+        };
 
-      const uploadRes = await fetch(`${API_BASE}/api/ldm/files/upload`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData
-      });
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json().catch(() => ({}));
-        throw new Error(err.detail || 'Upload failed');
+        const mergeRes = await fetch(`${API_BASE}/api/ldm/merge/to-file`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(mergeBody)
+        });
+        if (!mergeRes.ok) {
+          const err = await mergeRes.json().catch(() => ({}));
+          throw new Error(err.detail || 'Merge failed');
+        }
+        result = await mergeRes.json();
+      } else {
+        // Browser fallback: upload target, merge in DB, then offer download
+        // (kept for DEV mode where we don't have filesystem access)
+        mergeStep = 'Uploading target file...';
+        const formData = new FormData();
+        formData.append('file', targetFile);
+        formData.append('storage', 'local');
+
+        const uploadRes = await fetch(`${API_BASE}/api/ldm/files/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.detail || 'Upload failed');
+        }
+        const uploaded = await uploadRes.json();
+        uploadedFileId = uploaded.id;
+
+        mergeStep = 'Matching corrections...';
+        const mergeBody = {
+          source_file_id: sourceFile.id,
+          match_mode: matchPrecision === 'fuzzy' ? 'fuzzy' : matchType,
+          threshold: fuzzyThreshold / 100,
+          is_cjk: true,
+          transfer_scope: transferScope,
+          all_categories: allCategories,
+          non_script_only: nonScriptOnly,
+          ignore_spaces: ignoreSpaces,
+          ignore_punctuation: ignorePunctuation,
+          unique_only: uniqueOnly,
+        };
+
+        const mergeRes = await fetch(`${API_BASE}/api/ldm/merge/to-file`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(mergeBody)
+        });
+        // Fallback: use old DB merge if to-file fails (no path)
+        if (!mergeRes.ok) {
+          const mergeRes2 = await fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(mergeBody)
+          });
+          if (!mergeRes2.ok) {
+            const err = await mergeRes2.json().catch(() => ({}));
+            throw new Error(err.detail || 'Merge failed');
+          }
+          result = await mergeRes2.json();
+        } else {
+          result = await mergeRes.json();
+        }
+
+        // Cleanup uploaded artifact
+        if (uploadedFileId) {
+          fetch(`${API_BASE}/api/ldm/files/${uploadedFileId}?permanent=true`, {
+            method: 'DELETE', headers: getAuthHeaders()
+          }).catch(() => {});
+        }
       }
-      const uploaded = await uploadRes.json();
 
-      // Step 2: Merge — sourceFile.id (right-clicked, corrections) INTO uploaded target
-      // API: POST /files/{target_id}/merge with source_file_id in body
-      const mergeBody = {
-        source_file_id: sourceFile.id,  // Right-clicked file has corrections
-        match_mode: matchPrecision === 'fuzzy' ? 'fuzzy' : matchType,
-        threshold: fuzzyThreshold / 100,
-        is_cjk: true,
-        transfer_scope: transferScope,
-        all_categories: allCategories,
-        non_script_only: nonScriptOnly,
-        ignore_spaces: ignoreSpaces,
-        ignore_punctuation: ignorePunctuation,
-        unique_only: uniqueOnly,
-      };
-
-      const mergeRes = await fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge`, {
-        method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(mergeBody)
-      });
-      if (!mergeRes.ok) {
-        const err = await mergeRes.json().catch(() => ({}));
-        throw new Error(err.detail || 'Merge failed');
-      }
-
-      result = await mergeRes.json();
       phase = 'done';
       logger.success('Merge complete', result);
       onmerged();
     } catch (err) {
       error = err.message;
       phase = 'configure';
+      if (uploadedFileId) {
+        fetch(`${API_BASE}/api/ldm/files/${uploadedFileId}?permanent=true`, {
+          method: 'DELETE', headers: getAuthHeaders()
+        }).catch(() => {});
+      }
     } finally {
       merging = false;
+      uploadedFileId = null;
     }
   }
 </script>
@@ -181,21 +257,23 @@
         <Tag size="sm" type="teal">{sourceFile?.format || 'XML'}</Tag>
       </p>
 
-      <!-- Target file picker (merge corrections INTO this file) -->
+      <!-- Target file picker (merge corrections INTO this file on disk) -->
       <div class="section">
-        <h5>Target File (merge into)</h5>
+        <h5>Target File (merge corrections into)</h5>
         {#if targetFile}
           <div class="selected-file">
             <DocumentAdd size={16} />
             <span>{targetFile.name}</span>
+            {#if targetFile.path}
+              <span class="file-path" title={targetFile.path}>{targetFile.path}</span>
+            {/if}
             <button class="clear-btn" onclick={() => targetFile = null}>&times;</button>
           </div>
         {:else}
-          <FileUploaderDropContainer
-            labelText="Drop target file or click to browse"
-            accept={['.xml', '.txt', '.tsv', '.xlsx']}
-            on:add={handleFileAdd}
-          />
+          <Button kind="tertiary" size="small" icon={DocumentAdd} onclick={pickTargetFile}>
+            Select Target File...
+          </Button>
+          <p class="picker-hint">Corrections will be written directly into this file</p>
         {/if}
       </div>
 
@@ -286,34 +364,69 @@
 
   {:else if phase === 'merging'}
     <div class="merge-progress">
-      <ProgressBar helperText="Uploading and merging..." />
+      <ProgressBar helperText={mergeStep || "Uploading and merging..."} />
       <p>Applying corrections from <strong>{sourceFile?.name}</strong> into <strong>{targetFile?.name}</strong></p>
       <p class="mode-label">Mode: {MATCH_TYPES.find(m => m.value === matchType)?.label} ({matchPrecision})</p>
+      {#if mergeLogs.length > 0}
+        <div class="merge-log">
+          {#each mergeLogs as log}
+            <div class="log-line">{log}</div>
+          {/each}
+        </div>
+      {/if}
     </div>
 
   {:else if phase === 'done'}
     <div class="merge-result">
       <div class="result-header">
-        <CheckmarkFilled size={24} class="success-icon" />
-        <h4>Merge Successful</h4>
+        {#if (result?.updated || 0) > 0}
+          <CheckmarkFilled size={24} class="success-icon" />
+          <h4>Merge Successful — {result.updated} rows changed</h4>
+        {:else}
+          <WarningAltFilled size={24} class="warning-icon" />
+          <h4>No Changes — all {result?.matched || 0} matches were already identical</h4>
+        {/if}
       </div>
 
       <div class="result-stats">
         <div class="stat"><span class="label">Matched</span><span class="value">{result?.matched || 0}</span></div>
-        <div class="stat"><span class="label">Updated</span><span class="value">{result?.rows_updated || 0}</span></div>
+        <div class="stat stat-updated"><span class="label">Updated</span><span class="value">{result?.updated || 0}</span></div>
+        <div class="stat stat-unchanged"><span class="label">Unchanged</span><span class="value">{result?.unchanged || 0}</span></div>
         <div class="stat"><span class="label">Skipped</span><span class="value">{result?.skipped || 0}</span></div>
-        <div class="stat"><span class="label">Total</span><span class="value">{result?.total || 0}</span></div>
+        <div class="stat"><span class="label">Total Rows</span><span class="value">{result?.total || 0}</span></div>
       </div>
 
       {#if result?.match_type_counts}
         <div class="match-types-result">
           <h5>Match Breakdown</h5>
-          {#each Object.entries(result.match_type_counts) as [type, count]}
+          {#each Object.entries(result.match_type_counts).filter(([_, count]) => count > 0) as [type, count]}
             <div class="match-type-row">
               <span class="type-name">{type}</span>
               <Tag size="sm">{count}</Tag>
             </div>
           {/each}
+        </div>
+      {/if}
+
+      {#if result?.by_category && Object.keys(result.by_category).length > 0}
+        <div class="match-types-result">
+          <h5>By Category</h5>
+          {#each Object.entries(result.by_category).sort((a, b) => b[1].matched - a[1].matched) as [cat, stats]}
+            <div class="match-type-row">
+              <span class="type-name">{cat}</span>
+              <span class="cat-stats">
+                <Tag size="sm" type="green">{stats.updated} updated</Tag>
+                {#if stats.unchanged > 0}<Tag size="sm" type="warm-gray">{stats.unchanged} unchanged</Tag>{/if}
+              </span>
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      {#if result?.not_found > 0}
+        <div class="not-found-info">
+          <WarningAltFilled size={16} />
+          <span>{result.not_found.toLocaleString()} target rows had no matching correction</span>
         </div>
       {/if}
     </div>
@@ -327,6 +440,8 @@
   .selected-file { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--cds-field-01); border: 1px solid var(--cds-border-subtle-01); border-radius: 4px; font-size: 0.875rem; }
   .clear-btn { background: none; border: none; cursor: pointer; color: var(--cds-text-02); font-size: 1.2rem; line-height: 1; padding: 0 0.25rem; }
   .clear-btn:hover { color: var(--cds-text-01); }
+  .picker-hint { font-size: 0.7rem; color: var(--cds-text-03); margin-top: 0.25rem; }
+  .file-path { font-size: 0.65rem; color: var(--cds-text-03); overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
 
   /* Match type radio list */
   .match-types { display: flex; flex-direction: column; gap: 4px; }
@@ -360,7 +475,10 @@
   .merge-result { display: flex; flex-direction: column; gap: 1rem; }
   .result-header { display: flex; align-items: center; gap: 0.5rem; }
   .result-header :global(.success-icon) { color: var(--cds-support-02); }
-  .result-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+  .result-header :global(.warning-icon) { color: var(--cds-support-03); }
+  .result-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+  .stat-updated .value { color: #42be65; }
+  .stat-unchanged .value { color: #f1c21b; }
   .stat { text-align: center; padding: 0.75rem; background: var(--cds-field-01); border-radius: 4px; }
   .stat .label { display: block; font-size: 0.65rem; color: var(--cds-text-02); text-transform: uppercase; letter-spacing: 0.5px; }
   .stat .value { display: block; font-size: 1.25rem; font-weight: 600; margin-top: 0.25rem; color: var(--cds-text-01); }
@@ -368,4 +486,9 @@
   .match-types-result h5 { margin: 0 0 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: var(--cds-text-02); }
   .match-type-row { display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; font-size: 0.85rem; }
   .type-name { color: var(--cds-text-01); }
+  .cat-stats { display: flex; gap: 0.25rem; }
+  .not-found-info { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--cds-field-01); border-radius: 4px; font-size: 0.8rem; color: var(--cds-text-02); }
+  .not-found-info :global(svg) { color: var(--cds-support-03); flex-shrink: 0; }
+  .merge-log { max-height: 120px; overflow-y: auto; margin-top: 0.75rem; padding: 0.5rem; background: #111; border-radius: 4px; font-family: monospace; font-size: 0.7rem; }
+  .log-line { color: var(--cds-text-02); padding: 1px 0; }
 </style>

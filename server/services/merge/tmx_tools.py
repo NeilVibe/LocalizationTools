@@ -724,7 +724,7 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
     body = re.sub(r'^<\?xml[^>]*\?>\s*', '', raw_text, flags=re.MULTILINE)
     body = re.sub(r'<!DOCTYPE[^>]*>\s*', '', body, flags=re.IGNORECASE)
 
-    parser = etree.XMLParser(remove_blank_text=True, recover=True)
+    parser = etree.XMLParser(recover=True)
     try:
         root = etree.fromstring(body.encode('utf-8'), parser=parser)
     except Exception as e:
@@ -751,6 +751,7 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
             'ko_seg': '',
             'tgt_seg': '',
             'tgt_lang': '',
+            'is_desc': False,
         }
 
         for prop in tu.findall('prop'):
@@ -779,14 +780,38 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
             if seg is None:
                 continue
 
+            # ── Step 1: Detect &desc; BEFORE serialization (synced from QT) ──
+            raw_text = (seg.text or '').strip()
+            is_desc_seg = (
+                raw_text.lower().startswith('&desc;')
+                or raw_text.lower().startswith('&amp;desc;')
+            )
+            # Also check for MemoQ <ph> desc tag
+            if not is_desc_seg and len(seg) > 0:
+                ph = seg.find('ph')
+                if ph is not None:
+                    ph_text = (ph.text or '').strip().lower()
+                    if 'desc' in ph_text and 'rxt-req' in ph_text:
+                        is_desc_seg = True
+            if is_desc_seg:
+                row['is_desc'] = True
+
+            # ── Step 2: Clean CAT markup ──
             seg_text = etree.tostring(seg, encoding='unicode', method='xml')
             seg_text = re.sub(r'^<seg[^>]*>', '', seg_text)
-            seg_text = re.sub(r'</seg>$', '', seg_text)
+            seg_text = re.sub(r'</seg>\s*$', '', seg_text)
             seg_text = seg_text.strip()
 
             cleaned = clean_segment(seg_text)
 
-            if lang == 'ko':
+            # ── Step 3: Strip &desc; prefix from cleaned text (synced from QT) ──
+            if is_desc_seg:
+                cleaned = re.sub(
+                    r'^(&amp;amp;desc;|&amp;desc;|&desc;)', '',
+                    cleaned, flags=re.IGNORECASE
+                ).strip()
+
+            if lang.startswith('ko'):
                 row['ko_seg'] = cleaned
             else:
                 row['tgt_seg'] = cleaned
@@ -799,16 +824,23 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
 
 def dedup_rows(rows: list[dict]) -> list[dict]:
     """
-    Deduplicate by (x_context, ko_seg).
-    Keep the row with the LATEST changedate.
+    Deduplicate by (x_context, ko_seg) and merge main + desc TUs by context.
+
+    Main TUs: dedup by (x_context, ko_seg), keep latest.
+    Desc TUs: merged into same row via desc_origin/desc_text fields.
+    Synced from QuickTranslate core/tmx_tools.py.
     """
     empty_ctx = sum(1 for r in rows if not r['x_context'])
     if rows and empty_ctx > len(rows) * 0.5:
         logger.warning(f"{empty_ctx}/{len(rows)} rows have no x-context — dedup is by KO text only")
 
-    seen: dict[tuple, dict] = {}
+    # Separate main and desc TUs
+    main_rows = [r for r in rows if not r.get('is_desc')]
+    desc_rows = [r for r in rows if r.get('is_desc')]
 
-    for row in rows:
+    # Dedup main TUs by (x_context, ko_seg), keep latest
+    seen: dict[tuple, dict] = {}
+    for row in main_rows:
         key = (row['x_context'], row['ko_seg'])
         if key in seen:
             if row['changedate'] > seen[key]['changedate']:
@@ -816,36 +848,77 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
         else:
             seen[key] = row
 
-    return list(seen.values())
+    # Initialize desc fields on all main rows
+    result = list(seen.values())
+    for r in result:
+        r.setdefault('desc_origin', '')
+        r.setdefault('desc_text', '')
+
+    # Build context→row lookup for merging desc into main
+    ctx_lookup: dict[str, dict] = {}
+    for r in result:
+        ctx = r['x_context']
+        if ctx:
+            ctx_lookup[ctx] = r
+
+    # Merge desc TUs into their matching main row by x_context
+    merged_desc = 0
+    orphan_desc = 0
+    for d in desc_rows:
+        ctx = d['x_context']
+        if ctx and ctx in ctx_lookup:
+            ctx_lookup[ctx]['desc_origin'] = d['ko_seg']
+            ctx_lookup[ctx]['desc_text'] = d['tgt_seg']
+            merged_desc += 1
+        else:
+            orphan_desc += 1
+
+    if merged_desc:
+        logger.info(f"  Merged {merged_desc} description(s) into main rows")
+    if orphan_desc:
+        logger.warning(f"  {orphan_desc} orphan description(s) with no matching main TU")
+
+    return result
 
 
 def write_excel(rows: list[dict], output_path: str) -> None:
-    """Write rows to Excel using xlsxwriter — 3 merge-ready columns only."""
+    """Write rows to Excel using xlsxwriter — 6-column format with Desc + ChangeDate.
+    Synced from QuickTranslate core/tmx_tools.py."""
     import xlsxwriter
 
     wb = xlsxwriter.Workbook(output_path)
     ws = wb.add_worksheet('TMX Clean')
 
-    # Simplified 3-column output for merge
-    headers = ['StrOrigin', 'Correction', 'StringID']
-    keys = ['ko_seg', 'tgt_seg', 'x_context']
+    # 6-column format: DescOrigin + Desc + ChangeDate (synced from QT)
+    headers = ['StrOrigin', 'Correction', 'StringID', 'DescOrigin', 'Desc', 'ChangeDate']
+    keys = ['ko_seg', 'tgt_seg', 'x_context', 'desc_origin', 'desc_text', 'changedate']
 
     hdr_fmt = wb.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'border': 1})
     cell_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
+    stringid_fmt = wb.add_format({'text_wrap': True, 'valign': 'top', 'border': 1, 'num_format': '@'})
 
     for col, h in enumerate(headers):
         ws.write(0, col, h, hdr_fmt)
 
     for row_idx, row in enumerate(rows, 1):
         for col, key in enumerate(keys):
-            ws.write(row_idx, col, row.get(key, ''), cell_fmt)
+            fmt = stringid_fmt if key == 'x_context' else cell_fmt
+            ws.write(row_idx, col, str(row.get(key, '')), fmt)
 
     # Column widths
     ws.set_column(0, 0, 60)   # StrOrigin
     ws.set_column(1, 1, 60)   # Correction
     ws.set_column(2, 2, 30)   # StringID
+    ws.set_column(3, 3, 50)   # DescOrigin
+    ws.set_column(4, 4, 50)   # DescText
+    ws.set_column(5, 5, 22)   # ChangeDate
 
     ws.autofilter(0, 0, len(rows), len(headers) - 1)
+
+    # Count desc rows for logging
+    desc_count = sum(1 for r in rows if r.get('desc_origin'))
+    wb.close()
+    logger.info(f"[EXCEL] Written {len(rows)} rows ({desc_count} with descriptions) to: {output_path}")
 
     wb.close()
     logger.info(f"[EXCEL] Written {len(rows)} rows to: {output_path}")

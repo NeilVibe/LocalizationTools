@@ -47,6 +47,7 @@
   let inlineEditTextarea = $state(null);
   let isCancellingEdit = $state(false);
   let isConfirming = $state(false);
+  let isSaving = $state(false);
 
   // Color picker state
   let showColorPicker = $state(false);
@@ -141,41 +142,57 @@
     return formatTextForSave(rawText);
   }
 
-  /** Save row to API, update local state, invalidate height cache */
+  /** Save row to API, update local state, invalidate height cache.
+   *  OPTIMISTIC: updates local state IMMEDIATELY, then fires API in background.
+   *  If API fails, reverts the local change. */
   async function saveRowToAPI(row, textToSave, status) {
-    const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
-      method: 'PUT',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: textToSave, status })
-    });
-    if (response.ok) {
-      row.target = textToSave;
-      row.status = status;
-      const rowIndex = getRowIndexById(row.id);
-      if (rowIndex !== undefined) {
-        rowHeightCache.delete(rowIndex);
-        rebuildCumulativeHeights(stripColorTags);
+    // Optimistic update — instant UI feedback, no waiting for network
+    const oldTarget = row.target;
+    const oldStatus = row.status;
+    row.target = textToSave;
+    row.status = status;
+    const rowIndex = getRowIndexById(row.id);
+    if (rowIndex !== undefined) {
+      rowHeightCache.delete(rowIndex);
+      // Defer height rebuild to next frame — don't block the edit flow
+      requestAnimationFrame(() => rebuildCumulativeHeights(stripColorTags));
+    }
+
+    // Fire API call (non-blocking for the edit flow)
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: textToSave, status })
+      });
+      if (!response.ok) {
+        // Revert on failure
+        row.target = oldTarget;
+        row.status = oldStatus;
+        logger.error("API save failed — reverted", { rowId: row.id, status: response.status });
+        return false;
       }
       // Save back to XML for gamedev mode
       if (fileType === 'gamedev' && row.extra_data?.source_xml_path) {
-        try {
-          await fetch(`${API_BASE}/api/ldm/gamedata/save`, {
-            method: 'PUT',
-            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              xml_path: row.extra_data.source_xml_path,
-              entity_index: row.extra_data.entity_index ?? (row.row_num - 1),
-              attr_name: row.extra_data.editing_attr || 'Name',
-              new_value: textToSave
-            })
-          });
-        } catch (err) {
-          console.warn('XML save-back failed (DB row saved):', err);
-        }
+        fetch(`${API_BASE}/api/ldm/gamedata/save`, {
+          method: 'PUT',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            xml_path: row.extra_data.source_xml_path,
+            entity_index: row.extra_data.entity_index ?? (row.row_num - 1),
+            attr_name: row.extra_data.editing_attr || 'Name',
+            new_value: textToSave
+          })
+        }).catch(err => console.warn('XML save-back failed (DB row saved):', err));
       }
       return true;
+    } catch (err) {
+      // Network error — revert
+      row.target = oldTarget;
+      row.status = oldStatus;
+      logger.error("API save network error — reverted", { rowId: row.id, error: err.message });
+      return false;
     }
-    return false;
   }
 
   /** End editing, release lock, clear state, optionally move to next row */
@@ -192,7 +209,8 @@
         const nextRow = grid.rows[currentIndex + 1];
         if (nextRow && !nextRow.placeholder) {
           grid.selectedRowId = nextRow.id;
-          onRowSelect?.({ row: nextRow });
+          // Flag isEditing so GridPage skips TM fetch during edit-to-edit transitions
+          onRowSelect?.({ row: nextRow, isEditing: true });
           await startInlineEdit(nextRow);
         }
       }
@@ -252,12 +270,14 @@
     }
   }
 
-  /** Save inline edit and optionally move to next row */
+  /** Save inline edit and optionally move to next row.
+   *  isSaving guard prevents double-save from blur + keyboard racing. */
   export async function saveInlineEdit(moveToNext = false) {
-    if (!grid.inlineEditingRowId || isCancellingEdit) return;
+    if (!grid.inlineEditingRowId || isCancellingEdit || isSaving) return;
+    isSaving = true;
 
     const row = getRowById(grid.inlineEditingRowId);
-    if (!row) { cancelInlineEdit(); return; }
+    if (!row) { isSaving = false; cancelInlineEdit(); return; }
 
     const textToSave = getCurrentTextToSave();
     if (textToSave !== row.target) {
@@ -275,6 +295,7 @@
     }
 
     await endEditAndMoveNext(moveToNext);
+    isSaving = false;
   }
 
   /** Cancel inline edit without saving */
@@ -311,8 +332,9 @@
 
   /** Confirm translation: Save as "reviewed" + add to TM */
   async function confirmInlineEdit() {
-    if (!grid.inlineEditingRowId || isConfirming) return;
+    if (!grid.inlineEditingRowId || isConfirming || isSaving) return;
     isConfirming = true;
+    isSaving = true;
     isCancellingEdit = true;
 
     const row = getRowById(grid.inlineEditingRowId);
@@ -333,7 +355,7 @@
     }
 
     await endEditAndMoveNext(true);
-    setTimeout(() => { isCancellingEdit = false; isConfirming = false; }, 0);
+    setTimeout(() => { isCancellingEdit = false; isConfirming = false; isSaving = false; }, 0);
   }
 
   /** Mark as translated (needs review) via Ctrl+T */
@@ -432,9 +454,17 @@
       e.preventDefault();
       saveInlineEdit(true);
     } else if (e.key === 'Enter' && !e.shiftKey) {
-      // Enter = insert <br/> linebreak (translation tool standard)
+      // Enter = insert visual linebreak (saved as <br/> in XML)
+      // insertHTML puts an actual <br> element in the contenteditable div
+      // On save, htmlToPaColor converts <br> → \n → formatTextForSave → &lt;br/&gt;
       e.preventDefault();
-      document.execCommand('insertText', false, '<br/>');
+      // Single <br> for line break. At end-of-content, browsers need a trailing
+      // <br> to show the cursor on the new line, so we check and add one if needed.
+      const sel = window.getSelection();
+      const range = sel?.getRangeAt(0);
+      const atEnd = range && range.endContainer === inlineEditTextarea &&
+        range.endOffset === inlineEditTextarea.childNodes.length;
+      document.execCommand('insertHTML', false, atEnd ? '<br><br>' : '<br>');
     } else if (e.key === 'Tab') {
       e.preventDefault();
       saveInlineEdit(true);

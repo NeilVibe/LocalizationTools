@@ -57,6 +57,7 @@ from .routes.semantic_search import router as semantic_search_router  # Phase 4:
 from .routes.mapdata import router as mapdata_router  # Phase 5: MapData Context
 from .routes.context import router as context_router  # Phase 5.1: Entity Context
 from .routes.merge import router as merge_router  # Phase 9/12: Translator + Game Dev merge
+from .routes.merge_to_disk import router as merge_to_disk_router  # Phase 101: QT-style merge to disk
 from .routes.ai_suggestions import router as ai_suggestions_router  # Phase 17: AI Translation Suggestions
 from .routes.gamedata import router as gamedata_router  # Phase 18: Game Dev Grid
 from .routes.codex import router as codex_router  # Phase 19: Game World Codex
@@ -101,6 +102,7 @@ router.include_router(semantic_search_router)  # Phase 4: Semantic Search
 router.include_router(mapdata_router)  # Phase 5: MapData Context
 router.include_router(context_router)  # Phase 5.1: Entity Context
 router.include_router(merge_router)  # Phase 9/12: Translator + Game Dev merge
+router.include_router(merge_to_disk_router)  # Phase 101: QT-style merge to disk
 router.include_router(ai_suggestions_router)  # Phase 17: AI Translation Suggestions
 router.include_router(gamedata_router)  # Phase 18: Game Dev Grid
 router.include_router(codex_router)  # Phase 19: Game World Codex

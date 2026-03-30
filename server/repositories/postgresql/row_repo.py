@@ -230,31 +230,46 @@ class PostgreSQLRowRepository(RowRepository):
         self,
         updates: List[Dict[str, Any]]
     ) -> int:
-        """Bulk update multiple rows."""
+        """Bulk update multiple rows — NO individual SELECTs.
+
+        Previous: N individual SELECT + UPDATE per row (169k queries for a merge).
+        Now: Direct UPDATE statements, no SELECT needed, single COMMIT.
+        """
+        if not updates:
+            return 0
+
+        now = datetime.utcnow()
         count = 0
+
         for update in updates:
             row_id = update.get("id")
             if not row_id:
                 continue
 
-            result = await self.db.execute(
-                select(LDMRow).where(LDMRow.id == row_id)
-            )
-            row = result.scalar_one_or_none()
-            if not row:
-                continue
+            # Build SET clause dynamically — only update provided fields
+            set_clauses = []
+            params: Dict[str, Any] = {"rid": int(row_id), "now": now}
 
             if "target" in update:
-                row.target = update["target"]
+                set_clauses.append("target = :target")
+                params["target"] = update["target"]
             if "status" in update:
-                row.status = update["status"]
+                set_clauses.append("status = :status")
+                params["status"] = update["status"]
             if "extra_data" in update and update["extra_data"] is not None:
-                row.extra_data = update["extra_data"]
-            row.updated_at = datetime.utcnow()
+                set_clauses.append("extra_data = :extra_data")
+                params["extra_data"] = update["extra_data"]
+
+            if not set_clauses:
+                continue
+
+            set_clauses.append("updated_at = :now")
+            sql = text(f"UPDATE ldm_rows SET {', '.join(set_clauses)} WHERE id = :rid")
+            await self.db.execute(sql, params)
             count += 1
 
         await self.db.commit()
-        logger.info(f"Bulk updated {count} rows")
+        logger.info(f"Bulk updated {count} rows (direct UPDATE, no SELECT)")
         return count
 
     # =========================================================================

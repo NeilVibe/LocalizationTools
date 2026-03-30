@@ -29,6 +29,8 @@ from typing import Optional
 import numpy as np
 from loguru import logger
 
+from typing import Callable
+
 from server.tools.ldm.services.korean_detection import is_korean_text
 from server.tools.ldm.services.postprocess import postprocess_rows
 from server.tools.ldm.services.text_matching import (
@@ -55,8 +57,13 @@ class MergeResult:
     """Result of a merge operation."""
 
     matched: int = 0
-    skipped: int = 0
+    updated: int = 0          # Rows actually changed (new != old)
+    unchanged: int = 0        # Matched but identical (skipped write)
+    skipped: int = 0          # Source rows filtered by skip guards
+    skipped_translated: int = 0  # Skipped by transfer_scope=untranslated
+    not_found: int = 0        # Target rows with no matching correction
     total: int = 0
+    by_category: dict = field(default_factory=dict)  # Per-category stats
     match_type_counts: dict = field(default_factory=lambda: {
         "strict": 0,
         "stringid_only": 0,
@@ -66,6 +73,7 @@ class MergeResult:
         "fuzzy": 0,
     })
     updated_rows: list[dict] = field(default_factory=list)
+    details: list[dict] = field(default_factory=list)  # Per-row status
 
 
 class TranslatorMergeService:
@@ -73,6 +81,85 @@ class TranslatorMergeService:
 
     Ported from QuickTranslate's xml_transfer.py merge engine.
     """
+
+    # -----------------------------------------------------------------
+    # Identical-skip helper (grafted from QT xml_transfer.py L574)
+    # -----------------------------------------------------------------
+
+    def _record_match(
+        self,
+        target: dict,
+        matched_text: str,
+        mode: str,
+        result: MergeResult,
+    ) -> None:
+        """Record a match, skipping DB write if target is already identical.
+
+        QT graft: xml_transfer.py L574 — `if new_str != old_str: update else: UNCHANGED`
+        Also handles transfer_scope="untranslated" — skip already-translated rows.
+        """
+        result.matched += 1
+        result.match_type_counts[mode] += 1
+        existing = (target.get("target") or "").strip()
+
+        # Track by_category
+        category = target.get("category", "Uncategorized") or "Uncategorized"
+        if category not in result.by_category:
+            result.by_category[category] = {"matched": 0, "updated": 0, "unchanged": 0}
+        result.by_category[category]["matched"] += 1
+
+        # transfer_scope="untranslated": skip rows that already have a non-Korean translation
+        if getattr(self, "_transfer_scope", "all") == "untranslated":
+            if existing and not is_korean_text(existing):
+                result.skipped_translated += 1
+                result.by_category[category]["unchanged"] += 1
+                result.details.append({
+                    "row_id": target.get("id"),
+                    "string_id": target.get("string_id", ""),
+                    "status": "SKIPPED_TRANSLATED",
+                    "match_mode": mode,
+                    "category": category,
+                })
+                return
+
+        if matched_text.strip() == existing:
+            # IDENTICAL — skip DB write
+            result.unchanged += 1
+            result.by_category[category]["unchanged"] += 1
+            result.details.append({
+                "row_id": target.get("id"),
+                "string_id": target.get("string_id", ""),
+                "status": "UNCHANGED",
+                "match_mode": mode,
+                "category": category,
+            })
+        else:
+            # DIFFERENT — queue for DB write
+            updated = dict(target)
+            updated["target"] = matched_text
+            result.updated_rows.append(updated)
+            result.updated += 1
+            result.by_category[category]["updated"] += 1
+            result.details.append({
+                "row_id": target.get("id"),
+                "string_id": target.get("string_id", ""),
+                "status": "UPDATED",
+                "match_mode": mode,
+                "category": category,
+                "old": existing[:80],
+                "new": matched_text[:80],
+            })
+
+        # Emit progress every 500 rows
+        self._progress_counter += 1
+        if self._progress_cb and self._progress_counter % 500 == 0:
+            self._progress_cb({
+                "phase": "matching",
+                "processed": self._progress_counter,
+                "matched": result.matched,
+                "updated": result.updated,
+                "unchanged": result.unchanged,
+            })
 
     # -----------------------------------------------------------------
     # Skip guards -- filter source rows into valid corrections
@@ -128,6 +215,19 @@ class TranslatorMergeService:
                 "desc_origin": (row.get("desc_origin") or "").strip(),
                 "filepath": (row.get("filepath") or "").strip(),
             })
+
+        # unique_only: deduplicate by str_origin (keep first occurrence)
+        if getattr(self, "_unique_only", False) and corrections:
+            seen_origins: set = set()
+            unique: list[dict] = []
+            for c in corrections:
+                origin_key = normalize_for_matching(c["str_origin"])
+                if origin_key not in seen_origins:
+                    seen_origins.add(origin_key)
+                    unique.append(c)
+            logger.info("unique_only: %d → %d corrections (removed %d duplicates)",
+                        len(corrections), len(unique), len(corrections) - len(unique))
+            corrections = unique
 
         return corrections
 
@@ -379,6 +479,13 @@ class TranslatorMergeService:
         match_mode: str = "cascade",
         threshold: float = 0.85,
         is_cjk: bool = False,
+        transfer_scope: str = "all",
+        ignore_spaces: bool = False,
+        ignore_punctuation: bool = False,
+        all_categories: bool = False,
+        non_script_only: bool = False,
+        unique_only: bool = False,
+        progress_callback: Optional[Callable[[dict], None]] = None,
     ) -> MergeResult:
         """Merge corrections from source into target rows.
 
@@ -389,10 +496,20 @@ class TranslatorMergeService:
                         "fuzzy", or "cascade" (default).
             threshold: Fuzzy match similarity threshold (0.0 - 1.0).
             is_cjk: CJK language flag for postprocess pipeline.
+            transfer_scope: "all" (overwrite) or "untranslated" (only empty/Korean targets).
+            ignore_spaces: Use nospace normalization for matching.
+            ignore_punctuation: Ignore sentence-ending punctuation during matching.
 
         Returns:
             MergeResult with matched/skipped counts and updated rows.
         """
+        # Store options for use in _record_match and parse_corrections
+        self._transfer_scope = transfer_scope
+        self._all_categories = all_categories
+        self._non_script_only = non_script_only
+        self._unique_only = unique_only
+        self._progress_cb = progress_callback
+        self._progress_counter = 0
         result = MergeResult(total=len(target_rows))
 
         # Step 1: Parse corrections (apply skip guards)
@@ -421,11 +538,21 @@ class TranslatorMergeService:
             logger.warning("Unknown match_mode=%s, defaulting to cascade", match_mode)
             self._merge_cascade(target_rows, corrections, threshold, result)
 
+        # Calculate not_found: target rows that never matched anything
+        result.not_found = result.total - result.matched
+
         # Step 3: Postprocess all updated rows
         if result.updated_rows:
             result.updated_rows, _stats = postprocess_rows(
                 result.updated_rows, is_cjk=is_cjk
             )
+
+        logger.info(
+            "[MERGE-SERVICE] matched=%d, updated=%d, unchanged=%d, "
+            "skipped_translated=%d, not_found=%d, categories=%d",
+            result.matched, result.updated, result.unchanged,
+            result.skipped_translated, result.not_found, len(result.by_category),
+        )
 
         return result
 
@@ -454,11 +581,7 @@ class TranslatorMergeService:
                 matched_text = self._find_strorigin_filename_match(target, lookup, lookup_ns)
 
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts[mode] += 1
+                self._record_match(target, matched_text, mode, result)
 
     def _merge_cascade(
         self,
@@ -480,21 +603,13 @@ class TranslatorMergeService:
             # Try strict first
             matched_text = self._find_strict_match(target, strict_lookup, strict_ns)
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["strict"] += 1
+                self._record_match(target, matched_text, "strict", result)
                 continue
 
             # Try stringid_only
             matched_text = self._find_stringid_match(target, stringid_lookup)
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["stringid_only"] += 1
+                self._record_match(target, matched_text, "stringid_only", result)
                 continue
 
             # Try strorigin_only
@@ -502,11 +617,7 @@ class TranslatorMergeService:
                 target, strorigin_lookup, strorigin_ns
             )
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["strorigin_only"] += 1
+                self._record_match(target, matched_text, "strorigin_only", result)
                 continue
 
             # Try strorigin_descorigin
@@ -514,11 +625,7 @@ class TranslatorMergeService:
                 target, descorigin_lookup, descorigin_ns
             )
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["strorigin_descorigin"] += 1
+                self._record_match(target, matched_text, "strorigin_descorigin", result)
                 continue
 
             # Try strorigin_filename
@@ -526,11 +633,7 @@ class TranslatorMergeService:
                 target, filename_pass1, filename_pass2
             )
             if matched_text is not None:
-                updated = dict(target)
-                updated["target"] = matched_text
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["strorigin_filename"] += 1
+                self._record_match(target, matched_text, "strorigin_filename", result)
                 continue
 
             # Collect for fuzzy
@@ -542,11 +645,7 @@ class TranslatorMergeService:
                 unmatched, corrections, threshold
             )
             for target, corrected in fuzzy_matches:
-                updated = dict(target)
-                updated["target"] = corrected
-                result.updated_rows.append(updated)
-                result.matched += 1
-                result.match_type_counts["fuzzy"] += 1
+                self._record_match(target, corrected, "fuzzy", result)
 
     def _merge_fuzzy_only(
         self,
@@ -560,8 +659,4 @@ class TranslatorMergeService:
             target_rows, corrections, threshold
         )
         for target, corrected in fuzzy_matches:
-            updated = dict(target)
-            updated["target"] = corrected
-            result.updated_rows.append(updated)
-            result.matched += 1
-            result.match_type_counts["fuzzy"] += 1
+            self._record_match(target, corrected, "fuzzy", result)

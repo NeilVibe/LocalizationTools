@@ -262,11 +262,11 @@
 
     <!-- Hotkey Reference Bar -->
     <div class="hotkey-bar">
-      <span class="hotkey"><kbd>Enter</kbd> Save & Next</span>
+      <span class="hotkey"><kbd>Enter</kbd> Linebreak</span>
+      <span class="hotkey"><kbd>Ctrl+Enter</kbd> Save & Next</span>
+      <span class="hotkey"><kbd>Tab</kbd> Save & Next</span>
       <span class="hotkey"><kbd>Ctrl+S</kbd> Confirm</span>
-      <span class="hotkey"><kbd>Ctrl+T</kbd> Translated</span>
       <span class="hotkey"><kbd>Esc</kbd> Cancel</span>
-      <span class="hotkey"><kbd>Ctrl+D</kbd> Dismiss QA</span>
       <span class="hotkey"><kbd>Ctrl+Z</kbd> Undo</span>
       <span class="hotkey"><kbd>Ctrl+Y</kbd> Redo</span>
     </div>

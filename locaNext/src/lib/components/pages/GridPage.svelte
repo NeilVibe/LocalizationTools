@@ -145,16 +145,21 @@
   });
 
   /**
-   * Handle row selection - load TM matches (debounced)
+   * Handle row selection - load TM matches (debounced).
+   * Skips TM/context fetch during active editing to prevent spam (BUG-19).
    */
   async function handleRowSelect(data) {
-    const { row } = data;
+    const { row, isEditing } = data;
     sidePanelSelectedRow = row;
     sidePanelTMMatches = [];
     sidePanelContextResults = [];
     sidePanelQAIssues = row?.qa_issues || [];
 
     if (!row?.source) return;
+
+    // BUG-19: Skip TM/context fetch during inline editing transitions
+    // TM suggestions are not useful while the user is actively editing rows
+    if (isEditing) return;
 
     // Debounce TM + context loading to avoid API spam on rapid row navigation
     clearTimeout(tmDebounceTimer);
