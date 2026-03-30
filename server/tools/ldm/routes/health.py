@@ -64,7 +64,23 @@ async def system_status(_user=Depends(get_current_active_user_async)):
         from server.tools.ldm.services.mega_index import get_mega_index
         mi = get_mega_index()
         total = len(mi.stringid_to_translations) if mi._built else 0
-        status["mega_index"] = {"status": "built" if mi._built else "not_built", "entries": total}
+        mi_status = {"status": "built" if mi._built else "not_built", "entries": total}
+        if mi._built:
+            ec = mi.entity_counts()
+            mi_status["counts"] = {
+                "knowledge": ec.get("knowledge", 0),
+                "characters": ec.get("character", 0),
+                "items": ec.get("item", 0),
+                "regions": ec.get("region", 0),
+                "factions": ec.get("faction", 0),
+                "skills": ec.get("skill", 0),
+                "gimmicks": ec.get("gimmick", 0),
+                "dds": len(mi.dds_by_stem),
+                "wem": len(mi.wem_by_event),
+                "strorigins": len(mi.stringid_to_strorigin),
+            }
+            mi_status["build_time"] = round(mi._build_time, 2)
+        status["mega_index"] = mi_status
     except Exception as e:
         status["mega_index"] = {"status": "error", "error": str(e)}
 
