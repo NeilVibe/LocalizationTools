@@ -856,7 +856,7 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
     body = re.sub(r'^<\?xml[^>]*\?>\s*', '', raw_text, flags=re.MULTILINE)
     body = re.sub(r'<!DOCTYPE[^>]*>\s*', '', body, flags=re.IGNORECASE)
 
-    parser = etree.XMLParser(remove_blank_text=True, recover=True)
+    parser = etree.XMLParser(recover=True)
     try:
         root = etree.fromstring(body.encode('utf-8'), parser=parser)
     except Exception as e:
@@ -937,7 +937,7 @@ def parse_tmx_to_rows(fpath: str) -> list[dict]:
             # ── Step 2: Clean CAT markup (uses tostring for full content) ──
             seg_text = etree.tostring(seg, encoding='unicode', method='xml')
             seg_text = re.sub(r'^<seg[^>]*>', '', seg_text)
-            seg_text = re.sub(r'</seg>$', '', seg_text)
+            seg_text = re.sub(r'</seg>\s*$', '', seg_text)
             seg_text = seg_text.strip()
 
             cleaned = clean_segment(seg_text)
