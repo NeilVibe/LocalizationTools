@@ -217,18 +217,54 @@ Enter now inserts `<br/>`. Ctrl+Enter saves. CAT tool standard.
 **Severity:** LOW — `addRange(): The given range isn't in document` renderer warning
 **May be fixed** by BUG-17/18 fixes (Space/Enter no longer fight between handlers)
 
-### Priority Order for Remaining Work
+### BUG-21: Merge COMPLETELY BROKEN — target file NOT modified after merge (CRITICAL)
+**Severity:** CRITICAL — merge completes with "success" but file is unchanged
+**Evidence:** User completed merge, got success toast with 169,650 matched, but target file had ZERO modifications. Nothing changed at all.
+**Possible causes:**
+1. BUG-8 merge direction reversal broke data flow (source/target IDs swapped incorrectly)
+2. bulk_update wrote to source file rows instead of target file rows
+3. Rows updated in DB but file not re-exported/refreshed on disk
+4. The "updated" rows had identical content (BUG-13) so no visible change
+**MUST INVESTIGATE:** Read the full merge flow: FileMergeModal → route → translator_merge.py → row_repo.bulk_update
+
+### BUG-22: QuickTranslate "make file writable" technique NOT grafted (HIGH)
+**Severity:** HIGH — QT has battle-tested file handling that LocaNext doesn't use
+**What QT does:**
+- `make_file_writable()` before ANY write operation
+- Checks file permissions, removes read-only flag
+- Handles Windows file locking gracefully
+- Creates backup before modification
+**What LocaNext does:** Unknown — needs research
+**Fix:** Graft QT's file writable pattern into LocaNext merge/export flows
+
+### BUG-23: QuickTranslate merge logic NOT fully grafted (CRITICAL)
+**Severity:** CRITICAL — the CORE merge algorithm doesn't match QT
+**QT battle-tested behaviors that must be grafted:**
+1. `parse_corrections()` — builds correction dict from source file
+2. `apply_corrections()` — iterates target, ONLY modifies rows where target DIFFERS
+3. Skip identical — source match + target identical = no-op, not a "match"
+4. Normalization — whitespace, br-tags, placeholders normalized before comparison
+5. Transfer scope filtering (all / only untranslated / only different)
+6. Category filtering (script / non-script / all)
+7. Statistics — transferred count, skipped count, identical count, error count
+8. Per-row detailed log — which rows changed, old→new values
+9. Dry run — preview mode before committing
+10. Make file writable before write
+**Research needed:** 8 parallel Explore agents on QT core/transfer.py, core/matching.py, core/normalization.py
+
+### Priority Order for Remaining Work (Phase 101)
 
 | Priority | Issue | Status | Phase |
 |----------|-------|--------|-------|
-| 1 | BUG-13: Merge matches identical strings | TODO | 101 |
-| 2 | BUG-14: Merge no progress feedback | TODO | 101 |
-| 3 | BUG-15: Merge format string bug | TODO | 101 |
-| 4 | BUG-16: Merge options silently dropped | TODO | 101 |
-| 5 | BUG-19: TM suggest spam during editing | TODO | 101 |
-| 6 | BUG-20: Cell distortion | MAYBE FIXED | verify |
-| 7 | Image Korean fallback chain | FIXED (uncommitted) | push |
-| 8 | StatusPage counts backend | FIXED (uncommitted) | push |
+| 1 | BUG-21: Merge completely broken (target unchanged) | TODO — INVESTIGATE | 101 |
+| 2 | BUG-23: QT merge logic not grafted | TODO — RESEARCH+GRAFT | 101 |
+| 3 | BUG-13: Merge matches identical strings | TODO (part of QT graft) | 101 |
+| 4 | BUG-14: Merge no progress feedback | TODO | 101 |
+| 5 | BUG-15: Merge format string bug | TODO | 101 |
+| 6 | BUG-16: Merge options silently dropped | TODO (part of QT graft) | 101 |
+| 7 | BUG-22: Make file writable not grafted | TODO (part of QT graft) | 101 |
+| 8 | BUG-19: TM suggest spam during editing | TODO | 101 |
+| 9 | BUG-20: Cell distortion | MAYBE FIXED | verify |
 
 ---
 
