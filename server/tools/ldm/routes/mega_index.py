@@ -57,6 +57,19 @@ async def mega_build(
     preload_langs = body.preload_langs if body and body.preload_langs else None
     logger.info(f"[MEGAINDEX] Build triggered via API, langs={preload_langs}")
     mi.build(preload_langs=preload_langs)
+
+    # Initialize MapDataService so image/audio lookups work immediately
+    try:
+        from ..services.mapdata_service import get_mapdata_service
+        from ..services.perforce_path_service import get_perforce_path_service
+        path_svc = get_perforce_path_service()
+        status = path_svc.get_status()
+        mapdata = get_mapdata_service()
+        mapdata.initialize(branch=status.get("branch", "mainline"), drive=status.get("drive", "F"))
+        logger.info(f"[MEGAINDEX] MapDataService initialized after build: {len(mapdata._strkey_to_image)} image chains")
+    except Exception as e:
+        logger.warning(f"[MEGAINDEX] MapDataService init after build failed: {e}")
+
     return mi.stats()
 
 

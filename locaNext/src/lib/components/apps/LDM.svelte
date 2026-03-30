@@ -351,6 +351,11 @@
    */
   async function loadTMMatchesForRow(row) {
     if (!row?.source || !selectedFileId) return;
+    // Skip TM API call when no TM is active — avoids useless network requests
+    if (!$preferences.activeTmId) {
+      sidePanelTMLoading = false;
+      return;
+    }
 
     sidePanelTMLoading = true;
     sidePanelTMMatches = [];

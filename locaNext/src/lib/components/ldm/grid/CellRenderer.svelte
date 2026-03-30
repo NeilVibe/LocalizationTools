@@ -23,6 +23,8 @@
     getRowHeight as gridGetRowHeight,
     getTotalHeight,
     gameDevDynamicColumns,
+    rowHeightCache,
+    rebuildCumulativeHeights,
   } from './gridState.svelte.ts';
   import TagText from '$lib/components/ldm/TagText.svelte';
   import QAInlineBadge from '$lib/components/ldm/QAInlineBadge.svelte';
@@ -286,6 +288,36 @@
   function getRowHeight(index) {
     return gridGetRowHeight(index, stripColorTags);
   }
+
+  /** Live resize: when contenteditable content changes, measure and grow the row.
+   *  Uses incremental height update (O(n) shift) instead of full rebuild (O(n) too but with
+   *  snapshot overhead). Debounced via rAF to avoid per-keystroke thrash. */
+  let resizeRafId = null;
+  function handleEditInput(rowIndex) {
+    if (resizeRafId) cancelAnimationFrame(resizeRafId);
+    resizeRafId = requestAnimationFrame(() => {
+      resizeRafId = null;
+      if (!inlineEditTextarea) return;
+      // Measure the contenteditable's natural scroll height + row chrome (border + padding)
+      const editHeight = inlineEditTextarea.scrollHeight + 24;
+      const currentCached = rowHeightCache.get(rowIndex) || 48;
+      const newHeight = Math.max(48, editHeight);
+      // Only update if height changed meaningfully
+      if (Math.abs(newHeight - currentCached) > 4) {
+        const delta = newHeight - currentCached;
+        rowHeightCache.set(rowIndex, newHeight);
+        // Incremental shift: update cumulative heights from this row onward
+        const cum = heightData.cumulativeHeights;
+        if (cum.length > rowIndex + 1) {
+          for (let i = rowIndex + 1; i < cum.length; i++) {
+            cum[i] += delta;
+          }
+          // Trigger reactivity by reassigning
+          heightData.cumulativeHeights = cum;
+        }
+      }
+    });
+  }
 </script>
 
 <!-- Resize Bars: OUTSIDE scroll container so they don't scroll -->
@@ -454,6 +486,7 @@
                   role="textbox"
                   tabindex="0"
                   onkeydown={(e) => onInlineEditKeydown?.(e)}
+                  oninput={() => handleEditInput(rowIndex)}
                   onblur={() => onInlineEditBlur?.()}
                   oncontextmenu={(e) => onEditContextMenu?.(e)}
                   data-placeholder="Enter translation..."
@@ -717,18 +750,18 @@
     background: var(--cds-layer-02);
   }
 
-  /* Inline editing mode */
+  /* Inline editing mode — overflow visible so cell grows with content */
   .cell.target.inline-editing {
     padding: 0;
     background: var(--cds-field-01);
     border: 2px solid var(--cds-interactive-01);
     box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.3);
+    overflow: visible;
   }
 
   .inline-edit-textarea {
     width: 100%;
-    height: 100%;
-    min-height: 100%;
+    min-height: 48px;
     padding: 0.5rem;
     border: none;
     background: var(--cds-field-01);
@@ -738,7 +771,7 @@
     font-weight: var(--grid-font-weight, 400);
     line-height: 1.5;
     outline: none;
-    overflow-y: auto;
+    overflow-y: visible;
     white-space: pre-wrap;
     word-wrap: break-word;
     cursor: text;
@@ -759,13 +792,12 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
-    min-height: 100%;
+    min-height: 48px;
   }
 
   .inline-edit-container .inline-edit-textarea {
     flex: 1;
-    min-height: 60px;
+    min-height: 48px;
   }
 
   /* Status-based cell colors */

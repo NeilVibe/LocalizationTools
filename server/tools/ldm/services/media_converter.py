@@ -173,43 +173,64 @@ class MediaConverter:
     # -------------------------------------------------------------------------
 
     def _find_vgmstream(self) -> Optional[Path]:
-        """Locate the vgmstream-cli binary."""
+        """Locate the vgmstream-cli binary.
+
+        Search order (grafted from MDG audio_handler pattern):
+        1. System PATH
+        2. LOCANEXT_RESOURCES_PATH env var (Electron packaged app)
+        3. Co-located with python.exe (packaged app: resources/bin/vgmstream/)
+        4. Project root bin/vgmstream/ (dev mode after bundle_vgmstream.py)
+        5. Sibling to server dir (legacy server/bin/)
+        """
         if self._vgmstream_checked:
             return self._vgmstream_path
 
         self._vgmstream_checked = True
+        exe_name = "vgmstream-cli.exe" if os.name == "nt" else "vgmstream-cli"
 
-        # Check PATH first
+        # 1. Check PATH first
         which_result = shutil.which("vgmstream-cli")
         if which_result:
             self._vgmstream_path = Path(which_result)
             logger.info("Found vgmstream-cli in PATH: {}", self._vgmstream_path)
             return self._vgmstream_path
 
-        # Check Electron extraResources path (packaged app)
+        # 2. Check LOCANEXT_RESOURCES_PATH env var (Electron packaged app)
         electron_resources = os.environ.get("LOCANEXT_RESOURCES_PATH", "")
         if electron_resources:
-            electron_vgm = Path(electron_resources) / "bin" / "vgmstream" / "vgmstream-cli.exe"
+            electron_vgm = Path(electron_resources) / "bin" / "vgmstream" / exe_name
             if electron_vgm.exists():
                 self._vgmstream_path = electron_vgm
                 logger.info("Found vgmstream-cli in Electron resources: {}", self._vgmstream_path)
                 return self._vgmstream_path
 
-        # Check project root bin/vgmstream/ (dev mode after running bundle_vgmstream.py)
-        project_bin = Path(__file__).resolve().parents[4] / "bin" / "vgmstream" / "vgmstream-cli.exe"
+        # 3. Co-located with python.exe (packaged app structure):
+        #    resources/tools/python/python.exe  <-- sys.executable
+        #    resources/bin/vgmstream/vgmstream-cli.exe
+        import sys
+        python_exe = Path(sys.executable).resolve()
+        resources_dir = python_exe.parent.parent.parent  # tools/python/python.exe -> resources/
+        packaged_vgm = resources_dir / "bin" / "vgmstream" / exe_name
+        if packaged_vgm.exists():
+            self._vgmstream_path = packaged_vgm
+            logger.info("Found vgmstream-cli co-located with python: {}", self._vgmstream_path)
+            return self._vgmstream_path
+
+        # 4. Project root bin/vgmstream/ (dev mode after running bundle_vgmstream.py)
+        project_bin = Path(__file__).resolve().parents[4] / "bin" / "vgmstream" / exe_name
         if project_bin.exists():
             self._vgmstream_path = project_bin
             logger.info("Found vgmstream-cli in project bin: {}", self._vgmstream_path)
             return self._vgmstream_path
 
-        # Check bundled location (legacy server/bin/)
-        bundled = Path(__file__).resolve().parents[2] / "bin" / "vgmstream-cli"
+        # 5. Legacy server/bin/
+        bundled = Path(__file__).resolve().parents[2] / "bin" / exe_name
         if bundled.exists():
             self._vgmstream_path = bundled
             logger.info("Found bundled vgmstream-cli: {}", self._vgmstream_path)
             return self._vgmstream_path
 
-        logger.debug("vgmstream-cli not found in PATH or bundled location")
+        logger.warning("vgmstream-cli not found in any search path -- audio playback disabled")
         return None
 
     def clear_caches(self) -> None:

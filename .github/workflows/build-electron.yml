@@ -881,6 +881,39 @@ jobs:
         shell: pwsh
 
       # ============================================================
+      # STEP 2.5: Bundle vgmstream (WEM -> WAV audio converter)
+      # Grafted from MapDataGenerator CI — same binary, same DLLs.
+      # ============================================================
+      - name: Bundle vgmstream for audio playback
+        run: |
+          Write-Host "=== BUNDLING VGMSTREAM ===" -ForegroundColor Cyan
+
+          $binDir = "bin\vgmstream"
+          $zipPath = "vgmstream-win64.zip"
+          $vgmUrl = "https://github.com/vgmstream/vgmstream/releases/download/r2083/vgmstream-win64.zip"
+
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          Write-Host "Downloading vgmstream from: $vgmUrl"
+          Invoke-WebRequest -Uri $vgmUrl -OutFile $zipPath -UseBasicParsing
+          Write-Host "[OK] Downloaded: $zipPath"
+
+          Expand-Archive -Path $zipPath -DestinationPath $binDir -Force
+          Remove-Item $zipPath -Force
+          Write-Host "[OK] Extracted to: $binDir"
+
+          # Verify vgmstream-cli.exe exists
+          $vgmCli = "$binDir\vgmstream-cli.exe"
+          if (Test-Path $vgmCli) {
+            $files = (Get-ChildItem $binDir).Count
+            Write-Host "[OK] vgmstream-cli.exe verified ($files files bundled)" -ForegroundColor Green
+          } else {
+            Write-Error "vgmstream-cli.exe not found after extraction!"
+            exit 1
+          }
+        shell: pwsh
+
+      # ============================================================
       # STEP 3: Build Electron app
       # ============================================================
 

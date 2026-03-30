@@ -86,7 +86,7 @@
 
       if (buildRes.ok) {
         const result = await buildRes.json();
-        const count = result.total_entries || result.entity_count || 0;
+        const count = result.total_entities || result.total_entries || result.entity_count || 0;
         const time = result.build_time ? `${result.build_time.toFixed(1)}s` : '';
         if (count > 0) {
           addToast({ message: `${count} entries indexed ${time ? `in ${time}` : ''}`, kind: 'success', title: 'MegaIndex Ready', duration: 5000 });

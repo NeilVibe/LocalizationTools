@@ -182,9 +182,14 @@ async def lifespan(app: FastAPI):
                     from server.tools.ldm.services.mega_index import get_mega_index
                     mega = get_mega_index()
                     mega.build()
+                    # Initialize MapDataService so image/audio lookups work
+                    from server.tools.ldm.services.mapdata_service import get_mapdata_service
+                    mapdata_svc = get_mapdata_service()
+                    mapdata_svc.initialize(branch=branch, drive=drive)
                     logger.success(
                         f"[STARTUP] MegaIndex auto-built from saved paths: drive={drive}, branch={branch}, "
-                        f"{len(mega.dds_by_stem)} textures, {len(mega.wem_by_event)} audio"
+                        f"{len(mega.dds_by_stem)} textures, {len(mega.wem_by_event)} audio, "
+                        f"{len(mapdata_svc._strkey_to_image)} image chains"
                     )
         except Exception as e:
             logger.warning(f"[STARTUP] MegaIndex restore skipped: {e}")
@@ -204,11 +209,16 @@ async def lifespan(app: FastAPI):
                 # Build MegaIndex (35 dicts, all entity types)
                 mega = get_mega_index()
                 mega.build()
+                # Initialize MapDataService for image/audio lookups
+                from server.tools.ldm.services.mapdata_service import get_mapdata_service
+                mapdata_svc = get_mapdata_service()
+                mapdata_svc.initialize(branch="mainline", drive="F")
                 logger.success(
                     f"[DEV] MegaIndex auto-built: {len(mega.item_by_strkey)} items, "
                     f"{len(mega.character_by_strkey)} characters, "
                     f"{len(mega.region_by_strkey)} regions, "
-                    f"{len(mega.knowledge_by_strkey)} knowledge entries "
+                    f"{len(mega.knowledge_by_strkey)} knowledge entries, "
+                    f"{len(mapdata_svc._strkey_to_image)} image chains "
                     f"in {mega._build_time:.1f}s"
                 )
             else:

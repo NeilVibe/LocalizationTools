@@ -170,9 +170,13 @@
     logger.info("Row marked as TM-applied", { rowId, matchType });
   }
 
-  /** Fetch TM suggestions for a source text */
+  /** Fetch TM suggestions for a source text — SKIP when no TM is active */
   export async function fetchTMSuggestions(sourceText, rowId) {
     if (!sourceText || !sourceText.trim()) {
+      return;
+    }
+    // No active TMs → no point calling the API (it returns 0 matches from project rows anyway)
+    if (!activeTMs || activeTMs.length === 0) {
       return;
     }
 
