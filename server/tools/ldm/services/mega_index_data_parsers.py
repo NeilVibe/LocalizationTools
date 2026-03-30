@@ -26,6 +26,11 @@ from server.tools.ldm.services.mega_index_schemas import (
 )
 
 
+def _ci_attrs(elem) -> dict:
+    """Case-insensitive XML attribute extraction — lowercase BOTH keys and values used as IDs."""
+    return {k.lower(): v for k, v in elem.attrib.items()}
+
+
 class DataParsersMixin:
     """Mixin providing Phase 1 (foundation), Phase 3 (localization), and Phase 5 (broad scan) parsers."""
 
@@ -33,6 +38,9 @@ class DataParsersMixin:
     knowledge_by_strkey: Dict[str, KnowledgeEntry]
     dds_by_stem: Dict[str, Path]
     wem_by_event: Dict[str, Path]
+    wem_by_event_en: Dict[str, Path]
+    wem_by_event_kr: Dict[str, Path]
+    wem_by_event_zh: Dict[str, Path]
     knowledge_group_hierarchy: Dict[str, KnowledgeGroupNode]
     event_to_stringid: Dict[str, str]
     stringid_to_strorigin: Dict[str, str]
@@ -74,23 +82,33 @@ class DataParsersMixin:
             logger.warning(f"[MEGAINDEX] DDS scan failed: {e}")
 
     def _scan_wem_files(self, audio_folder: Path) -> None:
-        """D10: Scan audio folder for WEM files. Key=stem.lower(), Value=Path."""
+        """D10: Legacy single-folder scan. Use _scan_wem_files_all_languages for multi-lang."""
+        self._scan_wem_into(audio_folder, self.wem_by_event, "EN")
+
+    def _scan_wem_files_all_languages(self, audio_en: Path, audio_kr: Path, audio_zh: Path) -> None:
+        """D10a/b/c: Scan 3 audio folders for WEM files, one per language."""
+        self._scan_wem_into(audio_en, self.wem_by_event_en, "EN")
+        self._scan_wem_into(audio_kr, self.wem_by_event_kr, "KR")
+        self._scan_wem_into(audio_zh, self.wem_by_event_zh, "ZH")
+
+    def _scan_wem_into(self, audio_folder: Path, target: Dict[str, Path], label: str) -> None:
+        """Scan a single audio folder into the target dict. Key=stem.lower(), Value=Path."""
         try:
             if not audio_folder.is_dir():
-                logger.warning(f"[MEGAINDEX] Audio folder not found: {audio_folder}")
+                logger.debug(f"[MEGAINDEX] Audio folder ({label}) not found: {audio_folder}")
                 return
             count = 0
             dupes = 0
             for wem_path in audio_folder.rglob("*.wem"):
                 stem_lower = wem_path.stem.lower()
-                if stem_lower in self.wem_by_event:
+                if stem_lower in target:
                     dupes += 1
                     continue  # MDG pattern: first-seen-wins dedup
-                self.wem_by_event[stem_lower] = wem_path
+                target[stem_lower] = wem_path
                 count += 1
-            logger.debug(f"[MEGAINDEX] WEM scan: {count} files indexed ({dupes} duplicate stems) from {audio_folder}")
+            logger.debug(f"[MEGAINDEX] WEM scan ({label}): {count} files indexed ({dupes} dupes) from {audio_folder}")
         except Exception as e:
-            logger.warning(f"[MEGAINDEX] WEM scan failed: {e}")
+            logger.exception(f"[MEGAINDEX] WEM scan ({label}) failed: {e}")
 
     def _parse_knowledge_info(self, knowledge_folder: Path) -> None:
         """D1+D15: Parse KnowledgeInfo and KnowledgeGroupInfo in single pass."""
@@ -117,40 +135,41 @@ class DataParsersMixin:
                 # GRAFTED from MDG: "best value wins" dedup — if existing entry
                 # has UITextureName and new one doesn't, KEEP the existing entry.
                 for elem in root.iter("KnowledgeInfo"):
-                    strkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
-                    ui_texture = elem.get("UITextureName") or ""
+                    ui_texture = a.get("uitexturename") or ""
                     existing = self.knowledge_by_strkey.get(strkey)
                     if existing and existing.ui_texture_name and not ui_texture:
-                        # MDG pattern: keep the one with image data
                         logger.debug(f"[MEGAINDEX] Keeping existing UITexture for {strkey}: '{existing.ui_texture_name}' (skipping empty)")
                         continue
                     self.knowledge_by_strkey[strkey] = KnowledgeEntry(
                         strkey=strkey,
-                        name=elem.get("Name") or "",
-                        desc=elem.get("Desc") or "",
+                        name=a.get("name") or "",
+                        desc=a.get("desc") or "",
                         ui_texture_name=ui_texture,
-                        group_key=elem.get("KnowledgeGroupKey")
-                        or elem.get("GroupKey")
-                        or "",
+                        group_key=(a.get("knowledgegroupkey")
+                        or a.get("groupkey")
+                        or "").lower(),
                         source_file=source_file,
                     )
 
                 # D15: KnowledgeGroupInfo entries
                 for elem in root.iter("KnowledgeGroupInfo"):
-                    strkey = elem.get("StrKey") or ""
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
-                    # Collect child knowledge entries in this group
                     child_strkeys: List[str] = []
                     for child in elem.iter("KnowledgeInfo"):
-                        csk = child.get("StrKey") or ""
+                        ca = _ci_attrs(child)
+                        csk = (ca.get("strkey") or "").lower()
                         if csk:
                             child_strkeys.append(csk)
                     self.knowledge_group_hierarchy[strkey] = KnowledgeGroupNode(
                         strkey=strkey,
-                        group_name=elem.get("GroupName") or elem.get("Name") or "",
+                        group_name=a.get("groupname") or a.get("name") or "",
                         child_strkeys=tuple(child_strkeys),
                     )
             logger.debug(f"[MEGAINDEX] Knowledge parse: {parse_ok} OK, {parse_fail} failed out of {len(xml_files)} XMLs")
@@ -184,7 +203,8 @@ class DataParsersMixin:
                     sid = _get_stringid(elem)
                     if not sid:
                         continue
-                    strorigin = elem.get("StrOrigin") or ""
+                    a = _ci_attrs(elem)
+                    strorigin = a.get("strorigin") or ""
                     if strorigin:
                         self.stringid_to_strorigin[sid] = strorigin
         except Exception as e:
@@ -220,7 +240,8 @@ class DataParsersMixin:
                     sid = _get_stringid(elem)
                     if not sid:
                         continue
-                    text = elem.get("Str") or ""
+                    a = _ci_attrs(elem)
+                    text = a.get("str") or ""
                     if text:
                         if sid not in self.stringid_to_translations:
                             self.stringid_to_translations[sid] = {}
@@ -257,19 +278,17 @@ class DataParsersMixin:
                     rel_dir = ""
 
                 for elem in root.iter():
-                    # Case-insensitive attribute extraction (grafted from MDG load_event_mappings)
-                    attrs = {k.lower(): v for k, v in elem.attrib.items()}
+                    a = _ci_attrs(elem)
                     event_name = (
-                        attrs.get("soundeventname")
-                        or attrs.get("eventname")
+                        a.get("soundeventname")
+                        or a.get("eventname")
                         or ""
-                    ).strip()
-                    sid = (attrs.get("stringid") or "").strip()
+                    ).strip().lower()
+                    sid = (a.get("stringid") or "").strip().lower()
                     if event_name and sid:
-                        event_lower = event_name.lower()
-                        self.event_to_stringid[event_lower] = sid  # D11
-                        self.event_to_export_path[event_lower] = rel_dir  # D20
-                        self.event_to_xml_order[event_lower] = global_order  # D21
+                        self.event_to_stringid[event_name] = sid  # D11
+                        self.event_to_export_path[event_name] = rel_dir  # D20
+                        self.event_to_xml_order[event_name] = global_order  # D21
                         global_order += 1
         except Exception as e:
             logger.exception(f"[MEGAINDEX] Export events parse failed: {e}")
@@ -294,7 +313,8 @@ class DataParsersMixin:
 
                 for elem in root.iter("LocStr"):
                     sid = _get_stringid(elem)
-                    origin = elem.get("StrOrigin") or ""
+                    a = _ci_attrs(elem)
+                    origin = a.get("strorigin") or ""
                     if sid:
                         sids.add(sid)
                     if origin and sid:
@@ -343,11 +363,12 @@ class DataParsersMixin:
                 if root is None:
                     continue
                 for elem in root.iter():
-                    strkey = elem.get("StrKey")
+                    a = _ci_attrs(elem)
+                    strkey = (a.get("strkey") or "").lower()
                     if not strkey:
                         continue
-                    korean = elem.get("DevMemo") or elem.get("DevComment") or ""
-                    if korean and strkey.lower() not in self.strkey_to_devmemo:
-                        self.strkey_to_devmemo[strkey.lower()] = korean
+                    korean = a.get("devmemo") or a.get("devcomment") or ""
+                    if korean and strkey not in self.strkey_to_devmemo:
+                        self.strkey_to_devmemo[strkey] = korean
         except Exception as e:
             logger.warning(f"[MEGAINDEX] DevMemo scan failed: {e}")
