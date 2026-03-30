@@ -112,7 +112,7 @@
 
   // FileMergeModal state
   let showFileMergeModal = $state(false);
-  let fileMergeTarget = $state(null);
+  let fileMergeSource = $state(null);
   let uploadTargetFolderId = $state(null);
 
   // DESIGN-001: Access control modal
@@ -1274,7 +1274,7 @@
   // Merge — opens FileMergeModal with match mode selection
   function openMerge() {
     if (!isFileType(contextMenuItem)) return;
-    fileMergeTarget = { ...contextMenuItem };
+    fileMergeSource = { ...contextMenuItem };
     showFileMergeModal = true;
     closeMenus();
   }
@@ -2877,7 +2877,7 @@
 <!-- File Merge Modal (right-click merge with match modes) -->
 <FileMergeModal
   bind:open={showFileMergeModal}
-  targetFile={fileMergeTarget}
+  sourceFile={fileMergeSource}
   onmerged={() => refreshCurrentView()}
 />
 

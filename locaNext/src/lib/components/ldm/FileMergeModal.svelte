@@ -28,7 +28,7 @@
 
   let {
     open = $bindable(false),
-    targetFile = null,
+    sourceFile = null,   // Right-clicked file = SOURCE (has corrections, already on server)
     onmerged = () => {},
   } = $props();
 
@@ -45,7 +45,7 @@
 
   // === State ===
   let phase = $state('configure');
-  let sourceFile = $state(null);
+  let targetFile = $state(null);  // User picks TARGET via file picker (merge corrections INTO)
 
   // Match config (mirrors QuickTranslate)
   let matchType = $state('strict');
@@ -78,7 +78,7 @@
   $effect(() => {
     if (open) {
       phase = 'configure';
-      sourceFile = null;
+      targetFile = null;
       matchType = 'strict';
       matchPrecision = 'perfect';
       transferScope = 'all';
@@ -96,7 +96,7 @@
 
   function handleFileAdd(e) {
     const files = e.detail;
-    if (files?.length > 0) sourceFile = files[0];
+    if (files?.length > 0) targetFile = files[0];
   }
 
   async function executeMerge() {
@@ -106,9 +106,9 @@
     error = '';
 
     try {
-      // Step 1: Upload source file
+      // Step 1: Upload TARGET file (the file to merge corrections INTO)
       const formData = new FormData();
-      formData.append('file', sourceFile);
+      formData.append('file', targetFile);
       formData.append('storage', 'local');
 
       const uploadRes = await fetch(`${API_BASE}/api/ldm/files/upload`, {
@@ -122,13 +122,13 @@
       }
       const uploaded = await uploadRes.json();
 
-      // Step 2: Build merge request matching QuickTranslate params
+      // Step 2: Merge — sourceFile.id (right-clicked, corrections) INTO uploaded target
+      // API: POST /files/{target_id}/merge with source_file_id in body
       const mergeBody = {
-        source_file_id: uploaded.id,
+        source_file_id: sourceFile.id,  // Right-clicked file has corrections
         match_mode: matchPrecision === 'fuzzy' ? 'fuzzy' : matchType,
         threshold: fuzzyThreshold / 100,
         is_cjk: true,
-        // Extended options (backend must support these — passed as extra fields)
         transfer_scope: transferScope,
         all_categories: allCategories,
         non_script_only: nonScriptOnly,
@@ -137,7 +137,7 @@
         unique_only: uniqueOnly,
       };
 
-      const mergeRes = await fetch(`${API_BASE}/api/ldm/files/${targetFile.id}/merge`, {
+      const mergeRes = await fetch(`${API_BASE}/api/ldm/files/${uploaded.id}/merge`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(mergeBody)
@@ -162,9 +162,9 @@
 
 <AppModal
   bind:open
-  modalHeading={phase === 'done' ? 'Merge Complete' : `Merge into ${targetFile?.name || 'file'}`}
-  primaryButtonText={phase === 'configure' ? 'Merge' : phase === 'done' ? 'Close' : ''}
-  primaryButtonDisabled={phase === 'configure' && !sourceFile}
+  modalHeading={phase === 'done' ? 'Merge Complete' : `Apply Corrections from ${sourceFile?.name || 'file'}`}
+  primaryButtonText={phase === 'configure' ? 'Apply Corrections' : phase === 'done' ? 'Close' : ''}
+  primaryButtonDisabled={phase === 'configure' && !targetFile}
   secondaryButtonText={phase === 'done' ? '' : 'Cancel'}
   onprimary={() => {
     if (phase === 'configure') executeMerge();
@@ -175,24 +175,24 @@
 >
   {#if phase === 'configure'}
     <div class="merge-config">
-      <!-- Target info -->
+      <!-- Source info (right-clicked file with corrections) -->
       <p class="target-info">
-        Target: <strong>{targetFile?.name}</strong>
-        <Tag size="sm" type="blue">{targetFile?.format || 'XML'}</Tag>
+        Source (corrections): <strong>{sourceFile?.name}</strong>
+        <Tag size="sm" type="teal">{sourceFile?.format || 'XML'}</Tag>
       </p>
 
-      <!-- Source file picker -->
+      <!-- Target file picker (merge corrections INTO this file) -->
       <div class="section">
-        <h5>Source File</h5>
-        {#if sourceFile}
+        <h5>Target File (merge into)</h5>
+        {#if targetFile}
           <div class="selected-file">
             <DocumentAdd size={16} />
-            <span>{sourceFile.name}</span>
-            <button class="clear-btn" onclick={() => sourceFile = null}>&times;</button>
+            <span>{targetFile.name}</span>
+            <button class="clear-btn" onclick={() => targetFile = null}>&times;</button>
           </div>
         {:else}
           <FileUploaderDropContainer
-            labelText="Drop file or click to browse"
+            labelText="Drop target file or click to browse"
             accept={['.xml', '.txt', '.tsv', '.xlsx']}
             on:add={handleFileAdd}
           />
@@ -287,7 +287,7 @@
   {:else if phase === 'merging'}
     <div class="merge-progress">
       <ProgressBar helperText="Uploading and merging..." />
-      <p>Merging <strong>{sourceFile?.name}</strong> into <strong>{targetFile?.name}</strong></p>
+      <p>Applying corrections from <strong>{sourceFile?.name}</strong> into <strong>{targetFile?.name}</strong></p>
       <p class="mode-label">Mode: {MATCH_TYPES.find(m => m.value === matchType)?.label} ({matchPrecision})</p>
     </div>
 
