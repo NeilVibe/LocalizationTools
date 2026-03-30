@@ -97,10 +97,14 @@ def mock_mega_index():
         "Knowledge_Region_Calpheon": Path("/mock/textures/region_calpheon.dds"),
     }
 
-    # C3: stringid_to_audio_path
+    # C3: stringid_to_audio_path (legacy)
     mega.stringid_to_audio_path = {
         "NPC_GREETING_01_NAME": Path("/mock/audio/VO_NPC_Greeting_01.wem"),
     }
+    # C3 language-aware (new)
+    mega.get_audio_path_by_stringid_for_lang.side_effect = lambda sid, lang="eng": (
+        mega.stringid_to_audio_path.get(sid)
+    )
 
     # R3: stringid_to_event
     mega.stringid_to_event = {
