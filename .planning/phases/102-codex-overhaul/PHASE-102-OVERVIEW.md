@@ -1,97 +1,73 @@
-# Phase 102: Codex Overhaul — QACompiler Graft + Bulk Load + Dropdown Navigation
+# Phase 102: Codex Overhaul — COMPLETE (2026-03-30)
 
-## Goal
+## Status: COMPLETE ✅
 
-Replace the current fragmented Codex (5 separate nav buttons, broken pagination) with a unified system that:
-1. Uses QACompiler's battle-tested category clustering logic
-2. Bulk-loads all entities client-side (no pagination bugs)
-3. Has a single "Codex" dropdown menu for ALL entity types
-4. Properly categorizes Items, Quests, Characters, Skills, Gimmicks, Knowledge
+8 commits, 38+ files, +2151/-615 lines, 2 rounds of 8-agent review, 668 tests passing.
+Build Light running: run 23748476606.
 
-## Architecture
+## What Was Delivered
 
-### Navigation: Codex Dropdown Menu
-```
-[Codex ▾]
-  ├── Items        (group hierarchy from ItemGroupNode)
-  ├── Characters   (filename type + race/gender from use_macro)
-  ├── Audio        (export path category tree)
-  ├── Regions      (faction group hierarchy)
-  ├── Quests       ← NEW (QAC quest_type: main/faction/challenge/minigame)
-  ├── Skills       ← NEW (schema exists, needs route + UI)
-  ├── Gimmicks     ← NEW (schema exists, needs route + UI)
-  └── Knowledge    ← NEW (repurpose legacy CodexPage)
-```
-Game Data, Map, Status → remain as separate top-level buttons.
+### 1. Codex Mega Dropdown (Plan 102-02)
+- Single "Codex" button with dropdown replaces 5 separate nav buttons
+- 8 entries: Items, Characters, Audio, Regions, Quests, Skills, Gimmicks, Knowledge
+- Click-outside close, active highlighting, no overlap with other dropdowns
 
-### Data Pipeline
-```
-Game XML files (StaticInfo/)
-  ↓ MegaIndex entity parsers (graft QAC extraction patterns)
-  ↓ Entity schemas (frozen dataclasses)
-  ↓ Codex routes (bulk-load, no pagination)
-  ↓ Frontend (client-side $derived search/filter + card grid)
-```
+### 2. Bulk Load All Pages (Plan 102-01 + 102-05)
+- Removed pagination (offset/limit/has_more) from all 4 existing codex routes + schemas
+- All pages: single fetch on mount, $derived client-side filtering, no infinite scroll
 
-## Plans (6 plans, 3 waves)
+### 3. Quest Codex — Full QACompiler Graft (Plan 102-03 + 102-04)
+- QuestEntry schema + _parse_quest_info() parser
+- Quest type from subfolder: main/faction/challenge/minigame
+- Faction subtypes by StrKey pattern: *_Daily→daily, *_Request→region, *_Situation→politics
+- codex_quests.py route (3 endpoints: types, detail, list)
+- QuestCodexPage.svelte with type tabs + faction subtabs
 
-### Wave 1 (parallel): Backend Bulk Load + Dropdown Nav
+### 4. Skills + Gimmicks Codex (Plan 102-04 + 102-06)
+- codex_skills.py + codex_gimmicks.py routes (2 endpoints each)
+- SkillCodexPage.svelte + GimmickCodexPage.svelte (search + card grid)
+- Knowledge-codex maps to existing CodexPage
 
-**Plan 102-01: Remove Pagination from 4 Existing Routes**
-- codex_items.py, codex_characters.py, codex_audio.py, codex_regions.py
-- Remove offset/limit/has_more from routes + schemas
-- Return ALL entities in one response
+### 5. Greedy DDS Image Resolution (Plan 102-07)
+4-phase image lookup expanding MDG's logic:
+- **Phase A:** KnowledgeEntry.ui_texture_name → DDS (MDG original)
+- **Phase B:** Greedy XML attr scan (texture/icon/image/dds/portrait/thumbnail keywords on entity node + children) → DDS (NEW)
+- **Phase C:** entity.knowledge_key → KnowledgeEntry → UITextureName → DDS (was MISSING)
+- **Phase D:** Korean name+desc R1 fallback → inherit images from matching entity (EXPANDED)
 
-**Plan 102-02: Codex Dropdown Navigation**
-- +layout.svelte: replace 5 buttons with 1 dropdown (8 entries)
-- navigation.js: add goToQuestCodex, goToSkillCodex, goToGimmickCodex, goToKnowledgeCodex
+R1 indexes ALL 7 entity types by BOTH name AND desc.
+image_urls: List[str] in all schemas (stacked vertically in UI, deduplicated by stem).
 
-### Wave 2 (parallel): Quest + Skills + Gimmicks Backend
+### 6. CRITICAL Fixes
+- **Audio NEVER linked:** SoundEventName from LocStr elements now extracted into D11
+- **Categories WRONG:** D17 key now uses relative path (Sequencer/Dialog prefix preserved)
+- **CategoryService race:** _mega_checked only set after confirmed MegaIndex build
+- **CategoryService .lower():** C7 lookup was case-sensitive, mixed-case StringIDs always missed
 
-**Plan 102-03: QuestEntry Schema + Parser (QACompiler Graft)**
-- mega_index_schemas.py: add QuestEntry (strkey, name, desc, quest_type, quest_subtype, faction_key, source_file)
-- mega_index_entity_parsers.py: add _parse_quest_info() — classify by subfolder + StrKey pattern
-- mega_index.py: wire quest_by_strkey into build pipeline
+### 7. Merge Bug Fixes
+- BUG-16: 3 missing options in MergeToFileRequest + shared _apply_merge_pre_filters helper
+- BUG-14: SSE streaming in FileMergeModal browser mode + cross-chunk eventType persistence
+- merge_to_folder: now branches for stringid_only match_mode (was always strict engine)
 
-**Plan 102-04: New Codex Routes (Quest + Skills + Gimmicks)**
-- NEW codex_quests.py (3 endpoints: types, detail, list)
-- NEW codex_skills.py (2 endpoints: detail, list)
-- NEW codex_gimmicks.py (2 endpoints: detail, list)
-- NEW schemas for all 3
-- router.py: mount all 3
+## Files Created
+- locaNext/src/lib/components/pages/QuestCodexPage.svelte
+- locaNext/src/lib/components/pages/SkillCodexPage.svelte
+- locaNext/src/lib/components/pages/GimmickCodexPage.svelte
+- server/tools/ldm/routes/codex_quests.py
+- server/tools/ldm/routes/codex_skills.py
+- server/tools/ldm/routes/codex_gimmicks.py
+- server/tools/ldm/schemas/codex_quests.py
+- server/tools/ldm/schemas/codex_skills.py
+- server/tools/ldm/schemas/codex_gimmicks.py
 
-### Wave 3 (sequential): Frontend Bulk Load + New Pages
-
-**Plan 102-05: Convert 4 Existing Pages to Bulk Load**
-- Remove infinite scroll from ItemCodexPage, CharacterCodexPage, AudioCodexPage, RegionCodexPage
-- Single fetch on mount, $derived for client-side filtering
-- Keep category sidebars (client-side matching)
-
-**Plan 102-06: 4 New Codex Pages**
-- NEW QuestCodexPage.svelte (tabs by quest type, sub-tabs for faction subtypes)
-- NEW SkillCodexPage.svelte (search + card grid)
-- NEW GimmickCodexPage.svelte (search + card grid)
-- Repurpose CodexPage.svelte as Knowledge browser (knowledge group tree nav)
-- LDM.svelte: add routing for all 4 new pages
-
-## Dependencies
-
-- MegaIndex must be built (auto-builds on first request)
-- QACompiler source at `RFC/NewScripts/QACompilerNEW/` (reference only, not runtime)
-- Quest XML at `staticinfo_quest/` subfolder (main/, faction/, Challenge/, contents/)
-
-## Success Criteria
-
-1. Single Codex dropdown in nav → 8 entity types accessible
-2. ALL pages bulk-load (no pagination, no infinite scroll bugs)
-3. Client-side search across all entity fields (instant, no API calls)
-4. Quests fully functional with type/subtype classification
-5. Skills + Gimmicks browsable
-6. Knowledge browsable with group hierarchy
-7. QACompiler category patterns matched (filename types, quest subtypes, group hierarchy)
-
-## Deferred
-- Region/Map interactive visualization (needs design)
-- Quest prerequisite chain visualization
-- Audio WEM preview improvements
-- VirtualList (add if perf needs it — CSS grid may suffice for <10k items)
+## Files Modified (key ones)
+- server/tools/ldm/services/mega_index_data_parsers.py (SoundEventName + relative path)
+- server/tools/ldm/services/mega_index_entity_parsers.py (quest parser + _collect_texture_refs)
+- server/tools/ldm/services/mega_index_builders.py (4-phase DDS + R1 name+desc)
+- server/tools/ldm/services/mega_index_schemas.py (QuestEntry)
+- server/tools/ldm/services/category_service.py (.lower() + _mega_checked)
+- server/tools/ldm/routes/merge_to_disk.py (pre-filters + match_mode branching)
+- locaNext/src/routes/+layout.svelte (dropdown nav)
+- locaNext/src/lib/components/ldm/FileMergeModal.svelte (SSE streaming)
+- All 4 existing codex routes + schemas (pagination removed, image_urls)
+- All 3 detail components (multi-image stacking)
