@@ -42,6 +42,9 @@ class BuildersMixin:
     gimmick_by_strkey: Dict[str, GimmickEntry]
     dds_by_stem: Dict[str, Path]
     wem_by_event: Dict[str, Path]
+    wem_by_event_en: Dict[str, Path]
+    wem_by_event_kr: Dict[str, Path]
+    wem_by_event_zh: Dict[str, Path]
     event_to_stringid: Dict[str, str]
     stringid_to_strorigin: Dict[str, str]
     stringid_to_translations: Dict[str, Dict[str, str]]
@@ -56,6 +59,9 @@ class BuildersMixin:
     strkey_to_image_path: Dict[str, Path]
     strkey_to_audio_path: Dict[str, Path]
     stringid_to_audio_path: Dict[str, Path]
+    stringid_to_audio_path_en: Dict[str, Path]
+    stringid_to_audio_path_kr: Dict[str, Path]
+    stringid_to_audio_path_zh: Dict[str, Path]
     event_to_script_kr: Dict[str, str]
     event_to_script_eng: Dict[str, str]
     entity_strkey_to_stringids: Dict[str, Set[str]]
@@ -66,7 +72,7 @@ class BuildersMixin:
     # =========================================================================
 
     def _build_name_kr_to_strkeys(self) -> None:
-        """R1: Invert name fields from D1, D2, D3, D4."""
+        """R1: Invert name fields from D1, D2, D3, D4. Keys lowercased."""
         result: Dict[str, List[Tuple[str, str]]] = {}
         entity_dicts = [
             ("knowledge", self.knowledge_by_strkey),
@@ -78,12 +84,12 @@ class BuildersMixin:
             for strkey, entry in d.items():
                 name = entry.name
                 if name:
-                    result.setdefault(name, []).append((entity_type, strkey))
+                    result.setdefault(name.lower(), []).append((entity_type, strkey))
         self.name_kr_to_strkeys = result
         logger.debug(f"[MEGAINDEX] R1 name_kr_to_strkeys: {len(result)} unique names")
 
     def _build_knowledge_key_to_entities(self) -> None:
-        """R2: Scan D2, D3, D4, D7 for knowledge_key references."""
+        """R2: Scan D2, D3, D4, D7 for knowledge_key references. Keys lowercased."""
         result: Dict[str, List[Tuple[str, str]]] = {}
         entity_dicts: List[Tuple[str, dict]] = [
             ("character", self.character_by_strkey),
@@ -97,7 +103,7 @@ class BuildersMixin:
                     entry, "learn_knowledge_key", ""
                 )
                 if kk:
-                    result.setdefault(kk, []).append((entity_type, strkey))
+                    result.setdefault(kk.lower(), []).append((entity_type, strkey))
         self.knowledge_key_to_entities = result
         logger.debug(f"[MEGAINDEX] R2 knowledge_key_to_entities: {len(result)} keys")
 
@@ -120,14 +126,14 @@ class BuildersMixin:
         logger.debug(f"[MEGAINDEX] R4 ui_texture_to_strkeys: {len(result)} textures")
 
     def _build_source_file_to_strkeys(self) -> None:
-        """R5: Scan all entity dicts for source_file grouping."""
+        """R5: Scan all entity dicts for source_file grouping. Keys lowercased."""
         result: Dict[str, List[Tuple[str, str]]] = {}
         for entity_type, attr_name in _ENTITY_TYPE_MAP.items():
             d = getattr(self, attr_name, {})
             for strkey, entry in d.items():
                 sf = getattr(entry, "source_file", "")
                 if sf:
-                    result.setdefault(sf, []).append((entity_type, strkey))
+                    result.setdefault(sf.lower(), []).append((entity_type, strkey))
         self.source_file_to_strkeys = result
         logger.debug(f"[MEGAINDEX] R5 source_file_to_strkeys: {len(result)} files")
 
@@ -142,12 +148,12 @@ class BuildersMixin:
         logger.debug(f"[MEGAINDEX] R6 strorigin_to_stringids: {len(result)} unique origins")
 
     def _build_group_key_to_items(self) -> None:
-        """R7: From D3, accumulate items per group_key."""
+        """R7: From D3, accumulate items per group_key. Keys lowercased."""
         result: Dict[str, List[str]] = {}
         for strkey, entry in self.item_by_strkey.items():
             gk = entry.group_key
             if gk:
-                result.setdefault(gk, []).append(strkey)
+                result.setdefault(gk.lower(), []).append(strkey)
         self.group_key_to_items = result
         logger.debug(f"[MEGAINDEX] R7 group_key_to_items: {len(result)} groups")
 
@@ -220,7 +226,10 @@ class BuildersMixin:
         )
 
     def _build_strkey_to_audio_path(self) -> None:
-        """C2: Entity StrKey -> knowledge_key -> event -> WEM path (complex chain)."""
+        """C2: Entity StrKey -> knowledge_key -> event -> WEM path (complex chain).
+
+        Uses wem_by_event_en for backward compat (C2 is entity-based, not file-language-based).
+        """
         # For each entity with a knowledge_key, try to find an event that maps to audio
         for entity_type, attr_name in _ENTITY_TYPE_MAP.items():
             d = getattr(self, attr_name, {})
@@ -230,22 +239,34 @@ class BuildersMixin:
                 )
                 if not kk:
                     continue
-                # Check if any event references this entity's StringIds
-                # via entity_strkey_to_stringids (not yet built) -- skip for now
                 # Direct path: check if event_name matches strkey pattern
                 sk_lower = strkey.lower()
-                wem = self.wem_by_event.get(sk_lower)
+                wem = self.wem_by_event_en.get(sk_lower)
                 if wem:
                     self.strkey_to_audio_path[strkey] = wem
         logger.debug(f"[MEGAINDEX] C2 strkey_to_audio_path: {len(self.strkey_to_audio_path)} resolved")
 
     def _build_stringid_to_audio_path(self) -> None:
-        """C3: StringId -> event_name (R3) -> WEM path (D10)."""
+        """C3: StringId -> event_name (R3) -> WEM path (D10), per language."""
         for sid, event_lower in self.stringid_to_event.items():
-            wem = self.wem_by_event.get(event_lower)
+            # English
+            wem = self.wem_by_event_en.get(event_lower)
             if wem:
-                self.stringid_to_audio_path[sid] = wem
-        logger.debug(f"[MEGAINDEX] C3 stringid_to_audio_path: {len(self.stringid_to_audio_path)} resolved")
+                self.stringid_to_audio_path_en[sid] = wem
+            # Korean
+            wem = self.wem_by_event_kr.get(event_lower)
+            if wem:
+                self.stringid_to_audio_path_kr[sid] = wem
+            # Chinese
+            wem = self.wem_by_event_zh.get(event_lower)
+            if wem:
+                self.stringid_to_audio_path_zh[sid] = wem
+        # Backward compat: default = English
+        self.stringid_to_audio_path = self.stringid_to_audio_path_en
+        logger.debug(
+            f"[MEGAINDEX] C3 stringid_to_audio_path: EN={len(self.stringid_to_audio_path_en)}, "
+            f"KR={len(self.stringid_to_audio_path_kr)}, ZH={len(self.stringid_to_audio_path_zh)}"
+        )
 
     def _build_event_to_script_kr(self) -> None:
         """C4: event -> StringId (D11) -> StrOrigin (D12)."""
