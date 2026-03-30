@@ -297,7 +297,7 @@ async def list_audio(
             total=total,
             offset=offset,
             limit=limit,
-            has_more=(offset + limit) < total,
+            has_more=len(items) == limit,
             category_filter=category,
         )
     except Exception as exc:

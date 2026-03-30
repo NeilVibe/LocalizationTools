@@ -342,7 +342,7 @@ async def list_items(
             total=total,
             offset=offset,
             limit=limit,
-            has_more=(offset + limit) < total,
+            has_more=len(paginated) == limit,
             group_filter=group,
         )
     except Exception as exc:

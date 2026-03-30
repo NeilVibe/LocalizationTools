@@ -118,7 +118,7 @@
       } else {
         items = [...items, ...batch];
       }
-      hasMore = data.has_more ?? false;
+      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
       currentPage = page;
       totalItems = data.total ?? totalItems;
 

@@ -361,7 +361,7 @@ async def list_regions(
             total=total,
             offset=offset,
             limit=limit,
-            has_more=(offset + limit) < total,
+            has_more=len(paginated) == limit,
             faction_group_filter=faction_group,
         )
     except Exception as exc:

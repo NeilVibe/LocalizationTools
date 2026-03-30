@@ -359,7 +359,7 @@ async def list_characters(
             total=total,
             offset=offset,
             limit=limit,
-            has_more=(offset + limit) < total,
+            has_more=len(paginated) == limit,
             category_filter=category,
         )
     except Exception as exc:

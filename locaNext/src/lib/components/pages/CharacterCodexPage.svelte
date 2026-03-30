@@ -118,7 +118,7 @@
       } else {
         characters = [...characters, ...batch];
       }
-      hasMore = data.has_more ?? false;
+      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
       currentPage = page;
       totalCharacters = data.total ?? totalCharacters;
 
