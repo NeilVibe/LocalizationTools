@@ -37,7 +37,7 @@ from server.tools.ldm.services.perforce_path_service import get_perforce_path_se
 
 # Re-export helpers for backward compatibility (callers/tools may import these)
 from server.tools.ldm.services.mega_index_helpers import (  # noqa: F401
-    STRINGID_ATTRS,
+    LANG_TO_AUDIO,
     _BR_TAG_RE,
     _ENTITY_TYPE_MAP,
     _PLACEHOLDER_SUFFIX_RE,
@@ -68,7 +68,10 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         # === Phase 1: Foundation (Direct Dicts) ===
         self.knowledge_by_strkey: Dict[str, KnowledgeEntry] = {}  # D1
         self.dds_by_stem: Dict[str, Path] = {}  # D9
-        self.wem_by_event: Dict[str, Path] = {}  # D10
+        self.wem_by_event: Dict[str, Path] = {}  # D10 (backward compat alias -> English)
+        self.wem_by_event_en: Dict[str, Path] = {}  # D10a: English(US) audio
+        self.wem_by_event_kr: Dict[str, Path] = {}  # D10b: Korean audio
+        self.wem_by_event_zh: Dict[str, Path] = {}  # D10c: Chinese(PRC) audio
         self.knowledge_group_hierarchy: Dict[str, KnowledgeGroupNode] = {}  # D15
 
         # === Phase 2: Entity Parse ===
@@ -106,7 +109,10 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         # === Phase 7: Composed Dicts ===
         self.strkey_to_image_path: Dict[str, Path] = {}  # C1
         self.strkey_to_audio_path: Dict[str, Path] = {}  # C2
-        self.stringid_to_audio_path: Dict[str, Path] = {}  # C3
+        self.stringid_to_audio_path: Dict[str, Path] = {}  # C3 (backward compat -> English)
+        self.stringid_to_audio_path_en: Dict[str, Path] = {}  # C3a
+        self.stringid_to_audio_path_kr: Dict[str, Path] = {}  # C3b
+        self.stringid_to_audio_path_zh: Dict[str, Path] = {}  # C3c
         self.event_to_script_kr: Dict[str, str] = {}  # C4
         self.event_to_script_eng: Dict[str, str] = {}  # C5
         self.entity_strkey_to_stringids: Dict[str, Set[str]] = {}  # C6
@@ -145,6 +151,8 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         faction_folder = paths.get("faction_folder", Path("/nonexistent"))
         texture_folder = paths.get("texture_folder", Path("/nonexistent"))
         audio_folder = paths.get("audio_folder", Path("/nonexistent"))
+        audio_folder_kr = paths.get("audio_folder_kr", Path("/nonexistent"))
+        audio_folder_zh = paths.get("audio_folder_zh", Path("/nonexistent"))
         export_folder = paths.get("export_folder", Path("/nonexistent"))
         loc_folder = paths.get("loc_folder", Path("/nonexistent"))
 
@@ -162,6 +170,8 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         logger.info(f"  staticinfo_folder:{staticinfo_folder} (exists={staticinfo_folder.is_dir() if staticinfo_folder != Path('/nonexistent') else False})")
         logger.info(f"  texture_folder:   {texture_folder} (exists={texture_folder.is_dir() if texture_folder != Path('/nonexistent') else False})")
         logger.info(f"  audio_folder:     {audio_folder} (exists={audio_folder.is_dir() if audio_folder != Path('/nonexistent') else False})")
+        logger.info(f"  audio_folder_kr:  {audio_folder_kr} (exists={audio_folder_kr.is_dir() if audio_folder_kr != Path('/nonexistent') else False})")
+        logger.info(f"  audio_folder_zh:  {audio_folder_zh} (exists={audio_folder_zh.is_dir() if audio_folder_zh != Path('/nonexistent') else False})")
         logger.info(f"  export_folder:    {export_folder} (exists={export_folder.is_dir() if export_folder != Path('/nonexistent') else False})")
         logger.info(f"  loc_folder:       {loc_folder} (exists={loc_folder.is_dir() if loc_folder != Path('/nonexistent') else False})")
 
@@ -169,11 +179,13 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
 
         # ----- Phase 1: Foundation -----
         self._scan_dds_textures(texture_folder)
-        self._scan_wem_files(audio_folder)
+        self._scan_wem_files_all_languages(audio_folder, audio_folder_kr, audio_folder_zh)
+        self.wem_by_event = self.wem_by_event_en  # Backward compat alias
         self._parse_knowledge_info(knowledge_folder)
         logger.info(
             f"[MEGAINDEX] Phase 1 complete: {len(self.knowledge_by_strkey)} knowledge, "
-            f"{len(self.dds_by_stem)} DDS, {len(self.wem_by_event)} WEM, "
+            f"{len(self.dds_by_stem)} DDS, WEM EN={len(self.wem_by_event_en)} "
+            f"KR={len(self.wem_by_event_kr)} ZH={len(self.wem_by_event_zh)}, "
             f"{len(self.knowledge_group_hierarchy)} knowledge groups"
         )
 
