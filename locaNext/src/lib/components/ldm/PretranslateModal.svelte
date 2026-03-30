@@ -23,7 +23,6 @@
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
-  import AppModal from '../common/AppModal.svelte';
 
   // API base URL
   const API_BASE = getApiBase();
