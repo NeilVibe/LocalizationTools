@@ -36,6 +36,7 @@
     collapsed = $bindable(false),   // RightPanel owns collapse state
     width = $bindable(300),         // RightPanel owns width state
     leverageStats = null,
+    fileLanguage = "eng",
     // Callback props (Svelte 5 pattern)
     onApplyTM = undefined,
     onApplySuggestion = undefined,
@@ -166,9 +167,9 @@
         {:else if activeTab === 'image'}
           <ImageTab {selectedRow} />
         {:else if activeTab === 'audio'}
-          <AudioTab {selectedRow} />
+          <AudioTab {selectedRow} {fileLanguage} />
         {:else if activeTab === 'context'}
-          <ContextTab {selectedRow} />
+          <ContextTab {selectedRow} {fileLanguage} />
         {:else if activeTab === 'ai-suggest'}
           <AISuggestionsTab {selectedRow} onApplySuggestion={handleApplySuggestion} />
         {/if}

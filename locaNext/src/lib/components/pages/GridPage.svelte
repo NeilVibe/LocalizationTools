@@ -34,6 +34,10 @@
 
   // Derive file type from openFile store (Dual UI Mode - Phase 08)
   let fileType = $derived($openFile?.file_type || 'translator');
+  // Extract language code from filename (e.g. "languagedata_KOR.loc.xml" → "kor")
+  let fileLanguage = $derived(
+    ((n) => { const m = (n || '').toLowerCase().match(/languagedata_([a-z\-]+)/); return m ? m[1] : 'eng'; })(fileName)
+  );
   const API_BASE = getApiBase();
 
   // Component refs
@@ -414,6 +418,7 @@
       contextResults={sidePanelContextResults}
       contextLoading={sidePanelContextLoading}
       {leverageStats}
+      {fileLanguage}
       onApplyTM={handleApplyTMFromPanel}
       onApplySuggestion={handleApplySuggestionFromPanel}
     />

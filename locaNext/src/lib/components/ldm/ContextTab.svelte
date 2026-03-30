@@ -17,7 +17,7 @@
   const API_BASE = getApiBase();
 
   // Props
-  let { selectedRow = null } = $props();
+  let { selectedRow = null, fileLanguage = "eng" } = $props();
 
   // State
   let entities = $state([]);
@@ -47,7 +47,10 @@
 
     const controller = new AbortController();
     const sourceText = selectedRow?.source || selectedRow?.eng || '';
-    const params = sourceText ? `?source_text=${encodeURIComponent(sourceText)}` : '';
+    const qp = new URLSearchParams();
+    if (sourceText) qp.set('source_text', sourceText);
+    qp.set('language', fileLanguage);
+    const params = `?${qp.toString()}`;
 
     fetch(`${API_BASE}/api/ldm/context/${encodeURIComponent(stringId)}${params}`, {
       headers: getAuthHeaders(),

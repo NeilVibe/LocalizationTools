@@ -15,7 +15,7 @@
   const API_BASE = getApiBase();
 
   // Props
-  let { selectedRow = null } = $props();
+  let { selectedRow = null, fileLanguage = "eng" } = $props();
 
   // State
   let audioContext = $state(null);
@@ -35,7 +35,7 @@
     error = null;
     const controller = new AbortController();
 
-    fetch(`${API_BASE}/api/ldm/mapdata/audio/${encodeURIComponent(stringId)}`, {
+    fetch(`${API_BASE}/api/ldm/mapdata/audio/${encodeURIComponent(stringId)}?language=${encodeURIComponent(fileLanguage)}`, {
       headers: getAuthHeaders(),
       signal: controller.signal
     })
@@ -100,7 +100,7 @@
             preload="none"
             crossorigin="anonymous"
             class="audio-player"
-            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?v={Date.now()}"
+            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?language={encodeURIComponent(fileLanguage)}&v={Date.now()}"
           ></audio>
         {/key}
       </div>
