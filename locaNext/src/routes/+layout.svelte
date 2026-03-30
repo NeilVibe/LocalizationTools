@@ -309,13 +309,13 @@
 
   // Close dropdown when clicking outside
   function handleGlobalClick(event) {
-    // Don't close if clicking on a dropdown button or menu
-    if (event.target.closest('.compact-dropdown')) {
-      return;
-    }
-    // Close codex dropdown if clicking outside it
+    // Always close codex dropdown if clicking outside it (before other checks)
     if (isCodexMenuOpen && !event.target.closest('.codex-dropdown')) {
       isCodexMenuOpen = false;
+    }
+    // Don't close settings/apps if clicking on a dropdown button or menu
+    if (event.target.closest('.compact-dropdown')) {
+      return;
     }
     isSettingsMenuOpen = false;
     isAppsMenuOpen = false;

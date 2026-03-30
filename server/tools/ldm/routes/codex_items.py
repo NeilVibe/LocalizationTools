@@ -306,9 +306,9 @@ async def list_items(
                 entry = all_items[sk]
                 # Check Korean name, desc, strkey
                 if (
-                    q_lower in entry.name.lower()
-                    or q_lower in entry.desc.lower()
-                    or q_lower in entry.strkey.lower()
+                    q_lower in (entry.name or "").lower()
+                    or q_lower in (entry.desc or "").lower()
+                    or q_lower in (entry.strkey or "").lower()
                 ):
                     filtered.append(sk)
                     continue

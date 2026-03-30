@@ -318,12 +318,12 @@ async def list_characters(
                 entry = all_chars[sk]
                 # Check Korean name, desc, strkey, use_macro, age, job
                 if (
-                    q_lower in entry.name.lower()
-                    or q_lower in entry.desc.lower()
-                    or q_lower in entry.strkey.lower()
-                    or q_lower in entry.use_macro.lower()
-                    or q_lower in entry.age.lower()
-                    or q_lower in entry.job.lower()
+                    q_lower in (entry.name or "").lower()
+                    or q_lower in (entry.desc or "").lower()
+                    or q_lower in (entry.strkey or "").lower()
+                    or q_lower in (entry.use_macro or "").lower()
+                    or q_lower in (entry.age or "").lower()
+                    or q_lower in (entry.job or "").lower()
                 ):
                     filtered.append(sk)
                     continue

@@ -161,12 +161,12 @@ class CategoryService:
         """Build StringID → export_filename from MegaIndex D17."""
         if self._mega_checked:
             return
-        self._mega_checked = True
         try:
             from server.tools.ldm.services.mega_index import get_mega_index
             mega = get_mega_index()
             if not mega._built:
-                return
+                return  # Don't set _mega_checked — allow retry when MegaIndex is ready
+            self._mega_checked = True
 
             # D17: export_file_stringids = {export_filename: {sid1, sid2, ...}}
             # Reverse it: {sid: export_filename}
@@ -202,7 +202,7 @@ class CategoryService:
 
         # Phase 2: MegaIndex entity type (C7)
         if hasattr(self, '_entity_map') and self._entity_map:
-            entity = self._entity_map.get(string_id)
+            entity = self._entity_map.get(string_id.lower())
             if entity:
                 entity_type = entity[0].lower()
                 TYPE_MAP = {

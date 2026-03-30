@@ -258,7 +258,10 @@ async def merge_to_folder(
 
     Uses SSE streaming for live progress.
     """
-    from server.services.merge.xml_transfer import merge_corrections_to_xml
+    from server.services.merge.xml_transfer import (
+        merge_corrections_to_xml,
+        merge_corrections_stringid_only,
+    )
 
     target_folder = Path(request.target_folder_path)
     if not target_folder.is_dir():
@@ -336,17 +339,32 @@ async def merge_to_folder(
         "unmatched_languages": [],
     }
 
+    mode = request.match_mode
+
     async def _merge_lang(lang: str, corrections: list[dict], target_files: list[Path]):
         lang_stats = {"matched": 0, "updated": 0, "not_found": 0, "files": 0}
 
         for target_path in target_files:
-            def _do_merge():
-                return merge_corrections_to_xml(
-                    xml_path=target_path,
-                    corrections=corrections,
-                    dry_run=request.dry_run,
-                    only_untranslated=request.only_untranslated,
-                )
+            def _do_merge(tp=target_path, corr=corrections):
+                if mode == "stringid_only":
+                    sid_to_cat = {
+                        (c.get("string_id") or "").strip(): (c.get("category") or "Uncategorized")
+                        for c in corr if c.get("string_id")
+                    }
+                    return merge_corrections_stringid_only(
+                        xml_path=tp,
+                        corrections=corr,
+                        stringid_to_category=sid_to_cat,
+                        dry_run=request.dry_run,
+                        only_untranslated=request.only_untranslated,
+                    )
+                else:
+                    return merge_corrections_to_xml(
+                        xml_path=tp,
+                        corrections=corr,
+                        dry_run=request.dry_run,
+                        only_untranslated=request.only_untranslated,
+                    )
 
             file_result = await asyncio.to_thread(_do_merge)
 

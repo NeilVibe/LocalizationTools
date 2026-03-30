@@ -491,6 +491,7 @@ class EntityParsersMixin:
                             seal_desc="",
                             source_file=source_file,
                         )
+                        self._collect_texture_refs(gstrkey, group_elem)
                 gk_new = len(self.gimmick_by_strkey) - gk0
                 if gk_new:
                     logger.debug(f"[MEGAINDEX]   {source_file}: +{gk_new} gimmicks")
