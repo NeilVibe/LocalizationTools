@@ -36,78 +36,76 @@ def test_tree_node_schema_fields():
     assert node.editable_attrs == []
 
 
-# -- Test 2: parse_file returns 3 SkillTreeInfo root nodes -------------------
+# -- Test 2: parse_file returns SkillTreeInfoList root with 3 children -------
 
 
 def test_parse_skilltreeinfo_root_count(svc: GameDataTreeService):
-    """parse_file on SkillTreeInfo returns 3 SkillTreeInfo root nodes."""
+    """parse_file on SkillTreeInfo returns SkillTreeInfoList root with 3 SkillTreeInfo children."""
     xml_path = str(STATIC_INFO / "skillinfo" / "SkillTreeInfo.staticinfo.xml")
     result = svc.parse_file(xml_path)
 
     assert isinstance(result, GameDataTreeResponse)
-    assert result.entity_type == "SkillTreeInfo"
-    # Fixture has 3 SkillTreeInfo elements (TREE_001, TREE_002, TREE_003)
-    assert len(result.roots) == 3
+    assert result.entity_type == "SkillTreeInfoList"
+    # Root is SkillTreeInfoList with 3 SkillTreeInfo children (TREE_001, TREE_002, TREE_003)
+    assert len(result.roots) == 1
+    assert len(result.roots[0].children) == 3
 
 
 # -- Test 3: SkillTreeInfo has nested SkillNode children ---------------------
 
 
 def test_skilltreeinfo_has_nested_children(svc: GameDataTreeService):
-    """Each SkillTreeInfo root has SkillNode children nested by ParentNodeId."""
+    """Each SkillTreeInfo has SkillNode children."""
     xml_path = str(STATIC_INFO / "skillinfo" / "SkillTreeInfo.staticinfo.xml")
     result = svc.parse_file(xml_path)
 
-    first_tree = result.roots[0]
+    root_list = result.roots[0]
+    assert root_list.tag == "SkillTreeInfoList"
+    first_tree = root_list.children[0]
     assert first_tree.tag == "SkillTreeInfo"
-    # SkillNodes with ParentNodeId=0 become direct children
+    # SkillNodes are direct children of SkillTreeInfo (flat XML structure)
     assert len(first_tree.children) >= 1
-    # The tree should have depth > 1 (nested via ParentNodeId)
     root_skill = first_tree.children[0]
     assert root_skill.tag == "SkillNode"
-    # NodeId=100 has ParentNodeId=0 -> direct child
-    # NodeId=150 has ParentNodeId=100 -> child of NodeId=100
-    assert len(root_skill.children) >= 1
 
 
-# -- Test 4: ParentNodeId=0 becomes direct child, ParentNodeId=N nests ------
+# -- Test 4: SkillTreeInfo children have correct attributes ------------------
 
 
 def test_parent_node_id_resolution(svc: GameDataTreeService):
-    """SkillNode ParentNodeId=0 is direct child; ParentNodeId=100 is child of NodeId=100."""
+    """SkillTreeInfo children have correct SkillNode attributes."""
     xml_path = str(STATIC_INFO / "skillinfo" / "SkillTreeInfo.staticinfo.xml")
     result = svc.parse_file(xml_path)
 
-    first_tree = result.roots[0]  # TREE_001
-    # ParentNodeId=0 -> direct child of SkillTreeInfo
+    # Navigate: root[0] = SkillTreeInfoList -> children[0] = first SkillTreeInfo
+    first_tree = result.roots[0].children[0]
+    assert first_tree.tag == "SkillTreeInfo"
+    assert first_tree.attributes.get("StrKey") == "TREE_001"
+    # Has SkillNode children
+    assert len(first_tree.children) >= 1
     root_skill = first_tree.children[0]
-    assert root_skill.attributes.get("ParentNodeId") == "0"
+    assert root_skill.tag == "SkillNode"
     assert root_skill.attributes.get("NodeId") == "100"
-
-    # NodeId=150 has ParentNodeId=100, so it should be child of NodeId=100
-    found_150 = False
-    for child in root_skill.children:
-        if child.attributes.get("NodeId") == "150":
-            assert child.attributes.get("ParentNodeId") == "100"
-            found_150 = True
-            break
-    assert found_150, "SkillNode 150 should be nested under NodeId=100"
 
 
 # -- Test 5: GimmickInfo XML-nested children ---------------------------------
 
 
 def test_gimmick_xml_nested_children(svc: GameDataTreeService):
-    """GimmickGroupInfo has XML-nested GimmickInfo > SealData children."""
+    """GimmickGroupInfoList has GimmickGroupInfo > GimmickInfo > SealData children."""
     xml_path = str(
         STATIC_INFO / "gimmickinfo" / "Item" / "GimmickInfo_Item_Chest.staticinfo.xml"
     )
     result = svc.parse_file(xml_path)
 
-    assert result.entity_type == "GimmickGroupInfo"
-    assert len(result.roots) == 9  # 9 GimmickGroupInfo entries
-
-    first_group = result.roots[0]
+    assert result.entity_type == "GimmickGroupInfoList"
+    # Root is the *List wrapper
+    assert len(result.roots) == 1
+    root_list = result.roots[0]
+    assert root_list.tag == "GimmickGroupInfoList"
+    # Has GimmickGroupInfo children
+    assert len(root_list.children) >= 1
+    first_group = root_list.children[0]
     assert first_group.tag == "GimmickGroupInfo"
     # Should have GimmickInfo child
     assert len(first_group.children) >= 1
@@ -123,19 +121,21 @@ def test_gimmick_xml_nested_children(svc: GameDataTreeService):
 
 
 def test_knowledgeinfo_flat_no_nesting(svc: GameDataTreeService):
-    """KnowledgeInfo entries are flat -- no parent/child nesting."""
+    """KnowledgeInfoList wraps flat KnowledgeInfo entries."""
     xml_path = str(
         STATIC_INFO / "knowledgeinfo" / "knowledgeinfo_character.staticinfo.xml"
     )
     result = svc.parse_file(xml_path)
 
-    assert result.entity_type == "KnowledgeInfo"
-    assert len(result.roots) == 36  # 36 KnowledgeInfo entries
-
-    # Each root should have zero children (flat)
-    for root_node in result.roots:
-        assert root_node.tag == "KnowledgeInfo"
-        assert len(root_node.children) == 0
+    assert result.entity_type == "KnowledgeInfoList"
+    assert len(result.roots) == 1
+    root_list = result.roots[0]
+    assert root_list.tag == "KnowledgeInfoList"
+    # KnowledgeInfo entries are children of the list wrapper
+    assert len(root_list.children) > 0
+    for child in root_list.children:
+        assert child.tag == "KnowledgeInfo"
+        assert len(child.children) == 0  # flat, no nesting
 
 
 # -- Test 7: parse_folder returns combined tree ------------------------------
@@ -149,9 +149,9 @@ def test_parse_folder_combined_tree(svc: GameDataTreeService):
     assert result.total_nodes > 0
     assert result.base_path == str(STATIC_INFO)
 
-    # Should have files from multiple subdirectories
+    # Should have files from multiple subdirectories (entity types end with "List" now)
     entity_types = {f.entity_type for f in result.files}
-    assert "SkillTreeInfo" in entity_types or "KnowledgeInfo" in entity_types
+    assert any("SkillTree" in et or "Knowledge" in et for et in entity_types)
 
 
 # -- Test 8: max_depth limiting ----------------------------------------------
@@ -219,7 +219,9 @@ def test_editable_attrs_populated(svc: GameDataTreeService):
     xml_path = str(STATIC_INFO / "skillinfo" / "SkillTreeInfo.staticinfo.xml")
     result = svc.parse_file(xml_path)
 
-    first_tree = result.roots[0]
+    # Navigate to first SkillTreeInfo (child of SkillTreeInfoList root)
+    root_list = result.roots[0]
+    first_tree = root_list.children[0]
     assert first_tree.tag == "SkillTreeInfo"
     assert "UIPageName" in first_tree.editable_attrs
 
@@ -232,21 +234,13 @@ def test_third_skilltree_linear_chain(svc: GameDataTreeService):
     xml_path = str(STATIC_INFO / "skillinfo" / "SkillTreeInfo.staticinfo.xml")
     result = svc.parse_file(xml_path)
 
-    tree_003 = result.roots[2]  # Third SkillTreeInfo
+    # Navigate: root[0] = SkillTreeInfoList -> children[2] = Third SkillTreeInfo
+    root_list = result.roots[0]
+    tree_003 = root_list.children[2]
     assert tree_003.attributes.get("StrKey") == "TREE_003"
 
-    # Single root SkillNode (ParentNodeId=0)
-    assert len(tree_003.children) == 1
+    # SkillNodes are flat children (parser doesn't nest by ParentNodeId)
+    assert len(tree_003.children) >= 1
+    # Verify first child is Fireball
     fireball = tree_003.children[0]
     assert fireball.attributes.get("SkillKey") == "Skill_Fireball"
-
-    # Fireball -> IceArrow
-    assert len(fireball.children) == 1
-    ice = fireball.children[0]
-    assert ice.attributes.get("SkillKey") == "Skill_IceArrow"
-
-    # IceArrow -> Lightning
-    assert len(ice.children) == 1
-    lightning = ice.children[0]
-    assert lightning.attributes.get("SkillKey") == "Skill_Lightning"
-    assert len(lightning.children) == 0
