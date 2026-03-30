@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -174,14 +174,15 @@ async def get_thumbnail(
 @router.get("/mapdata/audio/stream/{string_id}")
 async def stream_audio(
     string_id: str,
+    language: str = Query(default="eng", description="File language code for audio routing"),
 ):
     """Stream WAV audio for a string_id.
 
-    Looks up audio context, converts WEM -> WAV via MediaConverter,
-    and returns the WAV file.
+    Looks up audio context using language-aware routing, converts WEM -> WAV
+    via MediaConverter, and returns the WAV file.
     """
     service = get_mapdata_service()
-    audio_ctx = service.get_audio_context(string_id)
+    audio_ctx = service.get_audio_context(string_id, file_language=language)
     if audio_ctx is None:
         raise HTTPException(status_code=503, detail="MapData service not initialized")
     if not audio_ctx.wem_path:
@@ -225,15 +226,17 @@ async def get_image_context(
 @router.get("/mapdata/audio/{string_id}", response_model=AudioContextResponse)
 async def get_audio_context(
     string_id: str,
+    language: str = Query(default="eng", description="File language code for audio routing (e.g. kor, fre, zho-cn)"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get audio context (event name, WEM path, script text) for a string_id.
 
+    Language parameter routes audio to correct folder (EN/KR/ZH).
     Returns 200 with empty wem_path and fallback_reason when audio not found.
     Returns 503 only when MapData service is not initialized.
     """
     service = get_mapdata_service()
-    result = service.get_audio_context(string_id)
+    result = service.get_audio_context(string_id, file_language=language)
     if result is None:
         raise HTTPException(status_code=503, detail="MapData service not initialized")
     return AudioContextResponse(**result.to_dict())
@@ -242,15 +245,17 @@ async def get_audio_context(
 @router.get("/mapdata/context/{string_id}", response_model=CombinedContextResponse)
 async def get_combined_context(
     string_id: str,
+    language: str = Query(default="eng", description="File language code for audio routing (e.g. kor, fre, zho-cn)"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get both image and audio context for a string_id.
 
+    Language parameter routes audio to correct folder (EN/KR/ZH).
     Returns 200 even if one or both are missing (fields will be null).
     """
     service = get_mapdata_service()
     image = service.get_image_context(string_id)
-    audio = service.get_audio_context(string_id)
+    audio = service.get_audio_context(string_id, file_language=language)
 
     return CombinedContextResponse(
         string_id=string_id,

@@ -193,7 +193,7 @@ class ContextService:
         logger.debug(f"[CONTEXT] Chain resolved: StrKey={strkey} -> {image.dds_path}")
         return {"steps": steps, "result": image, "partial": False}
 
-    def resolve_context_for_row(self, string_id: str, source_text: str) -> EntityContext:
+    def resolve_context_for_row(self, string_id: str, source_text: str, file_language: str = "eng") -> EntityContext:
         """Resolve context combining StringID-direct lookups with text detection.
 
         Uses resolve_chain() for step-by-step StringID media lookup with
@@ -202,6 +202,8 @@ class ContextService:
         Args:
             string_id: The row's StringID for direct media lookup.
             source_text: Source text for entity detection.
+            file_language: Language code of the file (e.g. "kor", "fre").
+                          Routes audio lookup to correct folder.
 
         Returns:
             EntityContext with both direct StringID media and detected entities.
@@ -213,12 +215,13 @@ class ContextService:
         mapdata_svc = get_mapdata_service()
         chain = self.resolve_chain(string_id)
         direct_image = chain.get("result")
-        direct_audio = mapdata_svc.get_audio_context(string_id)
+        direct_audio = mapdata_svc.get_audio_context(string_id, file_language)
 
         result.string_id_context = {
             "image": direct_image.to_dict() if direct_image else None,
             "audio": direct_audio.to_dict() if direct_audio else None,
             "chain_steps": chain.get("steps", []),
+            "match_method": chain.get("match_method", "stringid"),
         }
 
         return result

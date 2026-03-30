@@ -82,15 +82,17 @@ async def get_context_status(
 async def get_context_by_string_id(
     string_id: str,
     source_text: str = Query(default="", max_length=2000, description="Source text for entity detection"),
+    language: str = Query(default="eng", description="File language code for audio routing (e.g. kor, fre, zho-cn)"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get entity context for a string_id.
 
     Combines direct StringID media lookup with entity detection from source_text.
+    Language parameter routes audio to correct folder (EN/KR/ZH).
     Returns empty context (not error) when services are not loaded.
     """
     service = get_context_service()
-    result = service.resolve_context_for_row(string_id, source_text)
+    result = service.resolve_context_for_row(string_id, source_text, file_language=language)
 
     # AI summary generation
     ai_service = get_ai_summary_service()
