@@ -249,7 +249,16 @@
                       reject(new Error(data.message || 'Merge failed'));
                       return;
                     }
-                  } catch (e) { /* ignore parse errors */ }
+                  } catch (parseErr) {
+                      console.warn('[Merge SSE] parse error:', parseErr.message, 'raw:', line.slice(6));
+                      if (eventType === 'complete') {
+                        resolve({ warning: 'Merge completed but response was malformed' });
+                        return;
+                      } else if (eventType === 'error') {
+                        reject(new Error(`Merge error (unparseable): ${line.slice(6)}`));
+                        return;
+                      }
+                    }
                   eventType = '';
                 }
               }

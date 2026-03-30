@@ -371,7 +371,7 @@ class EntityParsersMixin:
                         source_file=source_file,
                         display_name="",
                     )
-                    self._collect_texture_refs(nstrkey, node_elem)
+                    self._collect_texture_refs(nstrkey, elem)
 
                 # D16: RegionInfo -> display names
                 for elem in root.iter("RegionInfo"):
@@ -520,7 +520,10 @@ class EntityParsersMixin:
                 if root is None:
                     continue
                 source_file = xml_path.name
-                relative_path = str(xml_path.relative_to(quest_folder))
+                try:
+                    relative_path = str(xml_path.relative_to(quest_folder))
+                except ValueError:
+                    relative_path = source_file
 
                 # Determine quest_type from subfolder path
                 quest_type = "main"  # default
@@ -540,8 +543,8 @@ class EntityParsersMixin:
                     for elem in root.iter(tag):
                         a = _ci_attrs(elem)
                         strkey = (a.get("strkey") or a.get("key") or "").lower()
-                        if not strkey:
-                            continue
+                        if not strkey or strkey in self.quest_by_strkey:
+                            continue  # Skip empty or already-parsed (avoids nested tag duplicates)
 
                         name = a.get("name") or a.get("questname") or ""
                         desc = a.get("desc") or a.get("questdesc") or ""

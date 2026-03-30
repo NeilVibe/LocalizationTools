@@ -93,6 +93,41 @@ def _db_rows_to_corrections(rows: list[dict]) -> list[dict]:
     return corrections
 
 
+def _apply_merge_pre_filters(
+    corrections: list[dict],
+    match_mode: str,
+    non_script_only: bool,
+    all_categories: bool,
+    unique_only: bool,
+) -> list[dict]:
+    """Apply option-based pre-filtering to corrections (shared by to-file and to-folder)."""
+    original_count = len(corrections)
+    script_cats = {"dialog", "sequencer", "script"}
+
+    if non_script_only:
+        corrections = [c for c in corrections if (c.get("category") or "").lower() not in script_cats]
+
+    if match_mode == "stringid_only" and not all_categories:
+        corrections = [c for c in corrections if (c.get("category") or "").lower() in script_cats]
+
+    if unique_only:
+        seen = set()
+        unique = []
+        for c in corrections:
+            key = (c.get("str_origin") or "").strip().lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(c)
+        corrections = unique
+
+    if len(corrections) != original_count:
+        logger.info(
+            "[MERGE-TO-DISK] Pre-filter: %d → %d corrections (non_script=%s, all_cat=%s, unique=%s)",
+            original_count, len(corrections), non_script_only, all_categories, unique_only,
+        )
+    return corrections
+
+
 def _extract_language_suffix(filename: str) -> Optional[str]:
     """Extract language code from filename like languagedata_KOR.loc.xml → KOR."""
     import re
@@ -149,37 +184,11 @@ async def merge_to_file(
     if not corrections:
         return {"matched": 0, "updated": 0, "not_found": 0, "message": "No valid corrections after filtering"}
 
-    # BUG-16 fix: Apply option-based pre-filtering (same logic as TranslatorMergeService)
-    original_count = len(corrections)
-
-    # non_script_only: exclude SCRIPT categories (Dialog, Sequencer)
-    if request.non_script_only:
-        script_cats = {"dialog", "sequencer", "script"}
-        corrections = [c for c in corrections if (c.get("category") or "").lower() not in script_cats]
-
-    # all_categories=False (default) + stringid_only → restrict to SCRIPT categories only
-    if request.match_mode == "stringid_only" and not request.all_categories:
-        script_cats = {"dialog", "sequencer", "script"}
-        corrections = [c for c in corrections if (c.get("category") or "").lower() in script_cats]
-
-    # unique_only: deduplicate by str_origin (keep first occurrence)
-    if request.unique_only:
-        seen = set()
-        unique = []
-        for c in corrections:
-            key = (c.get("str_origin") or "").strip().lower()
-            if key not in seen:
-                seen.add(key)
-                unique.append(c)
-        corrections = unique
-
-    if len(corrections) != original_count:
-        logger.info(
-            "[MERGE-TO-DISK] Pre-filter: %d → %d corrections (non_script=%s, all_cat=%s, unique=%s)",
-            original_count, len(corrections), request.non_script_only,
-            request.all_categories, request.unique_only,
-        )
-
+    # BUG-16 fix: Apply option-based pre-filtering
+    corrections = _apply_merge_pre_filters(
+        corrections, request.match_mode,
+        request.non_script_only, request.all_categories, request.unique_only,
+    )
     if not corrections:
         return {"matched": 0, "updated": 0, "not_found": 0, "message": "No corrections after option filtering"}
 
@@ -282,6 +291,18 @@ async def merge_to_folder(
 
     if not lang_corrections:
         return {"message": "No valid corrections found", "files_processed": 0}
+
+    # Apply pre-filters to all correction sets (same options as merge_to_file)
+    for lang in list(lang_corrections.keys()):
+        lang_corrections[lang] = _apply_merge_pre_filters(
+            lang_corrections[lang], request.match_mode,
+            request.non_script_only, request.all_categories, request.unique_only,
+        )
+        if not lang_corrections[lang]:
+            del lang_corrections[lang]
+
+    if not lang_corrections:
+        return {"message": "No corrections after option filtering", "files_processed": 0}
 
     # Scan target folder for XML files grouped by language suffix
     target_files_by_lang: dict[str, list[Path]] = {}

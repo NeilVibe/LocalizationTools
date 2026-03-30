@@ -324,6 +324,10 @@ class DataParsersMixin:
                         filename_key = filename_key[:-4]
                 except ValueError:
                     filename_key = _get_export_key(xml_path.name)
+                    logger.warning(
+                        "[MEGAINDEX] Export .loc.xml not relative to export folder, "
+                        "category detection may be wrong: %s", xml_path,
+                    )
 
                 # Also compute the relative directory for D20 (export_path category)
                 try:
