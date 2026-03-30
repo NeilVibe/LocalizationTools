@@ -20,7 +20,7 @@
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
-  import AICapabilityBadges from "$lib/components/settings/AICapabilityBadges.svelte";
+  // AICapabilityBadges removed — StatusPage is the single source for system status
 
   // Svelte 5 Runes
   let { open = $bindable(false) } = $props();
@@ -196,9 +196,6 @@
       CJK fonts recommended for Korean/Chinese/Japanese text.
     </p>
 
-    <div class="ai-section">
-      <AICapabilityBadges />
-    </div>
   </div>
 </Modal>
 
@@ -222,12 +219,6 @@
     font-size: 0.75rem;
     color: var(--cds-text-03);
     font-style: italic;
-  }
-
-  .ai-section {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--cds-ui-03, #393939);
   }
 
   :global(.bx--inline-notification) {
