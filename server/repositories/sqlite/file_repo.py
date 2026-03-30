@@ -499,7 +499,7 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
             "target_language": file.get("target_language"),
             "project_id": file.get("project_id"),
             "folder_id": file.get("folder_id"),
-            "extra_data": file.get("extra_data"),
+            "extra_data": extra_data,
             "created_at": file.get("created_at"),
             "updated_at": file.get("updated_at"),
             # Extract file_type from extra_data (stored by xml_handler during upload)
