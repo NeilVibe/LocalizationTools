@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from server.tools.ldm.services.mega_index_helpers import (
+    LANG_TO_AUDIO,
     _ENTITY_TYPE_MAP,
     _normalize_strorigin,
 )
@@ -44,6 +45,9 @@ class ApiMixin:
     gimmick_by_strkey: Dict[str, GimmickEntry]
     dds_by_stem: Dict[str, Path]
     wem_by_event: Dict[str, Path]
+    wem_by_event_en: Dict[str, Path]
+    wem_by_event_kr: Dict[str, Path]
+    wem_by_event_zh: Dict[str, Path]
     event_to_stringid: Dict[str, str]
     stringid_to_strorigin: Dict[str, str]
     stringid_to_translations: Dict[str, Dict[str, str]]
@@ -65,6 +69,9 @@ class ApiMixin:
     strkey_to_image_path: Dict[str, Path]
     strkey_to_audio_path: Dict[str, Path]
     stringid_to_audio_path: Dict[str, Path]
+    stringid_to_audio_path_en: Dict[str, Path]
+    stringid_to_audio_path_kr: Dict[str, Path]
+    stringid_to_audio_path_zh: Dict[str, Path]
     event_to_script_kr: Dict[str, str]
     event_to_script_eng: Dict[str, str]
     entity_strkey_to_stringids: Dict[str, Set[str]]
@@ -78,27 +85,27 @@ class ApiMixin:
 
     def get_knowledge(self, strkey: str) -> Optional[KnowledgeEntry]:
         """O(1) knowledge entity lookup by StrKey."""
-        return self.knowledge_by_strkey.get(strkey)
+        return self.knowledge_by_strkey.get(strkey.lower())
 
     def get_character(self, strkey: str) -> Optional[CharacterEntry]:
         """O(1) character entity lookup by StrKey."""
-        return self.character_by_strkey.get(strkey)
+        return self.character_by_strkey.get(strkey.lower())
 
     def get_item(self, strkey: str) -> Optional[ItemEntry]:
         """O(1) item entity lookup by StrKey."""
-        return self.item_by_strkey.get(strkey)
+        return self.item_by_strkey.get(strkey.lower())
 
     def get_region(self, strkey: str) -> Optional[RegionEntry]:
         """O(1) region entity lookup by StrKey."""
-        return self.region_by_strkey.get(strkey)
+        return self.region_by_strkey.get(strkey.lower())
 
     def get_skill(self, strkey: str) -> Optional[SkillEntry]:
         """O(1) skill entity lookup by StrKey."""
-        return self.skill_by_strkey.get(strkey)
+        return self.skill_by_strkey.get(strkey.lower())
 
     def get_gimmick(self, strkey: str) -> Optional[GimmickEntry]:
         """O(1) gimmick entity lookup by StrKey."""
-        return self.gimmick_by_strkey.get(strkey)
+        return self.gimmick_by_strkey.get(strkey.lower())
 
     def get_entity(self, entity_type: str, strkey: str) -> Optional[Any]:
         """O(1) entity lookup by type and StrKey."""
@@ -107,7 +114,7 @@ class ApiMixin:
         if not attr_name:
             return None
         d = getattr(self, attr_name, {})
-        return d.get(strkey)
+        return d.get(strkey.lower())
 
     # =========================================================================
     # Public API: Media Lookups
@@ -115,7 +122,7 @@ class ApiMixin:
 
     def get_image_path(self, strkey: str) -> Optional[Path]:
         """C1: StrKey -> image DDS path."""
-        return self.strkey_to_image_path.get(strkey)
+        return self.strkey_to_image_path.get(strkey.lower())
 
     def get_audio_path_by_event(self, event_name: str) -> Optional[Path]:
         """D10: Event name -> WEM audio path."""
@@ -123,11 +130,41 @@ class ApiMixin:
 
     def get_audio_path_by_stringid(self, string_id: str) -> Optional[Path]:
         """C3: StringId -> audio WEM path."""
-        return self.stringid_to_audio_path.get(string_id)
+        return self.stringid_to_audio_path.get(string_id.lower())
 
     def get_dds_path(self, texture_name: str) -> Optional[Path]:
         """D9: Texture name (stem) -> DDS path."""
         return self.dds_by_stem.get(texture_name.lower())
+
+    def get_audio_path_by_stringid_for_lang(self, string_id: str, file_language: str) -> Optional[Path]:
+        """C3 language-aware: StringId + file language -> correct WEM path.
+
+        Routes through LANG_TO_AUDIO mapping:
+        - Latin langs (eng, fre, ger, etc.) -> English(US) audio
+        - KOR, JPN, ZHO-TW -> Korean audio
+        - ZHO-CN -> Chinese(PRC) audio
+
+        Falls back to English if language unknown.
+        """
+        lang_key = LANG_TO_AUDIO.get(file_language.lower(), "en")
+        sid_lower = string_id.lower()
+        if lang_key == "kr":
+            return self.stringid_to_audio_path_kr.get(sid_lower)
+        elif lang_key == "zh":
+            return self.stringid_to_audio_path_zh.get(sid_lower)
+        else:
+            return self.stringid_to_audio_path_en.get(sid_lower)
+
+    def get_audio_path_by_event_for_lang(self, event_name: str, file_language: str) -> Optional[Path]:
+        """D10 language-aware: Event name + file language -> correct WEM path."""
+        lang_key = LANG_TO_AUDIO.get(file_language.lower(), "en")
+        en_lower = event_name.lower()
+        if lang_key == "kr":
+            return self.wem_by_event_kr.get(en_lower)
+        elif lang_key == "zh":
+            return self.wem_by_event_zh.get(en_lower)
+        else:
+            return self.wem_by_event_en.get(en_lower)
 
     # =========================================================================
     # Public API: Localization Lookups
@@ -135,12 +172,12 @@ class ApiMixin:
 
     def get_strorigin(self, string_id: str) -> Optional[str]:
         """D12: StringId -> Korean StrOrigin text."""
-        return self.stringid_to_strorigin.get(string_id)
+        return self.stringid_to_strorigin.get(string_id.lower())
 
     def get_translation(self, string_id: str, lang: str) -> Optional[str]:
         """D13: StringId + language -> translated text."""
-        translations = self.stringid_to_translations.get(string_id, {})
-        return translations.get(lang)
+        translations = self.stringid_to_translations.get(string_id.lower(), {})
+        return translations.get(lang.lower())
 
     def get_script_kr(self, event_name: str) -> Optional[str]:
         """C4: Event name -> Korean script line."""
@@ -158,11 +195,11 @@ class ApiMixin:
         self, string_id: str
     ) -> Optional[Tuple[str, str]]:
         """C7: StringId -> (entity_type, strkey)."""
-        return self.stringid_to_entity.get(string_id)
+        return self.stringid_to_entity.get(string_id.lower())
 
     def entity_stringids(self, entity_type: str, strkey: str) -> Set[str]:
         """C6: Entity (type, strkey) -> set of StringIds."""
-        return self.entity_strkey_to_stringids.get(strkey, set())
+        return self.entity_strkey_to_stringids.get(strkey.lower(), set())
 
     def event_to_stringid_lookup(self, event_name: str) -> Optional[str]:
         """D11: Event name -> StringId."""
@@ -170,7 +207,7 @@ class ApiMixin:
 
     def stringid_to_event_lookup(self, string_id: str) -> Optional[str]:
         """R3: StringId -> event name."""
-        return self.stringid_to_event.get(string_id)
+        return self.stringid_to_event.get(string_id.lower())
 
     # =========================================================================
     # Public API: Reverse Lookups
@@ -178,18 +215,18 @@ class ApiMixin:
 
     def find_by_korean_name(self, name_kr: str) -> List[Tuple[str, str]]:
         """R1: Korean name -> list of (entity_type, strkey) matches."""
-        return self.name_kr_to_strkeys.get(name_kr, [])
+        return self.name_kr_to_strkeys.get(name_kr.lower(), [])
 
     def find_by_knowledge_key(self, key: str) -> List[Tuple[str, str]]:
         """R2: Knowledge key -> list of (entity_type, strkey) that reference it."""
-        return self.knowledge_key_to_entities.get(key, [])
+        return self.knowledge_key_to_entities.get(key.lower(), [])
 
     def find_by_source_file(self, filename: str) -> List[Tuple[str, str]]:
         """R5: Source filename -> list of (entity_type, strkey) from that file."""
-        return self.source_file_to_strkeys.get(filename, [])
+        return self.source_file_to_strkeys.get(filename.lower(), [])
 
     def find_stringids_by_korean(self, text: str) -> List[str]:
-        """R6: Korean text (normalized) -> list of matching StringIds."""
+        """R6: Korean text (normalized+lowercased) -> list of matching StringIds."""
         normalized = _normalize_strorigin(text)
         return self.strorigin_to_stringids.get(normalized, [])
 
@@ -254,6 +291,9 @@ class ApiMixin:
                 "D8_gimmick": len(self.gimmick_by_strkey),
                 "D9_dds": len(self.dds_by_stem),
                 "D10_wem": len(self.wem_by_event),
+                "D10_wem_en": len(self.wem_by_event_en),
+                "D10_wem_kr": len(self.wem_by_event_kr),
+                "D10_wem_zh": len(self.wem_by_event_zh),
                 "D11_event_to_stringid": len(self.event_to_stringid),
                 "D12_strorigin": len(self.stringid_to_strorigin),
                 "D13_translations": len(self.stringid_to_translations),
