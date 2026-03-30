@@ -1,1 +1,1 @@
-Build QuickTranslate — strip_invisible helper + report label fixes + clipboard error
+Build 20260330-155107
