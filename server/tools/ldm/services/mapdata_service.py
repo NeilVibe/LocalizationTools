@@ -252,12 +252,20 @@ class MapDataService:
         """
         return self._knowledge_table.get(strkey)
 
-    def get_audio_context(self, string_id: str) -> Optional[AudioContext]:
+    def get_audio_context(self, string_id: str, file_language: str = "eng") -> Optional[AudioContext]:
         """Look up audio context by StrKey, StringID, or KnowledgeKey.
 
-        Uses MegaIndex C3 (stringid_to_audio_path) for direct StringId->WEM
-        lookup, with C4/C5 (event_to_script) for Korean/English script text.
+        Uses MegaIndex language-aware C3 lookup for correct audio folder routing:
+        - Latin langs (eng, fre, ger, etc.) -> English(US) audio
+        - KOR, JPN, ZHO-TW -> Korean audio
+        - ZHO-CN -> Chinese(PRC) audio
+
         Falls back to lazy-loaded TTS WAV files.
+
+        Args:
+            string_id: The StringID or StrKey to look up audio for.
+            file_language: Language code of the file being edited (e.g. "kor", "fre").
+                          Used to route to correct audio folder. Defaults to "eng".
 
         Returns None only if service is not loaded.
         Returns AudioContext with empty fields and fallback_reason when
@@ -266,16 +274,17 @@ class MapDataService:
         if not self._loaded:
             return None
 
-        # Check cached audio first
-        result = self._strkey_to_audio.get(string_id)
+        # Check cached audio first (cache key includes language for correctness)
+        cache_key = f"{string_id}:{file_language}"
+        result = self._strkey_to_audio.get(cache_key)
         if result:
             return result
 
-        # Try MegaIndex C3: StringId -> audio WEM path
+        # Try MegaIndex language-aware C3: StringId + language -> audio WEM path
         from server.tools.ldm.services.mega_index import get_mega_index
         mega = get_mega_index()
 
-        wem_path = mega.stringid_to_audio_path.get(string_id)
+        wem_path = mega.get_audio_path_by_stringid_for_lang(string_id, file_language)
         if wem_path:
             # Get event name for script lookup via R3
             event_name = mega.stringid_to_event.get(string_id, "")
@@ -292,11 +301,11 @@ class MapDataService:
                 script_eng=script_eng,
                 duration_seconds=None,
             )
-            # Cache for future lookups
-            self._strkey_to_audio[string_id] = audio_ctx
+            # Cache for future lookups (keyed by string_id:language)
+            self._strkey_to_audio[cache_key] = audio_ctx
             return audio_ctx
 
-        # Also try StrKey-based audio path from C2
+        # Also try StrKey-based audio path from C2 (entity-based, always English)
         audio_path_c2 = mega.strkey_to_audio_path.get(string_id)
         if audio_path_c2:
             audio_ctx = AudioContext(
@@ -306,7 +315,7 @@ class MapDataService:
                 script_eng="",
                 duration_seconds=None,
             )
-            self._strkey_to_audio[string_id] = audio_ctx
+            self._strkey_to_audio[cache_key] = audio_ctx
             return audio_ctx
 
         # Lazy-populate audio index from TTS WAV files as final fallback
