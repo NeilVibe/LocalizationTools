@@ -170,6 +170,68 @@ For Korean file (languagedata_KOR.loc.xml):
 
 ---
 
+## NEW Issues from PEARL PC Testing Round 2 (2026-03-30 session 2)
+
+### Phase 100 Completed (bugs 1-12 + case-insensitive)
+All committed and built. Post-build review found + fixed: frontend language wiring, image C7 chain, health.py counts, test mocks, inline editor Space/Enter.
+
+### BUG-13: Merge matches IDENTICAL strings — 169,650 unnecessary updates (CRITICAL)
+**Severity:** CRITICAL — core workflow broken, 42s wasted on no-ops
+**Evidence:** `matched: 169650, skipped: 233, total: 203965, rows_updated: 169650`
+**Root cause:** LocaNext merge does NOT skip identical rows. QuickTranslate's `core/transfer.py` ONLY transfers corrections where target DIFFERS. LocaNext overwrites all matching rows even if target is already correct.
+**Fix:** Deep graft of QT `core/transfer.py` logic into `server/services/merge/translator_merge.py`:
+- Skip identical (source match + target identical = no-op)
+- Only transfer differences (source match + target DIFFERS = correction)
+- Per-row logging with old→new values
+- Match type tracking per row
+- Dry run mode (preview before commit)
+- Progress callback for streaming feedback
+
+### BUG-14: Merge modal shows NO progress — just infinite loading (HIGH)
+**Severity:** HIGH — 42 seconds of blank spinner, user has zero feedback
+**Fix:**
+- Backend: streaming SSE or WebSocket progress during merge (row count, %, match types)
+- Frontend: FileMergeModal shows live progress bar with counts
+- At minimum: periodic log updates visible to user
+
+### BUG-15: Merge logging has FORMAT STRING BUG (MEDIUM)
+**Severity:** MEDIUM — `%d` and `%s` placeholders not interpolated
+**Evidence:** `[MERGE] Merge request: target_file=%d, source_file=%d, mode=%s, threshold=%.2f`
+**Fix:** Change `%d` to f-string or .format() in merge route logging
+
+### BUG-16: Merge options silently dropped by backend (HIGH)
+**Severity:** HIGH — UI shows transfer_scope, all_categories, non_script_only, ignore_spaces, etc. but MergeRequest Pydantic model doesn't have those fields
+**Fix:** Either extend MergeRequest + TranslatorMergeService or remove UI options that don't work
+
+### BUG-17: Inline editor Space blocked (FIXED — commit 75fd23a9)
+Row onkeydown intercepted Space during editing. Fixed with !inlineEditingRowId guard.
+
+### BUG-18: Inline editor Enter saves instead of linebreak (FIXED — commit 75fd23a9)
+Enter now inserts `<br/>`. Ctrl+Enter saves. CAT tool standard.
+
+### BUG-19: TM suggest spam loop during editing (MEDIUM)
+**Severity:** MEDIUM — same TM suggest call fires 4-5x/second during editing, causes clunkiness
+**Fix:** Skip TM fetch while inlineEditingRowId is active, or debounce
+
+### BUG-20: Cell distortion / addRange() warning during editing (LOW)
+**Severity:** LOW — `addRange(): The given range isn't in document` renderer warning
+**May be fixed** by BUG-17/18 fixes (Space/Enter no longer fight between handlers)
+
+### Priority Order for Remaining Work
+
+| Priority | Issue | Status | Phase |
+|----------|-------|--------|-------|
+| 1 | BUG-13: Merge matches identical strings | TODO | 101 |
+| 2 | BUG-14: Merge no progress feedback | TODO | 101 |
+| 3 | BUG-15: Merge format string bug | TODO | 101 |
+| 4 | BUG-16: Merge options silently dropped | TODO | 101 |
+| 5 | BUG-19: TM suggest spam during editing | TODO | 101 |
+| 6 | BUG-20: Cell distortion | MAYBE FIXED | verify |
+| 7 | Image Korean fallback chain | FIXED (uncommitted) | push |
+| 8 | StatusPage counts backend | FIXED (uncommitted) | push |
+
+---
+
 ## What IS Working Perfectly (confirmed by log)
 
 - Model2Vec detection + loading: dim=256 ✓
