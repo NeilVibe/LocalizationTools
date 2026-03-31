@@ -2,11 +2,10 @@
   /**
    * CellRenderer.svelte -- Column layout, cell markup, text formatting, TagText integration.
    *
-   * Phase 84 Batch 2: Extracted from VirtualGrid.svelte.
-   * Owns the {#each visibleRows} loop, row rendering, column definitions,
-   * column resize system, and all cell/row CSS.
+   * Read-only display component. No inline editing (that lives in EditModal).
+   * Content-aware row heights from gridState (pure math estimation, no DOM measurement).
    *
-   * Reads from gridState: grid, visibleRows, measureRowHeight, tmAppliedRows, qaFlags
+   * Reads from gridState: grid, displayRows, tmAppliedRows, getRowTop, getRowHeight, getTotalHeight
    * Does NOT write to gridState (display-only).
    */
 
@@ -15,17 +14,12 @@
   import { Edit, Locked, MachineLearningModel } from "carbon-icons-svelte";
   import {
     grid,
-    getVisibleRows,
-    measureRowHeight,
+    displayRows,
     tmAppliedRows,
-    getRowById,
     getRowTop,
     getRowHeight as gridGetRowHeight,
     getTotalHeight,
     gameDevDynamicColumns,
-    rowHeightCache,
-    heightData,
-    rebuildCumulativeHeights,
   } from './gridState.svelte.ts';
   import TagText from '$lib/components/ldm/TagText.svelte';
   import QAInlineBadge from '$lib/components/ldm/QAInlineBadge.svelte';
@@ -39,9 +33,6 @@
     fileType = "translator",
     // containerEl is now in gridState — set directly via bind:this on scroll-container
     gamedevDynamicColumns = null,
-    // Inline editing state passed from parent (InlineEditor owns these, Batch 3)
-    inlineEditingRowId = null,
-    inlineEditTextarea = $bindable(null),
     // Callback props forwarded from parent
     onRowClick = undefined,
     onRowDoubleClick = undefined,
@@ -49,9 +40,6 @@
     onCellMouseEnter = undefined,
     onCellMouseLeave = undefined,
     onRowMouseLeave = undefined,
-    onInlineEditKeydown = undefined,
-    onInlineEditBlur = undefined,
-    onEditContextMenu = undefined,
     onQADismiss = undefined,
     // Reference column
     getReferenceForRow = undefined,
@@ -274,7 +262,7 @@
     const end = grid.visibleEnd;
     return Array.from({ length: end - start }, (_, i) => {
       const index = start + i;
-      return grid.rows[index] || { row_num: index + 1, placeholder: true };
+      return displayRows[index] || { row_num: index + 1, placeholder: true };
     });
   });
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
@@ -285,39 +273,9 @@
   // Total height from gridState
   let totalHeight = $derived(getTotalHeight());
 
-  // Local wrapper for getRowHeight (needs stripColorTags parameter)
+  // Local wrapper for getRowHeight from gridState
   function getRowHeight(index) {
-    return gridGetRowHeight(index, stripColorTags);
-  }
-
-  /** Live resize: when contenteditable content changes, measure and grow the row.
-   *  Uses incremental height update (O(n) shift) instead of full rebuild (O(n) too but with
-   *  snapshot overhead). Debounced via rAF to avoid per-keystroke thrash. */
-  let resizeRafId = null;
-  function handleEditInput(rowIndex) {
-    if (resizeRafId) cancelAnimationFrame(resizeRafId);
-    resizeRafId = requestAnimationFrame(() => {
-      resizeRafId = null;
-      if (!inlineEditTextarea) return;
-      // Measure the contenteditable's natural scroll height + row chrome (border + padding)
-      const editHeight = inlineEditTextarea.scrollHeight + 24;
-      const currentCached = rowHeightCache.get(rowIndex) || 48;
-      const newHeight = Math.max(48, editHeight);
-      // Only update if height changed meaningfully
-      if (Math.abs(newHeight - currentCached) > 4) {
-        const delta = newHeight - currentCached;
-        rowHeightCache.set(rowIndex, newHeight);
-        // Incremental shift: update cumulative heights from this row onward
-        const cum = heightData.cumulativeHeights;
-        if (cum.length > rowIndex + 1) {
-          for (let i = rowIndex + 1; i < cum.length; i++) {
-            cum[i] += delta;
-          }
-          // Trigger reactivity by reassigning
-          heightData.cumulativeHeights = cum;
-        }
-      }
-    });
+    return gridGetRowHeight(index);
   }
 </script>
 
@@ -354,9 +312,8 @@
         class:row-hovered={grid.hoveredRowId === row.id}
         style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;
           --grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
-        use:measureRowHeight={{ index: rowIndex }}
         onclick={(e) => onRowClick?.(row, e)}
-        onkeydown={(e) => { if (!inlineEditingRowId && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onRowClick?.(row, e); } }}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick?.(row, e); } }}
         oncontextmenu={(e) => !row.placeholder && onCellContextMenu?.(e, row.id)}
         onmouseleave={() => onRowMouseLeave?.()}
         role="row"
@@ -458,14 +415,13 @@
             {/if}
           </div>
 
-          <!-- Target (always visible, EDITABLE) -->
+          <!-- Target (always visible, READ-ONLY display — editing via EditModal) -->
           <div
             class="cell target"
             class:locked={rowLock}
             class:target-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'target'}
             class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
             class:cell-selected={grid.selectedRowId === row.id}
-            class:inline-editing={inlineEditingRowId === row.id}
             class:status-translated={row.status === 'translated'}
             class:status-reviewed={row.status === 'reviewed'}
             class:status-approved={row.status === 'approved'}
@@ -475,41 +431,22 @@
             ondblclick={() => !rowLock && onRowDoubleClick?.(row)}
             role="button"
             tabindex="0"
-            onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && onRowDoubleClick?.(row)}
+            onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && onRowDoubleClick?.(row)}
           >
-            {#if inlineEditingRowId === row.id}
-              <!-- WYSIWYG inline editing - colors render directly -->
-              <div class="inline-edit-container">
-                <div
-                  bind:this={inlineEditTextarea}
-                  contenteditable="true"
-                  class="inline-edit-textarea"
-                  role="textbox"
-                  tabindex="0"
-                  onkeydown={(e) => onInlineEditKeydown?.(e)}
-                  oninput={() => handleEditInput(rowIndex)}
-                  onblur={() => onInlineEditBlur?.()}
-                  oncontextmenu={(e) => onEditContextMenu?.(e)}
-                  data-placeholder="Enter translation..."
-                ></div>
-              </div>
+            <span class="cell-content"><TagText text={row.target || ""} /></span>
+            {#if tmAppliedRows.has(row.id)}
+              {@const tmInfo = tmAppliedRows.get(row.id)}
+              <span class="ai-badge" title="AI-matched ({tmInfo.match_type})">
+                <MachineLearningModel size={12} />
+              </span>
+            {/if}
+            {#if row.qa_flag_count > 0}
+              <QAInlineBadge qaFlagCount={row.qa_flag_count} rowId={row.id} onDismiss={onQADismiss} />
+            {/if}
+            {#if rowLock}
+              <span class="lock-icon"><Locked size={12} /></span>
             {:else}
-              <!-- Display mode -->
-              <span class="cell-content"><TagText text={row.target || ""} /></span>
-              {#if tmAppliedRows.has(row.id)}
-                {@const tmInfo = tmAppliedRows.get(row.id)}
-                <span class="ai-badge" title="AI-matched ({tmInfo.match_type})">
-                  <MachineLearningModel size={12} />
-                </span>
-              {/if}
-              {#if row.qa_flag_count > 0}
-                <QAInlineBadge qaFlagCount={row.qa_flag_count} rowId={row.id} onDismiss={onQADismiss} />
-              {/if}
-              {#if rowLock}
-                <span class="lock-icon"><Locked size={12} /></span>
-              {:else}
-                <span class="edit-icon"><Edit size={12} /></span>
-              {/if}
+              <span class="edit-icon"><Edit size={12} /></span>
             {/if}
           </div>
 
@@ -678,8 +615,6 @@
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: flex-start;
-    overflow: hidden;
-    text-overflow: ellipsis;
     min-width: 0;
     align-self: stretch;
     box-sizing: border-box;
@@ -749,56 +684,6 @@
   .cell.target.locked {
     cursor: not-allowed;
     background: var(--cds-layer-02);
-  }
-
-  /* Inline editing mode — overflow visible so cell grows with content */
-  .cell.target.inline-editing {
-    padding: 0;
-    background: var(--cds-field-01);
-    border: 2px solid var(--cds-interactive-01);
-    box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.3);
-    overflow: visible;
-  }
-
-  .inline-edit-textarea {
-    width: 100%;
-    min-height: 48px;
-    padding: 0.5rem;
-    border: none;
-    background: var(--cds-field-01);
-    color: var(--grid-font-color, var(--cds-text-01));
-    font-family: var(--grid-font-family, inherit);
-    font-size: var(--grid-font-size, 0.875rem);
-    font-weight: var(--grid-font-weight, 400);
-    line-height: 1.5;
-    outline: none;
-    overflow-y: visible;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    cursor: text;
-  }
-
-  .inline-edit-textarea:focus {
-    outline: none;
-  }
-
-  .inline-edit-textarea:empty:before {
-    content: attr(data-placeholder);
-    color: var(--cds-text-02);
-    font-style: italic;
-    pointer-events: none;
-  }
-
-  .inline-edit-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-height: 48px;
-  }
-
-  .inline-edit-container .inline-edit-textarea {
-    flex: 1;
-    min-height: 48px;
   }
 
   /* Status-based cell colors */
