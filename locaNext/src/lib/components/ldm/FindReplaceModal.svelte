@@ -381,7 +381,6 @@
           class="match-item"
           class:active={i === currentMatchIndex}
           onclick={() => { currentMatchIndex = i; }}
-          role="listitem"
           type="button"
         >
           <span class="match-row-num">#{match.rowNum}</span>
