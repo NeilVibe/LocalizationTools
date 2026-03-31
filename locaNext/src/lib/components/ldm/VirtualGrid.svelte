@@ -26,6 +26,7 @@
   import CellRenderer from './grid/CellRenderer.svelte';
   import SelectionManager from './grid/SelectionManager.svelte';
   import EditOverlay from './editor/EditOverlay.svelte';
+  import FindReplaceModal from './FindReplaceModal.svelte';
   import SearchEngine from './grid/SearchEngine.svelte';
 
   import { stripColorTags } from "$lib/utils/colorParser.js";
@@ -274,6 +275,8 @@
         {onConfirmTranslation}
       />
     </div>
+
+    <FindReplaceModal bind:open={showFindReplace} {fileId} />
 
     {#if grid.loading && !grid.initialLoading}
       <div class="loading-bar">
