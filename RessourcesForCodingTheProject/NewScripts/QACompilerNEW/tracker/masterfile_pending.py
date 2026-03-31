@@ -168,8 +168,10 @@ def _read_master_statuses(
 
             # Find TESTER_STATUS_{user}, STATUS_{user}, and comment columns per user
             user_columns: Dict[str, Tuple[int, Optional[int]]] = {}
-            # comment_columns[username] = list of 0-based indices for COMMENT/MEMO/SCREENSHOT
+            # comment_columns[username] = list of 0-based indices for COMMENT/MEMO only (SCREENSHOT excluded)
             user_comment_cols: Dict[str, List[int]] = {}
+            # Ordered list of TESTER_STATUS positions for block boundary detection
+            ts_positions: List[int] = []
 
             for idx, hdr in enumerate(headers):
                 hdr_upper = hdr.upper()
@@ -183,10 +185,14 @@ def _read_master_statuses(
                                 status_idx = sidx
                                 break
                         user_columns[username] = (idx, status_idx)
+                        ts_positions.append(idx)
+
+            ts_positions.sort()
 
             # Discover comment columns by header name (not position)
-            # Matches COMMENT_{user}, MEMO_{user}, SCREENSHOT_{user}
-            _COMMENT_PREFIXES = ("COMMENT_", "MEMO_", "SCREENSHOT_")
+            # Only COMMENT and MEMO count as real issue evidence.
+            # SCREENSHOT alone does NOT make an issue real.
+            _COMMENT_PREFIXES = ("COMMENT_", "MEMO_")
             for idx, hdr in enumerate(headers):
                 hdr_upper = hdr.upper()
                 for prefix in _COMMENT_PREFIXES:
@@ -197,13 +203,43 @@ def _read_master_statuses(
                                 user_comment_cols[uname] = []
                             user_comment_cols[uname].append(idx)
 
+            # Fallback: for users WITHOUT named comment columns, use positional
+            # detection. Block pattern: [TESTER_STATUS] [STATUS] [COMMENT] [MEMO] [SCREENSHOT]
+            # Only COMMENT (s_idx+1) and MEMO (s_idx+2) count — NOT screenshot.
+            for username, (ts_idx, s_idx) in user_columns.items():
+                if username in user_comment_cols:
+                    continue  # already found by name
+                if s_idx is None:
+                    continue  # no STATUS column found
+                # Find the next TESTER_STATUS position after this user's block
+                block_end = len(headers)  # default: end of headers
+                for pos in ts_positions:
+                    if pos > ts_idx:
+                        block_end = pos
+                        break
+                # Only check COMMENT (s_idx+1) and MEMO (s_idx+2), skip SCREENSHOT
+                comment_candidates = []
+                for offset in (1, 2):  # COMMENT, MEMO
+                    col = s_idx + offset
+                    if col < block_end:
+                        comment_candidates.append(col)
+                if comment_candidates:
+                    user_comment_cols[username] = comment_candidates
+
             if not user_columns:
                 debug_log.append(f"    SKIP sheet '{ws.title}' (no TESTER_STATUS_ columns)")
                 continue
 
             debug_log.append(f"\n    SHEET '{ws.title}':")
             for u, (ts, ms) in user_columns.items():
-                debug_log.append(f"      TESTER: {u} → TESTER_STATUS col={ts}, STATUS col={ms}")
+                comment_src = "named" if any(
+                    headers[ci].upper().startswith(p)
+                    for ci in user_comment_cols.get(u, [])
+                    for p in ("COMMENT_", "MEMO_")
+                    if ci < len(headers)
+                ) else "positional"
+                n_comment = len(user_comment_cols.get(u, []))
+                debug_log.append(f"      TESTER: {u} → TESTER_STATUS col={ts}, STATUS col={ms}, comment_cols={n_comment} ({comment_src})")
 
             # Process data rows — with full status value tracking
             row_count = 0

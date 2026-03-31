@@ -442,6 +442,7 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
                         continue
 
                     # === ROW SCAN via iter_rows (streaming, read_only safe) ===
+                    phantom_skipped = 0  # count phantom issues skipped in this sheet
                     for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
                         total_rows_scanned += 1
 
@@ -475,15 +476,16 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
                                 ts_str = str(ts_val).strip().upper() if ts_val else ""
                                 if ts_str != "ISSUE":
                                     continue  # No ISSUE from tester → skip manager status
-                                # Check for comment (COMMENT, MEMO, or SCREENSHOT)
+                                # Check for comment (COMMENT or MEMO only — SCREENSHOT alone doesn't count)
                                 has_comment = False
-                                for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                for col_map in (comment_cols, memo_cols):
                                     cidx = col_map.get(username)
                                     if cidx is not None and cidx < len(row_tuple) and row_tuple[cidx] is not None:
                                         if str(row_tuple[cidx]).strip():
                                             has_comment = True
                                             break
                                 if not has_comment:
+                                    phantom_skipped += 1
                                     continue  # Phantom issue → skip manager status
 
                             total_status_found += 1
@@ -503,6 +505,9 @@ def aggregate_manager_stats_from_files(master_files: List[Path], tester_mapping:
                             existing = content_index.get(content_key)
                             if existing is None or file_mtime > existing[0]:
                                 content_index[content_key] = (file_mtime, v, target_category, tester_mapping.get(username, "EN"))
+
+                    if phantom_skipped > 0:
+                        _tracker_log(f"    SHEET '{sheet_name}': {phantom_skipped} phantom issues skipped (ISSUE without comment)")
 
                     # manager_dates: keep latest mtime per (category, username)
                     for username in status_cols.keys():
@@ -1065,6 +1070,7 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                         sample_values[username] = vals[:5] if vals else ["(empty)"]
                     _tracker_log(f"    Sample values: {sample_values}")
 
+                    phantom_skipped = 0
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
@@ -1079,8 +1085,9 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                                     ts_str = str(ts_val).strip().upper() if ts_val else ""
                                     if ts_str != "ISSUE":
                                         continue
+                                    # COMMENT or MEMO only — SCREENSHOT alone doesn't count
                                     has_comment = False
-                                    for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                    for col_map in (comment_cols, memo_cols):
                                         c_col = col_map.get(username)
                                         if c_col:
                                             c_val = ws.cell(row=row, column=c_col).value
@@ -1088,11 +1095,15 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                                                 has_comment = True
                                                 break
                                     if not has_comment:
+                                        phantom_skipped += 1
                                         continue
                                 if v == "FIXED": manager_stats[category][username]["fixed"] += 1
                                 elif v == "REPORTED": manager_stats[category][username]["reported"] += 1
                                 elif v == "CHECKING": manager_stats[category][username]["checking"] += 1
                                 elif v in ("NON-ISSUE", "NON ISSUE"): manager_stats[category][username]["nonissue"] += 1
+
+                    if phantom_skipped > 0:
+                        _tracker_log(f"    SHEET '{ws.title}': {phantom_skipped} phantom issues skipped (ISSUE without comment)")
 
                     for username in status_cols.keys():
                         manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")

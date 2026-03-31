@@ -345,8 +345,8 @@ def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
                                     ts_val = row_tuple[ts_idx]
                                     ts_str = str(ts_val).strip().upper() if ts_val else ""
                                     if ts_str == "ISSUE":
-                                        # Check for comment (COMMENT, MEMO, or SCREENSHOT)
-                                        for col_map in (comment_cols, memo_cols, screenshot_cols):
+                                        # Check for comment (COMMENT or MEMO only — SCREENSHOT alone doesn't count)
+                                        for col_map in (comment_cols, memo_cols):
                                             cidx = col_map.get(username)
                                             if cidx is not None and cidx < len(row_tuple) and row_tuple[cidx] is not None:
                                                 if str(row_tuple[cidx]).strip():

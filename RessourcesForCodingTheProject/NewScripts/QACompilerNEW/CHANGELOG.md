@@ -1,5 +1,20 @@
 # QACompiler Changelog
 
+## v2.6.1 — 2026-03-31
+
+### Pending Overcount Fix — Screenshot Counted as Real Issue
+
+**Problem:** Pending count inflated to 3,010. Colleague confirmed actual pending is much lower.
+
+**Root cause:** `SCREENSHOT_{user}` was included in phantom detection alongside `COMMENT_{user}` and `MEMO_{user}`. Rows where tester only attached a screenshot but wrote no comment were treated as real issues. Since the manager had nothing to respond to, STATUS stayed empty → false pending.
+
+**Fix:** Removed `SCREENSHOT_` from `_COMMENT_PREFIXES`. Only COMMENT and MEMO count as real issue evidence. Screenshot-only rows → phantom → nonissue. Also added positional comment column fallback as safety net.
+
+**Files:** `tracker/masterfile_pending.py`, `core/tracker_update.py`, `core/compiler.py`
+**Doc:** `docs/BUG_PENDING_OVERCOUNT_2026-03-31.md`
+
+---
+
 ## v2.6 — 2026-03-26
 
 ### Phantom Issue Detection + Manager Status Validation + Log Security
