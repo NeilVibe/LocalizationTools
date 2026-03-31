@@ -101,8 +101,12 @@ def _rebuild_paths():
     """Rebuild all path globals from current _DRIVE_LETTER and _BRANCH."""
     global LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
     global AUDIO_FOLDER_EN, AUDIO_FOLDER_KR, AUDIO_FOLDER_ZH, LANG_TO_AUDIO_FOLDER
+    global STATICINFO_FOLDER, STATICINFO_QUEST_FOLDER, STATICINFO_DIALOG_FOLDER
     LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
     EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+    STATICINFO_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
+    STATICINFO_QUEST_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest")
+    STATICINFO_DIALOG_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\staticinfo_dialog")
     VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
     AUDIO_FOLDER_EN = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\English(US)")
     AUDIO_FOLDER_KR = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\Korean")
@@ -164,6 +168,12 @@ LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable
 
 # EXPORT folder: Contains categorized .loc.xml files
 EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+
+# GameData StaticInfo folders: Contains game data XMLs with Name/Desc attributes
+# Used for glossary extraction (reverse lookup Korean → Name vs Desc)
+STATICINFO_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
+STATICINFO_QUEST_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest")
+STATICINFO_DIALOG_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\staticinfo_dialog")
 
 # VoiceRecordingSheet folder: Contains Excel files with EventName ordering
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order

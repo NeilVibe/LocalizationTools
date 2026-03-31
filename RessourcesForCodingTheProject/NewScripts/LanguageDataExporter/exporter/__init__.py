@@ -44,6 +44,8 @@ from .pattern_analyzer import (
     analyze_patterns,
     generate_pattern_report,
 )
+from .gamedata_index import GameDataReverseIndex
+from .glossary_extractor import extract_and_write_glossary
 
 __all__ = [
     "parse_language_file",
@@ -75,4 +77,7 @@ __all__ = [
     "cluster_patterns",
     "analyze_patterns",
     "generate_pattern_report",
+    # Glossary extraction
+    "GameDataReverseIndex",
+    "extract_and_write_glossary",
 ]
