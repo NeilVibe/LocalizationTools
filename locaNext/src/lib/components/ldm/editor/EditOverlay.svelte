@@ -50,6 +50,7 @@
   let isCancellingEdit = $state(false);
   let isConfirming = $state(false);
   let isSaving = $state(false);
+  let scrollOffset = $state(0);
 
   // Color picker state
   let showColorPicker = $state(false);
@@ -83,7 +84,7 @@
     if (!editRowId) return 0;
     const rowIndex = getRowIndexById(editRowId);
     if (rowIndex === undefined) return 0;
-    return getRowTop(rowIndex) + getRowHeight(rowIndex);
+    return getRowTop(rowIndex) + getRowHeight(rowIndex) - scrollOffset;
   });
 
   /** Extract unique colors from source text for the color picker */
@@ -101,6 +102,18 @@
       }
     }
     return Array.from(uniqueColors.values());
+  });
+
+  // ============================================================
+  // SCROLL OFFSET TRACKING (reactive repositioning)
+  // ============================================================
+  $effect(() => {
+    const container = grid.containerEl;
+    if (!container || !editRowId) return;
+    function onScroll() { scrollOffset = container.scrollTop; }
+    scrollOffset = container.scrollTop;
+    container.addEventListener('scroll', onScroll);
+    return () => container.removeEventListener('scroll', onScroll);
   });
 
   // ============================================================
@@ -133,7 +146,7 @@
     const isXML = fileName.toLowerCase().endsWith('.xml');
     const isExcel = fileName.toLowerCase().endsWith('.xlsx') || fileName.toLowerCase().endsWith('.xls');
     if (isXML) {
-      return text.replace(/\n/g, '&lt;br/&gt;');
+      return text.replace(/\n/g, '<br/>');
     } else if (isExcel) {
       return text.replace(/\n/g, '<br>');
     } else {
@@ -154,7 +167,14 @@
     updateRow(row.id, { target: textToSave, status });
     const rowIndex = getRowIndexById(row.id);
     if (rowIndex !== undefined) {
-      requestAnimationFrame(() => updateRowHeight(rowIndex, stripColorTags));
+      const oldHeight = getRowHeight(rowIndex);
+      requestAnimationFrame(() => {
+        updateRowHeight(rowIndex, stripColorTags);
+        const newHeight = getRowHeight(rowIndex);
+        if (Math.abs(newHeight - oldHeight) >= 1) {
+          logger.info("EditOverlay: height updated for row", { rowIndex, oldHeight, newHeight });
+        }
+      });
     }
 
     try {
@@ -238,7 +258,7 @@
     editValue = formatTextForDisplay(row.target || "");
     grid.selectedRowId = row.id;
 
-    logger.userAction("Edit started", { rowId: row.id });
+    logger.info("EditOverlay: editing row", { rowId: row.id, rowNum: row.row_num });
 
     onInlineEditStart?.({
       rowId: row.id,
@@ -268,7 +288,7 @@
       try {
         const ok = await saveRowToAPI(row, textToSave, 'translated');
         if (ok) {
-          logger.success("Edit saved", { rowId: row.id, offline: isLocalFile });
+          logger.success("EditOverlay: saved row", { rowId: row.id, status: 'translated', moveToNext });
           onRowUpdate?.({ rowId: row.id });
         } else {
           logger.error("Failed to save edit");
@@ -287,7 +307,6 @@
     if (!editRowId || isConfirming || isSaving) return;
     isConfirming = true;
     isSaving = true;
-    isCancellingEdit = true;
 
     const row = getRowById(editRowId);
     if (!row) { isConfirming = false; cancel(); return; }
@@ -296,7 +315,7 @@
     try {
       const ok = await saveRowToAPI(row, textToSave, 'reviewed');
       if (ok) {
-        logger.success("Translation confirmed", { rowId: row.id, status: 'reviewed' });
+        logger.success("EditOverlay: confirmed row", { rowId: row.id });
         onConfirmTranslation?.({ rowId: row.id, source: row.source, target: textToSave });
         onRowUpdate?.({ rowId: row.id });
       } else {
@@ -307,7 +326,7 @@
     }
 
     await endEditAndMoveNext(true);
-    setTimeout(() => { isCancellingEdit = false; isConfirming = false; isSaving = false; }, 0);
+    setTimeout(() => { isConfirming = false; isSaving = false; }, 0);
   }
 
   /** Cancel edit without saving */
@@ -323,7 +342,7 @@
     editRowId = null;
     editValue = "";
     showColorPicker = false;
-    logger.userAction("Edit cancelled", { rowId });
+    logger.info("EditOverlay: cancelled edit", { rowId });
 
     setTimeout(() => { isCancellingEdit = false; }, 0);
   }
@@ -412,6 +431,7 @@
     }
     if (e.key === 'Tab') {
       e.preventDefault();
+      e.stopPropagation();
       save(true);
       return;
     }
@@ -529,7 +549,7 @@
   /** Apply TM suggestion to a row */
   export async function applyTMToRow(row, targetText, markRowAsTMApplied) {
     await startEdit(row);
-    editValue = targetText;
+    editValue = formatTextForDisplay(targetText);
     await save(false);
     if (markRowAsTMApplied) markRowAsTMApplied(row.id, 'fuzzy');
   }
