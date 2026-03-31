@@ -1,1 +1,1 @@
-Build QACompiler — debug pending diagnostics
+Build QACompiler v2.6.1 — pending overcount fix (SCREENSHOT removed from phantom detection)
