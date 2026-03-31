@@ -13,17 +13,19 @@
   // Phase 84: Shared grid state and extracted modules
   import {
     grid,
-    rowHeightCache,
     tmAppliedRows,
     referenceData as gridReferenceData,
+    getRowById,
     getRowIndexById,
-    rebuildCumulativeHeights,
+    displayRows,
+    updateRow,
+    updateRowHeight,
   } from './grid/gridState.svelte.ts';
   import ScrollEngine from './grid/ScrollEngine.svelte';
   import StatusColors from './grid/StatusColors.svelte';
   import CellRenderer from './grid/CellRenderer.svelte';
   import SelectionManager from './grid/SelectionManager.svelte';
-  import InlineEditor from './grid/InlineEditor.svelte';
+  import EditOverlay from './editor/EditOverlay.svelte';
   import SearchEngine from './grid/SearchEngine.svelte';
 
   import { stripColorTags } from "$lib/utils/colorParser.js";
@@ -48,14 +50,15 @@
   let statusColors = $state(null);
   let cellRenderer = $state(null);
   let selectionManager = $state(null);
-  let inlineEditor = $state(null);
+  let editOverlay = $state(null);
   let searchEngine = $state(null);
 
   // containerEl is now in gridState for cross-module reactivity
   // CellRenderer sets grid.containerEl via bind:this
   let resizeObserver = null;
-  // Textarea element bridged between CellRenderer (owns DOM) and InlineEditor (owns logic)
-  let inlineEditTextarea = $state(null);
+
+  // Find & Replace state flag (Task 11 will create the modal)
+  let showFindReplace = $state(false);
 
   let referenceLoading = $derived(statusColors?.isReferenceLoading() ?? false);
   export function scrollToRowById(rowId) { return scrollEngine?.scrollToRowById(rowId) ?? false; }
@@ -65,12 +68,12 @@
 
   export async function openEditModalByRowId(rowId) {
     scrollToRowById(rowId);
-    inlineEditor?.openEditModalByRowId(rowId);
+    const row = getRowById(rowId);
+    if (row) editOverlay?.startEdit(row);
   }
 
   export async function loadRows() {
     if (!fileId) return;
-    grid.inlineEditingRowId = null;
     grid.selectedRowId = null;
     grid.hoveredRowId = null;
     grid.hoveredCell = null;
@@ -84,12 +87,12 @@
   }
 
   export function applyTMToRow(lineNumber, targetText) {
-    const row = grid.rows.find(r => r && r.row_num === lineNumber);
+    const row = displayRows.find(r => r?.row_num === lineNumber);
     if (!row) {
       logger.warning("applyTMToRow: row not found", { lineNumber });
       return;
     }
-    inlineEditor?.applyTMToRow(row, targetText, (rowId, matchType) => {
+    editOverlay?.applyTMToRow(row, targetText, (rowId, matchType) => {
       statusColors?.markRowAsTMApplied(rowId, matchType);
     });
     logger.userAction("Applied TM to row", { lineNumber, target: targetText?.substring(0, 30) });
@@ -99,35 +102,27 @@
   let cellUpdateUnsubscribe = null;
 
   function handleCellUpdates(updates) {
-    let heightsChanged = false;
     updates.forEach(update => {
       const rowId = update.row_id?.toString();
-
-      // Update display rows
+      updateRow(rowId, { target: update.target, status: update.status });
+      // Incremental height update for the changed row
       const rowIndex = getRowIndexById(rowId);
-      if (rowIndex !== undefined && grid.rows[rowIndex]) {
-        const updated = {
-          ...grid.rows[rowIndex],
-          target: update.target,
-          status: update.status
-        };
-        grid.rows[rowIndex] = updated;
-        rowHeightCache.delete(rowIndex);
-        heightsChanged = true;
-
-        // MUST also update allRows — otherwise clientFilter reverts the edit
-        const allIndex = grid.allRows.findIndex(r => r?.id === rowId);
-        if (allIndex !== -1) grid.allRows[allIndex] = updated;
+      if (rowIndex !== undefined) {
+        updateRowHeight(rowIndex, stripColorTags);
       }
     });
-    if (heightsChanged) {
-      rebuildCumulativeHeights(stripColorTags);
-    }
-    grid.rowsVersion++;
     logger.info("Real-time updates applied", { count: updates.length });
   }
 
-  function handleGridKeydown(e) { selectionManager?.handleKeyDown(e); }
+  function handleGridKeydown(e) {
+    // Ctrl+H: Find & Replace (Task 11 will create the modal)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+      e.preventDefault();
+      showFindReplace = !showFindReplace;
+      return;
+    }
+    selectionManager?.handleKeyDown(e);
+  }
   function handleCellClick(row, event) { selectionManager?.handleRowClick(row, event); }
   function handleCellMouseEnter(row, cellType) { selectionManager?.handleCellMouseEnter(row, cellType); }
   function handleCellMouseLeave() { selectionManager?.handleCellMouseLeave(); }
@@ -152,17 +147,10 @@
     }
   });
 
-  // Bridge textarea from CellRenderer to InlineEditor
-  $effect(() => {
-    if (inlineEditor && inlineEditTextarea) {
-      inlineEditor.setTextarea(inlineEditTextarea);
-    }
-  });
-
   // Wire delegates after modules mount
   $effect(() => {
-    if (inlineEditor && selectionManager) {
-      inlineEditor.setDismissQADelegate(() => selectionManager?.dismissQAIssues?.());
+    if (editOverlay && selectionManager) {
+      editOverlay.setDismissQADelegate(() => selectionManager?.dismissQAIssues?.());
     }
   });
 
@@ -216,24 +204,13 @@
     <SelectionManager
       bind:this={selectionManager}
       {onRowSelect}
-      onEditRequest={(row) => inlineEditor?.startInlineEdit(row)}
+      onEditRequest={(row) => editOverlay?.startEdit(row)}
       {onRowUpdate}
       {onConfirmTranslation}
       {onDismissQA}
       {onRunQA}
       {onAddToTM}
       onTMPrefetch={activeTMs?.length > 0 ? fetchTMSuggestions : undefined}
-    />
-    <InlineEditor
-      bind:this={inlineEditor}
-      {fileId}
-      {fileName}
-      {fileType}
-      {isLocalFile}
-      {onInlineEditStart}
-      {onRowUpdate}
-      {onRowSelect}
-      {onConfirmTranslation}
     />
 
     <!-- Header -->
@@ -266,8 +243,7 @@
       <span class="hotkey"><kbd>Tab</kbd> Save & Next</span>
       <span class="hotkey"><kbd>Ctrl+S</kbd> Confirm</span>
       <span class="hotkey"><kbd>Esc</kbd> Cancel</span>
-      <span class="hotkey"><kbd>Ctrl+Z</kbd> Undo</span>
-      <span class="hotkey"><kbd>Ctrl+Y</kbd> Redo</span>
+      <span class="hotkey"><kbd>Ctrl+H</kbd> Find & Replace</span>
     </div>
 
     <!-- Row rendering -->
@@ -276,20 +252,26 @@
         bind:this={cellRenderer}
         {fileType}
         {gamedevDynamicColumns}
-        inlineEditingRowId={grid.inlineEditingRowId}
-        bind:inlineEditTextarea={inlineEditTextarea}
         onRowClick={handleCellClick}
-        onRowDoubleClick={(row) => inlineEditor?.startInlineEdit(row)}
+        onRowDoubleClick={(row) => editOverlay?.startEdit(row)}
         onCellContextMenu={handleCellContextMenu}
         onCellMouseEnter={handleCellMouseEnter}
         onCellMouseLeave={handleCellMouseLeave}
         onRowMouseLeave={handleRowMouseLeave}
-        onInlineEditKeydown={(e) => inlineEditor?.handleInlineEditKeydown(e)}
-        onInlineEditBlur={() => inlineEditor?.saveInlineEdit(false)}
-        onEditContextMenu={(e) => inlineEditor?.handleEditContextMenu(e)}
         onQADismiss={handleQADismiss}
         {getReferenceForRow}
         {referenceLoading}
+      />
+      <EditOverlay
+        bind:this={editOverlay}
+        {fileId}
+        {fileName}
+        {fileType}
+        {isLocalFile}
+        {onInlineEditStart}
+        {onRowUpdate}
+        {onRowSelect}
+        {onConfirmTranslation}
       />
     </div>
 
