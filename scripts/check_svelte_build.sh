@@ -17,8 +17,15 @@ cd "$(dirname "$0")/../locaNext"
 
 # Run build and capture output
 echo "Building frontend..."
-BUILD_OUTPUT=$(npm run build 2>&1)
+BUILD_OUTPUT=$(npm run build 2>&1) || true
 BUILD_EXIT=$?
+
+# Always show build output on failure so CI logs are debuggable
+if [ $BUILD_EXIT -ne 0 ]; then
+    echo "[BUILD OUTPUT START]"
+    echo "$BUILD_OUTPUT"
+    echo "[BUILD OUTPUT END]"
+fi
 
 # Check for critical warnings that cause reactivity bugs
 # These are the warnings that caused BUG-011
