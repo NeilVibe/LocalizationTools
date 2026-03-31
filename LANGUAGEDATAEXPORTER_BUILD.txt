@@ -1,1 +1,1 @@
-Build 20260330-165548
+Build 20260331-124621 - glossary extraction feature
