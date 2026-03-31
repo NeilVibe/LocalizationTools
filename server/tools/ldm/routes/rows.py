@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from loguru import logger
 
@@ -296,6 +296,46 @@ async def update_row(
     user_id = current_user["user_id"]
     logger.info(f"Row updated: id={row_id}, user={user_id}, tm_updated={tm_updated}")
     return updated_row
+
+
+# =============================================================================
+# Batch Update (Find & Replace All)
+# =============================================================================
+
+from pydantic import BaseModel
+
+
+class BatchRowUpdate(BaseModel):
+    row_id: int
+    target: str
+    status: str = "translated"
+
+
+class BatchUpdatePayload(BaseModel):
+    updates: List[BatchRowUpdate]
+
+
+@router.put("/files/{file_id}/rows/batch-update")
+async def batch_update_rows(
+    file_id: int,
+    payload: BatchUpdatePayload,
+    current_user: dict = Depends(get_current_active_user_async),
+    repo: RowRepository = Depends(get_row_repository),
+):
+    """Batch update multiple rows in a single transaction (for Find & Replace All)."""
+    updated_count = 0
+    for update in payload.updates:
+        try:
+            result = await repo.update(
+                row_id=update.row_id,
+                target=update.target,
+                status=update.status,
+            )
+            if result:
+                updated_count += 1
+        except Exception as e:
+            logger.error(f"Batch update failed for row {update.row_id}: {e}")
+    return {"updated": updated_count, "total": len(payload.updates)}
 
 
 # =============================================================================
