@@ -7,6 +7,7 @@
     RadioButton,
     Button,
   } from "carbon-components-svelte";
+  import { onDestroy } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { stripColorTags } from "$lib/utils/colorParser.js";
@@ -59,7 +60,8 @@
       }
       const flags = caseSensitive ? "g" : "gi";
       return new RegExp(pattern, flags);
-    } catch {
+    } catch (err) {
+      logger.warning("Invalid regex pattern", { pattern: findText, error: err.message });
       return null;
     }
   }
@@ -120,6 +122,11 @@
   async function replaceSingle(idx, status) {
     const match = matches[idx];
     if (!match || replacing) return;
+
+    if (match.field !== 'target') {
+      logger.warning("Find & Replace: source field is read-only, skipping single replace");
+      return;
+    }
 
     replacing = true;
     try {
@@ -250,6 +257,8 @@
     searchTimer = setTimeout(runSearch, 250);
   }
 
+  onDestroy(() => { if (searchTimer) clearTimeout(searchTimer); });
+
   /**
    * Truncate text for preview display.
    * @param {string} text
@@ -295,7 +304,7 @@
         labelA="Off"
         labelB="On"
         size="sm"
-        on:toggle={runSearch}
+        ontoggle={runSearch}
       />
       <Toggle
         bind:toggled={caseSensitive}
@@ -303,7 +312,7 @@
         labelA="Off"
         labelB="On"
         size="sm"
-        on:toggle={runSearch}
+        ontoggle={runSearch}
       />
       <Toggle
         bind:toggled={wholeWord}
@@ -311,7 +320,7 @@
         labelA="Off"
         labelB="On"
         size="sm"
-        on:toggle={runSearch}
+        ontoggle={runSearch}
       />
     </div>
 
@@ -320,7 +329,7 @@
       <RadioButtonGroup
         legendText="Scope"
         bind:selected={scope}
-        on:change={runSearch}
+        onchange={runSearch}
       >
         <RadioButton labelText="Target only" value="target" />
         <RadioButton labelText="Source only" value="source" />
@@ -334,7 +343,7 @@
         kind="primary"
         size="small"
         disabled={matches.length === 0 || replacing}
-        on:click={() => replaceSingle(currentMatchIndex, 'translated')}
+        onclick={() => replaceSingle(currentMatchIndex, 'translated')}
       >
         Replace &rarr; Change
       </Button>
@@ -342,7 +351,7 @@
         kind="secondary"
         size="small"
         disabled={matches.length === 0 || replacing}
-        on:click={() => replaceSingle(currentMatchIndex, 'reviewed')}
+        onclick={() => replaceSingle(currentMatchIndex, 'reviewed')}
       >
         Replace &rarr; Confirm
       </Button>
@@ -350,7 +359,7 @@
         kind="danger"
         size="small"
         disabled={matches.length === 0 || replacing}
-        on:click={() => replaceAll('translated')}
+        onclick={() => replaceAll('translated')}
       >
         Change All ({matches.length})
       </Button>
@@ -358,7 +367,7 @@
         kind="danger--tertiary"
         size="small"
         disabled={matches.length === 0 || replacing}
-        on:click={() => replaceAll('reviewed')}
+        onclick={() => replaceAll('reviewed')}
       >
         Confirm All ({matches.length})
       </Button>

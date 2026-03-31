@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from loguru import logger
 
@@ -308,7 +308,7 @@ from pydantic import BaseModel
 class BatchRowUpdate(BaseModel):
     row_id: int
     target: str
-    status: str = "translated"
+    status: Literal["untranslated", "translated", "reviewed", "approved"] = "translated"
 
 
 class BatchUpdatePayload(BaseModel):
