@@ -222,7 +222,7 @@
       {onDismissQA}
       {onRunQA}
       {onAddToTM}
-      onTMPrefetch={fetchTMSuggestions}
+      onTMPrefetch={activeTMs?.length > 0 ? fetchTMSuggestions : undefined}
     />
     <InlineEditor
       bind:this={inlineEditor}
@@ -263,7 +263,6 @@
     <!-- Hotkey Reference Bar -->
     <div class="hotkey-bar">
       <span class="hotkey"><kbd>Enter</kbd> Linebreak</span>
-      <span class="hotkey"><kbd>Ctrl+Enter</kbd> Save & Next</span>
       <span class="hotkey"><kbd>Tab</kbd> Save & Next</span>
       <span class="hotkey"><kbd>Ctrl+S</kbd> Confirm</span>
       <span class="hotkey"><kbd>Esc</kbd> Cancel</span>

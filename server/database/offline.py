@@ -10,6 +10,7 @@ ASYNC MIGRATION (2026-01-31):
 - All runtime operations use async aiosqlite
 """
 
+import asyncio
 import sqlite3
 import aiosqlite
 import json
@@ -42,6 +43,7 @@ class OfflineDatabase:
         self.db_path = db_path
         self._ensure_directory()
         self._init_schema_sync()  # Sync init at startup
+        self._delete_lock = asyncio.Lock()  # BUG-3: Serialize deletes to prevent SQLite corruption
 
     def _get_app_data_dir(self) -> str:
         """Get platform-specific app data directory."""
@@ -1957,46 +1959,51 @@ class OfflineDatabase:
         Only works for local files (sync_status='local').
         By default, moves to trash (soft delete). Use permanent=True for hard delete.
         Returns True if deleted, False if file not found or not local.
+
+        BUG-3 fix: Serialized via asyncio.Lock to prevent concurrent deletes
+        from corrupting SQLite (169k row trash + delete is slow, second delete
+        must wait for first to finish).
         """
-        async with self._get_async_connection() as conn:
-            # Verify file is local before deleting
-            cursor = await conn.execute(
-                "SELECT * FROM offline_files WHERE id = ?",
-                (file_id,)
-            )
-            file_row = await cursor.fetchone()
-
-            if not file_row:
-                logger.warning(f"Cannot delete: file {file_id} not found")
-                return False
-
-            if file_row["sync_status"] != "local":
-                logger.warning(f"Cannot delete: file {file_id} is not local (status={file_row['sync_status']})")
-                return False
-
-            if not permanent:
-                # P9-BIN-001: Soft delete - serialize and move to trash
-                file_data = await self._serialize_local_file_for_trash_async(conn, file_id)
-                expires_at = (datetime.now() + timedelta(days=30)).isoformat()
-
-                await conn.execute(
-                    """INSERT INTO offline_trash
-                       (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
-                       VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
-                    ('local-file', file_id, file_row['name'], json.dumps(file_data),
-                     file_row['folder_id'], expires_at)
+        async with self._delete_lock:
+            async with self._get_async_connection() as conn:
+                # Verify file is local before deleting
+                cursor = await conn.execute(
+                    "SELECT * FROM offline_files WHERE id = ?",
+                    (file_id,)
                 )
-                logger.info(f"Moved local file {file_id} ('{file_row['name']}') to trash")
+                file_row = await cursor.fetchone()
 
-            # Delete rows first (cascade)
-            await conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
-            # Delete file
-            await conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
-            await conn.commit()
+                if not file_row:
+                    logger.warning(f"Cannot delete: file {file_id} not found")
+                    return False
 
-            action = "permanently deleted" if permanent else "moved to trash"
-            logger.info(f"Local file {file_id} {action}")
-            return True
+                if file_row["sync_status"] != "local":
+                    logger.warning(f"Cannot delete: file {file_id} is not local (status={file_row['sync_status']})")
+                    return False
+
+                if not permanent:
+                    # P9-BIN-001: Soft delete - serialize and move to trash
+                    file_data = await self._serialize_local_file_for_trash_async(conn, file_id)
+                    expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+
+                    await conn.execute(
+                        """INSERT INTO offline_trash
+                           (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
+                           VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
+                        ('local-file', file_id, file_row['name'], json.dumps(file_data),
+                         file_row['folder_id'], expires_at)
+                    )
+                    logger.info(f"Moved local file {file_id} ('{file_row['name']}') to trash")
+
+                # Delete rows first (cascade)
+                await conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
+                # Delete file
+                await conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
+                await conn.commit()
+
+                action = "permanently deleted" if permanent else "moved to trash"
+                logger.info(f"Local file {file_id} {action}")
+                return True
 
     async def _serialize_local_file_for_trash_async(self, conn, file_id: int) -> dict:
         """P9-BIN-001: Serialize a local file and its rows for trash storage."""

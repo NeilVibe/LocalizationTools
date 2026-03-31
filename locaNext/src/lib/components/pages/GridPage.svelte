@@ -174,6 +174,11 @@
    */
   async function loadTMMatchesForRow(row) {
     if (!row?.source || !fileId) return;
+    // BUG-6b: Skip TM API call when no TM is active — no point searching project rows either
+    if (!activeTMs || activeTMs.length === 0) {
+      sidePanelTMLoading = false;
+      return;
+    }
 
     sidePanelTMLoading = true;
     try {

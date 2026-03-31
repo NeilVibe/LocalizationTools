@@ -66,11 +66,10 @@
     // Dispatch rowSelect event for side panel
     onRowSelect?.({ row });
 
-    // Pre-fetch TM suggestions if not already fetched
-    if (prefetchedRowId !== row.id && row.source) {
+    // Pre-fetch TM suggestions if not already fetched AND a TM is active
+    if (prefetchedRowId !== row.id && row.source && onTMPrefetch) {
       prefetchedRowId = row.id;
-      onTMPrefetch?.(row.source, row.id);
-      logger.info("Pre-fetching TM for row", { rowId: row.id });
+      onTMPrefetch(row.source, row.id);
     }
   }
 

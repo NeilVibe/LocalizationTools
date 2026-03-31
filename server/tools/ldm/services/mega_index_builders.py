@@ -370,6 +370,19 @@ class BuildersMixin:
 
     def _build_entity_strkey_to_stringids(self) -> None:
         """C6: Entity StrKey -> source_file -> export StringIds + Korean text matching."""
+        # Build filename-only → D17 key reverse index.
+        # D17 keys are relative paths like "characterinfo/characterinfo_kliff"
+        # but entity source_file is just "CharacterInfo_Kliff.xml" (filename only).
+        # We need to map filename stems to their full D17 keys.
+        stem_to_d17_sids: Dict[str, Set[str]] = {}
+        for d17_key, sids in self.export_file_stringids.items():
+            # Extract filename-only part from path key (e.g. "characterinfo/characterinfo_kliff" -> "characterinfo_kliff")
+            stem = d17_key.rsplit("/", 1)[-1] if "/" in d17_key else d17_key
+            if stem in stem_to_d17_sids:
+                stem_to_d17_sids[stem].update(sids)
+            else:
+                stem_to_d17_sids[stem] = set(sids)
+
         for entity_type, attr_name in _ENTITY_TYPE_MAP.items():
             d = getattr(self, attr_name, {})
             for strkey, entry in d.items():
@@ -378,7 +391,8 @@ class BuildersMixin:
                     continue
 
                 source_stem = _get_export_key(source_file)
-                valid_sids = self.export_file_stringids.get(source_stem, set())
+                # Try D17 key directly first, then filename-only reverse index
+                valid_sids = self.export_file_stringids.get(source_stem) or stem_to_d17_sids.get(source_stem, set())
                 if not valid_sids:
                     continue
 

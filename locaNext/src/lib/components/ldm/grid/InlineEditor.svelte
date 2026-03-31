@@ -449,10 +449,6 @@
       e.stopPropagation();
       cancelInlineEdit();
       return;
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      // Ctrl+Enter = save and confirm
-      e.preventDefault();
-      saveInlineEdit(true);
     } else if (e.key === 'Enter' && !e.shiftKey) {
       // Enter = insert visual linebreak (saved as <br/> in XML)
       // insertHTML puts an actual <br> element in the contenteditable div

@@ -24,6 +24,7 @@
     getTotalHeight,
     gameDevDynamicColumns,
     rowHeightCache,
+    heightData,
     rebuildCumulativeHeights,
   } from './gridState.svelte.ts';
   import TagText from '$lib/components/ldm/TagText.svelte';
