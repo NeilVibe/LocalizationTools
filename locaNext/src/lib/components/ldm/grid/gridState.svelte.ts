@@ -78,7 +78,7 @@ export function estimateRowHeight(row: any, index: number, stripColorTags: (t: s
 
 /** Build cumulative heights — called ONCE on load/filter, NEVER on save */
 export function buildCumulativeHeights(stripColorTags: (t: string) => string): void {
-  const total = grid.total;
+  const total = displayRows.length;
   const rows = displayRows;
   const cum = new Float64Array(total + 1);
   for (let i = 0; i < total; i++) {
@@ -100,6 +100,7 @@ export function updateRowHeight(rowIndex: number, stripColorTags: (t: string) =>
   for (let i = rowIndex + 1; i < cumulativeHeights.length; i++) {
     cumulativeHeights[i] += delta;
   }
+  grid.rowsVersion++;
 }
 
 // --- Scroll math using cumulative heights ---
@@ -235,6 +236,7 @@ export function resetGridState(): void {
   grid.loadingFileName = '';
   grid.rowsVersion = 0;
   rowIndexById.clear();
+  rowHeightCache.clear();
   tmAppliedRows.clear();
   referenceData.clear();
   qaFlags.clear();

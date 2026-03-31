@@ -26,8 +26,6 @@
   import { preferences, getFontSizeValue, getFontFamilyValue, getFontColorValue } from '$lib/stores/preferences.js';
   import { ldmConnected, isRowLocked } from '$lib/stores/ldm.js';
   import { stripColorTags, hexToCSS } from '$lib/utils/colorParser.js';
-  import { getStatusKind } from '$lib/utils/statusColors';
-
   // Props via $props() (per D-05)
   let {
     fileType = "translator",
@@ -64,34 +62,7 @@
   // COLUMN DEFINITIONS
   // ============================================================
 
-  // Translator columns
-  const translatorColumns = {
-    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
-    string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
-    category: { key: "category", label: "Category", width: 140, minWidth: 80, prefKey: "showCategory" },
-    source: { key: "source", label: "Source (KR)", width: 350, always: true },
-    target: { key: "target", label: "Target", width: 350, always: true },
-    reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
-    tm_result: { key: "tm_result", label: "TM Match", width: 300, prefKey: "showTmResults" }
-  };
-
-  // Game Dev columns
-  const gameDevColumns = {
-    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
-    node_name: { key: "source", label: "Node", width: 200, always: true },
-    attributes: { key: "target", label: "Attributes", width: 300, always: true },
-    values: { key: "values", label: "Values", width: 250, always: true },
-    children_count: { key: "children_count", label: "Children", width: 100, always: true }
-  };
-
-  // Dual UI Mode: switch columns based on file type
-  let allColumns = $derived(
-    fileType === 'gamedev'
-      ? (gamedevDynamicColumns || gameDevColumns)
-      : translatorColumns
-  );
-
-  // FIX-02: visibleColumns $derived and getVisibleColumns were dead code (never consumed).
+  // FIX-02: Column definitions (translatorColumns, gameDevColumns, allColumns) were dead code.
   // Column visibility is handled directly in the template via $preferences checks.
 
   // ============================================================

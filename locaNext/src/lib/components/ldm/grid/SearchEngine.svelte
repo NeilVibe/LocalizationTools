@@ -18,6 +18,7 @@
   import SemanticResults from '../SemanticResults.svelte';
   import {
     grid,
+    displayRows,
   } from './gridState.svelte.ts';
 
   // API base URL
@@ -141,7 +142,7 @@
 
   /** Handle semantic result selection */
   function handleSemanticResultSelect(result) {
-    const matchRow = grid.rows.find(r => r && r.source === result.source_text);
+    const matchRow = displayRows.find(r => r && r.source === result.source_text);
     if (matchRow) {
       onScrollToRow?.(matchRow.id);
     }
