@@ -10,9 +10,14 @@
  * - No rebuildCumulativeHeights on save (only on load/filter)
  */
 
-// --- Row data: $state.raw = NO proxy overhead ---
-export let allRows: any[] = $state.raw([]);
-export let displayRows: any[] = $state.raw([]);
+// --- Row data: wrapped in object to allow reassignment from module ---
+// Svelte 5 forbids exporting reassigned $state. Wrapping in an object works.
+const rowData = $state.raw({ all: [] as any[], display: [] as any[] });
+export function getAllRows(): any[] { return rowData.all; }
+export function getDisplayRows(): any[] { return rowData.display; }
+// Internal setters (used by setAllRows, applyFilter, resetGridState)
+function _setAllRows(rows: any[]) { rowData.all = rows; }
+function _setDisplayRows(rows: any[]) { rowData.display = rows; }
 
 // --- Core grid state (only scalars, cheap to proxy) ---
 export const grid = $state({
@@ -78,8 +83,8 @@ export function estimateRowHeight(row: any, index: number, stripColorTags: (t: s
 
 /** Build cumulative heights — called ONCE on load/filter, NEVER on save */
 export function buildCumulativeHeights(stripColorTags: (t: string) => string): void {
-  const total = displayRows.length;
-  const rows = displayRows;
+  const total = rowData.display.length;
+  const rows = rowData.display;
   const cum = new Float64Array(total + 1);
   for (let i = 0; i < total; i++) {
     cum[i + 1] = cum[i] + estimateRowHeight(rows[i], i, stripColorTags);
@@ -89,7 +94,7 @@ export function buildCumulativeHeights(stripColorTags: (t: string) => string): v
 
 /** Update ONE row's height after save — incremental shift, 0.15ms */
 export function updateRowHeight(rowIndex: number, stripColorTags: (t: string) => string): void {
-  const row = displayRows[rowIndex];
+  const row = rowData.display[rowIndex];
   if (!row) return;
   const oldHeight = rowHeightCache.get(rowIndex) || MIN_ROW_HEIGHT;
   rowHeightCache.delete(rowIndex); // force re-estimate
@@ -126,18 +131,18 @@ export function findRowAtPosition(scrollPos: number): number {
   return Math.max(0, low);
 }
 
-// --- Visible rows (reads grid.visibleStart/End + displayRows) ---
+// --- Visible rows (reads grid.visibleStart/End + rowData.display) ---
 export function getVisibleRows() {
   return Array.from({ length: grid.visibleEnd - grid.visibleStart }, (_, i) => {
     const index = grid.visibleStart + i;
-    return displayRows[index] || { row_num: index + 1, placeholder: true };
+    return rowData.display[index] || { row_num: index + 1, placeholder: true };
   });
 }
 
 // --- Row access ---
 export function getRowById(rowId: string): any | null {
   const index = rowIndexById.get(rowId?.toString());
-  return index !== undefined ? displayRows[index] : null;
+  return index !== undefined ? rowData.display[index] : null;
 }
 
 export function getRowIndexById(rowId: string): number | undefined {
@@ -146,8 +151,8 @@ export function getRowIndexById(rowId: string): number | undefined {
 
 // --- Bulk operations ---
 export function setAllRows(rows: any[], stripColorTags: (t: string) => string): void {
-  allRows = rows;
-  displayRows = rows;
+  rowData.all = rows;
+  rowData.display = rows;
   grid.total = rows.length;
   rebuildRowIndex(rows);
   rowHeightCache.clear();
@@ -156,7 +161,7 @@ export function setAllRows(rows: any[], stripColorTags: (t: string) => string): 
 }
 
 export function rebuildRowIndex(rows?: any[]): void {
-  const source = rows || displayRows;
+  const source = rows || rowData.display;
   rowIndexById.clear();
   for (let i = 0; i < source.length; i++) {
     if (source[i]?.id) rowIndexById.set(source[i].id.toString(), i);
@@ -166,20 +171,20 @@ export function rebuildRowIndex(rows?: any[]): void {
 /** O(1) single-row update — no rebuild, no cascade */
 export function updateRow(rowId: string, updates: Record<string, any>): void {
   const displayIdx = rowIndexById.get(rowId?.toString());
-  if (displayIdx !== undefined && displayRows[displayIdx]) {
-    Object.assign(displayRows[displayIdx], updates);
+  if (displayIdx !== undefined && rowData.display[displayIdx]) {
+    Object.assign(rowData.display[displayIdx], updates);
   }
-  // Also update in allRows so filters don't revert the change
-  const allIdx = allRows.findIndex(r => r?.id?.toString() === rowId?.toString());
+  // Also update in rowData.all so filters don't revert the change
+  const allIdx = rowData.all.findIndex(r => r?.id?.toString() === rowId?.toString());
   if (allIdx !== -1) {
-    Object.assign(allRows[allIdx], updates);
+    Object.assign(rowData.all[allIdx], updates);
   }
   grid.rowsVersion++;
 }
 
 /** Client-side filter (search + status + category) */
 export function applyFilter(activeFilter: string, selectedCategories: string[], searchTerm: string, searchMode: string, searchFields: string[]): void {
-  let filtered = allRows;
+  let filtered = rowData.all;
 
   if (activeFilter && activeFilter !== 'all') {
     if (activeFilter === 'confirmed') {
@@ -208,7 +213,7 @@ export function applyFilter(activeFilter: string, selectedCategories: string[], 
     }
   }
 
-  displayRows = filtered;
+  rowData.display = filtered;
   grid.total = filtered.length;
   rebuildRowIndex(filtered);
   rowHeightCache.clear();
@@ -218,8 +223,8 @@ export function applyFilter(activeFilter: string, selectedCategories: string[], 
 
 /** Reset all state for file changes */
 export function resetGridState(): void {
-  allRows = [];
-  displayRows = [];
+  rowData.all = [];
+  rowData.display = [];
   grid.total = 0;
   grid.visibleStart = 0;
   grid.visibleEnd = 50;
