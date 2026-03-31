@@ -11,13 +11,13 @@
 
   import {
     grid,
+    displayRows,
     tmAppliedRows,
     referenceData,
     qaFlags,
     rowHeightCache,
     getRowById,
     getRowIndexById,
-    rebuildCumulativeHeights,
   } from './gridState.svelte.ts';
   import { getStatusKind } from '$lib/utils/statusColors';
   import { logger } from '$lib/utils/logger.js';
@@ -63,9 +63,9 @@
   /** Update a row's QA flag count (exported for parent delegation) */
   export function updateRowQAFlag(rowId, flagCount) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && grid.rows[rowIndex]) {
-      grid.rows[rowIndex] = {
-        ...grid.rows[rowIndex],
+    if (rowIndex !== undefined && displayRows[rowIndex]) {
+      displayRows[rowIndex] = {
+        ...displayRows[rowIndex],
         qa_flag_count: flagCount
       };
       grid.rowsVersion++;
@@ -78,14 +78,14 @@
   /** Handle QA dismiss from inline badge (optimistic UI) */
   export function handleQADismiss(rowId) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && grid.rows[rowIndex]) {
-      const currentCount = grid.rows[rowIndex].qa_flag_count || 0;
-      grid.rows[rowIndex] = {
-        ...grid.rows[rowIndex],
+    if (rowIndex !== undefined && displayRows[rowIndex]) {
+      const currentCount = displayRows[rowIndex].qa_flag_count || 0;
+      displayRows[rowIndex] = {
+        ...displayRows[rowIndex],
         qa_flag_count: Math.max(0, currentCount - 1)
       };
       grid.rowsVersion++;
-      logger.info('QA inline dismiss', { rowId, newCount: grid.rows[rowIndex].qa_flag_count });
+      logger.info('QA inline dismiss', { rowId, newCount: displayRows[rowIndex].qa_flag_count });
     }
   }
 
@@ -114,9 +114,9 @@
         lastQaResult = result;
 
         const rowIndex = getRowIndexById(rowId);
-        if (rowIndex !== undefined && grid.rows[rowIndex]) {
-          grid.rows[rowIndex] = {
-            ...grid.rows[rowIndex],
+        if (rowIndex !== undefined && displayRows[rowIndex]) {
+          displayRows[rowIndex] = {
+            ...displayRows[rowIndex],
             qa_flag_count: result.issue_count,
             qa_checked_at: result.checked_at
           };
