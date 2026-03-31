@@ -14,7 +14,7 @@
   import { Edit, Locked, MachineLearningModel } from "carbon-icons-svelte";
   import {
     grid,
-    displayRows,
+    getDisplayRows,
     tmAppliedRows,
     getRowTop,
     getRowHeight as gridGetRowHeight,
@@ -233,7 +233,7 @@
     const end = grid.visibleEnd;
     return Array.from({ length: end - start }, (_, i) => {
       const index = start + i;
-      return displayRows[index] || { row_num: index + 1, placeholder: true };
+      return getDisplayRows()[index] || { row_num: index + 1, placeholder: true };
     });
   });
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));

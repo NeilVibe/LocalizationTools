@@ -17,7 +17,7 @@
     referenceData as gridReferenceData,
     getRowById,
     getRowIndexById,
-    displayRows,
+    getDisplayRows,
     updateRow,
     updateRowHeight,
   } from './grid/gridState.svelte.ts';
@@ -88,7 +88,7 @@
   }
 
   export function applyTMToRow(lineNumber, targetText) {
-    const row = displayRows.find(r => r?.row_num === lineNumber);
+    const row = getDisplayRows().find(r => r?.row_num === lineNumber);
     if (!row) {
       logger.warning("applyTMToRow: row not found", { lineNumber });
       return;

@@ -12,7 +12,7 @@
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { stripColorTags } from "$lib/utils/colorParser.js";
   import {
-    displayRows,
+    getDisplayRows,
     updateRow,
     updateRowHeight,
     getRowIndexById,
@@ -80,7 +80,7 @@
     /** @type {Array<{rowId: string, rowNum: number, field: string, original: string, replaced: string, row: any}>} */
     const found = [];
 
-    for (const row of displayRows) {
+    for (const row of getDisplayRows()) {
       if (!row || row.placeholder) continue;
 
       const fields = scope === "both"
@@ -183,7 +183,7 @@
       /** @type {Array<{rowId: string, original: string, oldStatus: string}>} */
       const rollbackInfo = [];
 
-      for (const row of displayRows) {
+      for (const row of getDisplayRows()) {
         if (!row || row.placeholder) continue;
 
         const fields = scope === "both"

@@ -19,7 +19,7 @@
     grid,
     getRowById,
     getRowIndexById,
-    displayRows,
+    getDisplayRows,
     updateRow,
     updateRowHeight,
     getRowTop,
@@ -219,8 +219,8 @@
     editValue = "";
     if (moveToNext) {
       const currentIndex = getRowIndexById(currentRowId);
-      if (currentIndex !== undefined && displayRows[currentIndex + 1]) {
-        const nextRow = displayRows[currentIndex + 1];
+      if (currentIndex !== undefined && getDisplayRows()[currentIndex + 1]) {
+        const nextRow = getDisplayRows()[currentIndex + 1];
         if (nextRow && !nextRow.placeholder) {
           grid.selectedRowId = nextRow.id;
           onRowSelect?.({ row: nextRow, isEditing: true });

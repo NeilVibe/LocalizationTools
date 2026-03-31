@@ -11,7 +11,7 @@
 
   import {
     grid,
-    displayRows,
+    getDisplayRows,
     tmAppliedRows,
     referenceData,
     qaFlags,
@@ -63,9 +63,9 @@
   /** Update a row's QA flag count (exported for parent delegation) */
   export function updateRowQAFlag(rowId, flagCount) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && displayRows[rowIndex]) {
-      displayRows[rowIndex] = {
-        ...displayRows[rowIndex],
+    if (rowIndex !== undefined && getDisplayRows()[rowIndex]) {
+      getDisplayRows()[rowIndex] = {
+        ...getDisplayRows()[rowIndex],
         qa_flag_count: flagCount
       };
       grid.rowsVersion++;
@@ -78,14 +78,14 @@
   /** Handle QA dismiss from inline badge (optimistic UI) */
   export function handleQADismiss(rowId) {
     const rowIndex = getRowIndexById(rowId);
-    if (rowIndex !== undefined && displayRows[rowIndex]) {
-      const currentCount = displayRows[rowIndex].qa_flag_count || 0;
-      displayRows[rowIndex] = {
-        ...displayRows[rowIndex],
+    if (rowIndex !== undefined && getDisplayRows()[rowIndex]) {
+      const currentCount = getDisplayRows()[rowIndex].qa_flag_count || 0;
+      getDisplayRows()[rowIndex] = {
+        ...getDisplayRows()[rowIndex],
         qa_flag_count: Math.max(0, currentCount - 1)
       };
       grid.rowsVersion++;
-      logger.info('QA inline dismiss', { rowId, newCount: displayRows[rowIndex].qa_flag_count });
+      logger.info('QA inline dismiss', { rowId, newCount: getDisplayRows()[rowIndex].qa_flag_count });
     }
   }
 
@@ -114,9 +114,9 @@
         lastQaResult = result;
 
         const rowIndex = getRowIndexById(rowId);
-        if (rowIndex !== undefined && displayRows[rowIndex]) {
-          displayRows[rowIndex] = {
-            ...displayRows[rowIndex],
+        if (rowIndex !== undefined && getDisplayRows()[rowIndex]) {
+          getDisplayRows()[rowIndex] = {
+            ...getDisplayRows()[rowIndex],
             qa_flag_count: result.issue_count,
             qa_checked_at: result.checked_at
           };
