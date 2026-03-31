@@ -650,7 +650,7 @@ jobs:
             pydantic pydantic-settings email-validator `
             pandas openpyxl xlrd lxml `
             httpx requests loguru tqdm pyyaml `
-            sse-starlette Pillow numpy xlsxwriter psutil pyahocorasick
+            sse-starlette Pillow numpy xlsxwriter psutil pyahocorasick asyncpg
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
           Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"
@@ -694,6 +694,8 @@ jobs:
           & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
           & "tools\python\python.exe" -c "import xlrd; print('[OK] xlrd ready')"
           & "tools\python\python.exe" -c "from lxml import etree; print('[OK] lxml ready')"
+          & "tools\python\python.exe" -c "import ahocorasick; print('[OK] ahocorasick ready')"
+          & "tools\python\python.exe" -c "import asyncpg; print('[OK] asyncpg ready')"
 
           # HTTP
           & "tools\python\python.exe" -c "import httpx; print('[OK] httpx ready')"
