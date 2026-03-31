@@ -191,6 +191,9 @@ class OfflineDatabase:
         """
         conn = await aiosqlite.connect(self.db_path)
         conn.row_factory = aiosqlite.Row
+        # Match sync connection pragmas — WAL + busy_timeout for concurrent access
+        await conn.execute("PRAGMA journal_mode=WAL;")
+        await conn.execute("PRAGMA busy_timeout=15000;")
         try:
             yield conn
         finally:

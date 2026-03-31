@@ -219,8 +219,12 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
             f"{len(self.export_file_stringids)} export files"
         )
 
-        # ----- Phase 4: VRS (skipped for now) -----
-        logger.info("[MEGAINDEX] VRS ordering skipped (future enhancement)")
+        # ----- Phase 4: VRS chronological reorder -----
+        vrs_folder = paths.get("vrs_folder")
+        if vrs_folder:
+            self._apply_vrs_order(Path(vrs_folder))
+        else:
+            logger.info("[MEGAINDEX] VRS folder not configured — using raw XML order")
 
         # ----- Phase 5: Broad Scan -----
         self._scan_devmemo(staticinfo_folder)

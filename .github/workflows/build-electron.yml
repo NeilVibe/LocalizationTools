@@ -650,7 +650,7 @@ jobs:
             pydantic pydantic-settings email-validator `
             pandas openpyxl xlrd lxml `
             httpx requests loguru tqdm pyyaml `
-            sse-starlette Pillow numpy xlsxwriter psutil
+            sse-starlette Pillow numpy xlsxwriter psutil pyahocorasick
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
           Write-Host "[OK] Python Embedded ready: $([math]::Round($totalSize, 1)) MB"

@@ -57,6 +57,22 @@ class CombinedContextResponse(BaseModel):
     audio: Optional[AudioContextResponse] = None
 
 
+class BatchImageRequest(BaseModel):
+    string_ids: list[str] = Field(..., description="List of string IDs to look up images for")
+
+
+class BatchImageEntry(BaseModel):
+    has_image: bool
+    thumbnail_url: str = ""
+    texture_name: str = ""
+
+
+class BatchImageResponse(BaseModel):
+    results: dict[str, BatchImageEntry]
+    total_requested: int
+    total_found: int
+
+
 class ConfigureRequest(BaseModel):
     branch: str = Field(..., description="Perforce branch name")
     drive: str = Field(..., min_length=1, max_length=1, description="Drive letter")
@@ -261,6 +277,57 @@ async def get_combined_context(
         string_id=string_id,
         image=ImageContextResponse(**image.to_dict()) if image else None,
         audio=AudioContextResponse(**audio.to_dict()) if audio else None,
+    )
+
+
+@router.post("/mapdata/images/batch", response_model=BatchImageResponse)
+async def batch_image_lookup(
+    request: BatchImageRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Batch image lookup for grid preload — exact match only, no fuzzy scan.
+
+    Accepts up to 250,000 string IDs and returns simplified image info
+    (has_image, thumbnail_url, texture_name) for each. Uses only the
+    pre-indexed _strkey_to_image dict for O(1) lookups.
+    """
+    if len(request.string_ids) > 250_000:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Too many IDs: {len(request.string_ids)} (max 250,000)",
+        )
+
+    service = get_mapdata_service()
+    if not service._loaded:
+        raise HTTPException(status_code=503, detail="MapData service not initialized")
+
+    def _lookup():
+        results = {}
+        found = 0
+        image_index = service._strkey_to_image
+        for sid in request.string_ids:
+            ctx = image_index.get(sid)
+            if ctx and ctx.has_image:
+                results[sid] = {
+                    "has_image": True,
+                    "thumbnail_url": ctx.thumbnail_url,
+                    "texture_name": ctx.texture_name,
+                }
+                found += 1
+            else:
+                results[sid] = {"has_image": False, "thumbnail_url": "", "texture_name": ""}
+        return results, found
+
+    results, found = await asyncio.to_thread(_lookup)
+
+    logger.info(
+        f"[MAPDATA] Batch image lookup: {len(request.string_ids)} requested, {found} found"
+    )
+
+    return BatchImageResponse(
+        results=results,
+        total_requested=len(request.string_ids),
+        total_found=found,
     )
 
 

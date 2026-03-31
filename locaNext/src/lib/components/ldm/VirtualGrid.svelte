@@ -139,7 +139,7 @@
 
   $effect(() => {
     if (fileId && fileId !== previousFileId) {
-      logger.info("fileId changed", { from: previousFileId, to: fileId });
+      logger.info("GRID: file changed", { fileId, fileName, from: previousFileId, to: fileId });
       previousFileId = fileId;
       joinFile(fileId);
       if (cellUpdateUnsubscribe) cellUpdateUnsubscribe();
@@ -176,7 +176,10 @@
     }
   });
 
-  onMount(() => { if (grid.containerEl) scrollEngine?.calculateVisibleRange(); });
+  onMount(() => {
+    logger.info("GRID: mounted", { fileId });
+    if (grid.containerEl) scrollEngine?.calculateVisibleRange();
+  });
   onDestroy(() => {
     if (fileId) leaveFile(fileId);
     if (cellUpdateUnsubscribe) cellUpdateUnsubscribe();

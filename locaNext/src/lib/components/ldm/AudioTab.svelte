@@ -97,10 +97,9 @@
         {#key selectedRow?.string_id}
           <audio
             controls
-            preload="none"
-            crossorigin="anonymous"
+            preload="auto"
             class="audio-player"
-            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?language={encodeURIComponent(fileLanguage)}&v={Date.now()}"
+            src="/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}?language={encodeURIComponent(fileLanguage)}&v={Date.now()}"
           ></audio>
         {/key}
       </div>

@@ -410,3 +410,86 @@ class DataParsersMixin:
                         self.strkey_to_devmemo[strkey] = korean
         except Exception as e:
             logger.warning(f"[MEGAINDEX] DevMemo scan failed: {e}")
+
+    # =========================================================================
+    # Phase 4: VRS (VoiceRecordingSheet) chronological reorder
+    # =========================================================================
+
+    def _apply_vrs_order(self, vrs_folder: Path) -> None:
+        """Reorder D21 (event_to_xml_order) using VoiceRecordingSheet Excel.
+
+        Exact MDG logic: events found in VRS get their row position as xml_order.
+        Events NOT in VRS keep their original xml_order offset after VRS entries.
+        """
+        if not vrs_folder or not vrs_folder.exists():
+            logger.info(f"[MEGAINDEX] VRS folder not found: {vrs_folder} — skipping")
+            return
+
+        # Find most recent Excel file
+        xlsx_files = sorted(vrs_folder.glob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if not xlsx_files:
+            logger.info(f"[MEGAINDEX] No Excel files in VRS folder: {vrs_folder}")
+            return
+
+        vrs_file = xlsx_files[0]
+        logger.info(f"[MEGAINDEX] Loading VRS order from: {vrs_file.name}")
+
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            logger.warning("[MEGAINDEX] openpyxl not installed — VRS ordering disabled")
+            return
+
+        try:
+            with load_workbook(vrs_file, data_only=True, read_only=True) as wb:
+                ws = wb.active
+
+                # Find EventName column by header (row 1)
+                event_col_idx = None
+                header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+                if header_row:
+                    for idx, cell_value in enumerate(header_row):
+                        if cell_value and str(cell_value).strip().lower() == "eventname":
+                            event_col_idx = idx
+                            break
+
+                if event_col_idx is None:
+                    logger.warning(f"[MEGAINDEX] 'EventName' column not found in VRS header: {header_row}")
+                    return
+
+                # Build event_name -> VRS row position
+                vrs_order: Dict[str, int] = {}
+                position = 0
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if len(row) > event_col_idx:
+                        event_name = row[event_col_idx]
+                        if event_name:
+                            event_lower = str(event_name).strip().lower()
+                            if event_lower and event_lower not in vrs_order:
+                                vrs_order[event_lower] = position
+                                position += 1
+
+                logger.info(f"[MEGAINDEX] Loaded {len(vrs_order)} EventNames from VRS")
+
+            if not vrs_order:
+                return
+
+            # Apply VRS order: matched events get VRS position,
+            # unmatched events get offset to sort after all VRS entries
+            vrs_max = len(vrs_order)
+            reordered = 0
+            for event_name, current_order in list(self.event_to_xml_order.items()):
+                vrs_pos = vrs_order.get(event_name)
+                if vrs_pos is not None:
+                    self.event_to_xml_order[event_name] = vrs_pos
+                    reordered += 1
+                else:
+                    self.event_to_xml_order[event_name] = vrs_max + (current_order or 0)
+
+            logger.info(
+                f"[MEGAINDEX] VRS reordered {reordered} / {len(self.event_to_xml_order)} events "
+                f"({len(self.event_to_xml_order) - reordered} unmatched appended after)"
+            )
+
+        except Exception as e:
+            logger.exception(f"[MEGAINDEX] VRS processing failed: {e}")

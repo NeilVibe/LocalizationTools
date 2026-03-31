@@ -10,6 +10,8 @@
  * - No rebuildCumulativeHeights on save (only on load/filter)
  */
 
+import { logger } from '$lib/utils/logger.js';
+
 // --- Row data: wrapped in object to allow reassignment from module ---
 // Svelte 5 forbids exporting reassigned $state. Wrapping in an object works.
 const rowData = $state.raw({ all: [] as any[], display: [] as any[] });
@@ -38,10 +40,15 @@ export const grid = $state({
   searchFields: ['source', 'target'] as string[],
   containerEl: null as HTMLElement | null,
   rowsVersion: 0,
+  imagesReady: false,
+  editRowId: null as string | null,
 });
 
 // --- GameDev dynamic columns ---
 export let gameDevDynamicColumns = $state(['category', 'fileName', 'textState'] as string[]);
+
+// --- Image preload cache (plain Map, NOT $state — see svelte5-reactive-containers rule) ---
+export const imageCache = new Map<string, { has_image: boolean; thumbnail_url: string; texture_name: string }>();
 
 // --- Mutable Maps (plain, not reactive except where needed) ---
 export const rowIndexById = new Map<string, number>();
@@ -83,6 +90,7 @@ export function estimateRowHeight(row: any, index: number, stripColorTags: (t: s
 
 /** Build cumulative heights — called ONCE on load/filter, NEVER on save */
 export function buildCumulativeHeights(stripColorTags: (t: string) => string): void {
+  const t0 = performance.now();
   const total = rowData.display.length;
   const rows = rowData.display;
   const cum = new Float64Array(total + 1);
@@ -90,6 +98,8 @@ export function buildCumulativeHeights(stripColorTags: (t: string) => string): v
     cum[i + 1] = cum[i] + estimateRowHeight(rows[i], i, stripColorTags);
   }
   cumulativeHeights = cum;
+  const elapsed = performance.now() - t0;
+  logger.info("GRID: heights computed", { rows: total, ms: Math.round(elapsed * 100) / 100 });
 }
 
 /** Update ONE row's height after save — incremental shift, 0.15ms */
@@ -101,6 +111,7 @@ export function updateRowHeight(rowIndex: number, stripColorTags: (t: string) =>
   const newHeight = estimateRowHeight(row, rowIndex, stripColorTags);
   const delta = newHeight - oldHeight;
   if (Math.abs(delta) < 1) return;
+  logger.debug("GRID: row height updated", { rowIndex, oldHeight, newHeight, delta: Math.round(delta * 10) / 10 });
   // Incremental shift — only touches entries after this row
   for (let i = rowIndex + 1; i < cumulativeHeights.length; i++) {
     cumulativeHeights[i] += delta;
@@ -158,6 +169,7 @@ export function setAllRows(rows: any[], stripColorTags: (t: string) => string): 
   rowHeightCache.clear();
   buildCumulativeHeights(stripColorTags);
   grid.rowsVersion++;
+  logger.info("GRID: loaded", { total: rows.length, memoryMB: rows.length > 0 ? Math.round(JSON.stringify(rows).length / 1024 / 1024) : 0 });
 }
 
 export function rebuildRowIndex(rows?: any[]): void {
@@ -190,7 +202,7 @@ export function applyFilter(activeFilter: string, selectedCategories: string[], 
     if (activeFilter === 'confirmed') {
       filtered = filtered.filter(r => r.status === 'approved' || r.status === 'reviewed');
     } else if (activeFilter === 'unconfirmed') {
-      filtered = filtered.filter(r => r.status === 'pending' || r.status === 'translated');
+      filtered = filtered.filter(r => r.status === 'pending' || r.status === 'translated' || r.status === 'original');
     } else if (activeFilter === 'qa_flagged') {
       filtered = filtered.filter(r => (r.qa_flag_count || 0) > 0);
     }
@@ -213,12 +225,14 @@ export function applyFilter(activeFilter: string, selectedCategories: string[], 
     }
   }
 
+  const beforeCount = rowData.all.length;
   rowData.display = filtered;
   grid.total = filtered.length;
   rebuildRowIndex(filtered);
   rowHeightCache.clear();
   // buildCumulativeHeights called by ScrollEngine after filter
   grid.rowsVersion++;
+  logger.info("GRID: filter applied", { before: beforeCount, after: filtered.length, filter: activeFilter, search: searchTerm || null, categories: selectedCategories?.length || 0 });
 }
 
 /** Reset all state for file changes */
@@ -240,8 +254,11 @@ export function resetGridState(): void {
   grid.searchFields = ['source', 'target'];
   grid.loadingFileName = '';
   grid.rowsVersion = 0;
+  grid.imagesReady = false;
+  grid.editRowId = null;
   rowIndexById.clear();
   rowHeightCache.clear();
+  imageCache.clear();
   tmAppliedRows.clear();
   referenceData.clear();
   qaFlags.clear();

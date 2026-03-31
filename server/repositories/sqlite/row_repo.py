@@ -192,7 +192,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
             if status is not None:
                 updates.append("status = ?")
                 params.append(status)
-            elif target is not None and row["status"] == "pending" and target:
+            elif target is not None and row["status"] in ("pending", "original") and target:
                 # Auto-set status to translated if target is set and was pending
                 updates.append("status = ?")
                 params.append("translated")
@@ -388,7 +388,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 if filter_type == "confirmed":
                     base_query += " AND status IN ('approved', 'reviewed')"
                 elif filter_type == "unconfirmed":
-                    base_query += " AND status IN ('pending', 'translated')"
+                    base_query += " AND status IN ('pending', 'translated', 'original')"
                 elif filter_type == "qa_flagged":
                     base_query += " AND qa_flag_count > 0"
 
@@ -457,7 +457,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                     )
                 elif status_filter == "translated":
                     cursor = await conn.execute(
-                        f"SELECT * FROM {self._table('rows')} WHERE file_id = ? AND status IN ('translated', 'reviewed', 'approved') ORDER BY row_num",
+                        f"SELECT * FROM {self._table('rows')} WHERE file_id = ? AND status IN ('translated', 'reviewed', 'approved', 'original') ORDER BY row_num",
                         (file_id,)
                     )
                 else:

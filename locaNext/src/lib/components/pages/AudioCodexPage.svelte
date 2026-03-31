@@ -1,414 +1,312 @@
 <script>
   /**
-   * AudioCodexPage.svelte - Audio Codex encyclopedia page
+   * AudioCodexPage.svelte - Audio Codex MDG-style 3-panel layout
    *
-   * Browse, search, and play audio entries with category tree sidebar,
-   * list layout (not card grid), inline audio playback, and detail panel.
+   * Orchestrator: owns all state, wires AudioExportTree (left),
+   * AudioResultGrid (center), AudioPlayerPanel (right).
+   * Hidden <audio> element for programmatic playback + progress bar.
    *
-   * UNIQUE layout: Two-column with sidebar tree + list (text-heavy entries).
-   *
-   * Phase 102: Bulk load conversion (no pagination)
+   * Phase 107: Audio Codex MDG Graft
    */
   import { InlineLoading } from "carbon-components-svelte";
-  import { Music, ArrowLeft, Search, ChevronRight, ChevronDown, PlayFilledAlt, StopFilledAlt } from "carbon-icons-svelte";
+  import { Music, Search } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
-  import AudioCodexDetail from "$lib/components/ldm/AudioCodexDetail.svelte";
   import { PageHeader, ErrorState } from "$lib/components/common";
-  import { onMount } from "svelte";
+  import AudioExportTree from "$lib/components/ldm/AudioExportTree.svelte";
+  import AudioResultGrid from "$lib/components/ldm/AudioResultGrid.svelte";
+  import AudioPlayerPanel from "$lib/components/ldm/AudioPlayerPanel.svelte";
+  import { onMount, onDestroy } from "svelte";
 
   const API_BASE = getApiBase();
 
-  // State
+  // ── State ──
+  // $state.raw for bulk data arrays — avoids 100K+ proxy overhead (same pattern as language data grid)
   let categories = $state([]);
+  let allItems = $state.raw([]);
   let activeCategory = $state(null);
-  let allItems = $state([]);
-  let selectedAudio = $state(null);
   let searchQuery = $state("");
+  let selectedEvent = $state(null);
+  let selectedAudio = $state(null);
+  let playingEvent = $state(null);
+  let selectedLanguage = $state("eng");
+  let currentTime = $state(0);
+  let duration = $state(0);
+  let totalEvents = $state(0);
   let loadingCategories = $state(true);
   let loadingList = $state(true);
   let apiError = $state(null);
-  let totalEvents = $state(0);
-  let expandedCategories = $state(new Set());
-  let playingEvent = $state(null);
 
-  // Derived: client-side filtered items by category + search
+  // Hidden audio element ref
+  let audioEl = $state(null);
+  let rafId = null;
+
+  // ── Derived: client-side filtered items ──
   let filteredItems = $derived.by(() => {
-    return allItems.filter(item => {
+    return allItems.filter((item) => {
       if (activeCategory && item.export_path && !item.export_path.startsWith(activeCategory)) return false;
       if (activeCategory && !item.export_path) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const searchable = `${item.event_name || ''} ${item.script_kr || ''} ${item.script_eng || ''} ${item.string_id || ''}`.toLowerCase();
+        const searchable = `${item.event_name || ""} ${item.script_kr || ""} ${item.script_eng || ""} ${item.string_id || ""}`.toLowerCase();
         if (!searchable.includes(q)) return false;
       }
       return true;
     });
   });
 
-  /**
-   * Fetch hierarchical category tree from D20 export_path grouping
-   */
+  // ── Audio progress loop ──
+  let destroyed = false;
+
+  function startProgressLoop() {
+    stopProgressLoop(); // Kill any orphaned loop first
+    function tick() {
+      if (destroyed) return;
+      if (audioEl && !audioEl.paused) {
+        currentTime = audioEl.currentTime;
+        duration = audioEl.duration || 0;
+        rafId = requestAnimationFrame(tick);
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function stopProgressLoop() {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  // ── API calls ──
   async function fetchCategories() {
     loadingCategories = true;
     apiError = null;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/codex/audio/categories`, {
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const res = await fetch(`${API_BASE}/api/ldm/codex/audio/categories`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       categories = data.categories || [];
       totalEvents = data.total_events || 0;
-      logger.info('Audio Codex categories loaded', { count: categories.length, totalEvents });
+      logger.info("Audio Codex categories loaded", { count: categories.length, totalEvents });
     } catch (err) {
-      logger.error('Failed to fetch audio categories', { error: err.message });
-      apiError = 'Audio Codex unavailable -- ensure gamedata folder is configured';
+      logger.error("Failed to fetch audio categories", { error: err.message });
+      apiError = "Audio Codex unavailable — ensure gamedata folder is configured";
     } finally {
       loadingCategories = false;
     }
   }
 
-  /**
-   * Fetch all audio entries in a single request (bulk load)
-   */
   async function fetchAllItems() {
     loadingList = true;
     try {
-      const response = await fetch(
-        `${API_BASE}/api/ldm/codex/audio`,
-        { headers: getAuthHeaders() }
-      );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
+      const res = await fetch(`${API_BASE}/api/ldm/codex/audio?language=${selectedLanguage}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       allItems = data.items || [];
-      logger.info('Audio Codex bulk loaded', { total: allItems.length });
+      logger.info("Audio Codex bulk loaded", { total: allItems.length, language: selectedLanguage });
     } catch (err) {
-      logger.error('Failed to fetch audio items', { error: err.message });
-      apiError = 'Failed to load audio entries';
+      logger.error("Failed to fetch audio items", { error: err.message });
+      apiError = "Failed to load audio entries";
     } finally {
       loadingList = false;
     }
   }
 
-  /**
-   * Fetch full audio detail for a single event
-   */
   async function fetchAudioDetail(eventName) {
     try {
-      const response = await fetch(
-        `${API_BASE}/api/ldm/codex/audio/${encodeURIComponent(eventName)}`,
+      const res = await fetch(
+        `${API_BASE}/api/ldm/codex/audio/${encodeURIComponent(eventName)}?language=${selectedLanguage}`,
         { headers: getAuthHeaders() }
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      selectedAudio = await response.json();
-      logger.info('Audio detail loaded', { eventName });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      selectedAudio = await res.json();
     } catch (err) {
-      logger.error('Failed to fetch audio detail', { error: err.message, eventName });
+      logger.error("Failed to fetch audio detail", { error: err.message, eventName });
+      selectedAudio = null; // Clear stale data on failure
     }
   }
 
-  /**
-   * Handle category tree node click -- filter list by that category
-   */
-  function selectCategory(fullPath) {
-    activeCategory = fullPath;
+  // ── Handlers ──
+  function handleRowSelect(eventName) {
+    selectedEvent = eventName;
+    fetchAudioDetail(eventName);
+  }
+
+  function handlePlay(eventName) {
+    // If a different event, select it first
+    if (eventName && eventName !== selectedEvent) {
+      selectedEvent = eventName;
+      fetchAudioDetail(eventName);
+    }
+    const target = eventName || selectedEvent;
+    if (!target) return;
+
+    playingEvent = target;
+    if (audioEl) {
+      audioEl.src = `${API_BASE}/api/ldm/codex/audio/stream/${encodeURIComponent(target)}?language=${selectedLanguage}&v=${Date.now()}`;
+      audioEl.load();
+      audioEl.play().catch((err) => {
+        logger.error("Audio play failed", { error: err.message });
+        playingEvent = null;
+      });
+      startProgressLoop();
+    }
+  }
+
+  function handleStop() {
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+    }
+    playingEvent = null;
+    currentTime = 0;
+    stopProgressLoop();
+  }
+
+  function handleSeek(time) {
+    if (audioEl) {
+      audioEl.currentTime = time;
+      currentTime = time;
+    }
+  }
+
+  function navigateByOffset(offset) {
+    const idx = filteredItems.findIndex((i) => i.event_name === selectedEvent);
+    if (idx === -1) return; // Nothing selected
+    const nextIdx = (idx + offset + filteredItems.length) % filteredItems.length;
+    const item = filteredItems[nextIdx];
+    if (item) {
+      handleStop();
+      handleRowSelect(item.event_name);
+    }
+  }
+
+  function handlePrev() { navigateByOffset(-1); }
+  function handleNext() { navigateByOffset(1); }
+
+  function handleAudioEnded() {
+    playingEvent = null;
+    currentTime = 0;
+    duration = 0;
+    stopProgressLoop();
+  }
+
+  function handleLanguageChange(event) {
+    const lang = event.target.value;
+    selectedLanguage = lang;
+    handleStop();
     selectedAudio = null;
-  }
-
-  /**
-   * Toggle expand/collapse of a category tree node
-   */
-  function toggleCategory(fullPath, event) {
-    event.stopPropagation();
-    const next = new Set(expandedCategories);
-    if (next.has(fullPath)) {
-      next.delete(fullPath);
-    } else {
-      next.add(fullPath);
-    }
-    expandedCategories = next;
-  }
-
-  /**
-   * Handle list row click -- open detail panel
-   */
-  function selectRow(item) {
-    fetchAudioDetail(item.event_name);
-  }
-
-  /**
-   * Handle inline play button click
-   */
-  function togglePlay(eventName, event) {
-    event.stopPropagation();
-    if (playingEvent === eventName) {
-      playingEvent = null;
-    } else {
-      playingEvent = eventName;
-    }
-  }
-
-  /**
-   * Back to list from detail view
-   */
-  function clearSelection() {
-    selectedAudio = null;
-  }
-
-  /**
-   * Get the last segment of an export path for badge display
-   */
-  function getCategoryBadge(exportPath) {
-    if (!exportPath) return null;
-    const parts = exportPath.split('/');
-    return parts[parts.length - 1];
-  }
-
-  /**
-   * Truncate text to a max length
-   */
-  function truncate(text, maxLen = 80) {
-    if (!text) return '';
-    return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
-  }
-
-  /**
-   * Build audio stream URL with cache-bust
-   */
-  function getStreamUrl(eventName) {
-    return `${API_BASE}/api/ldm/codex/audio/stream/${encodeURIComponent(eventName)}?v=${Date.now()}`;
+    selectedEvent = null;
+    fetchAllItems();
   }
 
   onMount(() => {
     fetchCategories();
     fetchAllItems();
   });
+
+  onDestroy(() => {
+    destroyed = true;
+    stopProgressLoop();
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.src = "";
+    }
+  });
 </script>
+
+<!-- Hidden audio element for programmatic control -->
+<audio
+  bind:this={audioEl}
+  preload="auto"
+  onended={handleAudioEnded}
+  onerror={(e) => {
+    const code = audioEl?.error?.code;
+    const msg = audioEl?.error?.message || "Unknown audio error";
+    logger.error("Audio playback error", { code, message: msg, event: playingEvent });
+    playingEvent = null;
+    stopProgressLoop();
+  }}
+  ondurationchange={() => { if (audioEl) duration = audioEl.duration || 0; }}
+></audio>
 
 <div class="audio-codex-page">
   <!-- Header -->
-  <PageHeader icon={Music} title="Audio Codex" />
+  <div class="page-header-bar">
+    <PageHeader icon={Music} title="Audio Codex" />
+    <div class="header-controls">
+      <!-- Language selector -->
+      <div class="lang-select">
+        <label for="audio-lang">Language:</label>
+        <select id="audio-lang" value={selectedLanguage} onchange={handleLanguageChange}>
+          <option value="eng">English (US)</option>
+          <option value="kor">Korean</option>
+          <option value="zho-cn">Chinese (PRC)</option>
+        </select>
+      </div>
+
+      <!-- Search bar -->
+      <div class="search-wrapper">
+        <Search size={16} />
+        <input
+          type="search"
+          placeholder="Search event name, script, StringId..."
+          bind:value={searchQuery}
+          class="search-input"
+          aria-label="Search audio entries"
+        />
+        <span class="result-count">{filteredItems.length}</span>
+      </div>
+    </div>
+  </div>
 
   {#if apiError}
-    <div class="audio-codex-state-container">
+    <div class="state-container">
       <ErrorState message={apiError} onretry={() => { fetchCategories(); fetchAllItems(); }} />
     </div>
   {:else if loadingCategories}
-    <div class="audio-codex-loading" role="status" aria-live="polite">
+    <div class="state-container">
       <InlineLoading description="Loading audio categories..." />
     </div>
   {:else}
-    <div class="audio-codex-layout">
-      <!-- Left: Category tree sidebar -->
-      <aside class="category-sidebar" aria-label="Audio categories">
-        <div class="sidebar-header">
-          <span class="sidebar-title">Categories</span>
+    <div class="three-panel">
+      <!-- LEFT: Export Tree -->
+      <AudioExportTree
+        {categories}
+        {activeCategory}
+        {totalEvents}
+        onselect={(path) => { activeCategory = path; }}
+      />
+
+      <!-- CENTER: Result Grid -->
+      {#if loadingList}
+        <div class="loading-center">
+          <InlineLoading description="Loading audio entries..." />
         </div>
+      {:else}
+        <AudioResultGrid
+          items={filteredItems}
+          {selectedEvent}
+          {playingEvent}
+          onselect={handleRowSelect}
+          onplay={handlePlay}
+          onstop={handleStop}
+        />
+      {/if}
 
-        <!-- All category -->
-        <button
-          class="tree-node depth-0"
-          class:active={activeCategory === null}
-          onclick={() => selectCategory(null)}
-          aria-label="All audio entries ({totalEvents})"
-        >
-          <span class="tree-node-name">All</span>
-          <span class="tree-node-count">{totalEvents}</span>
-        </button>
-
-        <!-- Recursive category tree -->
-        {#each categories as cat (cat.full_path)}
-          {@const isExpanded = expandedCategories.has(cat.full_path)}
-          <div class="tree-branch">
-            <button
-              class="tree-node depth-0"
-              class:active={activeCategory === cat.full_path}
-              onclick={() => selectCategory(cat.full_path)}
-            >
-              {#if cat.children && cat.children.length > 0}
-                <span
-                  class="tree-toggle"
-                  role="button"
-                  tabindex="0"
-                  onclick={(e) => toggleCategory(cat.full_path, e)}
-                  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(cat.full_path, e); } }}
-                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                >
-                  {#if isExpanded}
-                    <ChevronDown size={14} />
-                  {:else}
-                    <ChevronRight size={14} />
-                  {/if}
-                </span>
-              {:else}
-                <span class="tree-toggle-spacer"></span>
-              {/if}
-              <span class="tree-node-name">{cat.name}</span>
-              <span class="tree-node-count">{cat.count}</span>
-            </button>
-
-            {#if isExpanded && cat.children}
-              {#each cat.children as child (child.full_path)}
-                {@const isChildExpanded = expandedCategories.has(child.full_path)}
-                <div class="tree-branch">
-                  <button
-                    class="tree-node depth-1"
-                    class:active={activeCategory === child.full_path}
-                    onclick={() => selectCategory(child.full_path)}
-                  >
-                    {#if child.children && child.children.length > 0}
-                      <span
-                        class="tree-toggle"
-                        role="button"
-                        tabindex="0"
-                        onclick={(e) => toggleCategory(child.full_path, e)}
-                        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCategory(child.full_path, e); } }}
-                        aria-label={isChildExpanded ? 'Collapse' : 'Expand'}
-                      >
-                        {#if isChildExpanded}
-                          <ChevronDown size={14} />
-                        {:else}
-                          <ChevronRight size={14} />
-                        {/if}
-                      </span>
-                    {:else}
-                      <span class="tree-toggle-spacer"></span>
-                    {/if}
-                    <span class="tree-node-name">{child.name}</span>
-                    <span class="tree-node-count">{child.count}</span>
-                  </button>
-
-                  {#if isChildExpanded && child.children}
-                    {#each child.children as grandchild (grandchild.full_path)}
-                      <button
-                        class="tree-node depth-2"
-                        class:active={activeCategory === grandchild.full_path}
-                        onclick={() => selectCategory(grandchild.full_path)}
-                      >
-                        <span class="tree-toggle-spacer"></span>
-                        <span class="tree-node-name">{grandchild.name}</span>
-                        <span class="tree-node-count">{grandchild.count}</span>
-                      </button>
-                    {/each}
-                  {/if}
-                </div>
-              {/each}
-            {/if}
-          </div>
-        {/each}
-      </aside>
-
-      <!-- Right: Audio list + detail -->
-      <div class="audio-content">
-        {#if selectedAudio}
-          <!-- Detail View -->
-          <div class="detail-view">
-            <button class="back-btn" onclick={clearSelection} aria-label="Back to audio list">
-              <ArrowLeft size={16} />
-              <span>Back to list</span>
-            </button>
-            <AudioCodexDetail audio={selectedAudio} onback={clearSelection} />
-          </div>
-        {:else}
-          <!-- Search Bar -->
-          <div class="audio-search">
-            <div class="search-wrapper">
-              <Search size={16} />
-              <input
-                type="search"
-                placeholder="Search audio by event name, script text, or StringId..."
-                bind:value={searchQuery}
-                class="search-input"
-                aria-label="Search audio entries"
-              />
-            </div>
-            <span class="result-count">{filteredItems.length} entries</span>
-          </div>
-
-          <!-- Audio List -->
-          {#if loadingList}
-            <div class="audio-loading">
-              <InlineLoading description="Loading audio entries..." />
-            </div>
-          {:else}
-            <div class="audio-list" role="list" aria-label="Audio entries">
-              {#each filteredItems as item (item.event_name)}
-                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-                <div
-                  class="audio-row"
-                  role="listitem"
-                  tabindex="0"
-                  onclick={() => selectRow(item)}
-                  onkeydown={(e) => { if (e.key === 'Enter') selectRow(item); }}
-                >
-                  <!-- Play/Stop button -->
-                  <button
-                    class="play-btn"
-                    class:playing={playingEvent === item.event_name}
-                    onclick={(e) => togglePlay(item.event_name, e)}
-                    aria-label={playingEvent === item.event_name ? 'Stop audio' : 'Play audio'}
-                    disabled={!item.has_wem}
-                  >
-                    {#if playingEvent === item.event_name}
-                      <StopFilledAlt size={18} />
-                    {:else}
-                      <PlayFilledAlt size={18} />
-                    {/if}
-                  </button>
-
-                  <!-- Event info -->
-                  <div class="audio-info">
-                    <div class="audio-info-top">
-                      <span class="event-name">{item.event_name}</span>
-                      <span class="wem-dot" class:has-wem={item.has_wem} title={item.has_wem ? 'Audio available' : 'No audio file'}></span>
-                      {#if getCategoryBadge(item.export_path)}
-                        <span class="category-badge">{getCategoryBadge(item.export_path)}</span>
-                      {/if}
-                    </div>
-                    {#if item.script_kr}
-                      <span class="script-preview kr">{truncate(item.script_kr)}</span>
-                    {/if}
-                    {#if item.script_eng}
-                      <span class="script-preview eng">{truncate(item.script_eng)}</span>
-                    {/if}
-                  </div>
-
-                  <!-- Inline audio player (shown when playing) -->
-                  {#if playingEvent === item.event_name && item.has_wem}
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <div class="inline-player" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-                      {#key item.event_name}
-                        <audio
-                          controls
-                          autoplay
-                          preload="none"
-                          class="mini-audio"
-                          crossorigin="anonymous"
-                          src={getStreamUrl(item.event_name)}
-                          onended={() => { playingEvent = null; }}
-                          onerror={() => { playingEvent = null; }}
-                        >
-                          Your browser does not support the audio element.
-                        </audio>
-                      {/key}
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-
-              {#if filteredItems.length === 0 && !loadingList}
-                <div class="no-entries">
-                  <Music size={32} />
-                  <p>No audio entries found{searchQuery ? ` matching "${searchQuery}"` : ''}{activeCategory ? ` in "${activeCategory}"` : ''}</p>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        {/if}
-      </div>
+      <!-- RIGHT: Audio Player Panel -->
+      <AudioPlayerPanel
+        audio={selectedAudio}
+        playing={playingEvent != null}
+        {currentTime}
+        {duration}
+        onplay={() => handlePlay(selectedEvent)}
+        onstop={handleStop}
+        onprev={handlePrev}
+        onnext={handleNext}
+        onseek={handleSeek}
+      />
     </div>
   {/if}
 </div>
@@ -422,171 +320,55 @@
     overflow: hidden;
   }
 
-  .audio-codex-state-container {
+  .page-header-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    flex: 1;
-  }
-
-  .audio-codex-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 32px;
-  }
-
-  /* Two-column layout: sidebar + content */
-  .audio-codex-layout {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* Category sidebar */
-  .category-sidebar {
-    width: 250px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--cds-border-subtle-01);
-    background: var(--cds-layer-01);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .sidebar-header {
-    padding: 12px 16px;
+    justify-content: space-between;
+    padding-right: 16px;
     border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
   }
 
-  .sidebar-title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--cds-text-03);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .tree-branch {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .tree-node {
+  .header-controls {
     display: flex;
     align-items: center;
-    gap: 4px;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    color: var(--cds-text-02);
+    gap: 16px;
+  }
+
+  .lang-select {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.8125rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.12s;
-    border-left: 3px solid transparent;
+    color: var(--cds-text-02);
   }
 
-  .tree-node.depth-0 { padding-left: 12px; }
-  .tree-node.depth-1 { padding-left: 28px; }
-  .tree-node.depth-2 { padding-left: 44px; }
+  .lang-select label { font-weight: 500; white-space: nowrap; }
 
-  .tree-node:hover {
-    background: var(--cds-layer-hover-01);
+  .lang-select select {
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
     color: var(--cds-text-01);
-  }
-
-  .tree-node:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-
-  .tree-node.active {
-    background: var(--cds-layer-selected-01, rgba(15, 98, 254, 0.1));
-    color: var(--cds-text-01);
-    border-left-color: var(--cds-interactive-01, #0f62fe);
-    font-weight: 500;
-  }
-
-  .tree-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--cds-text-03);
-    cursor: pointer;
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-  }
-
-  .tree-toggle:hover {
-    color: var(--cds-text-01);
-  }
-
-  .tree-toggle-spacer {
-    display: inline-block;
-    width: 18px;
-    flex-shrink: 0;
-  }
-
-  .tree-node-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tree-node-count {
-    font-size: 0.6875rem;
-    color: var(--cds-text-03);
-    background: var(--cds-layer-02);
-    padding: 1px 6px;
-    border-radius: 8px;
-    flex-shrink: 0;
-  }
-
-  /* Audio content area */
-  .audio-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow-y: auto;
-  }
-
-  /* Search */
-  .audio-search {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--cds-layer-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    flex-shrink: 0;
+    font-size: 0.8125rem;
+    padding: 4px 8px;
   }
 
   .search-wrapper {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1;
-    padding: 8px 12px;
+    padding: 6px 12px;
     background: var(--cds-field-01);
     border: 1px solid var(--cds-border-strong-01);
     border-radius: 4px;
     color: var(--cds-text-03);
-    transition: border-color 0.15s;
+    min-width: 280px;
   }
 
   .search-wrapper:focus-within {
     border-color: var(--cds-focus);
     box-shadow: 0 0 0 1px var(--cds-focus);
-    color: var(--cds-text-01);
   }
 
   .search-input {
@@ -594,211 +376,39 @@
     border: none;
     background: transparent;
     color: var(--cds-text-01);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     outline: none;
   }
 
-  .search-input::placeholder {
-    color: var(--cds-text-03);
-  }
+  .search-input::placeholder { color: var(--cds-text-03); }
 
   .result-count {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: var(--cds-text-03);
-    white-space: nowrap;
+    background: var(--cds-layer-02);
+    padding: 1px 6px;
+    border-radius: 8px;
   }
 
-  .audio-loading {
+  .state-container {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 1;
     padding: 32px;
   }
 
-  /* Audio list rows */
-  .audio-list {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .audio-row {
+  .three-panel {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    cursor: pointer;
-    transition: background 0.12s;
-    flex-wrap: wrap;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .audio-row:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  /* Play button */
-  .play-btn {
+  .loading-center {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: var(--cds-interactive-01, #0f62fe);
-    color: var(--cds-text-on-color, #fff);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: all 0.15s;
-    margin-top: 2px;
-  }
-
-  .play-btn:hover {
-    background: var(--cds-hover-primary, #0353e9);
-  }
-
-  .play-btn:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 2px;
-  }
-
-  .play-btn:disabled {
-    background: var(--cds-disabled-02, #525252);
-    color: var(--cds-disabled-03, #8d8d8d);
-    cursor: not-allowed;
-  }
-
-  .play-btn.playing {
-    background: var(--cds-support-error, #da1e28);
-  }
-
-  .play-btn.playing:hover {
-    background: var(--cds-hover-danger, #b81921);
-  }
-
-  /* Audio info */
-  .audio-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .audio-info-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .event-name {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 400px;
-  }
-
-  .wem-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--cds-text-03);
-    flex-shrink: 0;
-  }
-
-  .wem-dot.has-wem {
-    background: var(--cds-support-success, #24a148);
-  }
-
-  .category-badge {
-    font-size: 0.6875rem;
-    padding: 1px 8px;
-    border-radius: 8px;
-    background: var(--cds-layer-02);
-    color: var(--cds-text-02);
-    white-space: nowrap;
-  }
-
-  .script-preview {
-    font-size: 0.8125rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.4;
-  }
-
-  .script-preview.kr {
-    color: var(--cds-text-01);
-  }
-
-  .script-preview.eng {
-    color: var(--cds-text-03);
-    font-size: 0.75rem;
-  }
-
-  /* Inline audio player */
-  .inline-player {
-    width: 100%;
-    padding-top: 8px;
-  }
-
-  .mini-audio {
-    width: 100%;
-    height: 32px;
-    filter: invert(1) hue-rotate(180deg);
-    opacity: 0.85;
-  }
-
-  /* Detail view */
-  .detail-view {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: 1px solid var(--cds-border-strong-01);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--cds-text-01);
-    font-size: 0.8125rem;
-    cursor: pointer;
-    align-self: flex-start;
-    transition: background 0.15s;
-  }
-
-  .back-btn:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .back-btn:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 1px;
-  }
-
-  /* Empty state */
-  .no-entries {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 48px 16px;
-    color: var(--cds-text-03);
-    text-align: center;
-  }
-
-  .no-entries p {
-    font-size: 0.875rem;
-    margin: 0;
-    color: var(--cds-text-02);
   }
 </style>

@@ -26,6 +26,7 @@
   import { preferences, getFontSizeValue, getFontFamilyValue, getFontColorValue } from '$lib/stores/preferences.js';
   import { ldmConnected, isRowLocked } from '$lib/stores/ldm.js';
   import { stripColorTags, hexToCSS } from '$lib/utils/colorParser.js';
+  import { logger } from '$lib/utils/logger.js';
   // Props via $props() (per D-05)
   let {
     fileType = "translator",
@@ -228,12 +229,16 @@
   // Font styles from preferences
   let visibleRows = $derived.by(() => {
     // Read rowsVersion to establish dependency — re-evaluates when rows are batch-mutated
+    // Spread each row + bake in position/height so Svelte detects changes
+    // (cumulativeHeights/rowHeightCache are plain data — not reactive on their own)
     const _v = grid.rowsVersion;
     const start = grid.visibleStart;
     const end = grid.visibleEnd;
     return Array.from({ length: end - start }, (_, i) => {
       const index = start + i;
-      return getDisplayRows()[index] || { row_num: index + 1, placeholder: true };
+      const row = getDisplayRows()[index];
+      if (!row) return { row_num: index + 1, placeholder: true, _top: index * 36, _height: 36 };
+      return { ...row, _top: getRowTop(index), _height: getRowHeight(index) };
     });
   });
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
@@ -242,12 +247,28 @@
   let gridFontColor = $derived(getFontColorValue($preferences.fontColor));
 
   // Total height from gridState
-  let totalHeight = $derived(getTotalHeight());
+  let totalHeight = $derived.by(() => {
+    const _v = grid.rowsVersion; // re-evaluate when heights change
+    return getTotalHeight();
+  });
 
   // Local wrapper for getRowHeight from gridState
   function getRowHeight(index) {
     return gridGetRowHeight(index);
   }
+
+  // Throttled visible range logging (max 1 per second)
+  let lastVisibleRangeLog = 0;
+  $effect(() => {
+    const start = grid.visibleStart;
+    const end = grid.visibleEnd;
+    const total = grid.total;
+    const now = Date.now();
+    if (now - lastVisibleRangeLog > 1000) {
+      logger.debug("GRID: visible range", { first: start, last: end, total });
+      lastVisibleRangeLog = now;
+    }
+  });
 </script>
 
 <!-- Resize Bars: OUTSIDE scroll container so they don't scroll -->
@@ -280,11 +301,13 @@
         class:placeholder={row.placeholder}
         class:locked={rowLock}
         class:selected={grid.selectedRowId === row.id}
+        class:editing={grid.editRowId === row.id}
         class:row-hovered={grid.hoveredRowId === row.id}
+        class:status-original={!row.placeholder && row.status === 'original'}
         class:status-translated={!row.placeholder && row.status === 'translated'}
         class:status-reviewed={!row.placeholder && row.status === 'reviewed'}
         class:status-approved={!row.placeholder && row.status === 'approved'}
-        style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;
+        style="top: {row._top}px; min-height: {row._height}px;
           --grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
         onclick={(e) => onRowClick?.(row, e)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick?.(row, e); } }}
@@ -340,7 +363,7 @@
           <!-- Row number (conditional) -->
           {#if $preferences.showIndex}
             <div class="cell row-num" style="width: {indexColumnWidth}px;">
-              <span class="status-dot" class:changed={row.status === 'translated'} class:confirmed={row.status === 'reviewed'} class:approved={row.status === 'approved'}></span>
+              <span class="status-dot" class:original={row.status === 'original'} class:changed={row.status === 'translated'} class:confirmed={row.status === 'reviewed'} class:approved={row.status === 'approved'}></span>
               {row.row_num}
             </div>
           {/if}
@@ -397,6 +420,7 @@
             class:target-hovered={grid.hoveredRowId === row.id && grid.hoveredCell === 'target'}
             class:row-active={grid.hoveredRowId === row.id || grid.selectedRowId === row.id}
             class:cell-selected={grid.selectedRowId === row.id}
+            class:status-original={row.status === 'original'}
             class:status-translated={row.status === 'translated'}
             class:status-reviewed={row.status === 'reviewed'}
             class:status-approved={row.status === 'approved'}
@@ -696,7 +720,20 @@
     background: #00b464;
   }
 
+  .status-dot.original {
+    background: transparent;
+  }
+
   /* Status-based cell colors */
+  .virtual-row.status-original {
+    background: transparent;
+  }
+
+  .cell.target.status-original {
+    background: transparent;
+    border-left: none;
+  }
+
   .cell.target.status-translated {
     background: rgba(255, 214, 0, 0.10);
     border-left: 3px solid #ffd600;

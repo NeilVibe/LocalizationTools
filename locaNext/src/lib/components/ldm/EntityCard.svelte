@@ -64,8 +64,7 @@
       </div>
       {#key audioUrl}
         <audio controls preload="none" class="audio-player"
-          src={audioUrl}
-          crossorigin="anonymous">
+          src={audioUrl}>
           Your browser does not support the audio element.
         </audio>
       {/key}

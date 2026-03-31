@@ -9,7 +9,18 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      // Proxy audio streams to avoid ORB (Opaque Resource Blocking) on cross-origin media
+      '/api/ldm/mapdata/audio/stream': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+      '/api/ldm/codex/audio/stream': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
   },
   optimizeDeps: {
     include: ['carbon-components-svelte', 'carbon-icons-svelte']

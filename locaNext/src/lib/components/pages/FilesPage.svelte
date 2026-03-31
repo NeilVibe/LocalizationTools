@@ -61,6 +61,48 @@
   let selectedItem = $state(null);
   let selectedIds = $state([]);  // Multi-select
 
+  // Phase 106: Guard against duplicate loadRoot calls (plain variables, NOT $state)
+  let rootLoadPromise = null;  // Dedup concurrent calls by sharing the same promise
+
+  // Phase 106: Simple fetch caches to prevent duplicate platform/project API calls
+  let platformCache = null;
+  let projectCache = null;
+  let platformCacheTime = 0;
+  let projectCacheTime = 0;
+  const CACHE_TTL = 10000; // 10 seconds
+
+  async function fetchPlatformsCached() {
+    const now = Date.now();
+    if (platformCache && (now - platformCacheTime) < CACHE_TTL) return platformCache;
+    const response = await fetch(`${API_BASE}/api/ldm/platforms`, { headers: getAuthHeaders() });
+    if (response.ok) {
+      const data = await response.json();
+      platformCache = data.platforms || [];
+      platformCacheTime = now;
+      return platformCache;
+    }
+    return null;
+  }
+
+  async function fetchProjectsCached() {
+    const now = Date.now();
+    if (projectCache && (now - projectCacheTime) < CACHE_TTL) return projectCache;
+    const response = await fetch(`${API_BASE}/api/ldm/projects`, { headers: getAuthHeaders() });
+    if (response.ok) {
+      projectCache = await response.json();
+      projectCacheTime = now;
+      return projectCache;
+    }
+    return null;
+  }
+
+  function invalidateFetchCaches() {
+    platformCache = null;
+    projectCache = null;
+    platformCacheTime = 0;
+    projectCacheTime = 0;
+  }
+
   // Platform state
   let platforms = $state([]);
   let selectedPlatformId = $state(null);
@@ -162,29 +204,33 @@
 
   // Load root level: platforms + unassigned projects
   async function loadRoot() {
+    // Phase 106: Dedup concurrent calls — if already loading, return same promise
+    if (rootLoadPromise) return rootLoadPromise;
+    rootLoadPromise = _loadRootImpl();
+    try { await rootLoadPromise; } finally { rootLoadPromise = null; }
+  }
+  async function _loadRootImpl() {
     loading = true;
     try {
       // P9: Check offline mode first - in offline mode, show Offline Storage even if APIs fail
       const isOffline = get(offlineMode);
 
-      // Fetch platforms, projects, and local file count in parallel
-      // Use Promise.allSettled to continue even if some fail (important for offline mode)
+      // Phase 106: Use cached fetches for platforms/projects to prevent duplicate API calls
       const [platformsResult, projectsResult, localFilesResult] = await Promise.allSettled([
-        fetch(`${API_BASE}/api/ldm/platforms`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/api/ldm/projects`, { headers: getAuthHeaders() }),
+        fetchPlatformsCached(),
+        fetchProjectsCached(),
         fetch(`${API_BASE}/api/ldm/offline/local-file-count`, { headers: getAuthHeaders() })
       ]);
 
       let platformList = [];
-      if (platformsResult.status === 'fulfilled' && platformsResult.value.ok) {
-        const data = await platformsResult.value.json();
-        platformList = data.platforms || [];
+      if (platformsResult.status === 'fulfilled' && platformsResult.value) {
+        platformList = platformsResult.value;
         platforms = platformList;
       }
 
       let projectList = [];
-      if (projectsResult.status === 'fulfilled' && projectsResult.value.ok) {
-        projectList = await projectsResult.value.json();
+      if (projectsResult.status === 'fulfilled' && projectsResult.value) {
+        projectList = projectsResult.value;
         projects = projectList;
       }
 
@@ -280,11 +326,9 @@
   async function loadPlatformContents(platformId, platformName) {
     loading = true;
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/projects`, {
-        headers: getAuthHeaders()
-      });
-      if (response.ok) {
-        const allProjects = await response.json();
+      // Phase 106: Use cached fetch for projects
+      const allProjects = await fetchProjectsCached();
+      if (allProjects) {
         // Filter projects belonging to this platform
         const platformProjects = allProjects.filter(p => p.platform_id === platformId);
 
@@ -2462,6 +2506,7 @@
   // EXPLORER-007: Refresh current view helper
   async function refreshCurrentView() {
     if (currentPath.length === 0) {
+      invalidateFetchCaches();  // Phase 106: Clear caches on refresh
       await loadRoot();
     } else if (currentPath[0]?.type === 'recycle-bin') {
       await loadTrashContents();
@@ -2536,6 +2581,7 @@
   });
 
   onDestroy(() => {
+    invalidateFetchCaches();  // Phase 106: Clear caches on unmount
     document.removeEventListener('click', handleClickOutside);
     document.removeEventListener('keydown', handleGlobalKeydown);
   });

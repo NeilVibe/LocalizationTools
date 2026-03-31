@@ -169,7 +169,7 @@ class PostgreSQLRowRepository(RowRepository):
         if target is not None:
             row.target = target
             # Auto-set status to translated if target is set and was pending
-            if row.status == "pending" and target:
+            if row.status in ("pending", "original") and target:
                 row.status = "translated"
 
         if status is not None:
@@ -339,7 +339,7 @@ class PostgreSQLRowRepository(RowRepository):
             if filter_type == "confirmed":
                 query = query.where(LDMRow.status.in_(["approved", "reviewed"]))
             elif filter_type == "unconfirmed":
-                query = query.where(LDMRow.status.in_(["pending", "translated"]))
+                query = query.where(LDMRow.status.in_(["pending", "translated", "original"]))
             elif filter_type == "qa_flagged":
                 query = query.where(LDMRow.qa_flag_count > 0)
 
@@ -358,7 +358,7 @@ class PostgreSQLRowRepository(RowRepository):
                 if filter_type == "confirmed":
                     count_query = count_query.where(LDMRow.status.in_(["approved", "reviewed"]))
                 elif filter_type == "unconfirmed":
-                    count_query = count_query.where(LDMRow.status.in_(["pending", "translated"]))
+                    count_query = count_query.where(LDMRow.status.in_(["pending", "translated", "original"]))
                 elif filter_type == "qa_flagged":
                     count_query = count_query.where(LDMRow.qa_flag_count > 0)
             count_result = await self.db.execute(count_query)
@@ -389,7 +389,7 @@ class PostgreSQLRowRepository(RowRepository):
             if status_filter == "reviewed":
                 query = query.where(LDMRow.status.in_(["reviewed", "approved"]))
             elif status_filter == "translated":
-                query = query.where(LDMRow.status.in_(["translated", "reviewed", "approved"]))
+                query = query.where(LDMRow.status.in_(["translated", "reviewed", "approved", "original"]))
             else:
                 query = query.where(LDMRow.status == status_filter)
 
@@ -461,7 +461,7 @@ class PostgreSQLRowRepository(RowRepository):
         if filter_type == "confirmed":
             filter_clause += " AND status IN ('approved', 'reviewed')"
         elif filter_type == "unconfirmed":
-            filter_clause += " AND status IN ('pending', 'translated')"
+            filter_clause += " AND status IN ('pending', 'translated', 'original')"
         elif filter_type == "qa_flagged":
             filter_clause += " AND qa_flag_count > 0"
 

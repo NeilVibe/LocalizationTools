@@ -62,6 +62,7 @@
 
     // Select the row
     grid.selectedRowId = row.id;
+    logger.info("GRID: selected row", { rowId: row.id, index: getRowIndexById(row.id) });
 
     // Dispatch rowSelect event for side panel
     onRowSelect?.({ row });
@@ -133,6 +134,7 @@
     // Enter: Start editing selected row
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      logger.debug("GRID: keyboard nav", { key: 'Enter', rowId: row.id });
       const lock = isRowLocked(parseInt(row.id));
       if (!lock) {
         onEditRequest?.(row);
@@ -143,6 +145,7 @@
     // Escape: Clear selection
     if (e.key === 'Escape') {
       e.preventDefault();
+      logger.debug("GRID: keyboard nav", { key: 'Escape', rowId: grid.selectedRowId });
       grid.selectedRowId = null;
       return;
     }
@@ -153,6 +156,7 @@
       const currentIndex = getRowIndexById(grid.selectedRowId);
       if (currentIndex !== undefined && grid.rows[currentIndex + 1]) {
         grid.selectedRowId = grid.rows[currentIndex + 1].id;
+        logger.debug("GRID: keyboard nav", { key: 'ArrowDown', rowId: grid.rows[currentIndex + 1].id });
         onRowSelect?.({ row: grid.rows[currentIndex + 1] });
       }
       return;
@@ -164,6 +168,7 @@
       const currentIndex = getRowIndexById(grid.selectedRowId);
       if (currentIndex !== undefined && currentIndex > 0 && grid.rows[currentIndex - 1]) {
         grid.selectedRowId = grid.rows[currentIndex - 1].id;
+        logger.debug("GRID: keyboard nav", { key: 'ArrowUp', rowId: grid.rows[currentIndex - 1].id });
         onRowSelect?.({ row: grid.rows[currentIndex - 1] });
       }
       return;

@@ -42,7 +42,7 @@ router = APIRouter(prefix="/codex/audio", tags=["Codex Audio"])
 # =============================================================================
 
 
-def _build_audio_card(event_name: str, mega) -> AudioCardResponse:
+def _build_audio_card(event_name: str, mega, language: str = "eng") -> AudioCardResponse:
     """Build an AudioCardResponse from MegaIndex lookups."""
     event_lower = event_name.lower()
     return AudioCardResponse(
@@ -51,7 +51,7 @@ def _build_audio_card(event_name: str, mega) -> AudioCardResponse:
         script_kr=mega.get_script_kr(event_name),
         script_eng=mega.get_script_eng(event_name),
         export_path=mega.event_to_export_path.get(event_lower),
-        has_wem=mega.get_audio_path_by_event(event_name) is not None,
+        has_wem=mega.get_audio_path_by_event_for_lang(event_name, language) is not None,
         xml_order=mega.event_to_xml_order.get(event_lower),
     )
 
@@ -135,7 +135,7 @@ async def get_audio_categories(
     try:
         mega = get_mega_index()
         categories = _build_category_tree(mega.event_to_export_path)
-        total_events = len(mega.event_to_export_path)
+        total_events = len(mega.event_to_stringid)  # D11, matches list_audio source
 
         return AudioCategoryTreeResponse(
             categories=categories,
@@ -147,41 +147,51 @@ async def get_audio_categories(
 
 
 @router.get("/stream/{event_name}")
-async def stream_audio(event_name: str):
+async def stream_audio(
+    event_name: str,
+    language: str = Query(default="eng", description="Audio language folder (eng, kor, jpn, etc.)"),
+):
     """Stream WAV audio for an event_name.
 
     Looks up WEM path via MegaIndex D10, converts WEM -> WAV via MediaConverter,
     and returns the WAV file. Unauthenticated for <audio> element compatibility.
     """
-    mega = get_mega_index()
-    wem_path = mega.get_audio_path_by_event(event_name)
+    try:
+        mega = get_mega_index()
+        wem_path = mega.get_audio_path_by_event_for_lang(event_name, language)
 
-    if wem_path is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No audio found for event '{event_name}'",
+        if wem_path is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No audio found for event '{event_name}' in language '{language}'",
+            )
+
+        # If the path is already a WAV file, serve it directly
+        if wem_path.suffix.lower() == ".wav" and wem_path.exists():
+            return FileResponse(str(wem_path), media_type="audio/wav")
+
+        # Convert Windows path to WSL path, then WEM -> WAV
+        wsl_path = convert_to_wsl_path(str(wem_path))
+        converter = get_media_converter()
+
+        wav_path = await asyncio.to_thread(
+            converter.convert_wem_to_wav, Path(wsl_path)
         )
+        if wav_path is None:
+            raise HTTPException(status_code=500, detail="Audio conversion failed")
 
-    # If the path is already a WAV file, serve it directly
-    if wem_path.suffix.lower() == ".wav" and wem_path.exists():
-        return FileResponse(str(wem_path), media_type="audio/wav")
-
-    # Convert Windows path to WSL path, then WEM -> WAV
-    wsl_path = convert_to_wsl_path(str(wem_path))
-    converter = get_media_converter()
-
-    wav_path = await asyncio.to_thread(
-        converter.convert_wem_to_wav, Path(wsl_path)
-    )
-    if wav_path is None:
-        raise HTTPException(status_code=500, detail="Audio conversion failed")
-
-    return FileResponse(str(wav_path), media_type="audio/wav")
+        return FileResponse(str(wav_path), media_type="audio/wav")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"[Audio Codex] stream_audio failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Audio streaming failed: {exc}")
 
 
 @router.get("/{event_name}", response_model=AudioDetailResponse)
 async def get_audio_detail(
     event_name: str,
+    language: str = Query(default="eng", description="Audio language folder (eng, kor, jpn, etc.)"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get full audio detail for a single event.
@@ -195,16 +205,16 @@ async def get_audio_detail(
         string_id = mega.event_to_stringid_lookup(event_name)
         if string_id is None:
             # Also check D10 (events with WEM path but no StringId)
-            wem_path = mega.get_audio_path_by_event(event_name)
+            wem_path = mega.get_audio_path_by_event_for_lang(event_name, language)
             if wem_path is None:
                 raise HTTPException(
                     status_code=404,
                     detail=f"Audio event not found: {event_name}",
                 )
 
-        event_lower = event_name.lower()
-        wem_path = mega.get_audio_path_by_event(event_name)
+        wem_path = mega.get_audio_path_by_event_for_lang(event_name, language)
         has_wem = wem_path is not None
+        event_lower = event_name.lower()
 
         return AudioDetailResponse(
             event_name=event_name,
@@ -215,7 +225,7 @@ async def get_audio_detail(
             has_wem=has_wem,
             xml_order=mega.event_to_xml_order.get(event_lower),
             wem_path=str(wem_path) if wem_path else None,
-            stream_url=f"/api/ldm/codex/audio/stream/{event_name}" if has_wem else None,
+            stream_url=f"/api/ldm/codex/audio/stream/{event_name}?language={language}" if has_wem else None,
         )
     except HTTPException:
         raise
@@ -228,6 +238,7 @@ async def get_audio_detail(
 async def list_audio(
     category: Optional[str] = Query(None, description="Filter by D20 export_path prefix"),
     q: Optional[str] = Query(None, description="Search across event_name, script, stringid"),
+    language: str = Query(default="eng", description="Audio language folder (eng, kor, jpn, etc.)"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get all audio events with optional category filtering and text search.
@@ -285,7 +296,7 @@ async def list_audio(
         all_events.sort(key=_sort_key)
 
         # Build cards for ALL matching events
-        items = [_build_audio_card(ev, mega) for ev in all_events]
+        items = [_build_audio_card(ev, mega, language=language) for ev in all_events]
 
         return AudioListResponse(
             items=items,

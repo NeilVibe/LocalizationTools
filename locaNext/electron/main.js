@@ -246,6 +246,7 @@ async function startBackendServer() {
       PYTHONPATH: [path.join(paths.serverPath, '..'), paths.projectRoot].join(path.delimiter),
       DATABASE_MODE: 'sqlite',  // Offline-first: use SQLite, don't wait for PostgreSQL
       LOCANEXT_MODELS_PATH: paths.modelsPath,
+      LOCANEXT_RESOURCES_PATH: isDev ? '' : path.join(app.getAppPath(), '..'),
       // Suppress Python warnings (FutureWarning, UserWarning, etc.)
       PYTHONWARNINGS: 'ignore',
       // Suppress TensorFlow/transformers logs
@@ -760,6 +761,8 @@ function createWindow() {
   // ==================== RENDERER LOGGING ====================
   // Capture ALL console output from the frontend (Svelte)
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    // Phase 106: Suppress harmless ResizeObserver loop error (Carbon Components)
+    if (message && message.includes('ResizeObserver loop')) return;
     const levelMap = { 0: 'DEBUG', 1: 'INFO', 2: 'WARNING', 3: 'ERROR' };
     const levelName = levelMap[level] || 'LOG';
     logger.info(`[Renderer ${levelName}]`, { message, line, source: sourceId });

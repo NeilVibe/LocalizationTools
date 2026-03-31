@@ -308,7 +308,7 @@ from pydantic import BaseModel
 class BatchRowUpdate(BaseModel):
     row_id: int
     target: str
-    status: Literal["untranslated", "translated", "reviewed", "approved"] = "translated"
+    status: Literal["untranslated", "translated", "reviewed", "approved", "original"] = "translated"
 
 
 class BatchUpdatePayload(BaseModel):

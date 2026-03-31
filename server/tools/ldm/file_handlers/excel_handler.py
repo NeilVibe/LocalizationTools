@@ -125,7 +125,7 @@ def parse_excel_file(
                 "string_id": string_id,
                 "source": source if source else None,
                 "target": target if target else None,
-                "status": "translated" if target else "pending",
+                "status": "original" if target else "pending",
                 "extra_data": extra_data
             })
 

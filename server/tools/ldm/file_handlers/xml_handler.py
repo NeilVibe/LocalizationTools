@@ -222,7 +222,7 @@ def parse_xml_file(file_content: bytes, filename: str) -> Tuple[List[Dict], Dict
                     "string_id": string_id if string_id.strip() else None,
                     "source": source if source else None,
                     "target": target if target else None,
-                    "status": "translated" if target else "pending",
+                    "status": "original" if target else "pending",
                     "extra_data": extra_data
                 })
             row_count = row_num

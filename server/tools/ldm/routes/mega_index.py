@@ -12,6 +12,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 from typing import List, Optional
 
@@ -56,7 +57,8 @@ async def mega_build(
     mi = get_mega_index()
     preload_langs = body.preload_langs if body and body.preload_langs else None
     logger.info(f"[MEGAINDEX] Build triggered via API, langs={preload_langs}")
-    mi.build(preload_langs=preload_langs)
+    # Phase 106: Run in thread to avoid blocking the FastAPI event loop (52+ sec build)
+    await asyncio.to_thread(mi.build, preload_langs=preload_langs)
 
     # Initialize MapDataService so image/audio lookups work immediately
     try:

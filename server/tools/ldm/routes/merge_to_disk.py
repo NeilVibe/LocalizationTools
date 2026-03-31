@@ -174,10 +174,14 @@ async def merge_to_file(
     if not target_path.exists():
         raise HTTPException(status_code=404, detail=f"Target file not found: {request.target_path}")
 
-    # Fetch source rows
-    source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    # Fetch source rows — ONLY confirmed (reviewed) rows get merged to disk
+    all_rows = await row_repo.get_all_for_file(request.source_file_id)
+    source_rows = [r for r in all_rows if r.get('status') == 'reviewed']
     if not source_rows:
-        raise HTTPException(status_code=404, detail=f"No rows for source file {request.source_file_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"No confirmed rows for source file {request.source_file_id}. Only confirmed (Ctrl+S) translations are merged to disk.",
+        )
 
     # Convert to QT correction format
     corrections = _db_rows_to_corrections(source_rows)
@@ -271,7 +275,9 @@ async def merge_to_folder(
     lang_corrections: dict[str, list[dict]] = {}
 
     for file_id in request.source_file_ids:
-        rows = await row_repo.get_all_for_file(file_id)
+        all_rows = await row_repo.get_all_for_file(file_id)
+        # ONLY confirmed (reviewed) rows get merged to disk
+        rows = [r for r in all_rows if r.get('status') == 'reviewed']
         if not rows:
             continue
 

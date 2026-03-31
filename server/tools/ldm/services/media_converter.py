@@ -188,21 +188,28 @@ class MediaConverter:
         self._vgmstream_checked = True
         exe_name = "vgmstream-cli.exe" if os.name == "nt" else "vgmstream-cli"
 
+        logger.info("[vgmstream] Starting search for {} (os.name={})", exe_name, os.name)
+
         # 1. Check PATH first
         which_result = shutil.which("vgmstream-cli")
         if which_result:
             self._vgmstream_path = Path(which_result)
-            logger.info("Found vgmstream-cli in PATH: {}", self._vgmstream_path)
+            logger.info("[vgmstream] Found in PATH: {}", self._vgmstream_path)
             return self._vgmstream_path
+        logger.debug("[vgmstream] Not in PATH")
 
         # 2. Check LOCANEXT_RESOURCES_PATH env var (Electron packaged app)
         electron_resources = os.environ.get("LOCANEXT_RESOURCES_PATH", "")
         if electron_resources:
             electron_vgm = Path(electron_resources) / "bin" / "vgmstream" / exe_name
+            logger.debug("[vgmstream] Checking LOCANEXT_RESOURCES_PATH: {}", electron_vgm)
             if electron_vgm.exists():
                 self._vgmstream_path = electron_vgm
-                logger.info("Found vgmstream-cli in Electron resources: {}", self._vgmstream_path)
+                logger.info("[vgmstream] Found via LOCANEXT_RESOURCES_PATH: {}", self._vgmstream_path)
                 return self._vgmstream_path
+            logger.debug("[vgmstream] Not at LOCANEXT_RESOURCES_PATH ({})", electron_vgm)
+        else:
+            logger.debug("[vgmstream] LOCANEXT_RESOURCES_PATH not set")
 
         # 3. Co-located with python.exe (packaged app structure):
         #    resources/tools/python/python.exe  <-- sys.executable
@@ -211,26 +218,48 @@ class MediaConverter:
         python_exe = Path(sys.executable).resolve()
         resources_dir = python_exe.parent.parent.parent  # tools/python/python.exe -> resources/
         packaged_vgm = resources_dir / "bin" / "vgmstream" / exe_name
+        logger.debug("[vgmstream] Checking co-located (sys.executable={}): {}", python_exe, packaged_vgm)
         if packaged_vgm.exists():
             self._vgmstream_path = packaged_vgm
-            logger.info("Found vgmstream-cli co-located with python: {}", self._vgmstream_path)
+            logger.info("[vgmstream] Found co-located with python: {}", self._vgmstream_path)
             return self._vgmstream_path
+
+        # 3b. Fallback: walk up from python.exe looking for bin/vgmstream/
+        #     Handles cases where sys.executable depth varies
+        for i in range(1, 6):
+            ancestor = python_exe.parents[i] if i < len(python_exe.parents) else None
+            if ancestor is None:
+                break
+            candidate = ancestor / "bin" / "vgmstream" / exe_name
+            if candidate.exists():
+                self._vgmstream_path = candidate
+                logger.info("[vgmstream] Found by walking up from python.exe (depth {}): {}", i, self._vgmstream_path)
+                return self._vgmstream_path
 
         # 4. Project root bin/vgmstream/ (dev mode after running bundle_vgmstream.py)
         project_bin = Path(__file__).resolve().parents[4] / "bin" / "vgmstream" / exe_name
+        logger.debug("[vgmstream] Checking project bin: {}", project_bin)
         if project_bin.exists():
             self._vgmstream_path = project_bin
-            logger.info("Found vgmstream-cli in project bin: {}", self._vgmstream_path)
+            logger.info("[vgmstream] Found in project bin: {}", self._vgmstream_path)
             return self._vgmstream_path
 
         # 5. Legacy server/bin/
         bundled = Path(__file__).resolve().parents[2] / "bin" / exe_name
+        logger.debug("[vgmstream] Checking legacy server/bin: {}", bundled)
         if bundled.exists():
             self._vgmstream_path = bundled
-            logger.info("Found bundled vgmstream-cli: {}", self._vgmstream_path)
+            logger.info("[vgmstream] Found bundled: {}", self._vgmstream_path)
             return self._vgmstream_path
 
-        logger.warning("vgmstream-cli not found in any search path -- audio playback disabled")
+        logger.warning(
+            "[vgmstream] NOT FOUND in any search path -- audio playback disabled. "
+            "Searched: PATH, LOCANEXT_RESOURCES_PATH={}, co-located={}, project={}, legacy={}",
+            electron_resources or "(not set)",
+            packaged_vgm,
+            project_bin,
+            bundled,
+        )
         return None
 
     def clear_caches(self) -> None:

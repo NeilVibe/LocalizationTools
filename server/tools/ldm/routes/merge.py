@@ -122,12 +122,13 @@ async def merge_files(
         request.threshold,
     )
 
-    # Fetch source and target rows
-    source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    # Fetch source rows — ONLY confirmed (reviewed) rows get merged
+    all_source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    source_rows = [r for r in all_source_rows if r.get('status') == 'reviewed']
     if not source_rows:
         raise HTTPException(
             status_code=404,
-            detail=f"No rows found for source file {request.source_file_id}",
+            detail=f"No confirmed rows found for source file {request.source_file_id}. Only confirmed (Ctrl+S) translations are eligible for merge.",
         )
 
     target_rows = await row_repo.get_all_for_file(file_id)
@@ -214,9 +215,10 @@ async def merge_files_stream(
     if request.match_mode not in valid_modes:
         raise HTTPException(status_code=400, detail=f"Invalid match_mode '{request.match_mode}'")
 
-    source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    all_source_rows = await row_repo.get_all_for_file(request.source_file_id)
+    source_rows = [r for r in all_source_rows if r.get('status') == 'reviewed']
     if not source_rows:
-        raise HTTPException(status_code=404, detail=f"No rows for source file {request.source_file_id}")
+        raise HTTPException(status_code=404, detail=f"No confirmed rows for source file {request.source_file_id}")
 
     target_rows = await row_repo.get_all_for_file(file_id)
     if not target_rows:
