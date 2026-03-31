@@ -103,8 +103,9 @@
    * Works when a row is selected but NOT being edited
    */
   export function handleKeyDown(e) {
-    // Skip if in edit mode (textarea handles its own keys)
-    if (grid.inlineEditingRowId) return;
+    // Skip if in edit mode (EditOverlay handles its own keys)
+    // EditOverlay captures focus, so this is a safety guard
+    if (document.activeElement?.tagName === 'TEXTAREA') return;
 
     // Skip if no row selected
     if (!grid.selectedRowId) return;
@@ -354,7 +355,7 @@
    * Dismiss QA issues for current row (works in both edit mode and selection mode)
    */
   export function dismissQAIssues() {
-    const targetRowId = grid.inlineEditingRowId || grid.selectedRowId;
+    const targetRowId = grid.selectedRowId;
     if (!targetRowId) return;
 
     const row = getRowById(targetRowId);
