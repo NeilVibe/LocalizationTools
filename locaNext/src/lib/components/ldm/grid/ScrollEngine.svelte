@@ -11,12 +11,13 @@
     grid,
     rowIndexById,
     rowHeightCache,
-    heightData,
-    rebuildCumulativeHeights,
     findRowAtPosition,
     getRowTop,
     MIN_ROW_HEIGHT,
     BUFFER_ROWS,
+    setAllRows,
+    buildCumulativeHeights,
+    applyFilter,
   } from './gridState.svelte.ts';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
@@ -46,22 +47,13 @@
     containerHeight = containerEl.clientHeight;
     scrollTop = containerEl.scrollTop;
 
-    if (containerHeight > 5000) {
-      logger.warning("Container height clamped", { original: containerHeight, clamped: 1200 });
-      containerHeight = Math.min(containerHeight, 1200);
-    }
+    if (containerHeight > 5000) containerHeight = Math.min(containerHeight, 1200);
 
     const startRow = findRowAtPosition(scrollTop);
-    let endRow = startRow;
-    const viewportBottom = scrollTop + containerHeight;
-
-    while (endRow < grid.total && getRowTop(endRow) < viewportBottom) {
-      endRow++;
-    }
+    const visibleCount = Math.ceil(containerHeight / MIN_ROW_HEIGHT);
 
     grid.visibleStart = Math.max(0, startRow - BUFFER_ROWS);
-    grid.visibleEnd = Math.min(grid.total, endRow + BUFFER_ROWS);
-    // No ensureRowsLoaded — ALL rows already in memory
+    grid.visibleEnd = Math.min(grid.total, startRow + visibleCount + BUFFER_ROWS);
   }
 
   // ========================================
@@ -71,10 +63,7 @@
     if (!fileId) return;
 
     // Clear everything
-    grid.allRows = [];
-    grid.rows = [];
-    grid.total = 0;
-    rowIndexById.clear();
+    setAllRows([], stripColorTags);
     rowHeightCache.clear();
     grid.loading = true;
     grid.initialLoading = true;
@@ -100,23 +89,14 @@
         const data = await response.json();
 
         // Store ALL rows in memory
-        const allRows = data.rows.map((row, i) => {
-          const rowData = { ...row, id: row.id.toString() };
-          rowIndexById.set(row.id.toString(), i);
-          return rowData;
-        });
+        const rows = data.rows.map((row) => ({ ...row, id: row.id.toString() }));
 
-        grid.allRows = allRows;
-        grid.rows = allRows;
-        grid.total = allRows.length;
-        grid.rowsVersion++;
-
-        rebuildCumulativeHeights(stripColorTags);
+        setAllRows(rows, stripColorTags);
 
         logger.success("BULK LOAD complete", {
-          total: allRows.length,
+          total: rows.length,
           fileId,
-          memoryMB: Math.round(JSON.stringify(allRows).length / 1024 / 1024)
+          memoryMB: Math.round(JSON.stringify(rows).length / 1024 / 1024)
         });
       } else {
         const err = await response.json().catch(() => ({}));
@@ -140,58 +120,14 @@
   // ONE function for all filtering. No separate clientSearch.
   // ========================================
   export function clientFilter(activeFilter, selectedCategories) {
-    let filtered = grid.allRows;
-
-    // 1. Status filter
-    if (activeFilter && activeFilter !== 'all') {
-      if (activeFilter === 'confirmed') {
-        filtered = filtered.filter(r => r.status === 'approved' || r.status === 'reviewed');
-      } else if (activeFilter === 'unconfirmed') {
-        filtered = filtered.filter(r => r.status === 'pending' || r.status === 'translated');
-      } else if (activeFilter === 'qa_flagged') {
-        filtered = filtered.filter(r => (r.qa_flag_count || 0) > 0);
-      }
-    }
-
-    // 2. Category filter
-    if (selectedCategories && selectedCategories.length > 0) {
-      const catSet = new Set(selectedCategories);
-      filtered = filtered.filter(r => catSet.has(r.category));
-    }
-
-    // 3. Search filter (mode-aware: contain, exact, not_contain)
-    const term = grid.searchTerm?.trim().toLowerCase();
-    if (term) {
-      const fields = grid.searchFields || ['source', 'target'];
-      const mode = grid.searchMode || 'contain';
-
-      if (mode === 'exact') {
-        filtered = filtered.filter(row =>
-          fields.some(f => row[f]?.toLowerCase() === term)
-        );
-      } else if (mode === 'not_contain') {
-        filtered = filtered.filter(row =>
-          fields.every(f => !row[f]?.toLowerCase().includes(term))
-        );
-      } else {
-        // contain (default)
-        filtered = filtered.filter(row =>
-          fields.some(f => row[f]?.toLowerCase().includes(term))
-        );
-      }
-    }
-
-    grid.rows = filtered;
-    grid.total = filtered.length;
-
-    rowIndexById.clear();
-    grid.rows.forEach((row, i) => {
-      rowIndexById.set(row.id.toString(), i);
-    });
-
-    rowHeightCache.clear();
-    grid.rowsVersion++;
-    rebuildCumulativeHeights(stripColorTags);
+    applyFilter(
+      activeFilter,
+      selectedCategories,
+      grid.searchTerm,
+      grid.searchMode,
+      grid.searchFields,
+    );
+    buildCumulativeHeights(stripColorTags);
 
     if (containerEl) containerEl.scrollTop = 0;
     calculateVisibleRange();
