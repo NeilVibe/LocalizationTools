@@ -310,6 +310,9 @@
         class:locked={rowLock}
         class:selected={grid.selectedRowId === row.id}
         class:row-hovered={grid.hoveredRowId === row.id}
+        class:status-translated={!row.placeholder && row.status === 'translated'}
+        class:status-reviewed={!row.placeholder && row.status === 'reviewed'}
+        class:status-approved={!row.placeholder && row.status === 'approved'}
         style="top: {getRowTop(rowIndex)}px; min-height: {getRowHeight(rowIndex)}px;
           --grid-font-size: {gridFontSize}; --grid-font-weight: {gridFontWeight}; --grid-font-family: {gridFontFamily}; --grid-font-color: {gridFontColor};"
         onclick={(e) => onRowClick?.(row, e)}
@@ -366,6 +369,7 @@
           <!-- Row number (conditional) -->
           {#if $preferences.showIndex}
             <div class="cell row-num" style="width: {indexColumnWidth}px;">
+              <span class="status-dot" class:changed={row.status === 'translated'} class:confirmed={row.status === 'reviewed'} class:approved={row.status === 'approved'}></span>
               {row.row_num}
             </div>
           {/if}
@@ -686,20 +690,55 @@
     background: var(--cds-layer-02);
   }
 
+  /* Row-level status backgrounds (Changed vs Confirmed) */
+  .virtual-row.status-translated {
+    background: rgba(255, 214, 0, 0.08);
+  }
+
+  .virtual-row.status-reviewed {
+    background: rgba(0, 200, 150, 0.08);
+  }
+
+  .virtual-row.status-approved {
+    background: rgba(0, 180, 100, 0.08);
+  }
+
+  /* Status dot in row-num cell */
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-right: 4px;
+    background: transparent;
+  }
+
+  .status-dot.changed {
+    background: #ffd600;
+  }
+
+  .status-dot.confirmed {
+    background: #00c896;
+  }
+
+  .status-dot.approved {
+    background: #00b464;
+  }
+
   /* Status-based cell colors */
   .cell.target.status-translated {
-    background: rgba(141, 141, 141, 0.10);
-    border-left: 3px solid #8d8d8d;
+    background: rgba(255, 214, 0, 0.10);
+    border-left: 3px solid #ffd600;
   }
 
   .cell.target.status-reviewed {
-    background: rgba(0, 157, 154, 0.15);
-    border-left: 3px solid #009d9a;
+    background: rgba(0, 200, 150, 0.12);
+    border-left: 3px solid #00c896;
   }
 
   .cell.target.status-approved {
-    background: rgba(0, 157, 154, 0.15);
-    border-left: 3px solid #009d9a;
+    background: rgba(0, 180, 100, 0.12);
+    border-left: 3px solid #00b464;
   }
 
   .cell.target.status-translated:hover,
