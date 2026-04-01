@@ -81,6 +81,14 @@ def run_setup(
     4. When all steps complete: set ``completed_at``, return success
        with the detected LAN IP.
     """
+    logger.info("=" * 60)
+    logger.info("SETUP WIZARD START")
+    logger.info("=" * 60)
+    logger.info("  pg_bin_dir: %s", config.pg_bin_dir)
+    logger.info("  data_dir:   %s", config.data_dir)
+    logger.info("  pg_port:    %s", config.pg_port)
+    logger.info("  state_path: %s", state_path)
+
     state = read_state(state_path)
 
     # Initialise run metadata on first invocation
@@ -99,7 +107,12 @@ def run_setup(
             continue
 
         step_fn = STEP_FUNCTIONS[step_name]
+        step_index = STEP_NAMES.index(step_name)
+        logger.info("[SETUP %d/%d] Running: %s", step_index + 1, len(STEP_NAMES), step_name)
         result = _run_step_with_retry(step_name, step_fn, config)
+        logger.info("[SETUP %d/%d] %s → %s (%dms) %s",
+                     step_index + 1, len(STEP_NAMES), step_name,
+                     result.status, result.duration_ms, result.message)
 
         # ----- persist state -----
         if result.status in ("done", "skipped"):
@@ -158,7 +171,9 @@ def run_setup(
     except Exception:
         pass
 
-    logger.info("Setup complete (run_id=%s, lan_ip=%s)", state.run_id, lan_ip)
+    logger.info("=" * 60)
+    logger.info("SETUP WIZARD COMPLETE — LAN IP: %s", lan_ip)
+    logger.info("=" * 60)
     return SetupResult(success=True, steps=results, lan_ip=lan_ip)
 
 

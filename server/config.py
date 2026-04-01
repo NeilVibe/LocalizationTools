@@ -550,13 +550,15 @@ def check_security_config() -> dict:
     if DEFAULT_ADMIN_PASSWORD == _DEFAULT_ADMIN_PASSWORD:
         warnings.append("Default admin password 'admin123' should be changed after first login!")
 
-    # Check IP filter
-    if not ALLOWED_IP_RANGE:
-        warnings.append("ALLOWED_IP_RANGE not set - server accepts connections from any IP")
-
-    # Check CORS
-    if CORS_ALLOW_ALL:
-        warnings.append("CORS allows all origins - set CORS_ORIGINS for production")
+    # Check IP filter + CORS (skip in LAN server mode — FastAPI is localhost-only, only PG is on LAN)
+    if _USER_CONFIG.get("server_mode") == "lan_server":
+        # LAN server: FastAPI on localhost:8888 (not exposed). PG on LAN (pg_hba.conf secured).
+        pass  # No IP range or CORS warnings needed
+    else:
+        if not ALLOWED_IP_RANGE:
+            warnings.append("ALLOWED_IP_RANGE not set - server accepts connections from any IP")
+        if CORS_ALLOW_ALL:
+            warnings.append("CORS allows all origins - set CORS_ORIGINS for production")
 
     return {
         "is_secure": len(errors) == 0,
