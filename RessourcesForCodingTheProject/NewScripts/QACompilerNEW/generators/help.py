@@ -10,7 +10,7 @@ Structure:
 Output:
 - ONE Excel sheet with all data
 - Parent-child indentation (depth 0 = group, depth 1 = item title, depth 2 = item desc)
-- Columns: Original (KR) | English (ENG) | Translation (LOC) | STATUS | COMMENT | STRINGID | SCREENSHOT | WIDGETID
+- Columns: Original (KR) | English (ENG) | Translation (LOC) | STATUS | COMMENT | STRINGID | SCREENSHOT | WIDGETID | STRKEY
 """
 
 from dataclasses import dataclass, field
@@ -188,8 +188,8 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text, needs_translation, source_file, widget_id)
-RowItem = Tuple[int, str, bool, str, str]
+# (depth, text, needs_translation, source_file, widget_id, str_key)
+RowItem = Tuple[int, str, bool, str, str, str]
 
 
 def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
@@ -199,20 +199,20 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
     for group in groups:
         # Emit group name (depth 0)
         if group.group_name:
-            rows.append((0, group.group_name, True, group.source_file, ""))
+            rows.append((0, group.group_name, True, group.source_file, "", group.strkey))
 
         # Emit items
         for item in group.items:
             # Title (depth 1)
             if item.title:
-                rows.append((1, item.title, True, item.source_file, item.widget_id))
+                rows.append((1, item.title, True, item.source_file, item.widget_id, item.strkey))
 
             # Description (depth 2)
             if item.desc:
-                rows.append((2, item.desc, True, item.source_file, item.widget_id))
+                rows.append((2, item.desc, True, item.source_file, item.widget_id, item.strkey))
 
     # Postprocess: drop empty rows (whitespace-only text)
-    rows = [(d, t, n, sf, wid) for (d, t, n, sf, wid) in rows if t and t.strip()]
+    rows = [(d, t, n, sf, wid, sk) for (d, t, n, sf, wid, sk) in rows if t and t.strip()]
 
     return rows
 
@@ -264,7 +264,7 @@ def write_workbook(
         headers.append(h3)
 
     start_extra_col = len(headers) + 1
-    extra_names = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "WIDGETID"]
+    extra_names = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "WIDGETID", "STRKEY"]
     for idx, name in enumerate(extra_names, start=start_extra_col):
         headers.append(ws.cell(1, idx, name))
 
@@ -287,12 +287,14 @@ def write_workbook(
         ws.column_dimensions["F"].width = 20  # STRINGID
         ws.column_dimensions["G"].width = 20  # SCREENSHOT
         ws.column_dimensions["H"].width = 25  # WIDGETID
+        ws.column_dimensions["I"].width = 25  # STRKEY
     else:
         ws.column_dimensions["C"].width = 12  # STATUS
         ws.column_dimensions["D"].width = 40  # COMMENT
         ws.column_dimensions["E"].width = 20  # STRINGID
         ws.column_dimensions["F"].width = 20  # SCREENSHOT
         ws.column_dimensions["G"].width = 25  # WIDGETID
+        ws.column_dimensions["H"].width = 25  # STRKEY
 
     # Data validation for STATUS
     status_col = 4 if not is_eng else 3
@@ -306,7 +308,7 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # Write data rows
-    for row_idx, (depth, text, needs_trans, source_file, widget_id) in enumerate(rows, start=2):
+    for row_idx, (depth, text, needs_trans, source_file, widget_id, str_key) in enumerate(rows, start=2):
         if source_file and export_index:
             eng_tr, sid_eng, str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
@@ -351,8 +353,8 @@ def write_workbook(
             c3.border = THIN_BORDER
             col_offset = 3
 
-        # STATUS, COMMENT, STRINGID, SCREENSHOT, WIDGETID
-        for extra_idx, val in enumerate(["", "", sid, "", widget_id], start=col_offset + 1):
+        # STATUS, COMMENT, STRINGID, SCREENSHOT, WIDGETID, STRKEY
+        for extra_idx, val in enumerate(["", "", sid, "", widget_id, str_key], start=col_offset + 1):
             cell = ws.cell(row_idx, extra_idx, val)
             cell.border = THIN_BORDER
             cell.alignment = Alignment(vertical="center")
