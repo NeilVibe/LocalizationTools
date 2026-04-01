@@ -797,6 +797,14 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
 
                     # Add to detailed failures
                     lang = _extract_language_from_filename(target_name)
+                    # Defensive: extract target_strorigin from raw attribs if missing
+                    _tso = detail.get("target_strorigin", "")
+                    if not _tso:
+                        _raw = detail.get("target_raw_attribs", {})
+                        _tso = (
+                            _raw.get("StrOrigin") or _raw.get("Strorigin") or
+                            _raw.get("strorigin") or _raw.get("STRORIGIN") or ""
+                        )
                     aggregated["detailed_failures"].append({
                         "source_file": source_name,
                         "string_id": detail.get("string_id", ""),
@@ -804,7 +812,8 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                         "correction": detail.get("new", ""),
                         "reason": _get_failure_reason(reason, mm),
                         "target_file": target_name,
-                        "target_strorigin": detail.get("target_strorigin", ""),
+                        "target_strorigin": _tso,
+                        "target_raw_attribs": detail.get("target_raw_attribs", {}),
                         "language": lang,
                     })
 
@@ -883,6 +892,14 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                         "source_file": "Source file",
                     })
 
+                # Defensive: extract target_strorigin from raw attribs if missing
+                _tso = detail.get("target_strorigin", "")
+                if not _tso:
+                    _raw = detail.get("target_raw_attribs", {})
+                    _tso = (
+                        _raw.get("StrOrigin") or _raw.get("Strorigin") or
+                        _raw.get("strorigin") or _raw.get("STRORIGIN") or ""
+                    )
                 aggregated["detailed_failures"].append({
                     "source_file": "Source file",
                     "string_id": detail.get("string_id", ""),
@@ -890,7 +907,8 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                     "correction": detail.get("new", ""),
                     "reason": _get_failure_reason(reason, mm),
                     "target_file": "Target file",
-                    "target_strorigin": detail.get("target_strorigin", ""),
+                    "target_strorigin": _tso,
+                    "target_raw_attribs": detail.get("target_raw_attribs", {}),
                     "language": "ALL",
                 })
 
@@ -1528,6 +1546,13 @@ def _write_detailed_sheet(workbook, data: Dict, formats: Dict):
             sheet.write(row, 3, failure.get("reason", ""), fmt_cell)
 
             target_strorigin = failure.get("target_strorigin", "")
+            # Defensive fallback: extract from raw attribs if target_strorigin is empty
+            if not target_strorigin:
+                raw = failure.get("target_raw_attribs", {})
+                target_strorigin = (
+                    raw.get("StrOrigin") or raw.get("Strorigin") or
+                    raw.get("strorigin") or raw.get("STRORIGIN") or ""
+                )
             sheet.write(row, 4, target_strorigin, fmt_cell)
             if target_strorigin:
                 diff = extract_differences(failure.get("str_origin", ""), target_strorigin)
