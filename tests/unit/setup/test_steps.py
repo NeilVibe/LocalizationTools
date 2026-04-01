@@ -47,13 +47,15 @@ def _make_config(tmp_path: Path, port: int = 5432) -> SetupConfig:
 
 class TestPreflightChecks:
     def test_detects_port_conflict(self, tmp_path: Path) -> None:
-        """Bind the port first, then preflight should detect conflict."""
-        config = _make_config(tmp_path)
-
-        # Bind the port so preflight sees it occupied
+        """Bind a port first, then preflight should detect conflict."""
+        # Use a random high port to avoid conflicting with real PG on CI
         blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         blocker.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        blocker.bind(("127.0.0.1", config.pg_port))
+        blocker.bind(("127.0.0.1", 0))
+        bound_port = blocker.getsockname()[1]
+        blocker.listen(1)
+
+        config = _make_config(tmp_path, port=bound_port)
         try:
             result = step_preflight_checks(config)
             assert result.status == "failed"
