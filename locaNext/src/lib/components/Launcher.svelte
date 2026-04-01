@@ -72,25 +72,13 @@
     // 2. Check server status
     await checkServerStatus();
 
-    // 3. Auto-login if SQLite/local mode (no login screen needed)
-    try {
-      const autoLoggedIn = await api.tryLocalModeLogin();
-      if (autoLoggedIn) {
-        logger.success('Launcher: Auto-login (local SQLite mode)');
-        startOnline();
-        return;  // Skip everything else — go straight to app
-      }
-    } catch (err) {
-      logger.warning('Launcher: Auto-login check failed', { error: err.message });
-    }
-
-    // 4. Check for updates (auto-download if available)
+    // 3. Check for updates (auto-download if available)
     await checkForUpdates();
 
-    // 5. Load saved credentials
+    // 4. Load saved credentials
     loadSavedCredentials();
 
-    // 6. Set ready
+    // 5. Set ready
     setReady();
 
     // Register update event listeners

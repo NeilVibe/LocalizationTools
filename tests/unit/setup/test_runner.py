@@ -168,3 +168,30 @@ def test_run_setup_calls_progress_callback(_mock_ip, config, state_path):
     for call_args in callback.call_args_list:
         arg = call_args[0][0]
         assert isinstance(arg, StepResult)
+
+
+# ---------------------------------------------------------------------------
+# Ordering and classification regression tests
+# ---------------------------------------------------------------------------
+
+
+def test_certs_before_database_ordering():
+    """generate_certificates MUST run before start_database (PG needs SSL certs)."""
+    cert_idx = STEP_NAMES.index("generate_certificates")
+    db_idx = STEP_NAMES.index("start_database")
+    assert cert_idx < db_idx, "Certs must be generated before starting PG (ssl=on needs cert files)"
+
+
+def test_all_steps_classified():
+    """Every step must be in FATAL_STEPS or RECOVERABLE_STEPS — no unclassified steps."""
+    from server.setup.runner import FATAL_STEPS, RECOVERABLE_STEPS, OPTIONAL_STEPS
+
+    all_classified = FATAL_STEPS | RECOVERABLE_STEPS | OPTIONAL_STEPS
+    unclassified = set(STEP_NAMES) - all_classified
+    assert not unclassified, f"Unclassified steps would silently continue on failure: {unclassified}"
+
+
+def test_step_functions_covers_all_steps():
+    """STEP_FUNCTIONS must have an entry for every step in STEP_NAMES."""
+    missing = [name for name in STEP_NAMES if name not in STEP_FUNCTIONS]
+    assert not missing, f"Missing step functions: {missing}"

@@ -244,12 +244,13 @@ export function showSetupMode(totalSteps = 7) {
 export function updateSetupStep(index, step, status, durationMs, error) {
   if (!splashWindow || splashWindow.isDestroyed()) return;
 
-  // When starting the database step (index 4), allow firewall popup on top
-  if (index === 4 && status === 'running') {
+  // When starting the database step, allow firewall popup on top
+  // Uses step name (not index) so reordering steps won't break this
+  const isDbStep = step === 'start_database';
+  if (isDbStep && status === 'running') {
     splashWindow.setAlwaysOnTop(false);
   }
-  // Restore alwaysOnTop when database step completes
-  if (index === 4 && (status === 'done' || status === 'failed' || status === 'skipped')) {
+  if (isDbStep && (status === 'done' || status === 'failed' || status === 'skipped')) {
     splashWindow.setAlwaysOnTop(true);
   }
 

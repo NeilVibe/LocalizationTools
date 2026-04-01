@@ -37,10 +37,10 @@ STEP_FUNCTIONS: dict[str, Callable[[SetupConfig], StepResult]] = {
     "preflight_checks": step_preflight_checks,
     "init_database": step_init_database,
     "configure_access": step_configure_access,
+    "generate_certificates": step_generate_certificates,
     "start_database": step_start_database,
     "create_account": step_create_account,
     "create_database": step_create_database,
-    "generate_certificates": step_generate_certificates,
 }
 
 # Step classification — determines behavior on failure
@@ -169,8 +169,8 @@ def run_setup(
     lan_ip: str | None = None
     try:
         lan_ip = detect_lan_ip()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("LAN IP detection failed: %s", exc)
 
     logger.info("=" * 60)
     logger.info("SETUP WIZARD COMPLETE — LAN IP: %s", lan_ip)

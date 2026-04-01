@@ -126,8 +126,8 @@ def step_preflight_checks(config: SetupConfig) -> StepResult:
                 capture_output=True,
                 timeout=10,
             )
-        except Exception:
-            logger.debug("Firewall rule creation skipped (best-effort)")
+        except Exception as exc:
+            logger.warning("Firewall rule creation failed (LAN connections may be blocked): %s", exc)
 
     return StepResult(
         step=step,
@@ -334,7 +334,7 @@ def step_configure_access(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 3 — Start database
+# Step 4 — Start database
 # ---------------------------------------------------------------------------
 
 
@@ -416,7 +416,7 @@ def step_start_database(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 4 — Create account
+# Step 5 — Create account
 # ---------------------------------------------------------------------------
 
 
@@ -470,7 +470,7 @@ def step_create_account(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 5 — Create database
+# Step 6 — Create database
 # ---------------------------------------------------------------------------
 
 
@@ -536,7 +536,7 @@ def step_create_database(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 6 — Generate TLS certificates
+# Step 3 — Generate TLS certificates
 # ---------------------------------------------------------------------------
 
 

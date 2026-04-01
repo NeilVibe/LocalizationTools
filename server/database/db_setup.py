@@ -580,6 +580,35 @@ def setup_database(
             else:
                 logger.info(f"OFFLINE user already exists (user_id={existing_offline.user_id})")
 
+        # Seed default admin user (for login via LocaNext app)
+        # Uses DEFAULT_ADMIN_USERNAME/PASSWORD from config.py
+        # Lazy import: bcrypt failure must not crash entire db_setup
+        try:
+            from server.utils.auth import hash_password
+
+            existing_admin = SessionLocal.query(User).filter(User.username == config.DEFAULT_ADMIN_USERNAME).first()
+            if not existing_admin:
+                logger.info("Creating default admin user...")
+                admin_user = User(
+                    username=config.DEFAULT_ADMIN_USERNAME,
+                    email=config.DEFAULT_ADMIN_EMAIL,
+                    password_hash=hash_password(config.DEFAULT_ADMIN_PASSWORD),
+                    full_name="Administrator",
+                    role="admin",
+                    is_active=True
+                )
+                SessionLocal.add(admin_user)
+                SessionLocal.commit()
+                logger.success(f"Admin user '{config.DEFAULT_ADMIN_USERNAME}' created (user_id={admin_user.user_id})")
+            else:
+                logger.info(f"Admin user '{config.DEFAULT_ADMIN_USERNAME}' already exists (user_id={existing_admin.user_id})")
+        except Exception as exc:
+            logger.error(f"Failed to create admin user: {exc}. Database is ready but admin login won't work.")
+            try:
+                SessionLocal.rollback()
+            except Exception:
+                pass
+
         # Also keep LOCAL user for SQLite backward compatibility
         if use_sqlite:
             existing_local = SessionLocal.query(User).filter(User.username == "LOCAL").first()
