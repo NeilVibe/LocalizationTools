@@ -1,1 +1,1 @@
-Build 20260401-151047 - WidgetId column + StrOrigin denormalization fix
+Build 20260401-152645 - StrOrigin denormalization in ALL generators
