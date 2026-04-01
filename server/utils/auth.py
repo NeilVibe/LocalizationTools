@@ -327,6 +327,31 @@ def generate_api_key() -> str:
     return secrets.token_urlsafe(32)
 
 
+def validate_admin_token(request) -> bool:
+    """Check if request has valid admin token.
+
+    Requires BOTH: IP is localhost (127.0.0.1 or ::1) AND valid Bearer token
+    matching admin_token from server config.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    if client_ip not in ("127.0.0.1", "::1"):
+        return False
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return False
+
+    import secrets
+    token = auth_header[7:]
+    from server import config
+    user_config = config.get_user_config()
+    expected = user_config.get("admin_token", "")
+    if not expected:
+        return False
+
+    return secrets.compare_digest(token, expected)
+
+
 def is_admin(user: dict) -> bool:
     """
     Check if user has admin role.

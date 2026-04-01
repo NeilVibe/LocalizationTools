@@ -564,3 +564,40 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
         admin_dashboard_url="http://localhost:5174" if all_ok else None,
         message="Server setup complete! Restart LocaNext to apply." if all_ok else "Setup completed with errors — check steps above.",
     )
+
+
+@router.post("/setup/retry")
+async def retry_server_setup(request: Request, _user=Depends(get_current_active_user_async)):
+    """Retry server setup from Admin Dashboard."""
+    from server.utils.auth import validate_admin_token
+    if not validate_admin_token(request):
+        from starlette.responses import JSONResponse
+        return JSONResponse({"error": "Admin token required"}, status_code=403)
+
+    import os as _os
+    from pathlib import Path
+    from server.setup import SetupConfig
+    from server.setup.runner import run_setup
+    from server.setup.pg_lifecycle import find_pg_binaries
+
+    resources_path = _os.environ.get("LOCANEXT_RESOURCES_PATH", "")
+    pg = find_pg_binaries(resources_path)
+    if not pg:
+        from starlette.responses import JSONResponse
+        return JSONResponse({"error": "No bundled PostgreSQL found"}, status_code=400)
+
+    if _os.name == "nt":
+        state_dir = Path(_os.environ.get("APPDATA", "")) / "LocaNext"
+    else:
+        state_dir = Path.home() / ".config" / "locanext"
+
+    setup_config = SetupConfig(pg_bin_dir=str(pg.bin_dir), data_dir=str(pg.data_dir))
+    result = run_setup(setup_config, state_path=state_dir / "setup_state.json")
+
+    return {
+        "success": result.success,
+        "steps": [{"step": s.step, "status": s.status, "message": s.message,
+                    "duration_ms": s.duration_ms} for s in result.steps],
+        "lan_ip": result.lan_ip,
+        "message": "Restart app to apply" if result.success else "Setup failed",
+    }
