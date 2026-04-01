@@ -2082,6 +2082,33 @@ class QuickTranslateApp:
             relief='flat', padx=10, cursor='hand2', width=14)
         self._btn_excel_to_tmx.pack(side=tk.LEFT)
 
+        # Separator label
+        tk.Label(conv_frame, text="Excel Export Formats",
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#888',
+                 anchor='w').pack(fill=tk.X, pady=(6, 2))
+
+        # Buttons row 3: Excel → Wiki / Markdown / HTML
+        btn_row3 = tk.Frame(conv_frame, bg='#f0f0f0')
+        btn_row3.pack(fill=tk.X)
+
+        self._btn_excel_to_wiki = tk.Button(
+            btn_row3, text="Excel → Wiki", command=self._conv_excel_to_wiki,
+            font=('Segoe UI', 9, 'bold'), bg='#1abc9c', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=16)
+        self._btn_excel_to_wiki.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._btn_excel_to_md = tk.Button(
+            btn_row3, text="Excel → Markdown", command=self._conv_excel_to_markdown,
+            font=('Segoe UI', 9, 'bold'), bg='#3498db', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=16)
+        self._btn_excel_to_md.pack(side=tk.LEFT, padx=(0, 6))
+
+        self._btn_excel_to_html = tk.Button(
+            btn_row3, text="Excel → HTML", command=self._conv_excel_to_html,
+            font=('Segoe UI', 9, 'bold'), bg='#9b59b6', fg='white',
+            relief='flat', padx=10, cursor='hand2', width=16)
+        self._btn_excel_to_html.pack(side=tk.LEFT)
+
         # Initial state
         self._on_conv_mode_changed()
 
@@ -2101,9 +2128,9 @@ class QuickTranslateApp:
             path = filedialog.askopenfilename(
                 title="Select Input File",
                 filetypes=[
-                    ("All supported", "*.xml *.xlsx *.tmx"),
+                    ("All supported", "*.xml *.xlsx *.xls *.tmx"),
                     ("XML files", "*.xml"),
-                    ("Excel files", "*.xlsx"),
+                    ("Excel files", "*.xlsx *.xls"),
                     ("TMX files", "*.tmx"),
                     ("All files", "*.*"),
                 ])
@@ -2125,7 +2152,8 @@ class QuickTranslateApp:
         """Enable/disable all converter buttons."""
         for btn in (self._btn_xml_to_excel, self._btn_excel_to_xml,
                     self._btn_concat_xml, self._btn_tmx_to_excel,
-                    self._btn_excel_to_tmx):
+                    self._btn_excel_to_tmx, self._btn_excel_to_wiki,
+                    self._btn_excel_to_md, self._btn_excel_to_html):
             btn.configure(state=state)
         # Re-apply concat mode restriction when re-enabling
         if state == 'normal':
@@ -2148,14 +2176,22 @@ class QuickTranslateApp:
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _conv_check_ext(self, expected: str) -> bool:
-        """In file mode, check input file has the expected extension."""
+    def _conv_check_ext(self, expected) -> bool:
+        """In file mode, check input file has the expected extension.
+
+        Args:
+            expected: Single extension string ('.xlsx') or tuple of extensions
+                      ('.xlsx', '.xls').
+        """
         if self._conv_mode.get() == "folder":
             return True
         path = self._conv_input_path.get().lower()
-        if not path.endswith(expected):
+        if isinstance(expected, str):
+            expected = (expected,)
+        if not path.endswith(tuple(expected)):
+            label = ' / '.join(expected)
             messagebox.showwarning("Quick Converters",
-                                   f"Expected a {expected} file, got: {os.path.basename(path)}")
+                                   f"Expected a {label} file, got: {os.path.basename(path)}")
             return False
         return True
 
@@ -2240,6 +2276,30 @@ class QuickTranslateApp:
             return f"→ {os.path.basename(out)}"
 
         self._conv_run_threaded("Excel→TMX", do_convert)
+
+    def _conv_excel_export(self, fmt: str, label: str):
+        """Shared handler for Excel → Wiki/Markdown/HTML conversions."""
+        if not self._conv_validate_input() or not self._conv_check_ext((".xlsx", ".xls")):
+            return
+        input_path = self._conv_input_path.get()
+        is_folder = self._conv_mode.get() == "folder"
+        from core.excel_converters import _convert_excel
+
+        def do_convert():
+            res = _convert_excel(fmt, input_path, is_folder=is_folder,
+                                 progress_callback=lambda msg: self.root.after(0, self._log, msg, "info"))
+            return f"{res['files']} file(s) → {label}"
+
+        self._conv_run_threaded(f"Excel→{label}", do_convert)
+
+    def _conv_excel_to_wiki(self):
+        self._conv_excel_export('wiki', 'Wiki (.txt)')
+
+    def _conv_excel_to_markdown(self):
+        self._conv_excel_export('markdown', 'Markdown (.txt)')
+
+    def _conv_excel_to_html(self):
+        self._conv_excel_export('html', 'HTML')
 
     def _update_match_type_availability(self):
         """Enable/disable match type radio buttons based on detected source columns.
