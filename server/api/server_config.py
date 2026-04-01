@@ -59,16 +59,10 @@ class ConnectionTestResult(BaseModel):
 # ============================================================================
 
 def _get_lan_ip() -> str | None:
-    """Get LAN IP address."""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(2)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return None
+    """Get LAN IP address without any internet access."""
+    from server.setup.network import detect_lan_ip
+    ip = detect_lan_ip()
+    return ip if ip != "127.0.0.1" else None
 
 
 def _test_pg_connection(host: str, port: int, user: str, password: str, db: str) -> ConnectionTestResult:
