@@ -595,6 +595,26 @@ jobs:
           cache-dependency-path: locaNext/package-lock.json
 
       # ============================================================
+      # STEP 0: Inject Version (CI fresh checkout has stale version)
+      # ============================================================
+      - name: Inject Version into version.py and package.json
+        run: |
+          $version = "${{ needs.check-build-trigger.outputs.version }}"
+          Write-Host "=== Injecting version: $version ==="
+
+          # Update version.py
+          (Get-Content version.py) -replace 'VERSION = "[^"]*"', "VERSION = `"$version`"" | Set-Content version.py
+          Write-Host "[OK] version.py updated"
+          Get-Content version.py | Select-String "VERSION" | Select-Object -First 1
+
+          # Update package.json
+          $pkg = Get-Content locaNext/package.json -Raw | ConvertFrom-Json
+          $pkg.version = $version
+          $pkg | ConvertTo-Json -Depth 100 | Set-Content locaNext/package.json
+          Write-Host "[OK] package.json updated to $version"
+        shell: pwsh
+
+      # ============================================================
       # STEP 1: Download VC++ Redistributable (bundle in installer)
       # ============================================================
       - name: Download VC++ Redistributable
@@ -1451,12 +1471,14 @@ jobs:
           echo "[OK] Publish URL changed to GitHub releases"
           grep -o 'github.com[^"]*' "$PKG_PATH" | head -1 || echo "[WARN] Could not verify"
 
-      - name: Update version.py
+      - name: Inject Version into version.py and package.json
         run: |
-          echo "VERSION = \"$BUILD_VERSION\"" > version.py
-          echo "BUILD_NUMBER = $(echo $BUILD_VERSION | sed 's/\.//g')" >> version.py
-          echo "[OK] version.py updated to: $BUILD_VERSION"
-          cat version.py
+          # Use sed to replace in-place (preserves all other fields in version.py)
+          sed -i '' "s/VERSION = \"[^\"]*\"/VERSION = \"$BUILD_VERSION\"/" version.py
+          sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$BUILD_VERSION\"/" locaNext/package.json
+          echo "[OK] Injected version $BUILD_VERSION"
+          grep VERSION version.py | head -1
+          grep version locaNext/package.json | head -1
 
       - name: Build Electron App for macOS
         run: |
