@@ -39,8 +39,8 @@ try:
     )
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
-    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
-    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
+    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
+    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
     COLUMN_HEADERS_SCRIPT_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
     COLUMN_HEADERS_SCRIPT_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
 
@@ -53,8 +53,6 @@ DEFAULT_WIDTHS = {
     "Text State": 12,
     "STATUS": 14,
     "COMMENT": 30,
-    "MEMO1": 30,
-    "MEMO2": 30,
     "Category": 20,
     "FileName": 25,
     "StringID": 15,
@@ -207,8 +205,6 @@ def write_language_excel(
 
         # Find editable column indices
         editable_cols = ["STATUS", "COMMENT"]
-        if not is_script_mode:
-            editable_cols += ["MEMO1", "MEMO2"]
         memo_col_indices = [headers.index(col) for col in editable_cols if col in headers]
 
         # Create formats
@@ -307,9 +303,9 @@ def write_language_excel(
                     row_data = [str_origin, str_value, "", text_state, "", "", category, filename, string_id, event_name, has_audio, desc_origin, desc]
             else:
                 if include_english:
-                    row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
+                    row_data = [str_origin, english, str_value, "", text_state, "", "", category, filename, string_id, desc_origin, desc]
                 else:
-                    row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
+                    row_data = [str_origin, str_value, "", text_state, "", "", category, filename, string_id, desc_origin, desc]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):

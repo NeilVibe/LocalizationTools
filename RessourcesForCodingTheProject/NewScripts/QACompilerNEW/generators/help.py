@@ -10,7 +10,7 @@ Structure:
 Output:
 - ONE Excel sheet with all data
 - Parent-child indentation (depth 0 = group, depth 1 = item title, depth 2 = item desc)
-- Columns: Original (KR) | English (ENG) | Translation (LOC) | STATUS | COMMENT | STRINGID | SCREENSHOT
+- Columns: Original (KR) | English (ENG) | Translation (LOC) | STATUS | COMMENT | STRINGID | SCREENSHOT | WIDGETID
 """
 
 from dataclasses import dataclass, field
@@ -75,6 +75,7 @@ class AdviceItem:
     title: str
     desc: str
     source_file: str = ""
+    widget_id: str = ""
 
 
 @dataclass
@@ -155,6 +156,7 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
                 item_strkey = item_el.get("StrKey") or ""
                 title = item_el.get("Title") or ""
                 desc = item_el.get("Desc") or ""
+                widget_id = item_el.get("WidgetId") or ""
 
                 # Skip if no content
                 if not title and not desc:
@@ -169,6 +171,7 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
                     title=title,
                     desc=desc,
                     source_file=source_file,
+                    widget_id=widget_id,
                 ))
 
             # Only add group if it has items or a name
@@ -185,8 +188,8 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text, needs_translation, source_file)
-RowItem = Tuple[int, str, bool, str]
+# (depth, text, needs_translation, source_file, widget_id)
+RowItem = Tuple[int, str, bool, str, str]
 
 
 def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
@@ -196,20 +199,20 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
     for group in groups:
         # Emit group name (depth 0)
         if group.group_name:
-            rows.append((0, group.group_name, True, group.source_file))
+            rows.append((0, group.group_name, True, group.source_file, ""))
 
         # Emit items
         for item in group.items:
             # Title (depth 1)
             if item.title:
-                rows.append((1, item.title, True, item.source_file))
+                rows.append((1, item.title, True, item.source_file, item.widget_id))
 
             # Description (depth 2)
             if item.desc:
-                rows.append((2, item.desc, True, item.source_file))
+                rows.append((2, item.desc, True, item.source_file, item.widget_id))
 
     # Postprocess: drop empty rows (whitespace-only text)
-    rows = [(d, t, n, sf) for (d, t, n, sf) in rows if t and t.strip()]
+    rows = [(d, t, n, sf, wid) for (d, t, n, sf, wid) in rows if t and t.strip()]
 
     return rows
 
@@ -261,7 +264,7 @@ def write_workbook(
         headers.append(h3)
 
     start_extra_col = len(headers) + 1
-    extra_names = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
+    extra_names = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT", "WIDGETID"]
     for idx, name in enumerate(extra_names, start=start_extra_col):
         headers.append(ws.cell(1, idx, name))
 
@@ -283,11 +286,13 @@ def write_workbook(
         ws.column_dimensions["E"].width = 40  # COMMENT
         ws.column_dimensions["F"].width = 20  # STRINGID
         ws.column_dimensions["G"].width = 20  # SCREENSHOT
+        ws.column_dimensions["H"].width = 25  # WIDGETID
     else:
         ws.column_dimensions["C"].width = 12  # STATUS
         ws.column_dimensions["D"].width = 40  # COMMENT
         ws.column_dimensions["E"].width = 20  # STRINGID
         ws.column_dimensions["F"].width = 20  # SCREENSHOT
+        ws.column_dimensions["G"].width = 25  # WIDGETID
 
     # Data validation for STATUS
     status_col = 4 if not is_eng else 3
@@ -301,11 +306,11 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # Write data rows
-    for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
+    for row_idx, (depth, text, needs_trans, source_file, widget_id) in enumerate(rows, start=2):
         if source_file and export_index:
-            eng_tr, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+            eng_tr, sid_eng, str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            eng_tr, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+            eng_tr, sid_eng, str_origin_eng = get_first_translation(eng_tbl, text)
         loc_tr, sid_other, str_origin = "", "", ""
         if lang_tbl:
             if source_file and export_index:
@@ -317,9 +322,11 @@ def write_workbook(
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth
 
-        # Column A: Original (KR) — use str_origin from target language if available
-        # RAW format: keep <br/> as-is (no newline conversion) for testing
-        kor_display = str_origin if str_origin else text
+        # Column A: Original (KR) — use str_origin from language data (denormalized version)
+        # Priority: target language str_origin > English str_origin > raw gamedata text
+        # This ensures {StaticInfo:...LV1} from gamedata becomes
+        # {StaticInfo:...LV1#천둥의 송곳니} from languagedata (with Korean suffix)
+        kor_display = str_origin or str_origin_eng or text
         c1 = ws.cell(row_idx, 1, kor_display)
         c1.fill = fill
         c1.font = font
@@ -344,8 +351,8 @@ def write_workbook(
             c3.border = THIN_BORDER
             col_offset = 3
 
-        # STATUS, COMMENT, STRINGID, SCREENSHOT
-        for extra_idx, val in enumerate(["", "", sid, ""], start=col_offset + 1):
+        # STATUS, COMMENT, STRINGID, SCREENSHOT, WIDGETID
+        for extra_idx, val in enumerate(["", "", sid, "", widget_id], start=col_offset + 1):
             cell = ws.cell(row_idx, extra_idx, val)
             cell.border = THIN_BORDER
             cell.alignment = Alignment(vertical="center")
