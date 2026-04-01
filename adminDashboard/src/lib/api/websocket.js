@@ -5,7 +5,9 @@
 
 import { io } from 'socket.io-client';
 
-const WEBSOCKET_URL = 'http://localhost:8888';
+// Dynamic WebSocket URL — derives from API URL or uses env var
+const _apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8888/api/v2';
+const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || _apiBase.replace(/\/api\/v2$/, '');
 
 class WebSocketService {
   constructor() {

@@ -7,6 +7,51 @@
   let loading = $state(true);
   let error = $state(null);
 
+  // Server Setup state
+  let setupRunning = $state(false);
+  let setupResult = $state(null);
+  let setupError = $state(null);
+  let serverStatus = $state(null);
+
+  const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8888/api/v2').replace(/\/api\/v2$/, '');
+
+  async function checkServerStatus() {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const resp = await fetch(`${BASE_URL}/api/server-config/status`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (resp.ok) serverStatus = await resp.json();
+    } catch (e) { /* ignore */ }
+  }
+
+  async function runSetup() {
+    setupRunning = true;
+    setupResult = null;
+    setupError = null;
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const resp = await fetch(`${BASE_URL}/api/server-config/setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ pg_superuser: 'postgres', pg_superuser_password: '' }),
+      });
+      if (!resp.ok) {
+        setupError = `Server returned ${resp.status}: ${resp.statusText}`;
+        return;
+      }
+      setupResult = await resp.json();
+    } catch (e) {
+      setupError = e.message;
+    } finally {
+      setupRunning = false;
+    }
+  }
+
   // Non-reactive
   let refreshInterval;
 
@@ -48,6 +93,7 @@
 
   onMount(() => {
     loadServerStats();
+    checkServerStatus();
     refreshInterval = setInterval(loadServerStats, 10000); // Refresh every 10 seconds
   });
 
@@ -61,6 +107,51 @@
     <h1 class="page-title">Server Monitoring</h1>
     <p class="page-subtitle">Real-time server metrics and system information</p>
   </div>
+
+  <!-- LAN Server Setup Section -->
+  {#if !serverStatus || serverStatus.server_mode !== 'lan_server'}
+    <div class="setup-card">
+      <div class="setup-header">
+        <h2>LAN 서버 설정 (Server Setup)</h2>
+        <p>이 PC를 팀 서버로 설정합니다. PostgreSQL이 설치되어 있어야 합니다.</p>
+      </div>
+      <button class="setup-btn" onclick={runSetup} disabled={setupRunning}>
+        {setupRunning ? '설정 중...' : 'LAN 서버 설정 시작'}
+      </button>
+
+      {#if setupResult}
+        <div class="setup-result" class:success={setupResult.success} class:failure={!setupResult.success}>
+          <div class="setup-message">{setupResult.message}</div>
+          {#each setupResult.steps ?? [] as step}
+            <div class="setup-step" class:ok={step.success} class:fail={!step.success}>
+              <span class="step-icon">{step.success ? '✓' : '✗'}</span>
+              <span class="step-name">{step.step}</span>
+              <span class="step-msg">{step.message}</span>
+            </div>
+          {/each}
+          {#if setupResult.lan_ip}
+            <div class="setup-info">
+              <strong>팀원 연결 주소:</strong> {setupResult.lan_ip}:5432
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if setupError}
+        <div class="setup-error">설정 실패: {setupError}</div>
+      {/if}
+    </div>
+  {:else}
+    <div class="status-card lan-active">
+      <h2>LAN 서버 활성 (Active)</h2>
+      <div class="lan-info">
+        <div><strong>모드:</strong> {serverStatus.server_mode}</div>
+        <div><strong>데이터베이스:</strong> {serverStatus.active_database}</div>
+        <div><strong>LAN IP:</strong> {serverStatus.lan_ip || 'N/A'}</div>
+        <div><strong>상태:</strong> {serverStatus.is_online ? '온라인' : '오프라인'}</div>
+      </div>
+    </div>
+  {/if}
 
   {#if loading && !serverStats}
     <div class="loading-container">

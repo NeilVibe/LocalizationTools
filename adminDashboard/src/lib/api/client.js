@@ -253,7 +253,8 @@ class AdminAPIClient {
 
   // HEALTH
   async getSystemHealth() {
-    const response = await fetch('http://localhost:8888/health');
+    const baseUrl = API_BASE_URL.replace(/\/api\/v2$/, '');
+    const response = await fetch(`${baseUrl}/health`);
     return await response.json();
   }
 

@@ -862,6 +862,10 @@ jobs:
           }
           $pkg.build.extraFiles += @{ from = "../light-mode.flag"; to = "light-mode.flag" }
 
+          # Remove PostgreSQL from extraResources (not bundled in Light Mode)
+          $pkg.build.extraResources = @($pkg.build.extraResources | Where-Object { $_.to -ne "bin/postgresql" })
+          Write-Host "[OK] Removed bin/postgresql from extraResources (Light Mode)" -ForegroundColor Green
+
           $pkgJson = $pkg | ConvertTo-Json -Depth 100
           [System.IO.File]::WriteAllText($pkgPath, $pkgJson)
 
@@ -871,7 +875,7 @@ jobs:
             Write-Error "[CRITICAL] package.json extraFiles not written correctly!"
             exit 1
           }
-          if ($verify.build.extraResources.Count -lt 5) {
+          if ($verify.build.extraResources.Count -lt 4) {
             Write-Error "[CRITICAL] package.json extraResources looks incomplete!"
             exit 1
           }
@@ -911,6 +915,55 @@ jobs:
             Write-Host "[OK] vgmstream-cli.exe verified ($files files bundled)" -ForegroundColor Green
           } else {
             Write-Error "vgmstream-cli.exe not found after extraction!"
+            exit 1
+          }
+        shell: pwsh
+
+      # ============================================================
+      # STEP 2.6: Bundle PostgreSQL Portable (LAN Server Mode)
+      # Enables one-click server setup — no separate PG install needed.
+      # PostgreSQL 15.x binaries (~100MB compressed, ~300MB extracted)
+      # ============================================================
+      - name: Bundle PostgreSQL Portable for LAN Server
+        if: needs.check-build-trigger.outputs.light_mode != 'yes'
+        run: |
+          Write-Host "=== BUNDLING POSTGRESQL PORTABLE ===" -ForegroundColor Cyan
+
+          $pgDir = "bin\postgresql"
+          $zipPath = "postgresql-portable.zip"
+          $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-15.12-1-windows-x64-binaries.zip"
+
+          New-Item -ItemType Directory -Force -Path $pgDir | Out-Null
+
+          Write-Host "Downloading PostgreSQL portable from EnterpriseDB..."
+          Invoke-WebRequest -Uri $pgUrl -OutFile $zipPath -UseBasicParsing
+          Write-Host "[OK] Downloaded PostgreSQL binaries"
+
+          Expand-Archive -Path $zipPath -DestinationPath "pg_temp" -Force
+
+          $essentials = @("bin", "lib", "share")
+          foreach ($dir in $essentials) {
+            $src = "pg_temp\pgsql\$dir"
+            if (Test-Path $src) {
+              Move-Item -Path $src -Destination "$pgDir\$dir" -Force
+              Write-Host "  [OK] Moved $dir"
+            }
+          }
+
+          Remove-Item $zipPath -Force
+          Remove-Item "pg_temp" -Recurse -Force
+
+          $pgBin = "$pgDir\bin\postgres.exe"
+          $initdb = "$pgDir\bin\initdb.exe"
+          $psql = "$pgDir\bin\psql.exe"
+
+          if ((Test-Path $pgBin) -and (Test-Path $initdb) -and (Test-Path $psql)) {
+            $totalSize = (Get-ChildItem $pgDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+            Write-Host "[OK] PostgreSQL portable verified ($([math]::Round($totalSize, 0)) MB)" -ForegroundColor Green
+          } else {
+            Remove-Item "pg_temp" -Recurse -ErrorAction SilentlyContinue -Force
+            Write-Error "PostgreSQL binaries not found after extraction!"
+            Get-ChildItem $pgDir -Recurse | Select-Object -First 20
             exit 1
           }
         shell: pwsh

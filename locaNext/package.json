@@ -107,6 +107,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../bin/postgresql",
+        "to": "bin/postgresql",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {

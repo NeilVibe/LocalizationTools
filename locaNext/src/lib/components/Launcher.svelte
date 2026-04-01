@@ -12,7 +12,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { Button, InlineLoading, ProgressBar, TextInput, PasswordInput, Checkbox, InlineNotification } from 'carbon-components-svelte';
-  import { CloudOffline, Login as LoginIcon, Checkmark, Close, Restart, Flash, CloudApp } from 'carbon-icons-svelte';
+  import { CloudOffline, Login as LoginIcon, Checkmark, Close, Restart, Flash, CloudApp, Settings } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { serverUrl, isAuthenticated, user } from '$lib/stores/app.js';
   import { api } from '$lib/api/client.js';
@@ -52,6 +52,12 @@
   let rememberMe = $state(false);
   let loginError = $state('');
   let loginLoading = $state(false);
+
+  // Server settings (pre-login) — dispatches event to open modal in +layout.svelte
+  function openServerSettings() {
+    logger.userAction('Launcher: User clicked Server Settings (pre-login)');
+    window.dispatchEvent(new CustomEvent('open-server-settings'));
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // LIFECYCLE
@@ -502,6 +508,12 @@
           <span class="btn-subtitle">Connect to server</span>
         </button>
       </div>
+
+      <!-- Server Settings (pre-login) — configure PG connection before logging in -->
+      <button class="server-settings-link" onclick={openServerSettings}>
+        <Settings size={16} />
+        <span>Server Connection Settings</span>
+      </button>
     {/if}
   </div>
 
@@ -682,6 +694,25 @@
   }
 
   /* Buttons */
+  .server-settings-link {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--cds-text-02, #c6c6c6);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .server-settings-link:hover {
+    opacity: 1;
+    color: var(--cds-text-01, #f4f4f4);
+  }
+
   .launcher-buttons {
     display: flex;
     gap: 1.5rem;

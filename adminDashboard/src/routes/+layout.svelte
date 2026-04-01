@@ -29,6 +29,7 @@
   let unsubscribeDisconnected;
 
   // Auto-login for internal admin dashboard
+  // Uses IP-lock admin: localhost gets automatic admin rights from health endpoint
   async function ensureAuthenticated() {
     // Check if we already have a valid token
     const existingToken = localStorage.getItem('admin_token');
@@ -39,19 +40,46 @@
         logger.success("Using existing admin token");
         return;
       } catch (e) {
-        // Token invalid, try to login
+        // Token invalid, try health endpoint
         logger.warning("Existing token invalid, re-authenticating");
       }
     }
 
-    // Auto-login with default admin credentials (internal use only)
+    // IP-lock admin: get token from dedicated endpoints
+    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8888/api/v2').replace(/\/api\/v2$/, '');
+
+    // Step 1: Check health for auto_token (SQLite mode) or origin admin flag
     try {
-      await adminAPI.login('admin', 'admin123');
-      isAuthenticated = true;
-      logger.success("Auto-authenticated as admin");
+      const healthResp = await fetch(`${baseUrl}/health`);
+      const health = await healthResp.json();
+
+      // SQLite mode: use auto_token directly
+      if (health.auto_token) {
+        adminAPI.saveToken(health.auto_token);
+        isAuthenticated = true;
+        logger.success("Auto-authenticated via SQLite auto_token");
+        return;
+      }
+
+      // LAN server mode: request admin token via POST (IP-lock)
+      if (health.is_origin_admin) {
+        const tokenResp = await fetch(`${baseUrl}/api/origin-admin-token`, { method: 'POST' });
+        if (tokenResp.ok) {
+          const tokenData = await tokenResp.json();
+          if (tokenData.admin_token) {
+            adminAPI.saveToken(tokenData.admin_token);
+            isAuthenticated = true;
+            logger.success("IP-lock admin: authenticated via origin-admin-token");
+            return;
+          }
+        }
+      }
     } catch (e) {
-      logger.error("Auto-login failed - admin user may not exist", e.message);
+      logger.warning("Auto-authentication failed", e.message);
     }
+
+    // No auto-auth available — dashboard requires manual login or setup
+    logger.error("Authentication failed — run LAN server setup first or check PostgreSQL");
   }
 
   onMount(() => {
@@ -122,6 +150,16 @@
   </aside>
 
   <main class="admin-main">
-    {@render children()}
+    {#if isAuthenticated}
+      {@render children()}
+    {:else}
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 1rem; color: #c6c6c6;">
+        <h2>Authentication Required</h2>
+        <p>Could not authenticate with the server. Ensure PostgreSQL is running and LAN server setup is complete.</p>
+        <button onclick={ensureAuthenticated} style="padding: 0.5rem 1.5rem; background: #0f62fe; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          Retry
+        </button>
+      </div>
+    {/if}
   </main>
 </div>

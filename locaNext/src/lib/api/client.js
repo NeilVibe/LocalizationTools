@@ -13,6 +13,14 @@ class APIClient {
   }
 
   /**
+   * Update the base URL (for LAN server mode)
+   */
+  setBaseURL(url) {
+    this.baseURL = url;
+    serverUrl.set(url);
+  }
+
+  /**
    * Set authentication token
    */
   setToken(token) {

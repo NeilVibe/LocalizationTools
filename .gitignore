@@ -124,6 +124,10 @@ server/data/*.db-shm
 server/data/*.db-wal
 server/data/*.sqlite
 
+# Server config files (contain credentials)
+server/data/server-config.json
+server/data/client-config.json
+
 # Server Data (user-generated, not tracked)
 server/data/outputs/
 server/data/cache/

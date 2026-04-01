@@ -128,10 +128,15 @@ def verify_token(token: str) -> Optional[dict]:
     """
     # P9: Handle OFFLINE_MODE tokens from launcher's "Start Offline" button
     # User works in local SQLite "Offline Storage" only - no admin rights needed.
-    # When going online, they can move files to proper locations.
+    # SECURITY: Only allowed when running in SQLite mode (local/offline).
+    # In PostgreSQL (LAN server) mode, OFFLINE_MODE tokens are rejected to prevent
+    # unauthenticated network access to the shared database.
     if token and token.startswith("OFFLINE_MODE_"):
-        # Check if offline tokens are allowed (default: True for Electron)
         allow_offline = getattr(config, 'ALLOW_OFFLINE_TOKENS', True)
+        # Block OFFLINE_MODE tokens when connected to PostgreSQL (LAN/online mode)
+        if config.ACTIVE_DATABASE_TYPE == "postgresql":
+            logger.warning("OFFLINE_MODE token rejected — not allowed in PostgreSQL mode")
+            return None
         if allow_offline:
             logger.debug("OFFLINE_MODE token accepted - user has Offline Storage access only")
             return {

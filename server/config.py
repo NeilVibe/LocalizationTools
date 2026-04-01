@@ -58,7 +58,9 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Host and port
 # DEV_MODE: bind to 0.0.0.0 (WSL2 needs this for port forwarding)
+# LAN server mode: bind to 0.0.0.0 so dashboard is accessible from admin's browser
 # Production: default to 127.0.0.1 to avoid Windows firewall popup
+# Note: _apply_lan_server_overrides() below re-evaluates after user config is loaded
 _DEV_HOST_DEFAULT = "0.0.0.0" if os.getenv("DEV_MODE") else "127.0.0.1"
 SERVER_HOST = os.getenv("SERVER_HOST", _DEV_HOST_DEFAULT)
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8888"))
@@ -179,6 +181,25 @@ def get_user_config() -> dict:
 _USER_CONFIG = _load_user_config()
 USER_CONFIG_PATH = _get_user_config_path()
 
+# Apply LAN server mode overrides from user config
+def _apply_lan_server_overrides():
+    """Apply settings overrides when in LAN server mode."""
+    global DB_POOL_SIZE, DB_MAX_OVERFLOW, CORS_ALLOW_ALL
+    if _USER_CONFIG.get("server_mode") == "lan_server":
+        # PORT 8888 STAYS ON LOCALHOST — only PG port 5432 is on the network.
+        # Dashboard (5174) and API (8888) are both localhost-only.
+        # No need to bind to 0.0.0.0 — each client runs its own backend.
+        # Smaller connection pool per client (10 clients × 3 = 30 < PG default 100)
+        if not os.getenv("DB_POOL_SIZE"):
+            DB_POOL_SIZE = 3
+        if not os.getenv("DB_MAX_OVERFLOW"):
+            DB_MAX_OVERFLOW = 5
+        # Disable CORS wildcard in LAN server mode (each client uses localhost)
+        if not os.getenv("CORS_ORIGINS"):
+            CORS_ALLOW_ALL = False
+
+# NOTE: _apply_lan_server_overrides() called AFTER DB_POOL_SIZE is defined below
+
 # ============================================
 # Database Settings
 # ============================================
@@ -222,6 +243,9 @@ POSTGRES_CONNECT_TIMEOUT = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "3"))
 # Query settings
 DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"  # Log all SQL queries
 
+# Apply LAN server overrides AFTER all DB_* values are defined
+_apply_lan_server_overrides()
+
 # ============================================
 # External Services
 # ============================================
@@ -246,8 +270,8 @@ ALLOWED_IP_RANGE = os.getenv("ALLOWED_IP_RANGE", "")
 IP_FILTER_ALLOW_LOCALHOST = os.getenv("IP_FILTER_ALLOW_LOCALHOST", "true").lower() == "true"
 IP_FILTER_LOG_BLOCKED = os.getenv("IP_FILTER_LOG_BLOCKED", "true").lower() == "true"
 
-# JWT settings
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-CHANGE-IN-PRODUCTION")
+# JWT settings — auto-generate if user config has a key, otherwise use env/default
+SECRET_KEY = os.getenv("SECRET_KEY", _USER_CONFIG.get("secret_key", "dev-secret-key-CHANGE-IN-PRODUCTION"))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
@@ -259,6 +283,10 @@ _DEFAULT_ADMIN_PASSWORD = "admin123"
 
 # Security mode: "strict" will fail on insecure defaults, "warn" will only log warnings
 SECURITY_MODE = os.getenv("SECURITY_MODE", "warn")  # "strict" or "warn"
+
+# OFFLINE_MODE token acceptance (Electron launcher "Start Offline" button)
+# Always blocked in PostgreSQL mode regardless of this setting.
+ALLOW_OFFLINE_TOKENS = os.getenv("ALLOW_OFFLINE_TOKENS", "true").lower() == "true"
 
 # DEV_MODE: Enables localhost-only auto-authentication for autonomous testing
 # SECURITY: Only works when request comes from localhost (127.0.0.1 or ::1)

@@ -20,6 +20,7 @@
   import ChangePassword from "$lib/components/ChangePassword.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
+  import ServerSettingsModal from "$lib/components/ServerSettingsModal.svelte";
   import MergeModal from "$lib/components/ldm/MergeModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
@@ -45,6 +46,7 @@
   let showChangePassword = $state(false);
   let showAbout = $state(false);
   let showPreferences = $state(false);
+  let showServerSettings = $state(false);
   // Phase 59: Merge modal state
   let showMergeModal = $state(false);
   let mergeMultiLanguage = $state(false);
@@ -266,6 +268,12 @@
     isSettingsMenuOpen = false;
   }
 
+  function openServerSettings() {
+    logger.userAction("Server settings modal opened");
+    showServerSettings = true;
+    isSettingsMenuOpen = false;
+  }
+
   // Phase 59: Open merge modal (single-project mode)
   function openMerge() {
     if (!$selectedProject) {
@@ -458,8 +466,13 @@
     }
     window.addEventListener('merge-folder-to-locdev', handleMergeFolderEvent);
 
+    // Pre-login server settings (Launcher dispatches this event)
+    function handleOpenServerSettings() { showServerSettings = true; }
+    window.addEventListener('open-server-settings', handleOpenServerSettings);
+
     return () => {
       window.removeEventListener('merge-folder-to-locdev', handleMergeFolderEvent);
+      window.removeEventListener('open-server-settings', handleOpenServerSettings);
     };
   });
 </script>
@@ -628,6 +641,9 @@
             <button class="compact-dropdown-item" onclick={openPreferences}>
               Preferences
             </button>
+            <button class="compact-dropdown-item" onclick={openServerSettings}>
+              Server Connection
+            </button>
             <button class="compact-dropdown-item" onclick={openAbout}>
               About LocaNext
             </button>
@@ -676,6 +692,9 @@
     <CommandPalette />
     </div>
   {/if}
+
+  <!-- Server Settings Modal (OUTSIDE auth gate — accessible from Launcher pre-login) -->
+  <ServerSettingsModal bind:open={showServerSettings} />
 </Theme>
 
 <style>
