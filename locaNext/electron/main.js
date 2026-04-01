@@ -16,7 +16,47 @@ import { isFirstRunNeeded, runFirstRunSetup, setupFirstRunIPC } from './first-ru
 import { performHealthCheck, quickHealthCheck, wasRecentlyRepaired, HealthStatus } from './health-check.js';
 import { runRepair } from './repair.js';
 import { showSplash, updateSplash, closeSplash } from './splash.js';
+import splash from './splash.js';
 import { initializeTelemetry, shutdownTelemetry, telemetryLog, getTelemetryState } from './telemetry.js';
+
+/**
+ * Handle JSONL setup messages from Python backend stdout.
+ * Routes messages to splash screen for visual feedback during first-launch setup.
+ */
+function handleSetupMessage(msg) {
+  switch (msg.type) {
+    case 'setup_started':
+      splash.showSetupMode(msg.total_steps);
+      break;
+
+    case 'setup_step':
+      splash.updateSetupStep(msg.index, msg.step, msg.status, msg.duration_ms, msg.error_detail);
+      break;
+
+    case 'setup_complete':
+      if (msg.success) {
+        splash.showSetupComplete(msg.lan_ip);
+      } else {
+        splash.showSetupError(msg.failed_step, msg.error_code, msg.error_detail);
+      }
+      break;
+
+    case 'pg_starting':
+      splash.updateSplash('Starting database...');
+      break;
+
+    case 'pg_ready':
+      splash.updateSplash('Starting server...');
+      break;
+
+    case 'server_ready':
+      // Normal flow — waitForServer will detect /health
+      break;
+
+    default:
+      logger.info('[Setup message]', msg);
+  }
+}
 
 // ==================== GLOBAL ERROR HANDLERS ====================
 // These MUST be registered immediately to catch any startup errors
@@ -259,9 +299,28 @@ async function startBackendServer() {
     windowsHide: true
   });
 
-  // Log server output
-  backendProcess.stdout.on('data', (data) => {
-    logger.info('[Backend]', { output: data.toString().trim() });
+  // Parse JSONL from server stdout (setup messages + regular logs)
+  let stdoutBuffer = '';
+  backendProcess.stdout.on('data', (chunk) => {
+    stdoutBuffer += chunk.toString();
+    const lines = stdoutBuffer.split('\n');
+    stdoutBuffer = lines.pop(); // Keep incomplete last line in buffer
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith('{')) {
+        try {
+          const msg = JSON.parse(trimmed);
+          handleSetupMessage(msg);
+        } catch {
+          logger.info('[Backend]', { output: trimmed });
+        }
+      } else {
+        logger.info('[Backend]', { output: trimmed });
+      }
+    }
   });
 
   backendProcess.stderr.on('data', (data) => {
@@ -280,7 +339,7 @@ async function startBackendServer() {
   // Wait for server to be ready
   // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on Windows
   try {
-    await waitForServer('http://127.0.0.1:8888', 30, 1000);
+    await waitForServer('http://127.0.0.1:8888', 90, 1000);
     return true;
   } catch (error) {
     logger.error('Backend server failed to start', { error: error.message });
@@ -292,6 +351,19 @@ async function startBackendServer() {
  * Stop the backend server
  */
 function stopBackendServer() {
+  // Stop PostgreSQL FIRST (it's a separate process from Python)
+  try {
+    const pgCtlPath = path.join(paths.projectRoot, 'resources', 'bin', 'postgresql', 'bin', 'pg_ctl.exe');
+    const pgDataPath = path.join(paths.projectRoot, 'resources', 'bin', 'postgresql', 'data');
+    if (fs.existsSync(pgCtlPath) && fs.existsSync(pgDataPath)) {
+      const { execFileSync } = require('child_process');
+      execFileSync(pgCtlPath, ['stop', '-D', pgDataPath, '-m', 'fast'], { timeout: 10000 });
+      logger.info('PostgreSQL stopped');
+    }
+  } catch (e) {
+    logger.warning('PostgreSQL stop skipped', { error: e.message });
+  }
+
   if (backendProcess) {
     logger.info('Stopping backend server...');
 
@@ -1134,6 +1206,13 @@ protocol.registerSchemesAsPrivileged([
     }
   }
 ]);
+
+// Single-instance lock — prevent multiple LocaNext instances
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  logger.warning('Another instance is already running — quitting');
+  app.quit();
+}
 
 // App ready
 app.whenReady().then(async () => {
