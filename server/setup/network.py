@@ -3,23 +3,13 @@ import socket
 
 
 def detect_lan_ip() -> str:
-    """Detect LAN IP without any internet access. Local OS queries only."""
+    """Detect LAN IP using local OS queries only. Zero network calls."""
     try:
         hostname = socket.gethostname()
         ips = socket.getaddrinfo(hostname, None, socket.AF_INET)
         for _, _, _, _, (ip, _) in ips:
             if not ip.startswith("127."):
                 return ip
-    except Exception:
-        pass
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(1)
-        s.connect(("255.255.255.255", 1))
-        ip = s.getsockname()[0]
-        s.close()
-        if not ip.startswith("127."):
-            return ip
     except Exception:
         pass
     return "127.0.0.1"
