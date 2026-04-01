@@ -40,6 +40,11 @@ function isLightMode(appRoot) {
   if (fs.existsSync(flagPath)) {
     return true;
   }
+  // Server build (bundled PG) = no model downloads needed
+  const bundledPg = path.join(appRoot || '', 'resources', 'bin', 'postgresql', 'bin', 'initdb.exe');
+  if (fs.existsSync(bundledPg)) {
+    return true;
+  }
   return false;
 }
 
