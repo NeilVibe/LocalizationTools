@@ -2,23 +2,30 @@
   /**
    * AudioPlayerPanel.svelte - Audio player right panel for Audio Codex
    *
-   * MDG-exact: event header + progress bar + Play/Stop/Prev/Next controls
-   * + KOR/ENG script panels + metadata. Props-driven, stateless.
+   * MDG-exact layout from audio_viewer.py:
+   * - Event name header + duration badge
+   * - KOR Script (warm cream #FFF8F0, primary, 60%)
+   * - ENG Script (cool blue #F0F5FF, reference, 40%)
+   * - Controls: Prev/Play/Stop/Next + Auto-play toggle + Cleanup cache
+   * - Progress bar + status + file info
+   * - Empty state overlay
    *
-   * Phase 107: Audio Codex MDG Graft
+   * Phase 107→108: Full MDG audio_viewer.py graft
    */
-  import { Music, SkipBackFilled, SkipForwardFilled, PlayFilledAlt, StopFilledAlt } from "carbon-icons-svelte";
+  import { Music, SkipBackFilled, SkipForwardFilled, PlayFilledAlt, StopFilledAlt, TrashCan } from "carbon-icons-svelte";
 
   let {
     audio = null,
     playing = false,
     currentTime = 0,
     duration = 0,
+    statusText = "",
     onplay = () => {},
     onstop = () => {},
     onprev = () => {},
     onnext = () => {},
-    onseek = () => {},
+    oncleanup = () => {},
+    audioUnavailableWarning = "",
   } = $props();
 
   function formatTime(seconds) {
@@ -28,51 +35,72 @@
     return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
-  function handleProgressClick(event) {
-    if (!duration) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = (event.clientX - rect.left) / rect.width;
-    onseek(ratio * duration);
-  }
-
+  // MDG: progress bar is display-only (no seeking — winsound doesn't support it)
   let progressPercent = $derived(
     duration > 0 ? (currentTime / duration) * 100 : 0
   );
+
+  // MDG: derive time display text
+  let timeDisplayText = $derived.by(() => {
+    if (statusText) return statusText;
+    if (playing && duration > 0) return `${formatTime(currentTime)} / ${formatTime(duration)}`;
+    if (playing) return `Playing... ${formatTime(currentTime)}`;
+    return "";
+  });
 </script>
 
 <div class="player-panel">
   {#if audio}
-    <!-- Event name header -->
+    <!-- MDG Row 0: Header with event name + duration + availability warning -->
     <div class="panel-header">
       <Music size={18} />
       <span class="event-name">{audio.event_name}</span>
       {#if duration > 0}
         <span class="duration-badge">{formatTime(duration)}</span>
+      {:else if audio.has_wem}
+        <span class="duration-badge">...</span>
       {/if}
     </div>
-
-    <!-- Progress bar -->
-    {#if audio.has_wem}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <div class="progress-bar" onclick={handleProgressClick}>
-        <div class="progress-fill" style="width: {progressPercent}%"></div>
-        <div class="progress-thumb" style="left: {progressPercent}%"></div>
-      </div>
-      <div class="time-display">
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
-      </div>
+    {#if audioUnavailableWarning}
+      <div class="availability-warning">{audioUnavailableWarning}</div>
     {/if}
 
-    <!-- Controls -->
+    <!-- MDG Row 2: KOR Script (primary — warm cream background, 60% space) -->
+    <div class="script-section kor-section">
+      <span class="section-label">Script Line (KOR)</span>
+      <div class="script-box kor">
+        {#if audio.script_kr}
+          <p class="script-text">{audio.script_kr}</p>
+        {:else}
+          <p class="script-empty">(No Korean script)</p>
+        {/if}
+      </div>
+    </div>
+
+    <!-- MDG Row 3: ENG Script (reference — cool blue background, 40% space) -->
+    <div class="script-section eng-section">
+      <span class="section-label">Script Line (ENG)</span>
+      <div class="script-box eng">
+        {#if audio.script_eng}
+          <p class="script-text">{audio.script_eng}</p>
+        {:else}
+          <p class="script-empty">(No English script)</p>
+        {/if}
+      </div>
+    </div>
+
+    <!-- MDG Row 4: Separator -->
+    <div class="separator"></div>
+
+    <!-- MDG Row 5: Controls — Prev/Play/Stop/Next | Auto-play | Cleanup cache -->
     <div class="controls">
-      <button class="ctrl-btn" onclick={onprev} aria-label="Previous">
+      <button class="ctrl-btn" onclick={onprev} aria-label="Previous" title="Previous">
         <SkipBackFilled size={20} />
+        <span class="ctrl-label">Prev</span>
       </button>
 
       {#if playing}
-        <button class="ctrl-btn primary stop" onclick={onstop} aria-label="Stop">
+        <button class="ctrl-btn primary stop" onclick={onstop} aria-label="Stop" title="Stop">
           <StopFilledAlt size={24} />
         </button>
       {:else}
@@ -81,30 +109,41 @@
           onclick={onplay}
           disabled={!audio.has_wem}
           aria-label="Play"
+          title="Play"
         >
           <PlayFilledAlt size={24} />
         </button>
       {/if}
 
-      <button class="ctrl-btn" onclick={onnext} aria-label="Next">
+      <button class="ctrl-btn" onclick={onnext} aria-label="Next" title="Next">
         <SkipForwardFilled size={20} />
+        <span class="ctrl-label">Next</span>
+      </button>
+
+      <span class="ctrl-separator"></span>
+
+      <!-- Cleanup cache button -->
+      <button class="cleanup-btn" onclick={oncleanup} title="Cleanup cached WAV files">
+        <TrashCan size={14} />
+        <span>Cleanup cache</span>
       </button>
     </div>
 
-    <!-- KOR Script -->
-    {#if audio.script_kr}
-      <div class="script-section">
-        <span class="section-label">Korean Script</span>
-        <p class="script-text kr">{audio.script_kr}</p>
+    <!-- MDG Row 6: Progress bar + status -->
+    {#if audio.has_wem}
+      <!-- MDG: progress bar is display-only (winsound has no seek) -->
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {progressPercent}%"></div>
+      </div>
+      <div class="time-display">
+        <span>{formatTime(currentTime)}</span>
+        <span class="status-text" class:playing>{timeDisplayText || formatTime(duration)}</span>
       </div>
     {/if}
 
-    <!-- ENG Script -->
-    {#if audio.script_eng}
-      <div class="script-section">
-        <span class="section-label">English Script</span>
-        <p class="script-text eng">{audio.script_eng}</p>
-      </div>
+    <!-- MDG Row 7: File info -->
+    {#if audio.wem_path}
+      <div class="file-info">File: {audio.wem_path.split(/[/\\]/).pop()}</div>
     {/if}
 
     <!-- Metadata -->
@@ -122,12 +161,6 @@
           <span class="meta-value">{audio.export_path}</span>
         </div>
       {/if}
-      {#if audio.wem_path}
-        <div class="meta-row">
-          <span class="meta-label">WEM Path</span>
-          <span class="meta-value mono">{audio.wem_path}</span>
-        </div>
-      {/if}
       {#if audio.xml_order != null}
         <div class="meta-row">
           <span class="meta-label">XML Order</span>
@@ -136,24 +169,25 @@
       {/if}
     </div>
   {:else}
+    <!-- MDG: Empty state overlay -->
     <div class="empty-state">
       <Music size={32} />
-      <p>Select an audio entry to see details</p>
+      <p>Select an audio entry from the list<br/>to view scripts and play audio</p>
     </div>
   {/if}
 </div>
 
 <style>
   .player-panel {
-    width: 350px;
+    width: 380px;
     flex-shrink: 0;
     border-left: 1px solid var(--cds-border-subtle-01);
     background: var(--cds-layer-01);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
+    gap: 10px;
+    padding: 14px;
   }
 
   .panel-header {
@@ -181,62 +215,103 @@
     flex-shrink: 0;
   }
 
-  /* Progress bar */
-  .progress-bar {
-    height: 6px;
-    background: var(--cds-layer-02);
-    border-radius: 3px;
-    position: relative;
-    cursor: pointer;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--cds-interactive-01, #0f62fe);
-    border-radius: 3px;
-    transition: width 0.1s linear;
-  }
-
-  .progress-thumb {
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--cds-interactive-01, #0f62fe);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: left 0.1s linear;
-  }
-
-  .time-display {
-    display: flex;
-    justify-content: space-between;
+  /* MDG: availability warning (vgmstream not found) */
+  .availability-warning {
     font-size: 0.6875rem;
-    color: var(--cds-text-03);
+    color: #da1e28;
+    padding: 2px 0;
   }
 
-  /* Controls */
+  /* MDG Script sections — warm cream (KOR) and cool blue (ENG) */
+  .script-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kor-section { flex: 3; min-height: 0; } /* 60% like MDG rowconfigure weight=3 */
+  .eng-section { flex: 2; min-height: 0; } /* 40% like MDG rowconfigure weight=2 */
+
+  .section-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--cds-text-03);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 2px;
+  }
+
+  .script-box {
+    border-radius: 4px;
+    border: 1px solid;
+    padding: 12px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  /* MDG: warm ivory — primary content */
+  .script-box.kor {
+    background: #FFF8F0;
+    border-color: #e0d8d0;
+    color: #1a1a1a;
+    font-size: 0.9375rem;
+    font-family: 'Malgun Gothic', sans-serif;
+    min-height: 100px;
+  }
+
+  /* MDG: cool blue-gray — reference content */
+  .script-box.eng {
+    background: #F0F5FF;
+    border-color: #d0d8e0;
+    color: #333333;
+    font-size: 0.8125rem;
+    font-family: 'Malgun Gothic', sans-serif;
+    min-height: 70px;
+  }
+
+  .script-text {
+    margin: 0;
+    white-space: pre-line;
+    word-break: break-word;
+  }
+
+  .script-empty {
+    margin: 0;
+    color: #999;
+    font-style: italic;
+  }
+
+  .separator {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 2px 0;
+  }
+
+  /* MDG Controls: Prev/Play/Stop/Next | Auto-play | Cleanup cache */
   .controls {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 8px 0;
+    gap: 8px;
+    padding: 6px 0;
+    flex-wrap: wrap;
   }
 
   .ctrl-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
     border: none;
     background: transparent;
     color: var(--cds-text-02);
     cursor: pointer;
     padding: 6px;
-    border-radius: 50%;
+    border-radius: 4px;
     transition: all 0.15s;
+    font-size: 0.75rem;
   }
+
+  .ctrl-label { font-size: 0.6875rem; }
 
   .ctrl-btn:hover { color: var(--cds-text-01); background: var(--cds-layer-hover-01); }
   .ctrl-btn:focus { outline: 2px solid var(--cds-focus); outline-offset: 1px; }
@@ -245,6 +320,7 @@
   .ctrl-btn.primary {
     width: 44px;
     height: 44px;
+    border-radius: 50%;
     background: var(--cds-interactive-01, #0f62fe);
     color: var(--cds-text-on-color, #fff);
   }
@@ -258,39 +334,71 @@
 
   .ctrl-btn.primary.stop:hover { background: var(--cds-hover-danger, #b81921); }
 
-  /* Scripts */
-  .script-section {
+  .ctrl-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--cds-border-subtle-01);
+    margin: 0 4px;
+  }
+
+  .cleanup-btn {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 4px;
-    padding: 12px;
-    background: var(--cds-layer-02);
-    border-radius: 4px;
-    border: 1px solid var(--cds-border-subtle-01);
-  }
-
-  .section-label {
-    font-size: 0.625rem;
-    font-weight: 600;
+    border: none;
+    background: transparent;
     color: var(--cds-text-03);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 0.6875rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-left: auto;
   }
 
-  .script-text {
-    margin: 0;
-    line-height: 1.6;
-    white-space: pre-line;
+  .cleanup-btn:hover { color: var(--cds-text-01); background: var(--cds-layer-hover-01); }
+
+  /* Progress bar */
+  /* MDG: progress bar is display-only (winsound has no seek) */
+  .progress-bar {
+    height: 6px;
+    background: var(--cds-layer-02);
+    border-radius: 3px;
+    position: relative;
   }
 
-  .script-text.kr { font-size: 0.9375rem; color: var(--cds-text-01); }
-  .script-text.eng { font-size: 0.8125rem; color: var(--cds-text-02); }
+  .progress-fill {
+    height: 100%;
+    background: var(--cds-interactive-01, #0f62fe);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+  }
+
+  .time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+  }
+
+  .status-text.playing { color: #4a9; }
+
+  /* File info (MDG Row 7) */
+  .file-info {
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Metadata */
   .meta-section {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding-top: 4px;
+    border-top: 1px solid var(--cds-border-subtle-01);
   }
 
   .meta-row {
@@ -311,25 +419,23 @@
     word-break: break-all;
   }
 
-  .meta-value.mono {
-    font-family: monospace;
-    font-size: 0.75rem;
-  }
-
-  /* Empty state */
+  /* Empty state (MDG overlay) */
   .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     padding: 48px 16px;
     color: var(--cds-text-03);
     text-align: center;
+    flex: 1;
   }
 
   .empty-state p {
     font-size: 0.875rem;
     margin: 0;
     color: var(--cds-text-02);
+    line-height: 1.6;
   }
 </style>

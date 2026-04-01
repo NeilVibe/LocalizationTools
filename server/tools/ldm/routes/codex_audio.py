@@ -1,13 +1,17 @@
-"""Audio Codex API endpoints -- bulk list, category tree, detail, WEM streaming.
+"""Audio Codex API endpoints -- bulk list, category tree, detail, playback.
 
-Phase 48: Audio Codex UI -- thin wrappers around MegaIndex O(1) lookups.
+Phase 48→108: Audio Codex UI — MDG-exact playback via winsound.
 All data comes from MegaIndex D10/D11/D20/D21/C4/C5 dicts.
 
 Endpoints:
-  GET /codex/audio            - Bulk audio list with category/search filtering
-  GET /codex/audio/categories - Category tree from D20 export_path grouping
-  GET /codex/audio/stream/{event_name} - WEM-to-WAV streaming (unauthenticated for <audio>)
-  GET /codex/audio/{event_name}        - Full audio detail
+  GET  /codex/audio            - Bulk audio list with category/search filtering
+  GET  /codex/audio/categories - Category tree from D20 export_path grouping
+  POST /codex/audio/play/{event_name}  - Play audio via winsound (MDG-exact)
+  POST /codex/audio/stop               - Stop playback
+  GET  /codex/audio/playback-status    - Playback state for frontend polling
+  POST /codex/audio/cleanup            - Clean cached WAV files
+  GET  /codex/audio/stream/{event_name} - WEM-to-WAV streaming (DEV fallback)
+  GET  /codex/audio/{event_name}        - Full audio detail
 """
 
 from __future__ import annotations
@@ -122,6 +126,76 @@ def _build_category_tree(
 # =============================================================================
 # Endpoints
 # =============================================================================
+
+
+@router.post("/cleanup")
+async def cleanup_audio_cache(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Clean up cached WAV files from WEM-to-WAV conversions.
+
+    MDG-exact: audio_handler.cleanup_temp_files() equivalent.
+    """
+    try:
+        converter = get_media_converter()
+        count = converter.cleanup_wav_cache()
+        return {"count": count}
+    except Exception as exc:
+        logger.error(f"[Audio Codex] cleanup_audio_cache failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/play/{event_name}")
+async def play_audio(
+    event_name: str,
+    language: str = Query(default="eng", description="Audio language folder"),
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Play audio via winsound — MDG-exact AudioHandler.play() port.
+
+    Converts WEM → WAV via vgmstream-cli, then plays via winsound.PlaySound()
+    in a background thread. On Linux (DEV), returns error gracefully.
+    """
+    try:
+        from server.tools.ldm.services.audio_playback import get_audio_playback
+        player = get_audio_playback()
+        result = player.play(event_name, language=language)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"[Audio Codex] play_audio failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/stop")
+async def stop_audio(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Stop audio playback — MDG-exact AudioHandler.stop() port."""
+    try:
+        from server.tools.ldm.services.audio_playback import get_audio_playback
+        player = get_audio_playback()
+        return player.stop()
+    except Exception as exc:
+        logger.error(f"[Audio Codex] stop_audio failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/playback-status")
+async def get_playback_status(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get current playback state for frontend polling."""
+    try:
+        from server.tools.ldm.services.audio_playback import get_audio_playback
+        player = get_audio_playback()
+        return player.get_status()
+    except Exception as exc:
+        logger.error(f"[Audio Codex] get_playback_status failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/categories", response_model=AudioCategoryTreeResponse)
@@ -292,12 +366,15 @@ async def list_audio(
                     continue
             all_events = filtered
 
-        # Sort by xml_order (D21) if available, else alphabetical
+        # MDG sort: (export_path, xml_order, strkey) for category browse
+        # search.py:get_entries_by_export_path sorts (export_path, xml_order, strkey)
+        # search.py:search sorts (has_image, match_score, name_length) — not applicable for bulk load
         def _sort_key(ev: str):
+            export_path = mega.event_to_export_path.get(ev, "")
             order = mega.event_to_xml_order.get(ev)
             if order is not None:
-                return (0, order, ev)
-            return (1, 0, ev)
+                return (export_path, 0, order, ev)
+            return (export_path, 1, 0, ev)
 
         all_events.sort(key=_sort_key)
 

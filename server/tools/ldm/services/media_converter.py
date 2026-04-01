@@ -262,6 +262,22 @@ class MediaConverter:
         )
         return None
 
+    def cleanup_wav_cache(self) -> int:
+        """Delete all cached WAV files from disk. Returns count deleted.
+
+        MDG-exact: audio_handler.cleanup_temp_files() equivalent.
+        """
+        count = 0
+        if self._wav_cache_dir.exists():
+            for f in self._wav_cache_dir.glob("*.wav"):
+                try:
+                    f.unlink()
+                    count += 1
+                except OSError:
+                    pass
+        logger.info("Cleaned {} cached WAV files from {}", count, self._wav_cache_dir)
+        return count
+
     def clear_caches(self) -> None:
         """Clear all in-memory and disk caches."""
         self._png_cache.clear()

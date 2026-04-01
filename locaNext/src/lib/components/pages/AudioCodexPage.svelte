@@ -21,7 +21,7 @@
   const API_BASE = getApiBase();
 
   // ── Tree panel resize ──
-  let treeWidth = $state(500);
+  let treeWidth = $state(280);
   let isTreeResizing = $state(false);
   let treeResizeStartX = $state(0);
   let treeResizeStartWidth = $state(0);
@@ -53,6 +53,7 @@
   let allItems = $state.raw([]);
   let activeCategory = $state(null);
   let searchQuery = $state("");
+  let matchType = $state("contains"); // MDG: Contains/Exact/Fuzzy (search_panel.py Row 2)
   let selectedEvent = $state(null);
   let selectedAudio = $state(null);
   let playingEvent = $state(null);
@@ -63,45 +64,73 @@
   let loadingCategories = $state(true);
   let loadingList = $state(true);
   let apiError = $state(null);
+  let statusText = $state("");
 
-  // Hidden audio element ref
-  let audioEl = $state(null);
-  let rafId = null;
+  // MDG-exact: playback via backend winsound (no browser <audio> element)
+  let pollId = null;
 
   // ── Derived: client-side filtered items ──
+  // MDG PRIORITY: search query OVERRIDES category (app.py:897-900).
+  // When query exists → search ALL items, ignore category.
+  // When query is empty → use category filter.
   let filteredItems = $derived.by(() => {
+    if (searchQuery) {
+      // MDG: _on_search() ignores category when query is non-empty
+      const q = searchQuery.toLowerCase();
+      return allItems.filter((item) => {
+        const searchable = `${item.event_name || ""} ${item.script_kr || ""} ${item.script_eng || ""} ${item.string_id || ""}`.toLowerCase();
+        if (matchType === "exact") {
+          // MDG: exact match on any field
+          return (item.event_name || "").toLowerCase() === q
+            || (item.script_kr || "").toLowerCase() === q
+            || (item.script_eng || "").toLowerCase() === q
+            || (item.string_id || "").toLowerCase() === q;
+        }
+        // MDG default: "contains" — substring match
+        return searchable.includes(q);
+      });
+    }
+    // No search: use category filter (MDG: _on_category_select)
     return allItems.filter((item) => {
       if (activeCategory && item.export_path && !item.export_path.startsWith(activeCategory)) return false;
       if (activeCategory && !item.export_path) return false;
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const searchable = `${item.event_name || ""} ${item.script_kr || ""} ${item.script_eng || ""} ${item.string_id || ""}`.toLowerCase();
-        if (!searchable.includes(q)) return false;
-      }
       return true;
     });
   });
 
-  // ── Audio progress loop ──
+  // ── Playback status polling (MDG: timer-based progress) ──
   let destroyed = false;
 
-  function startProgressLoop() {
-    stopProgressLoop(); // Kill any orphaned loop first
-    function tick() {
-      if (destroyed) return;
-      if (audioEl && !audioEl.paused) {
-        currentTime = audioEl.currentTime;
-        duration = audioEl.duration || 0;
-        rafId = requestAnimationFrame(tick);
+  function startStatusPolling() {
+    stopStatusPolling();
+    async function poll() {
+      if (destroyed || !playingEvent) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/ldm/codex/audio/playback-status`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const status = await res.json();
+          if (status.is_playing) {
+            currentTime = status.elapsed || 0;
+            duration = status.duration || 0;
+            pollId = setTimeout(poll, 200);
+          } else {
+            // Playback ended naturally (winsound finished)
+            playingEvent = null;
+            currentTime = 0;
+            duration = 0;
+          }
+        }
+      } catch {
+        // Ignore polling errors
       }
     }
-    rafId = requestAnimationFrame(tick);
+    pollId = setTimeout(poll, 200);
   }
 
-  function stopProgressLoop() {
-    if (rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+  function stopStatusPolling() {
+    if (pollId) {
+      clearTimeout(pollId);
+      pollId = null;
     }
   }
 
@@ -160,7 +189,7 @@
     fetchAudioDetail(eventName);
   }
 
-  function handlePlay(eventName) {
+  async function handlePlay(eventName) {
     // If a different event, select it first
     if (eventName && eventName !== selectedEvent) {
       selectedEvent = eventName;
@@ -169,33 +198,40 @@
     const target = eventName || selectedEvent;
     if (!target) return;
 
-    playingEvent = target;
-    if (audioEl) {
-      audioEl.src = `${API_BASE}/api/ldm/codex/audio/stream/${encodeURIComponent(target)}?language=${selectedLanguage}&v=${Date.now()}`;
-      audioEl.load();
-      audioEl.play().catch((err) => {
-        logger.error("Audio play failed", { error: err.message });
-        playingEvent = null;
-      });
-      startProgressLoop();
+    try {
+      // MDG-exact: POST play → backend converts WEM→WAV → winsound.PlaySound()
+      const res = await fetch(
+        `${API_BASE}/api/ldm/codex/audio/play/${encodeURIComponent(target)}?language=${selectedLanguage}`,
+        { method: "POST", headers: getAuthHeaders() }
+      );
+      if (res.ok) {
+        playingEvent = target;
+        currentTime = 0;
+        duration = 0;
+        startStatusPolling();
+      } else {
+        const err = await res.json().catch(() => ({ detail: "Play failed" }));
+        logger.error("Audio play failed", { error: err.detail, event: target });
+      }
+    } catch (err) {
+      logger.error("Audio play request failed", { error: err.message });
     }
   }
 
-  function handleStop() {
-    if (audioEl) {
-      audioEl.pause();
-      audioEl.currentTime = 0;
+  async function handleStop() {
+    stopStatusPolling();
+    try {
+      // MDG-exact: POST stop → winsound.PlaySound(None, SND_PURGE)
+      await fetch(`${API_BASE}/api/ldm/codex/audio/stop`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+    } catch {
+      // Ignore stop errors
     }
     playingEvent = null;
     currentTime = 0;
-    stopProgressLoop();
-  }
-
-  function handleSeek(time) {
-    if (audioEl) {
-      audioEl.currentTime = time;
-      currentTime = time;
-    }
+    duration = 0;
   }
 
   function navigateByOffset(offset) {
@@ -212,53 +248,77 @@
   function handlePrev() { navigateByOffset(-1); }
   function handleNext() { navigateByOffset(1); }
 
-  function handleAudioEnded() {
-    playingEvent = null;
-    currentTime = 0;
-    duration = 0;
-    stopProgressLoop();
-  }
-
-  function handleLanguageChange(event) {
+  async function handleLanguageChange(event) {
     const lang = event.target.value;
     selectedLanguage = lang;
-    handleStop();
+    await handleStop();
     selectedAudio = null;
     selectedEvent = null;
     fetchAllItems();
   }
 
+  // MDG: cleanup cached WAV files
+  async function handleCleanup() {
+    try {
+      const res = await fetch(`${API_BASE}/api/ldm/codex/audio/cleanup`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        statusText = `Cleaned ${data.count || 0} cached files`;
+        setTimeout(() => { statusText = ""; }, 3000);
+      }
+    } catch (err) {
+      logger.error("Cleanup failed", { error: err.message });
+      statusText = "Cleanup failed";
+      setTimeout(() => { statusText = ""; }, 3000);
+    }
+  }
+
+  // ── MDG keyboard shortcuts: Space=toggle play/stop, Left/Right=prev/next ──
+  function handleKeyDown(event) {
+    // Skip if user is typing in search/input
+    const tag = event.target?.tagName?.toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if (event.key === " ") {
+      event.preventDefault();
+      if (playingEvent) {
+        handleStop();
+      } else if (selectedEvent) {
+        handlePlay(selectedEvent);
+      }
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      handlePrev();
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      handleNext();
+    }
+  }
+
   onMount(() => {
     fetchCategories();
     fetchAllItems();
+    // MDG: global keyboard shortcuts for audio mode
+    document.addEventListener("keydown", handleKeyDown);
   });
 
   onDestroy(() => {
     destroyed = true;
-    stopProgressLoop();
+    stopStatusPolling();
     stopTreeResize();
-    if (audioEl) {
-      audioEl.pause();
-      audioEl.src = "";
-    }
+    document.removeEventListener("keydown", handleKeyDown);
+    // Stop backend playback on page leave
+    fetch(`${API_BASE}/api/ldm/codex/audio/stop`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }).catch(() => {});
   });
 </script>
 
-<!-- Hidden audio element for programmatic control -->
-<audio
-  bind:this={audioEl}
-  preload="auto"
-  onended={handleAudioEnded}
-  onerror={(e) => {
-    const code = audioEl?.error?.code;
-    const msg = audioEl?.error?.message || "Unknown audio error";
-    logger.error("Audio playback error", { code, message: msg, event: playingEvent });
-    playingEvent = null;
-    stopProgressLoop();
-  }}
-  ondurationchange={() => { if (audioEl) duration = audioEl.duration || 0; }}
-></audio>
-
+<!-- MDG-exact: No browser <audio> element. Playback via backend winsound. -->
 <div class="audio-codex-page">
   <!-- Header -->
   <div class="page-header-bar">
@@ -272,6 +332,19 @@
           <option value="kor">Korean</option>
           <option value="zho-cn">Chinese (PRC)</option>
         </select>
+      </div>
+
+      <!-- MDG Row 2: Match type selector (search_panel.py) -->
+      <div class="match-type-selector">
+        <span class="match-label">Match:</span>
+        <label class="match-radio">
+          <input type="radio" name="matchType" value="contains" bind:group={matchType} />
+          <span>Contains</span>
+        </label>
+        <label class="match-radio">
+          <input type="radio" name="matchType" value="exact" bind:group={matchType} />
+          <span>Exact</span>
+        </label>
       </div>
 
       <!-- Search bar -->
@@ -327,17 +400,18 @@
         />
       {/if}
 
-      <!-- RIGHT: Audio Player Panel -->
+      <!-- RIGHT: Audio Player Panel (MDG audio_viewer.py layout) -->
       <AudioPlayerPanel
         audio={selectedAudio}
         playing={playingEvent != null}
         {currentTime}
         {duration}
+        {statusText}
         onplay={() => handlePlay(selectedEvent)}
         onstop={handleStop}
         onprev={handlePrev}
         onnext={handleNext}
-        onseek={handleSeek}
+        oncleanup={handleCleanup}
       />
     </div>
   {/if}
@@ -385,6 +459,27 @@
     font-size: 0.8125rem;
     padding: 4px 8px;
   }
+
+  /* MDG search_panel.py Row 2: Match type radios */
+  .match-type-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    color: var(--cds-text-02);
+  }
+
+  .match-label { font-weight: 500; white-space: nowrap; }
+
+  .match-radio {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .match-radio input { cursor: pointer; margin: 0; }
 
   .search-wrapper {
     display: flex;
