@@ -113,128 +113,7 @@ async def lifespan(app: FastAPI):
     # === STARTUP ===
     logger.info("Server starting up...")
 
-    # === AUTO-SETUP: If bundled PostgreSQL exists but not yet configured, auto-initialize ===
-    try:
-        import os as _os
-        from pathlib import Path
-
-        resources_path = _os.environ.get("LOCANEXT_RESOURCES_PATH", "")
-        bundled_pg = Path(resources_path) / "bin" / "postgresql" / "bin" / "initdb.exe" if resources_path else None
-        user_cfg = config.get_user_config()
-
-        if bundled_pg and bundled_pg.exists() and user_cfg.get("server_mode") != "lan_server":
-            logger.info("=== AUTO-SETUP: Bundled PostgreSQL detected, initializing server mode ===")
-            import subprocess
-            import secrets
-
-            pg_bin_dir = str(bundled_pg.parent)
-            pg_data_dir = Path(pg_bin_dir).parent / "data"
-            env = _os.environ.copy()
-            env["PATH"] = pg_bin_dir + _os.pathsep + env.get("PATH", "")
-
-            # Step 1: initdb if no data dir
-            if not pg_data_dir.exists():
-                logger.info("[AUTO-SETUP] Running initdb...")
-                subprocess.run(
-                    [str(bundled_pg), "-D", str(pg_data_dir), "-U", "postgres", "-E", "UTF8", "--locale=C"],
-                    capture_output=True, text=True, timeout=30, env=env,
-                )
-
-            # Step 2: Start PG
-            pg_ctl = str(bundled_pg.parent / "pg_ctl.exe")
-            log_file = pg_data_dir / "postgresql.log"
-            subprocess.run(
-                [pg_ctl, "start", "-D", str(pg_data_dir), "-l", str(log_file), "-w"],
-                capture_output=True, text=True, timeout=30, env=env,
-            )
-
-            # Step 3: Create service account + database
-            psql = str(bundled_pg.parent / "psql.exe")
-            db_password = secrets.token_urlsafe(24)
-
-            def _run_sql(sql, db="postgres"):
-                return subprocess.run(
-                    [psql, "-U", "postgres", "-d", db, "-t", "-c", sql],
-                    capture_output=True, text=True, timeout=10, env=env,
-                )
-
-            # Create user if not exists
-            check = _run_sql("SELECT 1 FROM pg_roles WHERE rolname = 'locanext_service';")
-            if "1" not in check.stdout:
-                _run_sql(f"CREATE USER locanext_service WITH PASSWORD '{db_password}' NOSUPERUSER NOCREATEDB NOCREATEROLE;")
-            else:
-                _run_sql(f"ALTER USER locanext_service WITH PASSWORD '{db_password}';")
-
-            # Create database if not exists
-            check = _run_sql("SELECT 1 FROM pg_database WHERE datname = 'localizationtools';")
-            if "1" not in check.stdout:
-                _run_sql("CREATE DATABASE localizationtools OWNER locanext_service;")
-            _run_sql("GRANT ALL PRIVILEGES ON DATABASE localizationtools TO locanext_service;")
-            _run_sql("GRANT ALL ON SCHEMA public TO locanext_service;", db="localizationtools")
-
-            # Step 4: SSL certificates
-            cert_path = pg_data_dir / "server.crt"
-            if not cert_path.exists():
-                subprocess.run([
-                    "openssl", "req", "-new", "-x509", "-days", "3650", "-nodes",
-                    "-out", str(cert_path), "-keyout", str(pg_data_dir / "server.key"),
-                    "-subj", "/CN=LocaNext-PG-Server/O=LocaNext/C=KR",
-                ], capture_output=True, text=True, timeout=10)
-                try:
-                    _os.chmod(str(pg_data_dir / "server.key"), 0o600)
-                except OSError:
-                    pass
-
-            # Step 5: Configure pg_hba.conf for LAN
-            import socket
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.settimeout(2)
-                s.connect(("8.8.8.8", 80))
-                lan_ip = s.getsockname()[0]
-                s.close()
-            except Exception:
-                lan_ip = "192.168.1.1"
-            subnet = f"{'.'.join(lan_ip.split('.')[:3])}.0/24"
-
-            pg_hba = pg_data_dir / "pg_hba.conf"
-            if pg_hba.exists() and "LocaNext LAN access" not in pg_hba.read_text():
-                with open(pg_hba, "a") as f:
-                    f.write(f"\n# LocaNext LAN access\nhostssl    localizationtools    locanext_service    {subnet}    scram-sha-256\nhostnossl  localizationtools    locanext_service    {subnet}    reject\n")
-                _run_sql("SELECT pg_reload_conf();")
-
-            # Step 6: Save config
-            import json
-            server_config = {
-                "postgres_host": "localhost",
-                "postgres_port": 5432,
-                "postgres_user": "locanext_service",
-                "postgres_password": db_password,
-                "postgres_db": "localizationtools",
-                "database_mode": "auto",
-                "server_mode": "lan_server",
-                "lan_ip": lan_ip,
-                "secret_key": secrets.token_urlsafe(32),
-                "origin_admin_ip": "127.0.0.1",
-            }
-            config.save_user_config(server_config)
-            try:
-                _os.chmod(str(config.USER_CONFIG_PATH), 0o600)
-            except OSError:
-                pass
-
-            # Update config module so the rest of startup uses PG
-            config.POSTGRES_HOST = "localhost"
-            config.POSTGRES_PORT = 5432
-            config.POSTGRES_USER = "locanext_service"
-            config.POSTGRES_PASSWORD = db_password
-            config.POSTGRES_DB = "localizationtools"
-            config.DATABASE_MODE = "auto"
-            config.POSTGRES_DATABASE_URL = f"postgresql://locanext_service:{db_password}@localhost:5432/localizationtools"
-
-            logger.success(f"=== AUTO-SETUP COMPLETE: LAN server ready at {lan_ip}:5432 ===")
-    except Exception as e:
-        logger.warning(f"Auto-setup skipped or failed: {e}")
+    # NOTE: Auto-setup runs in __main__ block BEFORE uvicorn starts (see bottom of file)
 
     # Initialize database connections (both sync and async)
     try:
@@ -949,6 +828,127 @@ logger.info("Socket.IO integrated with FastAPI app at /ws/socket.io")
 
 if __name__ == "__main__":
     import uvicorn
+
+    # === AUTO-SETUP: Run BEFORE uvicorn so server starts fast ===
+    # This runs once on first launch when bundled PG is detected.
+    # Must complete before uvicorn.run() so Electron's health check doesn't timeout.
+    try:
+        import os as _os
+        import subprocess
+        import secrets
+        import socket
+        from pathlib import Path
+
+        resources_path = _os.environ.get("LOCANEXT_RESOURCES_PATH", "")
+        bundled_pg = Path(resources_path) / "bin" / "postgresql" / "bin" / "initdb.exe" if resources_path else None
+        user_cfg = config.get_user_config()
+
+        if bundled_pg and bundled_pg.exists() and user_cfg.get("server_mode") != "lan_server":
+            logger.info("=== AUTO-SETUP: Bundled PostgreSQL detected, initializing server mode ===")
+
+            pg_bin_dir = str(bundled_pg.parent)
+            pg_data_dir = Path(pg_bin_dir).parent / "data"
+            env = _os.environ.copy()
+            env["PATH"] = pg_bin_dir + _os.pathsep + env.get("PATH", "")
+
+            # Step 1: initdb if no data dir
+            if not pg_data_dir.exists():
+                logger.info("[AUTO-SETUP] Running initdb...")
+                subprocess.run(
+                    [str(bundled_pg), "-D", str(pg_data_dir), "-U", "postgres", "-E", "UTF8", "--locale=C"],
+                    capture_output=True, text=True, timeout=60, env=env,
+                )
+
+            # Step 2: Start PG
+            pg_ctl = str(bundled_pg.parent / "pg_ctl.exe")
+            log_file = pg_data_dir / "postgresql.log"
+            subprocess.run(
+                [pg_ctl, "start", "-D", str(pg_data_dir), "-l", str(log_file), "-w"],
+                capture_output=True, text=True, timeout=60, env=env,
+            )
+
+            # Step 3: Create service account + database
+            psql = str(bundled_pg.parent / "psql.exe")
+            db_password = secrets.token_urlsafe(24)
+
+            def _run_sql(sql, db="postgres"):
+                return subprocess.run(
+                    [psql, "-U", "postgres", "-d", db, "-t", "-c", sql],
+                    capture_output=True, text=True, timeout=10, env=env,
+                )
+
+            check = _run_sql("SELECT 1 FROM pg_roles WHERE rolname = 'locanext_service';")
+            if "1" not in check.stdout:
+                _run_sql(f"CREATE USER locanext_service WITH PASSWORD '{db_password}' NOSUPERUSER NOCREATEDB NOCREATEROLE;")
+            else:
+                _run_sql(f"ALTER USER locanext_service WITH PASSWORD '{db_password}';")
+
+            check = _run_sql("SELECT 1 FROM pg_database WHERE datname = 'localizationtools';")
+            if "1" not in check.stdout:
+                _run_sql("CREATE DATABASE localizationtools OWNER locanext_service;")
+            _run_sql("GRANT ALL PRIVILEGES ON DATABASE localizationtools TO locanext_service;")
+            _run_sql("GRANT ALL ON SCHEMA public TO locanext_service;", db="localizationtools")
+
+            # Step 4: SSL certificates
+            cert_path = pg_data_dir / "server.crt"
+            if not cert_path.exists():
+                subprocess.run([
+                    "openssl", "req", "-new", "-x509", "-days", "3650", "-nodes",
+                    "-out", str(cert_path), "-keyout", str(pg_data_dir / "server.key"),
+                    "-subj", "/CN=LocaNext-PG-Server/O=LocaNext/C=KR",
+                ], capture_output=True, text=True, timeout=10)
+                try:
+                    _os.chmod(str(pg_data_dir / "server.key"), 0o600)
+                except OSError:
+                    pass
+
+            # Step 5: Configure pg_hba.conf for LAN
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.settimeout(2)
+                s.connect(("8.8.8.8", 80))
+                lan_ip = s.getsockname()[0]
+                s.close()
+            except Exception:
+                lan_ip = "192.168.1.1"
+            subnet = f"{'.'.join(lan_ip.split('.')[:3])}.0/24"
+
+            pg_hba = pg_data_dir / "pg_hba.conf"
+            if pg_hba.exists() and "LocaNext LAN access" not in pg_hba.read_text():
+                with open(pg_hba, "a") as f:
+                    f.write(f"\n# LocaNext LAN access\nhostssl    localizationtools    locanext_service    {subnet}    scram-sha-256\nhostnossl  localizationtools    locanext_service    {subnet}    reject\n")
+                _run_sql("SELECT pg_reload_conf();")
+
+            # Step 6: Save config + update runtime
+            server_config = {
+                "postgres_host": "localhost",
+                "postgres_port": 5432,
+                "postgres_user": "locanext_service",
+                "postgres_password": db_password,
+                "postgres_db": "localizationtools",
+                "database_mode": "auto",
+                "server_mode": "lan_server",
+                "lan_ip": lan_ip,
+                "secret_key": secrets.token_urlsafe(32),
+                "origin_admin_ip": "127.0.0.1",
+            }
+            config.save_user_config(server_config)
+            try:
+                _os.chmod(str(config.USER_CONFIG_PATH), 0o600)
+            except OSError:
+                pass
+
+            config.POSTGRES_HOST = "localhost"
+            config.POSTGRES_PORT = 5432
+            config.POSTGRES_USER = "locanext_service"
+            config.POSTGRES_PASSWORD = db_password
+            config.POSTGRES_DB = "localizationtools"
+            config.DATABASE_MODE = "auto"
+            config.POSTGRES_DATABASE_URL = f"postgresql://locanext_service:{db_password}@localhost:5432/localizationtools"
+
+            logger.success(f"=== AUTO-SETUP COMPLETE: LAN server ready at {lan_ip}:5432 ===")
+    except Exception as e:
+        logger.warning(f"Auto-setup skipped or failed: {e}")
 
     logger.info(f"Starting server on {config.SERVER_HOST}:{config.SERVER_PORT}")
 
