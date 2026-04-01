@@ -1005,9 +1005,9 @@ def write_sheet_content(
         # For ENG workbook: eng_consumer disambiguates StringIDs
         # For non-ENG: consumer=None (display-only), StringID comes from lang_tbl
         if source_file and export_index:
-            trans_eng, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+            trans_eng, sid_eng, str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            trans_eng, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+            trans_eng, sid_eng, str_origin_eng = get_first_translation(eng_tbl, text)
         trans_other = sid_other = str_origin = ""
         if not is_eng and lang_tbl:
             if source_file and export_index:
@@ -1023,7 +1023,7 @@ def write_sheet_content(
         c_dtype.border = THIN_BORDER
 
         # Original — use str_origin from target language if available
-        kor_display = str_origin if str_origin else text
+        kor_display = str_origin or str_origin_eng or text
         c_orig = sheet.cell(r_idx, 2, br_to_newline(kor_display))
         c_orig.fill = fill
         c_orig.font = font

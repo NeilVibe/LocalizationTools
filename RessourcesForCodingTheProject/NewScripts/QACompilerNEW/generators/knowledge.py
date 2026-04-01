@@ -487,9 +487,9 @@ def write_workbook(
             eng_tr, sid_eng = ("", "")
             if needs_tr:
                 if source_file and export_index:
-                    eng_tr, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+                    eng_tr, sid_eng, str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
                 else:
-                    eng_tr, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+                    eng_tr, sid_eng, str_origin_eng = get_first_translation(eng_tbl, text)
 
             other_tr, sid_other, str_origin = ("", "", "")
             if needs_tr and not is_eng and lang_tbl is not None:
@@ -508,7 +508,7 @@ def write_workbook(
                 seen_in_cluster.add(dedup_key)
 
             # Write core columns — use str_origin from target language if available
-            kor_display = str_origin if str_origin else text
+            kor_display = str_origin or str_origin_eng or text
             c_orig = ws.cell(r_idx, 1, br_to_newline(kor_display))
             c_eng = ws.cell(r_idx, 2, br_to_newline(eng_tr))
             c_other = None

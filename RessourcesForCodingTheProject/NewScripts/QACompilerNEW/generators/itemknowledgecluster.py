@@ -76,8 +76,9 @@ class ClusterRow:
     kor_text: str
     source_file: str
     fuzzy_score: float = 0.0
-    pre_trans: str = ""  # Pre-resolved translation (set before writing)
-    pre_sid: str = ""    # Pre-resolved StringID (set before writing)
+    pre_trans: str = ""       # Pre-resolved translation (set before writing)
+    pre_sid: str = ""         # Pre-resolved StringID (set before writing)
+    pre_str_origin: str = ""  # Pre-resolved StrOrigin from languagedata (denormalized)
 
 
 @dataclass
@@ -567,7 +568,8 @@ def write_cluster_excel(
             dedup_key = (crow.kor_text, sid)
             global_seen.add(dedup_key)
 
-            vals = [crow.data_type, br_to_newline(crow.kor_text), br_to_newline(trans), "", "", "", sid]
+            kor_display = crow.pre_str_origin or crow.kor_text
+            vals = [crow.data_type, br_to_newline(kor_display), br_to_newline(trans), "", "", "", sid]
             for ci, val in enumerate(vals, 1):
                 cell = ws.cell(excel_row, ci, val)
                 cell.fill = current_fill
@@ -712,7 +714,7 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             consumer = StringIdConsumer(ordered_idx)
             for cluster in unsorted_clusters:
                 for crow in cluster.rows:
-                    crow.pre_trans, crow.pre_sid, _str_origin = resolve_translation(
+                    crow.pre_trans, crow.pre_sid, crow.pre_str_origin = resolve_translation(
                         crow.kor_text, tbl, crow.source_file, export_index,
                         consumer=consumer,
                     )

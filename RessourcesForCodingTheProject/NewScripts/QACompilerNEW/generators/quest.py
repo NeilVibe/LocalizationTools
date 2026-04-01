@@ -169,6 +169,30 @@ def _tr_sid(
     return trans, sid
 
 
+def _origin(
+    text: str,
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    source_file: str = "",
+    export_index: Optional[Dict] = None,
+) -> str:
+    """Get denormalized StrOrigin from languagedata for Original (KR) column.
+
+    Tries target language first, falls back to English.
+    Uses no consumer — safe to call alongside _tr_sid without affecting
+    order-based StringID consumption.
+    """
+    for tbl in (lang_tbl, eng_tbl):
+        if tbl:
+            if source_file and export_index:
+                _, _, so = resolve_translation(text, tbl, source_file, export_index)
+            else:
+                _, _, so = get_first_translation(tbl, text)
+            if so:
+                return so
+    return text
+
+
 def _build_mission_desc_rows(
     m,
     mission_depth: int,
@@ -196,7 +220,7 @@ def _build_mission_desc_rows(
         loc_desc, sid_desc = _tr_sid(desc_kr, lang_tbl, source_file, export_index, consumer)
         desc_rows.append((
             desc_depth,
-            desc_kr,
+            _origin(desc_kr, lang_tbl, eng_tbl, source_file, export_index),
             _tr(desc_kr, eng_tbl, source_file, export_index, None),
             loc_desc,
             "",  # No StringKey for Desc
@@ -212,7 +236,7 @@ def _build_mission_desc_rows(
         loc_clog, sid_clog = _tr_sid(clog_kr, lang_tbl, source_file, export_index, consumer)
         desc_rows.append((
             desc_depth,
-            clog_kr,
+            _origin(clog_kr, lang_tbl, eng_tbl, source_file, export_index),
             _tr(clog_kr, eng_tbl, source_file, export_index, None),
             loc_clog,
             "",  # No StringKey for CompleteLog
@@ -938,7 +962,7 @@ def build_rows_main(
             loc_grp, sid_grp = _tr_sid(kr_group, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kr_group,
+                _origin(kr_group, lang_tbl, eng_tbl, source_file, export_index),
                 _tr(kr_group, eng_tbl, source_file, export_index, None),
                 loc_grp,
                 "",
@@ -954,7 +978,7 @@ def build_rows_main(
         loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
         rows.append((
             1,
-            kor,
+            _origin(kor, lang_tbl, eng_tbl, source_file, export_index),
             _tr(kor, eng_tbl, source_file, export_index, None),
             loc_tr,
             skn,
@@ -972,7 +996,7 @@ def build_rows_main(
             loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 2,
-                mk,
+                _origin(mk, lang_tbl, eng_tbl, source_file, export_index),
                 _tr(mk, eng_tbl, source_file, export_index, None),
                 loc_mk,
                 id_tbl.get(msk.lower(), msk),
@@ -995,7 +1019,7 @@ def build_rows_main(
                 loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     3,
-                    sk,
+                    _origin(sk, lang_tbl, eng_tbl, source_file, export_index),
                     _tr(sk, eng_tbl, source_file, export_index, None),
                     loc_sk,
                     id_tbl.get(ssk.lower(), ssk),
@@ -1110,7 +1134,7 @@ def build_rows_faction(
             loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
+                _origin(kor, lang_tbl, eng_tbl, source_file, export_index), _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(quest_tag, ""),
                 sid,
                 bool(q.get("StageIcon")), True,
@@ -1125,7 +1149,7 @@ def build_rows_faction(
                 loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
+                    _origin(mk, lang_tbl, eng_tbl, source_file, export_index), _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd, "", "", ""
@@ -1144,7 +1168,7 @@ def build_rows_faction(
                     loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
+                        _origin(sk, lang_tbl, eng_tbl, source_file, export_index), _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
                         sid_sk,
                         False, True, cmd2, "", "", ""
@@ -1194,7 +1218,7 @@ def build_rows_daily(
             loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
+                _origin(kor, lang_tbl, eng_tbl, source_file, export_index), _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(q.tag.lower(), ""),
                 sid,
                 bool(q.get("StageIcon")), True,
@@ -1209,7 +1233,7 @@ def build_rows_daily(
                 loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
+                    _origin(mk, lang_tbl, eng_tbl, source_file, export_index), _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd, "", "", ""
@@ -1228,7 +1252,7 @@ def build_rows_daily(
                     loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
+                        _origin(sk, lang_tbl, eng_tbl, source_file, export_index), _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
                         sid_sk,
                         False, True, cmd2, "", "", ""
@@ -1291,7 +1315,7 @@ def build_rows_challenge(
             loc_grp, sid_grp = _tr_sid(group_name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 4,
-                group_name, _tr(group_name, eng_tbl, source_file, export_index, None), loc_grp,
+                _origin(group_name, lang_tbl, eng_tbl, source_file, export_index), _tr(group_name, eng_tbl, source_file, export_index, None), loc_grp,
                 "", sid_grp,
                 False, True,
                 "", "", "", ""
@@ -1305,7 +1329,7 @@ def build_rows_challenge(
             loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
+                _origin(kor, lang_tbl, eng_tbl, source_file, export_index), _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(q.tag.lower(), ""),
                 sid,
                 False, True, cmd, "", "", ""
@@ -1319,7 +1343,7 @@ def build_rows_challenge(
                 loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
+                    _origin(mk, lang_tbl, eng_tbl, source_file, export_index), _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd2, "", "", ""
@@ -1338,7 +1362,7 @@ def build_rows_challenge(
                     loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
+                        _origin(sk, lang_tbl, eng_tbl, source_file, export_index), _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
                         sid_sk,
                         False, True, cmd3, "", "", ""
@@ -1389,7 +1413,7 @@ def build_rows_minigame(
             loc_name, sid_name = _tr_sid(name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                name, _tr(name, eng_tbl, source_file, export_index, None), loc_name,
+                _origin(name, lang_tbl, eng_tbl, source_file, export_index), _tr(name, eng_tbl, source_file, export_index, None), loc_name,
                 id_tbl.get(tag.lower(), ""),
                 sid_name,
                 bool(el.get("StageIcon")), True,
@@ -1404,7 +1428,7 @@ def build_rows_minigame(
                 loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
+                    _origin(mk, lang_tbl, eng_tbl, source_file, export_index), _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
                     sid_mk,
                     False, True, cmd, "", "", ""
@@ -1423,7 +1447,7 @@ def build_rows_minigame(
                     loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
+                        _origin(sk, lang_tbl, eng_tbl, source_file, export_index), _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
                         sid_sk,
                         False, True, cmd2, "", "", ""
@@ -1434,7 +1458,7 @@ def build_rows_minigame(
             loc_name, sid_name = _tr_sid(name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                name, _tr(name, eng_tbl, source_file, export_index, None), loc_name,
+                _origin(name, lang_tbl, eng_tbl, source_file, export_index), _tr(name, eng_tbl, source_file, export_index, None), loc_name,
                 id_tbl.get(tag.lower(), ""),
                 sid_name,
                 bool(el.get("StageIcon")), True,
@@ -1468,7 +1492,7 @@ def build_rows_minigame(
                 loc_stg, sid_stg = _tr_sid(stage_name, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    stage_name, _tr(stage_name, eng_tbl, source_file, export_index, None), loc_stg,
+                    _origin(stage_name, lang_tbl, eng_tbl, source_file, export_index), _tr(stage_name, eng_tbl, source_file, export_index, None), loc_stg,
                     id_tbl.get(stage_sk.lower(), stage_sk),
                     sid_stg,
                     bool(stage.get("StageIcon")), True,

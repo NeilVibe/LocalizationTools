@@ -365,9 +365,9 @@ def write_sheet_content(
 
         # Translate
         if source_file and export_index:
-            trans_eng, sid_eng, _str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+            trans_eng, sid_eng, str_origin_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            trans_eng, sid_eng, _str_origin_eng = get_first_translation(eng_tbl, text)
+            trans_eng, sid_eng, str_origin_eng = get_first_translation(eng_tbl, text)
 
         trans_other = sid_other = str_origin = ""
         if not is_eng and lang_tbl:
@@ -393,7 +393,7 @@ def write_sheet_content(
         col += 1
 
         # Original (KR) — use str_origin from target language if available
-        kor_display = str_origin if str_origin else text
+        kor_display = str_origin or str_origin_eng or text
         c = sheet.cell(r_idx, col, br_to_newline(kor_display))
         c.fill = fill; c.font = font
         c.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")

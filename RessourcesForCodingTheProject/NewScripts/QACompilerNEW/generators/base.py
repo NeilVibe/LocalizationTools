@@ -840,7 +840,7 @@ def emit_rows_to_worksheet(
         col = 1
 
         # Original (KR) — use StrOrigin from language data when available
-        source_text = str_origin if str_origin else item.text
+        source_text = str_origin or item.text
         cell = ws.cell(row=current_row, column=col, value=br_to_newline(source_text))
         cell.fill = get_depth_fill(item.depth)
         cell.font = get_depth_font(item.depth)
