@@ -1,2 +1,1 @@
-Build Light
-# setup wizard + admin seed + review fixes
+Build
