@@ -64,21 +64,14 @@ function getFlagFilePath() {
  * in the installer — no first-run setup needed at all.
  */
 export function isFirstRunNeeded(appRoot) {
-  // Light/Demo Mode: deps + model are bundled, skip first-run entirely
-  if (isLightMode(appRoot)) {
-    logger.info('Light/Demo Mode: all deps pre-bundled, skipping first-run setup');
-    // Create the flag file so future checks are instant
-    const flagFile = getFlagFilePath();
-    if (!fs.existsSync(flagFile)) {
-      createFlagFile(appRoot);
-    }
-    return false;
-  }
-
+  // ALL builds are offline — first-run setup (model downloads, pip installs) is NEVER needed.
+  // Everything is pre-bundled in the installer. PG setup is handled by server/setup/ module.
+  logger.info('First-run setup disabled — all builds are fully offline');
   const flagFile = getFlagFilePath();
-  const exists = fs.existsSync(flagFile);
-  logger.info('First-run check', { flagFile, exists, needed: !exists });
-  return !exists;
+  if (!fs.existsSync(flagFile)) {
+    createFlagFile(appRoot);
+  }
+  return false;
 }
 
 /**
