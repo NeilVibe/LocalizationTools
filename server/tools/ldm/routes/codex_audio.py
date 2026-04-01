@@ -166,8 +166,11 @@ async def stream_audio(
                 detail=f"No audio found for event '{event_name}' in language '{language}'",
             )
 
+        logger.info(f"[Audio Codex] Streaming: event={event_name}, wem_path={wem_path}, exists={wem_path.exists()}")
+
         # If the path is already a WAV file, serve it directly
         if wem_path.suffix.lower() == ".wav" and wem_path.exists():
+            logger.info(f"[Audio Codex] Serving WAV directly: {wem_path} ({wem_path.stat().st_size} bytes)")
             return FileResponse(str(wem_path), media_type="audio/wav")
 
         # Convert Windows path to WSL path, then WEM -> WAV
@@ -178,8 +181,11 @@ async def stream_audio(
             converter.convert_wem_to_wav, Path(wsl_path)
         )
         if wav_path is None:
+            logger.error(f"[Audio Codex] Conversion returned None for {wem_path}")
             raise HTTPException(status_code=500, detail="Audio conversion failed")
 
+        wav_size = wav_path.stat().st_size if wav_path.exists() else 0
+        logger.info(f"[Audio Codex] Serving converted WAV: {wav_path} ({wav_size} bytes)")
         return FileResponse(str(wav_path), media_type="audio/wav")
     except HTTPException:
         raise

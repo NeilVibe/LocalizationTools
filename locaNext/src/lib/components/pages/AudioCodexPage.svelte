@@ -20,6 +20,33 @@
 
   const API_BASE = getApiBase();
 
+  // ── Tree panel resize ──
+  let treeWidth = $state(500);
+  let isTreeResizing = $state(false);
+  let treeResizeStartX = $state(0);
+  let treeResizeStartWidth = $state(0);
+
+  function startTreeResize(event) {
+    event.preventDefault();
+    isTreeResizing = true;
+    treeResizeStartX = event.clientX;
+    treeResizeStartWidth = treeWidth;
+    document.addEventListener('mousemove', handleTreeResize);
+    document.addEventListener('mouseup', stopTreeResize);
+  }
+
+  function handleTreeResize(event) {
+    if (!isTreeResizing) return;
+    const delta = event.clientX - treeResizeStartX;
+    treeWidth = Math.max(200, Math.min(800, treeResizeStartWidth + delta));
+  }
+
+  function stopTreeResize() {
+    isTreeResizing = false;
+    document.removeEventListener('mousemove', handleTreeResize);
+    document.removeEventListener('mouseup', stopTreeResize);
+  }
+
   // ── State ──
   // $state.raw for bulk data arrays — avoids 100K+ proxy overhead (same pattern as language data grid)
   let categories = $state([]);
@@ -209,6 +236,7 @@
   onDestroy(() => {
     destroyed = true;
     stopProgressLoop();
+    stopTreeResize();
     if (audioEl) {
       audioEl.pause();
       audioEl.src = "";
@@ -270,14 +298,20 @@
       <InlineLoading description="Loading audio categories..." />
     </div>
   {:else}
-    <div class="three-panel">
+    <div class="three-panel" class:tree-resizing={isTreeResizing}>
       <!-- LEFT: Export Tree -->
-      <AudioExportTree
-        {categories}
-        {activeCategory}
-        {totalEvents}
-        onselect={(path) => { activeCategory = path; }}
-      />
+      <div style="width: {treeWidth}px; flex-shrink: 0;">
+        <AudioExportTree
+          {categories}
+          {activeCategory}
+          {totalEvents}
+          onselect={(path) => { activeCategory = path; }}
+        />
+      </div>
+
+      <!-- Resize handle between tree and grid -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="tree-resize-handle" onmousedown={startTreeResize}></div>
 
       <!-- CENTER: Result Grid -->
       {#if loadingList}
@@ -290,8 +324,6 @@
           {selectedEvent}
           {playingEvent}
           onselect={handleRowSelect}
-          onplay={handlePlay}
-          onstop={handleStop}
         />
       {/if}
 
@@ -410,5 +442,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .tree-resize-handle {
+    width: 5px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    border-right: 1px solid var(--cds-border-subtle-01);
+    transition: background 0.15s;
+  }
+
+  .tree-resize-handle:hover {
+    background: var(--cds-interactive-01, #0f62fe);
+  }
+
+  .three-panel.tree-resizing {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .three-panel.tree-resizing .tree-resize-handle {
+    background: var(--cds-interactive-01, #0f62fe);
   }
 </style>

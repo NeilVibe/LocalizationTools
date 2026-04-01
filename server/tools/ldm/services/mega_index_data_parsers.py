@@ -441,7 +441,8 @@ class DataParsersMixin:
             return
 
         try:
-            with load_workbook(vrs_file, data_only=True, read_only=True) as wb:
+            wb = load_workbook(vrs_file, data_only=True, read_only=True)
+            try:
                 ws = wb.active
 
                 # Find EventName column by header (row 1)
@@ -470,6 +471,8 @@ class DataParsersMixin:
                                 position += 1
 
                 logger.info(f"[MEGAINDEX] Loaded {len(vrs_order)} EventNames from VRS")
+            finally:
+                wb.close()
 
             if not vrs_order:
                 return

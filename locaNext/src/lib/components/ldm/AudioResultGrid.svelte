@@ -13,7 +13,7 @@
    *
    * Phase 107: Audio Codex MDG Graft
    */
-  import { PlayFilledAlt, StopFilledAlt } from "carbon-icons-svelte";
+  /* Play/Stop icons removed — playback controlled from AudioPlayerPanel only */
   import { onDestroy } from "svelte";
 
   const MIN_ROW_HEIGHT = 37;
@@ -27,8 +27,6 @@
     selectedEvent = null,
     playingEvent = null,
     onselect = () => {},
-    onplay = () => {},
-    onstop = () => {},
   } = $props();
 
   let scrollContainer = $state(null);
@@ -131,7 +129,7 @@
     if (resizeColumn === 'event') {
       eventColWidth = Math.max(100, Math.min(400, resizeStartValue + deltaX));
     } else if (resizeColumn === 'kr') {
-      const flexWidth = containerWidth - 40 - eventColWidth - 24; // play + event + padding
+      const flexWidth = containerWidth - eventColWidth - 24; // event + padding
       const deltaPercent = (deltaX / flexWidth) * 100;
       krWidthPercent = Math.max(20, Math.min(80, resizeStartValue + deltaPercent));
     }
@@ -145,15 +143,6 @@
   }
 
   // ── Row interaction ──
-  function handlePlayClick(eventName, event) {
-    event.stopPropagation();
-    if (playingEvent === eventName) {
-      onstop();
-    } else {
-      onplay(eventName);
-    }
-  }
-
   function handleKeyDown(event) {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
@@ -210,7 +199,6 @@
 >
   <!-- Header with resize bars -->
   <div class="grid-header" role="row">
-    <span class="col col-play"></span>
     <span class="col col-event" role="columnheader" style="width: {eventColWidth}px">
       EventName
     </span>
@@ -250,23 +238,6 @@
             onclick={() => onselect(item.event_name)}
             onkeydown={(e) => { if (e.key === "Enter") onselect(item.event_name); }}
           >
-            <!-- Play/Stop button -->
-            <span class="col col-play">
-              <button
-                class="play-btn"
-                class:is-playing={playingEvent === item.event_name}
-                onclick={(e) => handlePlayClick(item.event_name, e)}
-                disabled={!item.has_wem}
-                aria-label={playingEvent === item.event_name ? "Stop" : "Play"}
-              >
-                {#if playingEvent === item.event_name}
-                  <StopFilledAlt size={16} />
-                {:else}
-                  <PlayFilledAlt size={16} />
-                {/if}
-              </button>
-            </span>
-
             <!-- Event name + wem dot -->
             <span class="col col-event" style="width: {eventColWidth}px">
               <span class="wem-dot" class:has-wem={item.has_wem}></span>
@@ -342,7 +313,6 @@
   .grid-row.playing { background: var(--cds-layer-selected-01, rgba(15, 98, 254, 0.08)); }
 
   .col { overflow: hidden; text-overflow: ellipsis; }
-  .col-play { width: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding-top: 2px; }
   .col-event { flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 0.75rem; white-space: nowrap; }
   .col-kr { min-width: 0; color: var(--cds-text-01); }
   .col-eng { min-width: 0; color: var(--cds-text-03); font-size: 0.75rem; }
@@ -369,25 +339,6 @@
 
   .resize-bar:hover { background: var(--cds-interactive-01, #0f62fe); }
   .resize-bar:active { background: var(--cds-interactive-01, #0f62fe); }
-
-  .play-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: var(--cds-interactive-01, #0f62fe);
-    color: var(--cds-text-on-color, #fff);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .play-btn:hover { background: var(--cds-hover-primary, #0353e9); }
-  .play-btn:disabled { background: var(--cds-disabled-02); color: var(--cds-disabled-03); cursor: not-allowed; }
-  .play-btn.is-playing { background: var(--cds-support-error, #da1e28); }
-  .play-btn.is-playing:hover { background: var(--cds-hover-danger, #b81921); }
 
   .wem-dot {
     width: 6px;

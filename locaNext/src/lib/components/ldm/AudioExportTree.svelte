@@ -138,9 +138,8 @@
 
 <style>
   .export-tree {
-    width: 250px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--cds-border-subtle-01);
+    width: 100%;
+    height: 100%;
     background: var(--cds-layer-01);
     overflow-y: auto;
     display: flex;
