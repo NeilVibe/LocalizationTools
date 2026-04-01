@@ -1,1 +1,1 @@
-Build 20260331-124621 - glossary extraction feature
+Build 20260401-151047 - remove MEMO1/MEMO2 columns

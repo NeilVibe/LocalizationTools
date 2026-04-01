@@ -1,1 +1,1 @@
-Build QACompiler v2.6.1 — pending overcount fix (SCREENSHOT removed from phantom detection)
+Build 20260401-151047 - WidgetId column + StrOrigin denormalization fix
