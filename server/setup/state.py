@@ -19,10 +19,10 @@ STEP_NAMES: list[str] = [
     "preflight_checks",
     "init_database",
     "configure_access",
+    "generate_certificates",
     "start_database",
     "create_account",
     "create_database",
-    "generate_certificates",
 ]
 
 

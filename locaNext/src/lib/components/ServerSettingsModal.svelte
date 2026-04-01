@@ -55,14 +55,14 @@
         mode = resp.database_mode || "auto";
       }
     } catch (e) {
-      logger.warn("Failed to load server config", e);
+      logger.warning("Failed to load server config", e);
     }
 
     try {
       const status = await api.request("/api/server-config/status");
       currentStatus = status;
     } catch (e) {
-      logger.warn("Failed to load server status", e);
+      logger.warning("Failed to load server status", e);
     }
   }
 

@@ -95,7 +95,7 @@
       }
     } catch (err) {
       // Non-blocking: backend may not be running (offline mode)
-      logger.warn("MapData configure request failed (non-blocking)", { error: err.message });
+      logger.warning("MapData configure request failed (non-blocking)", { error: err.message });
     }
 
     driveInput = drive;

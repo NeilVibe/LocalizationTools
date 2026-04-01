@@ -23,10 +23,10 @@ const SETUP_STEP_LABELS = [
   'Checking system requirements',
   'Initializing database',
   'Configuring network access',
+  'Generating certificates',
   'Starting PostgreSQL',
   'Creating service account',
   'Creating database',
-  'Generating certificates',
 ];
 
 /**
@@ -244,12 +244,12 @@ export function showSetupMode(totalSteps = 7) {
 export function updateSetupStep(index, step, status, durationMs, error) {
   if (!splashWindow || splashWindow.isDestroyed()) return;
 
-  // When starting the database step, allow firewall popup on top
-  if (index === 3 && status === 'running') {
+  // When starting the database step (index 4), allow firewall popup on top
+  if (index === 4 && status === 'running') {
     splashWindow.setAlwaysOnTop(false);
   }
   // Restore alwaysOnTop when database step completes
-  if (index === 3 && (status === 'done' || status === 'failed' || status === 'skipped')) {
+  if (index === 4 && (status === 'done' || status === 'failed' || status === 'skipped')) {
     splashWindow.setAlwaysOnTop(true);
   }
 

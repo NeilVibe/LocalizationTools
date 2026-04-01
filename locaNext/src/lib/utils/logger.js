@@ -172,6 +172,11 @@ export const logger = {
     log(LOG_LEVELS.WARNING, message, data);
   },
 
+  /** Alias for warning() — prevents "warn is not a function" crashes */
+  warn(message, data = null) {
+    log(LOG_LEVELS.WARNING, message, data);
+  },
+
   /**
    * Log error message
    * @param {string} message - The message to log

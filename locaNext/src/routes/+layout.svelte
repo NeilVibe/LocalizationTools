@@ -277,7 +277,7 @@
   // Phase 59: Open merge modal (single-project mode)
   function openMerge() {
     if (!$selectedProject) {
-      logger.warn("No project selected — cannot open merge modal");
+      logger.warning("No project selected — cannot open merge modal");
       return;
     }
     logger.userAction("Merge modal opened", { projectId: $selectedProject.id });

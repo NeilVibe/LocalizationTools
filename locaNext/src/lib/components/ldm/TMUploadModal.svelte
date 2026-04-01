@@ -141,10 +141,10 @@
               if (assignResponse.ok) {
                 logger.success("TM assigned to scope", { tmId: uploadResult.tm_id, scope: targetScope });
               } else {
-                logger.warn("TM uploaded but assignment failed", { tmId: uploadResult.tm_id, scope: targetScope });
+                logger.warning("TM uploaded but assignment failed", { tmId: uploadResult.tm_id, scope: targetScope });
               }
             } catch (assignErr) {
-              logger.warn("TM uploaded but assignment failed", { error: assignErr.message });
+              logger.warning("TM uploaded but assignment failed", { error: assignErr.message });
             }
           }
 

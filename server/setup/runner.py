@@ -48,10 +48,11 @@ FATAL_STEPS: set[str] = {
     "preflight_checks",
     "init_database",
     "configure_access",
+    "generate_certificates",
     "start_database",
 }
 RECOVERABLE_STEPS: set[str] = {"create_account", "create_database"}
-OPTIONAL_STEPS: set[str] = {"generate_certificates"}
+OPTIONAL_STEPS: set[str] = set()  # None — all steps are required or recoverable
 
 _MAX_RETRIES = 1  # auto-retry count for recoverable steps
 

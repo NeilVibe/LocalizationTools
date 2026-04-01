@@ -137,20 +137,21 @@ def test_run_setup_retries_recoverable(_mock_ip, config, state_path):
 
 
 @patch("server.setup.runner.detect_lan_ip", return_value="192.168.1.42")
-def test_run_setup_skips_optional_on_failure(_mock_ip, config, state_path):
-    """Optional step (generate_certificates) fails → overall success still True."""
+def test_run_setup_aborts_on_cert_failure(_mock_ip, config, state_path):
+    """generate_certificates is FATAL (PG needs certs for ssl=on) → abort."""
     patcher, mocks = _patch_all_steps(
         overrides={"generate_certificates": _fail("generate_certificates", "CERT_ERR")}
     )
     with patcher:
         result = run_setup(config, state_path)
 
-    assert result.success is True
-    assert result.failed_step is None
-    # The failed step should still appear in results
-    cert_results = [r for r in result.steps if r.step == "generate_certificates"]
-    assert len(cert_results) == 1
-    assert cert_results[0].status == "failed"
+    assert result.success is False
+    assert result.failed_step == "generate_certificates"
+    assert result.error_code == "CERT_ERR"
+    # Steps after certs (start_database, create_account, create_database) should NOT run
+    mocks["start_database"].assert_not_called()
+    mocks["create_account"].assert_not_called()
+    mocks["create_database"].assert_not_called()
 
 
 @patch("server.setup.runner.detect_lan_ip", return_value="192.168.1.42")
