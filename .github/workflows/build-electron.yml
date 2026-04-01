@@ -1641,7 +1641,7 @@ jobs:
             2. Run the installer (~1 min)
             3. Launch LocaNext
             4. **First-Time Setup wizard appears automatically**
-            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '   - No setup needed! Everything is pre-bundled.' || '   - Installing Python dependencies (~15-20 min)\n   - Downloading AI model (~5-10 min)' }}
+            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '   - No setup needed! Everything is pre-bundled.' || '   - Server setup wizard runs automatically (fully offline)' }}
             5. Setup complete - App ready!
 
             **Subsequent launches:** Instant (no setup needed)
@@ -1687,8 +1687,9 @@ jobs:
           else
             git add version.py locaNext/package.json
             git commit -m "ci: auto-update version to $VERSION [skip ci]"
-            git push origin main
-            echo "[OK] Version $VERSION committed back to repo"
+            # Pull first in case repo has new commits since build started
+            git pull --rebase origin main || true
+            git push origin main || echo "[WARN] Auto-commit failed (repo has conflicting changes) — non-fatal"
           fi
 
       # ============================================================
