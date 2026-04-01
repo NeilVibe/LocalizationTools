@@ -1,1 +1,1 @@
-Build QACompiler — add STRKEY column to Help generator
+Build QACompiler — new InputMap generator (inputmap.xml → Excel reference sheets)
