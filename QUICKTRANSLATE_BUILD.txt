@@ -1,1 +1,1 @@
-Build 20260401-161628 - root cause fix: target_strorigin cache on match success + prefer non-empty
+Build QuickTranslate — Excel converters (Wiki/Markdown/HTML)
