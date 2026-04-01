@@ -154,11 +154,18 @@ def step_init_database(config: SetupConfig) -> StepResult:
         )
 
     pg_version = paths.data_dir / "PG_VERSION"
-    if pg_version.exists() and pg_version.read_text().strip():
+    pg_conf = paths.data_dir / "postgresql.conf"
+    # Validate BOTH PG_VERSION and postgresql.conf exist — a partial/corrupted
+    # data dir from a previous failed install must be wiped and re-created.
+    if pg_version.exists() and pg_conf.exists() and pg_version.read_text().strip():
         return StepResult(
             step=step, status="skipped", duration_ms=_ms_since(t0),
             message="Database already initialized (PG_VERSION exists)",
         )
+    # Corrupted/partial data dir — wipe it so initdb can start fresh
+    if paths.data_dir.exists() and not pg_conf.exists():
+        logger.warning("Partial data_dir detected (PG_VERSION but no postgresql.conf) — wiping for fresh init")
+        shutil.rmtree(paths.data_dir, ignore_errors=True)
 
     # Ensure parent exists
     paths.data_dir.mkdir(parents=True, exist_ok=True)

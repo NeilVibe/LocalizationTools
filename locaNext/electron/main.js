@@ -284,7 +284,7 @@ async function startBackendServer() {
       ...process.env,
       PYTHONUNBUFFERED: '1',
       PYTHONPATH: [path.join(paths.serverPath, '..'), paths.projectRoot].join(path.delimiter),
-      DATABASE_MODE: 'sqlite',  // Offline-first: use SQLite, don't wait for PostgreSQL
+      DATABASE_MODE: 'auto',  // Let Python decide: PG if setup complete, SQLite otherwise
       LOCANEXT_MODELS_PATH: paths.modelsPath,
       LOCANEXT_RESOURCES_PATH: isDev ? '' : path.join(app.getAppPath(), '..'),
       // Suppress Python warnings (FutureWarning, UserWarning, etc.)

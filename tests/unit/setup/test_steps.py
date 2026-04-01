@@ -82,8 +82,9 @@ class TestPreflightChecks:
 class TestInitDatabase:
     def test_skips_if_already_initialized(self, tmp_path: Path) -> None:
         config = _make_config(tmp_path)
-        pg_version = Path(config.data_dir) / "PG_VERSION"
-        pg_version.write_text("16\n")
+        data_dir = Path(config.data_dir)
+        (data_dir / "PG_VERSION").write_text("16\n")
+        (data_dir / "postgresql.conf").write_text("# PG config\n")
 
         result = step_init_database(config)
         assert result.status == "skipped"
