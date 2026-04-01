@@ -16,7 +16,7 @@
     Button,
     InlineNotification
   } from "carbon-components-svelte";
-  import { Connection, Checkmark, WarningAlt } from "carbon-icons-svelte";
+  import { IotConnect, Checkmark, WarningAlt } from "carbon-icons-svelte";
   import { logger } from "$lib/utils/logger.js";
   import { api } from "$lib/api/client.js";
   import { serverUrl } from "$lib/stores/app.js";
@@ -215,7 +215,7 @@
           <Button
             kind="secondary"
             size="small"
-            icon={Connection}
+            icon={IotConnect}
             onclick={testConnection}
             disabled={testing}
           >
