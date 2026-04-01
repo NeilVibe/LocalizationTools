@@ -506,7 +506,8 @@ def merge_corrections_to_xml(
             if tsid:
                 target_stringids.add(tsid.lower())
                 tso = get_attr(loc, STRORIGIN_ATTRS)
-                if tsid.lower() not in target_strorigin_map:
+                # Prefer elements with non-empty StrOrigin over empty ones
+                if tsid.lower() not in target_strorigin_map or tso:
                     target_strorigin_map[tsid.lower()] = tso
                     target_raw_attribs_map[tsid.lower()] = dict(loc.attrib)
 
@@ -1343,6 +1344,10 @@ def _fast_folder_merge(
                     counters_matched += 1
                     file_matched += 1
                     target_sids_seen.add(sid_lower)  # track for STRORIGIN_MISMATCH
+                    # Cache target attribs for STRORIGIN_MISMATCH diagnostics
+                    # (needed when another correction for same SID doesn't match)
+                    if sid_lower not in target_attribs_cache:
+                        target_attribs_cache[sid_lower] = dict(loc.attrib)
 
                     old_str = get_attr(loc, STR_ATTRS)
 
@@ -1380,7 +1385,9 @@ def _fast_folder_merge(
                     # Not matched — capture for STRORIGIN_MISMATCH diagnostics
                     if sid_lower in correction_sid_set:
                         target_sids_seen.add(sid_lower)
-                        if sid_lower not in target_attribs_cache:
+                        # Prefer elements with non-empty StrOrigin over empty ones
+                        # (same SID can appear across multiple target files)
+                        if sid_lower not in target_attribs_cache or orig_raw:
                             target_attribs_cache[sid_lower] = dict(loc.attrib)
 
             elif match_mode == "strorigin_only":

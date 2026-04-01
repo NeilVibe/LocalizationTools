@@ -1643,6 +1643,33 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ============================================================
+      # AUTO-COMMIT: Push build version back to repo (no more stale versions)
+      # ============================================================
+      - name: Commit Build Version Back to Repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.check-build-trigger.outputs.version }}"
+          echo "=== Committing version $VERSION back to repo ==="
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Update version files
+          sed -i "s/VERSION = \"[^\"]*\"/VERSION = \"$VERSION\"/" version.py
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
+
+          # Only commit if there are changes
+          if git diff --quiet version.py locaNext/package.json; then
+            echo "[OK] Version already up to date in repo"
+          else
+            git add version.py locaNext/package.json
+            git commit -m "ci: auto-update version to $VERSION [skip ci]"
+            git push origin main
+            echo "[OK] Version $VERSION committed back to repo"
+          fi
+
+      # ============================================================
       # CLEANUP: Keep only last 10 releases to save space
       # ============================================================
       - name: Cleanup Old Releases
