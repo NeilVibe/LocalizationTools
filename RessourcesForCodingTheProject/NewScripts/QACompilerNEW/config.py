@@ -124,6 +124,7 @@ _PATH_TEMPLATES = {
     "SEQUENCER_FOLDER": r"F:\perforce\cd\mainline\resource\sequencer\stageseq",
     "FACTIONINFO_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
     "VOICE_RECORDING_SHEET_FOLDER": r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
+    "INPUTMAP_FILE": r"F:\perforce\cd\mainline\resource\UI\inputmap.xml",
 }
 
 
@@ -134,6 +135,7 @@ def _rebuild_paths():
     global QUESTGROUPINFO_FILE, SCENARIO_FOLDER, FACTION_QUEST_FOLDER
     global CHALLENGE_FOLDER, MINIGAME_FILE, STRINGKEYTABLE_FILE
     global SEQUENCER_FOLDER, FACTIONINFO_FOLDER, VOICE_RECORDING_SHEET_FOLDER
+    global INPUTMAP_FILE
 
     RESOURCE_FOLDER = _build_path(_PATH_TEMPLATES["RESOURCE_FOLDER"])
     LANGUAGE_FOLDER = _build_path(_PATH_TEMPLATES["LANGUAGE_FOLDER"])
@@ -149,6 +151,7 @@ def _rebuild_paths():
     SEQUENCER_FOLDER = _build_path(_PATH_TEMPLATES["SEQUENCER_FOLDER"])
     FACTIONINFO_FOLDER = _build_path(_PATH_TEMPLATES["FACTIONINFO_FOLDER"])
     VOICE_RECORDING_SHEET_FOLDER = _build_path(_PATH_TEMPLATES["VOICE_RECORDING_SHEET_FOLDER"])
+    INPUTMAP_FILE = _build_path(_PATH_TEMPLATES["INPUTMAP_FILE"])
 
 
 # QA Folder paths
@@ -196,6 +199,7 @@ STRINGKEYTABLE_FILE = None
 SEQUENCER_FOLDER = None
 FACTIONINFO_FOLDER = None
 VOICE_RECORDING_SHEET_FOLDER = None
+INPUTMAP_FILE = None
 
 # Build all paths with current drive/branch
 _rebuild_paths()
@@ -226,6 +230,7 @@ CATEGORIES = [
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
     "Face",       # Facial animation QA (custom processing)
+    "InputMap",   # Input binding reference (inputmap.xml)
 ]
 
 # Category clustering: Multiple categories can merge into one master file
@@ -264,6 +269,7 @@ WORKER_GROUPS = {
     "skill":        ["Skill"],                  # Row-per-text skill (UIPosition ordered)
     "system":     ["System", "Help"],          # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
+    "inputmap":   ["InputMap"],               # Input binding reference (standalone)
 }
 
 # =============================================================================
