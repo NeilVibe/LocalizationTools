@@ -767,8 +767,8 @@ huge_pages = try
         max_connections, shared_buffers_gb, work_mem_mb, max_parallel_workers, hw.is_ssd,
     )
 
+    suffix = " (DEFAULTS - hardware detection failed)" if defaults_used else ""
     return StepResult(
         step=step, status="done", duration_ms=_ms_since(t0),
-        suffix = " (DEFAULTS — hardware detection failed)" if defaults_used else ""
         message=f"Tuned for {hw.ram_gb}GB RAM, {hw.physical_cores} cores, {max_connections} connections{suffix}",
     )
