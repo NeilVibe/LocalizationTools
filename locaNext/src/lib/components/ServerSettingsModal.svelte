@@ -57,32 +57,42 @@
   });
 
   async function loadConfig() {
-    // Check if we're in light mode
+    // Check if we're in light mode — authoritative source is Electron env var
     const savedRemoteUrl = localStorage.getItem('locanext_remote_server');
     if (savedRemoteUrl) {
       remoteAddress = savedRemoteUrl.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
     }
 
-    // Try to detect mode: if local backend has PG, it's admin mode
-    try {
-      const healthRes = await fetch("http://localhost:8888/health", { signal: AbortSignal.timeout(2000) });
-      if (healthRes.ok) {
-        const health = await healthRes.json();
-        // If local backend exists and has postgresql, it's admin mode
-        isLightMode = health.database_type === "sqlite" && !health.local_mode;
-        // For now: if there's a saved remote server, treat as light mode
-        if (savedRemoteUrl) isLightMode = true;
-      } else {
-        isLightMode = true; // No local backend = light mode
-      }
-    } catch (e) {
-      // No local backend responding = light mode
-      logger.info("Local backend not reachable — assuming light mode", { error: e?.message });
-      isLightMode = true;
-      if (savedRemoteUrl) {
-        remoteAddress = savedRemoteUrl.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
+    // Detection priority:
+    // 1. Electron IPC (most reliable — reads light-mode.flag)
+    // 2. Saved remote server URL (user already configured as light client)
+    // 3. Health endpoint heuristic (fallback)
+    if (window.electronRemote) {
+      // Authoritative: Electron knows if light-mode.flag exists
+      if (window.electronRemote.isLightMode) {
+        isLightMode = true;
       }
     }
+
+    // Heuristic fallback: check if local backend has PG (admin) or not
+    if (!isLightMode && !savedRemoteUrl) {
+      try {
+        const healthRes = await fetch("http://localhost:8888/health", { signal: AbortSignal.timeout(2000) });
+        if (healthRes.ok) {
+          const health = await healthRes.json();
+          // Admin build has PG — show admin UI. Light build has SQLite — show light UI.
+          isLightMode = health.database_type === "sqlite" && health.server_mode === "standalone";
+        } else {
+          isLightMode = true;
+        }
+      } catch (e) {
+        logger.info("Local backend not reachable — assuming light mode", { error: e?.message });
+        isLightMode = true;
+      }
+    }
+
+    // If saved remote URL exists, always light mode
+    if (savedRemoteUrl) isLightMode = true;
 
     // Load admin config if in admin mode
     if (!isLightMode) {

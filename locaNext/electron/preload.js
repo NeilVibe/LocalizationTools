@@ -319,6 +319,12 @@ contextBridge.exposeInMainWorld('electronTelemetry', {
 // Option B: Remote server config (Light Build)
 contextBridge.exposeInMainWorld('electronRemote', {
   /**
+   * Check if this is a Light Build (light-mode.flag exists)
+   * @returns {boolean}
+   */
+  isLightMode: process.env.LOCANEXT_LIGHT_MODE === '1',
+
+  /**
    * Get saved remote server URL
    * @returns {Promise<{url, updated} | null>}
    */
