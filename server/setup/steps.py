@@ -228,8 +228,10 @@ _HBA_TEMPLATE = """\
 # LocaNext — managed by setup wizard. Do not edit above this line.
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
 local   all             {superuser}                             trust
-host    all             {superuser}     127.0.0.1/32            scram-sha-256
-host    all             {superuser}     ::1/128                 scram-sha-256
+# Superuser: trust on localhost (embedded DB, no password set by initdb)
+# Windows has no Unix sockets — local trust is dead code, need host trust
+host    all             {superuser}     127.0.0.1/32            trust
+host    all             {superuser}     ::1/128                 trust
 host    all             {service_user}  127.0.0.1/32            scram-sha-256
 host    all             {service_user}  ::1/128                 scram-sha-256
 hostssl {service_db}    {service_user}  {subnet}                scram-sha-256
@@ -807,7 +809,7 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
     shared_buffers_gb = max(1, hw.ram_gb // 4)
     effective_cache_size_gb = max(2, hw.ram_gb * 3 // 4)
     work_mem_mb = max(4, min(64, hw.ram_gb * 1024 // (max_connections * 4)))
-    maintenance_work_mem_gb = max(1, min(2, hw.ram_gb // 16))  # PG 15 max ~2GB (2097151 kB)
+    maintenance_work_mem_mb = max(256, min(2047, (hw.ram_gb * 1024) // 16))  # PG 15 max 2097151 kB (~2047MB)
     max_parallel_workers = min(8, hw.physical_cores)
     max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
     random_page_cost = "1.1" if hw.is_ssd else "4.0"
@@ -821,7 +823,7 @@ max_connections = {max_connections}
 shared_buffers = {shared_buffers_gb}GB
 effective_cache_size = {effective_cache_size_gb}GB
 work_mem = {work_mem_mb}MB
-maintenance_work_mem = {maintenance_work_mem_gb}GB
+maintenance_work_mem = {maintenance_work_mem_mb}MB
 wal_buffers = 64MB
 max_wal_size = 4GB
 min_wal_size = 1GB
