@@ -44,7 +44,7 @@ STEP_FUNCTIONS: dict[str, Callable[[SetupConfig], StepResult]] = {
     "create_database": step_create_database,
 }
 
-# Step classification — determines behavior on failure
+# Step classification - determines behavior on failure
 FATAL_STEPS: set[str] = {
     "preflight_checks",
     "init_database",
@@ -120,9 +120,9 @@ def run_setup(
         if result.status in ("done", "skipped"):
             mark_step_done(state, step_name)
         else:
-            # Failed — handle based on classification
+            # Failed - handle based on classification
             if step_name in OPTIONAL_STEPS:
-                # Optional steps don't block — mark done and continue
+                # Optional steps don't block - mark done and continue
                 logger.warning(
                     "Optional step '{}' failed, continuing: {}",
                     step_name,
@@ -140,7 +140,7 @@ def run_setup(
 
         # ----- fatal failure: abort -----
         if result.status == "failed" and step_name in FATAL_STEPS:
-            logger.error("Fatal step '{}' failed — aborting setup", step_name)
+            logger.error("Fatal step '{}' failed - aborting setup", step_name)
             return SetupResult(
                 success=False,
                 steps=results,
@@ -152,7 +152,7 @@ def run_setup(
         # ----- recoverable failure (after retry exhausted) -----
         if result.status == "failed" and step_name in RECOVERABLE_STEPS:
             logger.error(
-                "Recoverable step '{}' failed after retry — aborting setup",
+                "Recoverable step '{}' failed after retry - aborting setup",
                 step_name,
             )
             return SetupResult(
@@ -174,7 +174,7 @@ def run_setup(
         logger.warning("LAN IP detection failed: {}", exc)
 
     logger.info("=" * 60)
-    logger.info("SETUP WIZARD COMPLETE — LAN IP: {}", lan_ip)
+    logger.info("SETUP WIZARD COMPLETE - LAN IP: {}", lan_ip)
     logger.info("=" * 60)
     return SetupResult(success=True, steps=results, lan_ip=lan_ip)
 

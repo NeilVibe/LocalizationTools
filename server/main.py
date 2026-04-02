@@ -846,6 +846,7 @@ if __name__ == "__main__":
     # === FIRST-LAUNCH SETUP (replaces old auto-setup blob) ===
     # Step-by-step PG setup with JSONL progress for Electron splash screen.
     # Reads state file for crash recovery. Each step is idempotent.
+    _setup_failed = False  # Track setup failure to guard uvicorn startup
     try:
         import os as _os
         from pathlib import Path
@@ -901,6 +902,11 @@ if __name__ == "__main__":
                     error_detail=setup_result.error_detail,
                 )
 
+                if not setup_result.success:
+                    _setup_failed = True
+                    logger.error("Setup wizard FAILED at step '{}': {}",
+                                 setup_result.failed_step, setup_result.error_detail)
+
                 if setup_result.success:
                     lan_ip = detect_lan_ip()
                     # Extract the PG service password from the create_account step result
@@ -911,7 +917,7 @@ if __name__ == "__main__":
                             db_password = step_result.message
                             break
                     if not db_password:
-                        logger.error("create_account step did not return a password — generating new one")
+                        logger.error("create_account step did not return a password - generating new one")
                         db_password = secrets.token_urlsafe(24)
                     server_config_data = {
                         "postgres_host": "localhost",
@@ -944,7 +950,7 @@ if __name__ == "__main__":
                 from server.setup.pg_lifecycle import is_pg_running
                 if is_pg_running(pg.pg_isready, getattr(config, 'POSTGRES_PORT', 5432)):
                     emit_pg_ready()
-                    logger.info("PostgreSQL already running — skipping start")
+                    logger.info("PostgreSQL already running - skipping start")
                 else:
                     emit_pg_starting()
                     ok, msg = start_pg(pg.pg_ctl, pg.data_dir, pg.log_file)
@@ -955,6 +961,20 @@ if __name__ == "__main__":
                         logger.warning(f"PostgreSQL start failed: {msg}")
     except Exception as e:
         logger.warning(f"Setup phase skipped or failed: {e}")
+
+    # Don't start the server if setup failed - Electron will show the error
+    if _setup_failed:
+        logger.error("Server NOT starting - setup wizard failed. Waiting for Electron to handle error.")
+        try:
+            from server.setup.jsonl import emit_setup_substep
+            emit_setup_substep("shutdown", "Setup failed - server will not start")
+        except Exception:
+            pass
+        # Keep process alive briefly so Electron can read the JSONL, then exit
+        import time as _time
+        _time.sleep(5)
+        import sys as _sys
+        _sys.exit(1)
 
     logger.info(f"Starting server on {config.SERVER_HOST}:{config.SERVER_PORT}")
 

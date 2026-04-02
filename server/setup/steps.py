@@ -163,7 +163,7 @@ def step_init_database(config: SetupConfig) -> StepResult:
         )
     # Corrupted/partial data dir — wipe it so initdb can start fresh
     if paths.data_dir.exists() and not pg_conf.exists():
-        logger.warning("Partial data_dir detected (PG_VERSION but no postgresql.conf) — wiping for fresh init")
+        logger.warning("Partial data_dir detected (PG_VERSION but no postgresql.conf) - wiping for fresh init")
         shutil.rmtree(paths.data_dir, ignore_errors=True)
 
     # Ensure parent exists
@@ -242,9 +242,6 @@ _CONF_SETTINGS = """\
 # LocaNext — managed by setup wizard
 listen_addresses = '*'
 port = {port}
-ssl = on
-ssl_cert_file = 'server.crt'
-ssl_key_file = 'server.key'
 """
 
 
@@ -337,8 +334,44 @@ def step_configure_access(config: SetupConfig) -> StepResult:
 # ---------------------------------------------------------------------------
 
 
+def _read_pg_log_tail(log_file: Path, max_lines: int = 30) -> str:
+    """Read last N lines of pg.log for diagnostics. Returns empty string on failure."""
+    try:
+        if not log_file.exists():
+            return "(pg.log not found)"
+        text = log_file.read_text(encoding="utf-8", errors="replace")
+        lines = text.strip().splitlines()
+        tail = lines[-max_lines:] if len(lines) > max_lines else lines
+        return "\n".join(tail)
+    except Exception as exc:
+        return f"(failed to read pg.log: {exc})"
+
+
+def _kill_process_tree(pid: int) -> None:
+    """Kill a process and all its children. Handles Windows pipe inheritance hang."""
+    if os.name == "nt":
+        # taskkill /t /f kills the entire process tree (pg_ctl + postgres)
+        try:
+            subprocess.run(
+                ["taskkill", "/pid", str(pid), "/f", "/t"],
+                capture_output=True, timeout=10,
+            )
+        except Exception:
+            pass
+    else:
+        try:
+            os.kill(pid, 9)
+        except ProcessLookupError:
+            pass
+
+
 def step_start_database(config: SetupConfig) -> StepResult:
-    """Start PG with pg_ctl. Skip if already running."""
+    """Start PG with pg_ctl. Non-blocking with pg.log tailing and heartbeat.
+
+    Uses Popen instead of subprocess.run to avoid Windows pipe inheritance hang.
+    Tails pg.log during startup and includes it in diagnostics on failure.
+    Emits setup_substep JSONL every 5s so Electron knows we're alive.
+    """
     t0 = time.monotonic()
     step = "start_database"
     paths = _resolve_paths(config)
@@ -355,29 +388,32 @@ def step_start_database(config: SetupConfig) -> StepResult:
             message="PostgreSQL already running",
         )
 
+    # Clear old pg.log so we only see THIS startup's output
+    try:
+        if paths.log_file.exists():
+            paths.log_file.write_text("", encoding="utf-8")
+    except Exception:
+        pass
+
     env = _make_env(paths.bin_dir)
     cmd = [
         str(paths.pg_ctl), "start",
         "-D", str(paths.data_dir),
         "-l", str(paths.log_file),
-        "-w",
+        "-w",  # wait until server is ready
     ]
+
+    # Popen with DEVNULL to prevent pipe handle inheritance on Windows
+    # This is the KEY fix: subprocess.run captures stdout/stderr via pipes,
+    # and on Windows, postgres.exe inherits those pipe handles. When Python
+    # kills pg_ctl on timeout, communicate() hangs waiting for postgres to
+    # release the handles. Using DEVNULL avoids this entirely.
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30, env=env,
-        )
-    except subprocess.TimeoutExpired:
-        # Cleanup: try to stop
-        try:
-            subprocess.run(
-                [str(paths.pg_ctl), "stop", "-D", str(paths.data_dir), "-m", "fast"],
-                capture_output=True, timeout=10, env=env,
-            )
-        except Exception:
-            pass
-        return StepResult(
-            step=step, status="failed", duration_ms=_ms_since(t0),
-            message="pg_ctl start timed out", error_code="START_TIMEOUT",
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
         )
     except OSError as exc:
         return StepResult(
@@ -385,27 +421,97 @@ def step_start_database(config: SetupConfig) -> StepResult:
             message=f"pg_ctl start failed: {exc}", error_code="START_FAILED",
         )
 
-    if result.returncode != 0:
-        return StepResult(
-            step=step, status="failed", duration_ms=_ms_since(t0),
-            message="pg_ctl start failed", error_code="START_FAILED",
-            stderr=result.stderr.strip(),
-        )
+    # --- Poll loop: wait for pg_ctl to finish, tail pg.log, emit heartbeats ---
+    timeout_s = 60  # pg_ctl -w default timeout is 60s
+    poll_interval = 2  # seconds between checks
+    last_log_pos = 0
+    last_heartbeat = time.monotonic()
 
-    # Verify
-    if not is_pg_running(paths.pg_isready, config.pg_port):
-        # Cleanup
-        try:
-            subprocess.run(
-                [str(paths.pg_ctl), "stop", "-D", str(paths.data_dir), "-m", "fast"],
-                capture_output=True, timeout=10, env=env,
+    try:
+        from server.setup.jsonl import emit_setup_substep
+    except ImportError:
+        emit_setup_substep = None
+
+    while True:
+        elapsed = time.monotonic() - t0
+
+        # Check if pg_ctl finished
+        retcode = proc.poll()
+        if retcode is not None:
+            break
+
+        # Timeout: kill entire process tree
+        if elapsed > timeout_s:
+            logger.warning("pg_ctl start timed out after {:.0f}s - killing process tree", elapsed)
+            _kill_process_tree(proc.pid)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+            pg_log_tail = _read_pg_log_tail(paths.log_file)
+            logger.error("PG startup failed. pg.log tail:\n{}", pg_log_tail)
+            return StepResult(
+                step=step, status="failed", duration_ms=_ms_since(t0),
+                message=f"pg_ctl start timed out after {timeout_s}s",
+                error_code="START_TIMEOUT",
+                error_detail=pg_log_tail,
             )
+
+        # Tail pg.log and forward to loguru (goes to stderr -> Electron main log)
+        try:
+            if paths.log_file.exists():
+                with open(paths.log_file, "r", encoding="utf-8", errors="replace") as f:
+                    f.seek(last_log_pos)
+                    new_content = f.read()
+                    last_log_pos = f.tell()
+                    if new_content.strip():
+                        for line in new_content.strip().splitlines():
+                            logger.info("[PG startup] {}", line.strip())
         except Exception:
             pass
+
+        # Emit heartbeat JSONL every 5s (keeps Electron silence timer alive)
+        if emit_setup_substep and (time.monotonic() - last_heartbeat) >= 5:
+            emit_setup_substep("start_database", f"Starting PostgreSQL... ({int(elapsed)}s)")
+            last_heartbeat = time.monotonic()
+
+        time.sleep(poll_interval)
+
+    # --- pg_ctl finished: check result ---
+    if retcode != 0:
+        pg_log_tail = _read_pg_log_tail(paths.log_file)
+        logger.error("pg_ctl start exited with code {}. pg.log tail:\n{}", retcode, pg_log_tail)
+        # Cleanup any orphaned postgres
+        _kill_process_tree(proc.pid)
+        return StepResult(
+            step=step, status="failed", duration_ms=_ms_since(t0),
+            message=f"pg_ctl start failed (exit code {retcode})",
+            error_code="START_FAILED",
+            error_detail=pg_log_tail,
+        )
+
+    # Log final pg.log content
+    try:
+        if paths.log_file.exists():
+            with open(paths.log_file, "r", encoding="utf-8", errors="replace") as f:
+                f.seek(last_log_pos)
+                remaining = f.read().strip()
+                if remaining:
+                    for line in remaining.splitlines():
+                        logger.info("[PG startup] {}", line.strip())
+    except Exception:
+        pass
+
+    # Verify PG is actually accepting connections
+    if not is_pg_running(paths.pg_isready, config.pg_port):
+        pg_log_tail = _read_pg_log_tail(paths.log_file)
+        logger.error("pg_isready check failed after start. pg.log tail:\n{}", pg_log_tail)
+        _kill_process_tree(proc.pid)
         return StepResult(
             step=step, status="failed", duration_ms=_ms_since(t0),
             message="pg_isready check failed after start",
             error_code="START_VERIFY_FAILED",
+            error_detail=pg_log_tail,
         )
 
     return StepResult(
@@ -728,6 +834,21 @@ default_statistics_target = 200
 huge_pages = try
 """
 
+    # --- Enable SSL if certificates exist (two-phase: PG started plain, now add SSL) ---
+    ssl_block = ""
+    cert_path = paths.data_dir / "server.crt"
+    key_path = paths.data_dir / "server.key"
+    if cert_path.exists() and key_path.exists():
+        ssl_block = """
+# SSL (enabled after PG confirmed running)
+ssl = on
+ssl_cert_file = 'server.crt'
+ssl_key_file = 'server.key'
+"""
+        logger.info("SSL certificates found - enabling SSL in postgresql.conf")
+    else:
+        logger.warning("SSL certificates not found - PG will run without SSL")
+
     end_marker = "# End LocaNext Performance Tuning"
     try:
         existing = conf_path.read_text(encoding="utf-8")
@@ -739,7 +860,7 @@ huge_pages = try
                 after_idx = existing.index(end_marker) + len(end_marker)
                 after_part = existing[after_idx:]
             existing = before.rstrip() + "\n" + after_part
-        conf_path.write_text(existing + "\n" + tuning_block + end_marker + "\n", encoding="utf-8")
+        conf_path.write_text(existing + "\n" + tuning_block + ssl_block + end_marker + "\n", encoding="utf-8")
     except Exception as exc:
         return StepResult(
             step=step, status="failed", duration_ms=_ms_since(t0),
@@ -747,18 +868,26 @@ huge_pages = try
             error_code="TUNE_FAILED",
         )
 
-    # shared_buffers and max_connections require restart, not reload
+    # shared_buffers, max_connections, and ssl require restart (not reload)
+    # Use Popen with DEVNULL to avoid Windows pipe inheritance hang (same fix as step_start_database)
     env = _make_env(paths.bin_dir)
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             [str(paths.pg_ctl), "restart", "-D", str(paths.data_dir),
              "-l", str(paths.log_file), "-w"],
-            capture_output=True, text=True, timeout=30, env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
         )
-        if result.returncode != 0:
-            logger.warning("pg_ctl restart failed (settings apply on next manual restart): {}", result.stderr)
-    except subprocess.TimeoutExpired:
-        logger.warning("pg_ctl restart timed out — settings may apply on next launch")
+        try:
+            retcode = proc.wait(timeout=60)
+            if retcode != 0:
+                pg_log_tail = _read_pg_log_tail(paths.log_file, max_lines=10)
+                logger.warning("pg_ctl restart exited with code {} (settings apply on next restart): {}",
+                               retcode, pg_log_tail)
+        except subprocess.TimeoutExpired:
+            _kill_process_tree(proc.pid)
+            logger.warning("pg_ctl restart timed out - settings may apply on next launch")
     except Exception as exc:
         logger.warning("pg_ctl restart failed: {} (settings apply on next launch)", exc)
 
