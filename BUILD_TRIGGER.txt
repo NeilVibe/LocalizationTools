@@ -1,2 +1,2 @@
 Build
-# CRITICAL: psql -h/-p for Windows + shared_buffers 1GB + huge_pages off
+# ALL fixes: psql -h/-p + pg_isready -h + start_pg Popen + trust auth + Windows config + IPv6
