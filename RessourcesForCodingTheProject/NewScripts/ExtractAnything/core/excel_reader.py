@@ -253,6 +253,7 @@ def read_erase_keys_from_excel(
         if not sid:
             continue
         so = str(row[so_col]).strip() if so_col is not None and so_col < len(row) and row[so_col] else ""
+        so = convert_linebreaks_for_xml(so)
         nt = normalize_text(so)
         keys.add((sid.lower(), nt))
         nospace_keys.add((sid.lower(), normalize_nospace(nt)))

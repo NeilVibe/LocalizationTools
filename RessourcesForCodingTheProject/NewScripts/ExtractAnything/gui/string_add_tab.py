@@ -1,4 +1,4 @@
-"""String Add tab – add missing LocStr nodes from source file to target folder."""
+"""String Add tab – add missing entries from source file to target folder (XML & Excel)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from .base_tab import BaseTab
 
 logger = logging.getLogger(__name__)
 
-_XML_FILETYPES = [("XML files", "*.xml"), ("All files", "*.*")]
+_CROSS_FILETYPES = [("XML & Excel", "*.xml *.xlsx"), ("XML files", "*.xml"), ("Excel files", "*.xlsx"), ("All files", "*.*")]
 
 
 class StringAddTab(BaseTab):
@@ -21,28 +21,28 @@ class StringAddTab(BaseTab):
 
     def _build_ui(self) -> None:
         # Source file
-        src = ttk.LabelFrame(self.frame, text="Source XML (entries to add)")
+        src = ttk.LabelFrame(self.frame, text="Source (XML or Excel — entries to add)")
         src.pack(fill=tk.X, padx=5, pady=(5, 2))
         self._src_var = tk.StringVar()
         self._make_path_row(src, "File:", self._src_var,
                             lambda: self.browse_file(
-                                self._src_var, "Select source XML file",
-                                filetypes=_XML_FILETYPES))
+                                self._src_var, "Select source file",
+                                filetypes=_CROSS_FILETYPES))
 
         # Target folder
-        tgt = ttk.LabelFrame(self.frame, text="Target XMLs folder (to add entries into)")
+        tgt = ttk.LabelFrame(self.frame, text="Target folder (XML & Excel — to add entries into)")
         tgt.pack(fill=tk.X, padx=5, pady=2)
         self._tgt_var = tk.StringVar()
         self._make_path_row(tgt, "Folder:", self._tgt_var,
                             lambda: self.browse_folder(
-                                self._tgt_var, "Select target XML folder"))
+                                self._tgt_var, "Select target folder"))
 
         # Info
         info = ttk.LabelFrame(self.frame, text="Info")
         info.pack(fill=tk.X, padx=5, pady=2)
-        ttk.Label(info, text="MODIFIES TARGETS: Adds LocStr entries from source file\n"
-                             "to ALL XML files in the target folder (recursive).\n"
-                             "Key = StringID + StrOrigin (2-step cascade: exact → nospace).",
+        ttk.Label(info, text="MODIFIES TARGETS: Adds entries from source file\n"
+                             "to ALL XML/Excel files in the target folder (recursive).\n"
+                             "Key = StringID + StrOrigin (exact match).",
                   wraplength=500, justify=tk.LEFT, foreground="#1565C0").pack(padx=5, pady=5)
 
         ttk.Button(self.frame, text="Add Missing Strings", command=self._run).pack(pady=10)
@@ -65,10 +65,12 @@ class StringAddTab(BaseTab):
             return
 
         xml_count = len(list(tgt_path.rglob("*.xml")))
+        xlsx_count = len([f for f in tgt_path.rglob("*.xlsx") if not f.name.startswith("~$")])
+        total_count = xml_count + xlsx_count
         if not messagebox.askyesno(
             "Confirm String Add",
             f"Source: {src_path.name}\n\n"
-            f"This will scan {xml_count} XML files in:\n{tgt_path}\n\n"
+            f"This will scan {total_count} files ({xml_count} XML + {xlsx_count} Excel) in:\n{tgt_path}\n\n"
             f"Missing entries will be ADDED.\nProceed?",
         ):
             return

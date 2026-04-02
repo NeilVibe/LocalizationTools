@@ -69,6 +69,19 @@ def load_source_keys(source_folder: Path) -> tuple[set[tuple], set[tuple]]:
     return keys, nospace_keys
 
 
+def load_source_keys_from_file(file_path: Path) -> tuple[set[tuple], set[tuple]]:
+    """Load erase keys from a single XML or Excel file (auto-detect by extension)."""
+    suffix = file_path.suffix.lower()
+    if suffix == ".xml":
+        return load_source_keys_from_xml(file_path)
+    elif suffix in (".xlsx", ".xls"):
+        from .excel_reader import read_erase_keys_from_excel
+        return read_erase_keys_from_excel(file_path)
+    else:
+        logger.warning("Unsupported source file type: %s", file_path.name)
+        return set(), set()
+
+
 # ---------------------------------------------------------------------------
 # Erase logic
 # ---------------------------------------------------------------------------
@@ -155,6 +168,94 @@ def erase_from_xml(
     return report
 
 
+def erase_from_excel(
+    target_path: Path,
+    keys: set[tuple],
+    nospace_keys: set[tuple],
+    *,
+    log_fn=None,
+) -> list[dict]:
+    """Remove matching rows from an Excel file.
+
+    Reads with openpyxl, filters rows by (StringID, StrOrigin) match,
+    writes back with openpyxl (preserving headers).
+    Returns a report list of ``{string_id, status, old_value}``.
+    """
+    import openpyxl
+    from .excel_reader import detect_headers
+    from .text_utils import convert_linebreaks_for_xml
+
+    try:
+        wb = openpyxl.load_workbook(str(target_path))
+        ws = wb.active
+    except Exception as exc:
+        if log_fn:
+            log_fn(f"  Cannot open {target_path.name}: {exc}", "warning")
+        return []
+
+    hdrs = detect_headers(ws)
+    sid_col = hdrs.get("stringid")
+    so_col = hdrs.get("strorigin")
+    str_col = hdrs.get("str")
+
+    if sid_col is None:
+        if log_fn:
+            log_fn(f"  {target_path.name}: no StringID column — skipped", "warning")
+        wb.close()
+        return []
+
+    report: list[dict] = []
+    rows_to_delete: list[int] = []  # 1-based row numbers
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
+        sid_val = str(row[sid_col].value).strip() if sid_col < len(row) and row[sid_col].value else ""
+        if not sid_val:
+            continue
+
+        so_val = str(row[so_col].value).strip() if so_col is not None and so_col < len(row) and row[so_col].value else ""
+        so_val = convert_linebreaks_for_xml(so_val)
+
+        nt = normalize_text(so_val)
+        key = (sid_val.lower(), nt)
+        key_nospace = (sid_val.lower(), normalize_nospace(nt))
+
+        if key not in keys and key_nospace not in nospace_keys:
+            continue
+
+        # Matched
+        str_val = str(row[str_col].value).strip() if str_col is not None and str_col < len(row) and row[str_col].value else ""
+
+        if not str_val:
+            report.append({"string_id": sid_val, "status": "ALREADY_EMPTY", "old_value": ""})
+            continue
+
+        rows_to_delete.append(row_idx)
+        report.append({"string_id": sid_val, "status": "ERASED", "old_value": str_val[:60]})
+
+    if not rows_to_delete:
+        wb.close()
+        return report
+
+    # Backup before any modification
+    bak_path = target_path.with_suffix(target_path.suffix + ".bak")
+    try:
+        shutil.copy2(target_path, bak_path)
+    except Exception as exc:
+        logger.error("CANNOT create backup of %s: %s — aborting write", target_path.name, exc)
+        if log_fn:
+            log_fn(f"  SKIPPED {target_path.name}: backup failed", "error")
+        wb.close()
+        return []
+
+    # Delete rows bottom-up to preserve indices
+    for row_idx in sorted(rows_to_delete, reverse=True):
+        ws.delete_rows(row_idx, 1)
+
+    wb.save(str(target_path))
+    wb.close()
+    return report
+
+
 def erase_folder(
     source_folder: Path,
     target_folder: Path,
@@ -178,27 +279,39 @@ def erase_folder(
     if log_fn:
         log_fn(f"Loaded {len(keys)} erase keys. Scanning target folder...")
 
-    xml_files = sorted(target_folder.rglob("*.xml"))
-    total = len(xml_files)
-    if not xml_files:
+    # Scan for both XML and Excel targets
+    target_files: list[Path] = []
+    for pat in ("*.xml", "*.xlsx"):
+        target_files.extend(target_folder.rglob(pat))
+    target_files = sorted(set(f for f in target_files if not f.name.startswith("~$")))
+
+    total = len(target_files)
+    if not target_files:
         if log_fn:
-            log_fn("No XML files in target folder.", "warning")
+            log_fn("No XML/Excel files in target folder.", "warning")
         return 0, []
 
     full_report: list[dict] = []
     total_erased = 0
 
-    for i, xml_path in enumerate(xml_files, 1):
+    for i, fpath in enumerate(target_files, 1):
         if progress_fn:
             progress_fn(i * 100 // total)
 
-        file_report = erase_from_xml(xml_path, keys, nospace_keys, log_fn=log_fn)
+        suffix = fpath.suffix.lower()
+        if suffix == ".xml":
+            file_report = erase_from_xml(fpath, keys, nospace_keys, log_fn=log_fn)
+        elif suffix in (".xlsx", ".xls"):
+            file_report = erase_from_excel(fpath, keys, nospace_keys, log_fn=log_fn)
+        else:
+            continue
+
         if file_report:
             erased = sum(1 for r in file_report if r["status"] == "ERASED")
             total_erased += erased
             full_report.extend(file_report)
             if log_fn:
-                log_fn(f"  {xml_path.name}: {erased} erased")
+                log_fn(f"  {fpath.name}: {erased} erased")
 
     return total_erased, full_report
 
@@ -218,7 +331,7 @@ def erase_folder_from_file(
     """
     if log_fn:
         log_fn("Loading erase keys from source file...", "header")
-    keys, nospace_keys = load_source_keys_from_xml(source_path)
+    keys, nospace_keys = load_source_keys_from_file(source_path)
 
     if not keys:
         if log_fn:
@@ -229,38 +342,46 @@ def erase_folder_from_file(
         log_fn(f"Source: {source_path.name} — {len(keys)} erase keys")
         log_fn(f"Target folder: {target_folder}")
 
-    xml_files = sorted(target_folder.rglob("*.xml"))
-    # Skip source file if it lives inside target folder
-    xml_files = [
-        f for f in xml_files
-        if not _is_same_file(source_path, f)
-    ]
+    # Scan for both XML and Excel targets
+    target_files: list[Path] = []
+    for pat in ("*.xml", "*.xlsx"):
+        target_files.extend(target_folder.rglob(pat))
+    target_files = sorted(set(f for f in target_files
+                              if not f.name.startswith("~$")
+                              and not _is_same_file(source_path, f)))
 
-    total = len(xml_files)
-    if not xml_files:
+    total = len(target_files)
+    if not target_files:
         if log_fn:
-            log_fn("No XML files in target folder.", "warning")
+            log_fn("No XML/Excel files in target folder.", "warning")
         return 0, []
 
     if log_fn:
-        log_fn(f"Found {total} target XML files. Scanning...")
+        log_fn(f"Found {total} target files (XML + Excel). Scanning...")
 
     full_report: list[dict] = []
     total_erased = 0
 
-    for i, xml_path in enumerate(xml_files, 1):
+    for i, fpath in enumerate(target_files, 1):
         if progress_fn:
             progress_fn(i * 100 // total)
 
-        file_report = erase_from_xml(xml_path, keys, nospace_keys, log_fn=log_fn)
+        suffix = fpath.suffix.lower()
+        if suffix == ".xml":
+            file_report = erase_from_xml(fpath, keys, nospace_keys, log_fn=log_fn)
+        elif suffix in (".xlsx", ".xls"):
+            file_report = erase_from_excel(fpath, keys, nospace_keys, log_fn=log_fn)
+        else:
+            continue
+
         if file_report:
             for r in file_report:
-                r["target_file"] = xml_path.name
+                r["target_file"] = fpath.name
             erased = sum(1 for r in file_report if r["status"] == "ERASED")
             total_erased += erased
             full_report.extend(file_report)
             if log_fn:
-                log_fn(f"  {xml_path.name}: {erased} erased")
+                log_fn(f"  {fpath.name}: {erased} erased")
 
     return total_erased, full_report
 

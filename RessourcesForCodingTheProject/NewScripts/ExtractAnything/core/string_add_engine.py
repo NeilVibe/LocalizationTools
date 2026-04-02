@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 from pathlib import Path
 
 from lxml import etree
@@ -53,15 +54,50 @@ def _collect_source_entries(source_path: Path) -> list[dict]:
         if not sid:
             continue
         _, so = xml_parser.get_attr(elem, config.STRORIGIN_ATTRS)
+        _, sv = xml_parser.get_attr(elem, config.STR_ATTRS)
         so = so or ""
+        sv = sv or ""
         raw_attribs = dict(elem.attrib)
         entries.append({
             "string_id": sid,
+            "str_origin": so,
+            "str_value": sv,
             "key": _make_key(sid, so),
             "raw_attribs": raw_attribs,
         })
 
     return entries
+
+
+def _collect_source_entries_from_file(source_path: Path) -> list[dict]:
+    """Parse source XML or Excel and return entries with key field (auto-detect)."""
+    suffix = source_path.suffix.lower()
+
+    if suffix == ".xml":
+        return _collect_source_entries(source_path)
+    elif suffix in (".xlsx", ".xls"):
+        from .input_parser import parse_input_file
+        entries, _ = parse_input_file(source_path)
+        # Add the key field expected by add logic
+        for entry in entries:
+            sid = entry.get("string_id", "")
+            so = entry.get("str_origin", "")
+            entry["key"] = _make_key(sid, so)
+            # Ensure raw_attribs has standard attrs for XML output
+            if not entry.get("raw_attribs"):
+                entry["raw_attribs"] = {}
+            ra = entry["raw_attribs"]
+            if "StringId" not in ra and sid:
+                ra["StringId"] = sid
+            if "StrOrigin" not in ra and so:
+                ra["StrOrigin"] = so
+            sv = entry.get("str_value", "")
+            if "Str" not in ra and sv:
+                ra["Str"] = sv
+        return entries
+    else:
+        logger.warning("Unsupported source type: %s", source_path.name)
+        return []
 
 
 def _dedup_source_entries(entries: list[dict]) -> list[dict]:
@@ -146,6 +182,104 @@ def _add_to_target(
     return len(report), report
 
 
+def _add_to_excel_target(
+    source_entries: list[dict],
+    target_path: Path,
+    *,
+    log_fn=None,
+) -> tuple[int, list[dict]]:
+    """Diff *source_entries* vs *target_path* (Excel) and append missing rows.
+
+    Returns ``(count_added, report)``.
+    """
+    import openpyxl
+    from .excel_reader import detect_headers
+    from .text_utils import convert_linebreaks_for_xml, br_to_newline
+
+    try:
+        wb = openpyxl.load_workbook(str(target_path))
+        ws = wb.active
+    except Exception as exc:
+        if log_fn:
+            log_fn(f"  Cannot open {target_path.name}: {exc}", "warning")
+        return 0, []
+
+    hdrs = detect_headers(ws)
+    sid_col = hdrs.get("stringid")
+    so_col = hdrs.get("strorigin")
+    str_col = hdrs.get("str")
+
+    if sid_col is None:
+        if log_fn:
+            log_fn(f"  {target_path.name}: no StringID column — skipped", "warning")
+        wb.close()
+        return 0, []
+
+    # Collect existing keys from target
+    target_keys: set[tuple] = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        sid = str(row[sid_col]).strip() if sid_col < len(row) and row[sid_col] else ""
+        if not sid:
+            continue
+        so = str(row[so_col]).strip() if so_col is not None and so_col < len(row) and row[so_col] else ""
+        so = convert_linebreaks_for_xml(so)
+        target_keys.add(_make_key(sid, so))
+
+    if not target_keys:
+        if log_fn:
+            log_fn(f"  {target_path.name}: skipped (no entries)", "warning")
+        wb.close()
+        return 0, []
+
+    # Find missing
+    missing = [e for e in source_entries if e["key"] not in target_keys]
+    if not missing:
+        wb.close()
+        return 0, []
+
+    # Append rows — use detected column positions
+    report: list[dict] = []
+    for entry in missing:
+        next_row = ws.max_row + 1
+        sid = entry.get("string_id", "")
+        so = entry.get("str_origin", "")
+        sv = entry.get("str_value", "")
+
+        # Convert <br/> to newline for Excel display
+        so_excel = br_to_newline(so)
+        sv_excel = br_to_newline(sv)
+
+        # Write into detected column positions (StringID as text format)
+        cell_sid = ws.cell(row=next_row, column=sid_col + 1, value=sid)
+        cell_sid.number_format = '@'
+
+        if so_col is not None:
+            ws.cell(row=next_row, column=so_col + 1, value=so_excel)
+        if str_col is not None:
+            ws.cell(row=next_row, column=str_col + 1, value=sv_excel)
+
+        report.append({
+            "string_id": sid,
+            "status": "ADDED",
+            "target_file": target_path.name,
+        })
+
+    # Backup before write
+    bak_path = target_path.with_suffix(target_path.suffix + ".bak")
+    try:
+        shutil.copy2(target_path, bak_path)
+    except Exception as exc:
+        logger.error("CANNOT create backup of %s: %s — aborting write", target_path.name, exc)
+        if log_fn:
+            log_fn(f"  SKIPPED {target_path.name}: backup failed", "error")
+        wb.close()
+        return 0, []
+
+    wb.save(str(target_path))
+    wb.close()
+    return len(report), report
+
+
 # ---------------------------------------------------------------------------
 # Public: file-to-folder add
 # ---------------------------------------------------------------------------
@@ -166,50 +300,56 @@ def add_missing_folder(
         log_fn(f"Source: {source_path.name}")
         log_fn(f"Target folder: {target_folder}")
 
-    source_entries = _collect_source_entries(source_path)
+    source_entries = _collect_source_entries_from_file(source_path)
     if not source_entries:
         if log_fn:
-            log_fn("No LocStr entries found in source.", "warning")
+            log_fn("No entries found in source.", "warning")
         return 0, []
 
     source_entries = _dedup_source_entries(source_entries)
     if log_fn:
-        log_fn(f"Source: {len(source_entries):,} unique LocStr entries")
+        log_fn(f"Source: {len(source_entries):,} unique entries")
 
-    xml_files = sorted(target_folder.rglob("*.xml"))
-    # Skip source file if it lives inside target folder
-    xml_files = [
-        f for f in xml_files
-        if not _is_same_file(source_path, f)
-    ]
+    # Scan for both XML and Excel targets
+    target_files: list[Path] = []
+    for pat in ("*.xml", "*.xlsx"):
+        target_files.extend(target_folder.rglob(pat))
+    target_files = sorted(set(f for f in target_files
+                              if not f.name.startswith("~$")
+                              and not _is_same_file(source_path, f)))
 
-    total = len(xml_files)
-    if not xml_files:
+    total = len(target_files)
+    if not target_files:
         if log_fn:
-            log_fn("No XML files in target folder.", "warning")
+            log_fn("No XML/Excel files in target folder.", "warning")
         return 0, []
 
     if log_fn:
-        log_fn(f"Found {total} target XML files")
+        log_fn(f"Found {total} target files (XML + Excel)")
 
     full_report: list[dict] = []
     total_added = 0
 
-    for i, xml_path in enumerate(xml_files, 1):
+    for i, fpath in enumerate(target_files, 1):
         if progress_fn:
             progress_fn(i * 100 // total)
 
-        added, file_report = _add_to_target(
-            source_entries, xml_path, log_fn=log_fn,
-        )
+        suffix = fpath.suffix.lower()
+        if suffix == ".xml":
+            added, file_report = _add_to_target(source_entries, fpath, log_fn=log_fn)
+        elif suffix in (".xlsx", ".xls"):
+            added, file_report = _add_to_excel_target(source_entries, fpath, log_fn=log_fn)
+        else:
+            continue
+
         if file_report:
             total_added += added
             full_report.extend(file_report)
             if log_fn:
-                log_fn(f"  {xml_path.name}: {added} added", "success")
+                log_fn(f"  {fpath.name}: {added} added", "success")
         else:
             if log_fn:
-                log_fn(f"  {xml_path.name}: nothing to add")
+                log_fn(f"  {fpath.name}: nothing to add")
 
     return total_added, full_report
 

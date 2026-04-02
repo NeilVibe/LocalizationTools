@@ -1,4 +1,4 @@
-"""String Eraser tab – remove LocStr nodes from XML folder by key match against source file."""
+"""String Eraser tab – remove entries from XML/Excel by key match against source file."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .base_tab import BaseTab
 
 logger = logging.getLogger(__name__)
 
-_XML_FILETYPES = [("XML files", "*.xml"), ("All files", "*.*")]
+_CROSS_FILETYPES = [("XML & Excel", "*.xml *.xlsx"), ("XML files", "*.xml"), ("Excel files", "*.xlsx"), ("All files", "*.*")]
 
 
 class StringEraserTab(BaseTab):
@@ -22,30 +22,30 @@ class StringEraserTab(BaseTab):
 
     def _build_ui(self) -> None:
         # Source file (keys to erase)
-        src = ttk.LabelFrame(self.frame, text="Source XML (entries to erase)")
+        src = ttk.LabelFrame(self.frame, text="Source (XML or Excel — entries to erase)")
         src.pack(fill=tk.X, padx=5, pady=(5, 2))
         self._src_var = tk.StringVar()
         self._make_path_row(src, "File:", self._src_var,
                             lambda: self.browse_file(
-                                self._src_var, "Select source XML file",
-                                filetypes=_XML_FILETYPES))
+                                self._src_var, "Select source file",
+                                filetypes=_CROSS_FILETYPES))
 
         # Target folder
-        tgt = ttk.LabelFrame(self.frame, text="Target XMLs folder (to erase from)")
+        tgt = ttk.LabelFrame(self.frame, text="Target folder (XML & Excel — to erase from)")
         tgt.pack(fill=tk.X, padx=5, pady=2)
         self._tgt_var = tk.StringVar()
         self._make_path_row(tgt, "Folder:", self._tgt_var,
                             lambda: self.browse_folder(
-                                self._tgt_var, "Select target XML folder",
+                                self._tgt_var, "Select target folder",
                                 on_selected=lambda p: validate_xml_source_folder(
                                     p, self.app.loc_folder, label="Target", log_fn=self.log)))
 
         # Warning
         warn = ttk.LabelFrame(self.frame, text="Warning")
         warn.pack(fill=tk.X, padx=5, pady=2)
-        ttk.Label(warn, text="DESTRUCTIVE: This modifies target XMLs in-place!\n"
-                             "LocStr nodes matching (StringID + StrOrigin) from source file\n"
-                             "will be removed from ALL XMLs in target folder.",
+        ttk.Label(warn, text="DESTRUCTIVE: This modifies target files in-place!\n"
+                             "Entries matching (StringID + StrOrigin) from source file\n"
+                             "will be removed from ALL XML/Excel files in target folder.",
                   wraplength=500, justify=tk.LEFT, foreground="#C62828").pack(padx=5, pady=5)
 
         ttk.Button(self.frame, text="Erase Matching Strings", command=self._run).pack(pady=10)
@@ -68,11 +68,13 @@ class StringEraserTab(BaseTab):
             return
 
         xml_count = len(list(tgt_path.rglob("*.xml")))
+        xlsx_count = len([f for f in tgt_path.rglob("*.xlsx") if not f.name.startswith("~$")])
+        total_count = xml_count + xlsx_count
         if not messagebox.askyesno(
             "Confirm String Erase",
             f"Source: {src_path.name}\n\n"
-            f"This will scan {xml_count} XML files in:\n{tgt_path}\n\n"
-            "Matching LocStr nodes will be REMOVED.\nProceed?",
+            f"This will scan {total_count} files ({xml_count} XML + {xlsx_count} Excel) in:\n{tgt_path}\n\n"
+            "Matching entries will be REMOVED.\nProceed?",
         ):
             return
 
