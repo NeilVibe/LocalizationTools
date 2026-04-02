@@ -170,7 +170,7 @@ class TestWemConversion:
         # Pre-create cached WAV file with recent mtime
         expected_hash = hashlib.md5(str(WEM_FIXTURE).encode()).hexdigest()[:8]
         wav_out = tmp_path / f"{expected_hash}.wav"
-        wav_out.write_bytes(b"RIFF" + b"\x00" * 40)
+        wav_out.write_bytes(b"RIFF" + b"\x24\x00\x00\x00" + b"WAVEfmt " + b"\x10\x00\x00\x00" + b"\x01\x00" + b"\x01\x00" + b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x02\x00\x10\x00" + b"data" + b"\x00\x00\x00\x00")
 
         with patch("server.tools.ldm.services.media_converter.subprocess.run") as mock_run:
             result = converter.convert_wem_to_wav(WEM_FIXTURE)
