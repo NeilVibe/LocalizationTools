@@ -9,7 +9,7 @@
   let expandedTables = $state({});
   let dbHealth = $state(null);
   let dbPoolStats = $state(null);
-  let refreshInterval = $state(null);
+  let refreshInterval = null;
 
   async function loadDatabaseStats() {
     loading = true;
@@ -187,7 +187,7 @@
           </div>
 
           {#if dbStats.tables && dbStats.tables.length > 0}
-            {#each dbStats.tables as table, idx}
+            {#each dbStats.tables as table, idx (table.name)}
               <div class="table-item">
                 <div
                   class="table-header"
@@ -209,7 +209,7 @@
                         <span class="tree-char">{idx === dbStats.tables.length - 1 ? '      ├─' : '│     ├─'}</span>
                         <span class="detail-label">Columns ({table.columns.length})</span>
                       </div>
-                      {#each table.columns as col, cidx}
+                      {#each table.columns as col, cidx (col.name)}
                         <div class="column-item">
                           <span class="tree-char">{idx === dbStats.tables.length - 1 ? '      │  ' : '│     │  '}{cidx === table.columns.length - 1 ? '└─' : '├─'}</span>
                           <span class="column-name">{col.name}</span>
@@ -229,7 +229,7 @@
                         <span class="tree-char">{idx === dbStats.tables.length - 1 ? '      └─' : '│     └─'}</span>
                         <span class="detail-label">Indexes ({table.indexes.length})</span>
                       </div>
-                      {#each table.indexes as index, iidx}
+                      {#each table.indexes as index, iidx (index)}
                         <div class="index-item">
                           <span class="tree-char">{idx === dbStats.tables.length - 1 ? '         ' : '│        '}{iidx === table.indexes.length - 1 ? '└─' : '├─'}</span>
                           <span class="index-name">{index}</span>
