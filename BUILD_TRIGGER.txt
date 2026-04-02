@@ -1,2 +1,2 @@
-Build Admin
-# Audio fix + Option B + dashboard bundled + test fix
+Build User
+# User Build: connects to Admin server, no PG, no dashboard
