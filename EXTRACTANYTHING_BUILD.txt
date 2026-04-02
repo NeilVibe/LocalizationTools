@@ -25,3 +25,4 @@ Build 034: fix StrAdd nospace cascade — space-sensitive matching for Korean
 Build 035: remove .bak, loguru, log skipped non-languagedata files
 Build 036: revert loguru to stdlib logging — fix import crash
 Build 037: add Korean/Translation tab — filter translated/untranslated by KR presence
+Build 038: full XML/Excel cross-processing — Str Erase and Str Add work on both XML and Excel targets/sources
