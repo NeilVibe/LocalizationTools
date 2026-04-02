@@ -7,6 +7,9 @@
   let loading = $state(true);
   let error = $state(null);
   let expandedTables = $state({});
+  let dbHealth = $state(null);
+  let dbPoolStats = $state(null);
+  let refreshInterval = $state(null);
 
   async function loadDatabaseStats() {
     loading = true;
@@ -18,6 +21,26 @@
     } finally {
       loading = false;
     }
+  }
+
+  async function loadDbHealth() {
+    try {
+      dbHealth = await adminAPI.request('/admin/db/health');
+    } catch (e) {
+      console.warn('DB health check failed:', e);
+    }
+  }
+
+  async function loadDbPoolStats() {
+    try {
+      dbPoolStats = await adminAPI.request('/admin/db/stats');
+    } catch (e) {
+      console.warn('DB pool stats failed:', e);
+    }
+  }
+
+  async function loadAll() {
+    await Promise.all([loadDatabaseStats(), loadDbHealth(), loadDbPoolStats()]);
   }
 
   function toggleTable(table) {
@@ -37,8 +60,12 @@
     return new Intl.NumberFormat().format(num);
   }
 
-  onMount(() => {
-    loadDatabaseStats();
+  onMount(async () => {
+    await loadAll();
+    refreshInterval = setInterval(loadAll, 5000);
+    return () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    };
   });
 </script>
 
@@ -85,6 +112,62 @@
         <div class="stat-label">Indexes</div>
       </div>
     </div>
+
+    <!-- Connection Monitor -->
+    {#if dbPoolStats?.connection_pool}
+      {@const pool = dbPoolStats.connection_pool}
+      {@const maxConn = pool.max_connections || 250}
+      {@const activeConn = pool.active_connections || 0}
+      {@const idleConn = pool.idle_connections || 0}
+      {@const pct = Math.round((activeConn / maxConn) * 100)}
+      <div class="monitor-card">
+        <h3>Connections</h3>
+        <div class="stat-row">
+          <span class="stat-label">Active: {activeConn} / {maxConn}</span>
+          <span class="stat-value" class:good={pct < 50} class:caution={pct >= 50 && pct < 80} class:warning={pct >= 80}>{pct}%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" class:good={pct < 80} class:warning={pct >= 80} style="width: {pct}%"></div>
+        </div>
+        <div class="stat-details">
+          Active: {activeConn} | Idle: {idleConn} | Waiting: {pool.waiting_connections || 0}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Cache Performance -->
+    {#if dbPoolStats?.performance}
+      {@const perf = dbPoolStats.performance}
+      {@const hitRatio = perf.cache_hit_ratio || 0}
+      <div class="monitor-card">
+        <h3>Cache Performance</h3>
+        <div class="stat-row">
+          <span class="stat-label">Hit Ratio</span>
+          <span class="stat-value" class:good={hitRatio > 99} class:caution={hitRatio > 95 && hitRatio <= 99} class:warning={hitRatio <= 95}>{hitRatio.toFixed(1)}%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" class:good={hitRatio > 99} class:caution={hitRatio > 95 && hitRatio <= 99} class:warning={hitRatio <= 95} style="width: {hitRatio}%"></div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Health Recommendations -->
+    {#if dbHealth?.issues?.length > 0}
+      <div class="monitor-card">
+        <h3>Health Check</h3>
+        {#each dbHealth.issues as issue (issue.message)}
+          <div class="health-issue" class:warning-bg={issue.severity === 'warning'} class:info-bg={issue.severity !== 'warning'}>
+            <span class="issue-icon">{issue.severity === 'warning' ? '⚠️' : 'ℹ️'}</span>
+            <span>{issue.message}</span>
+          </div>
+        {/each}
+        {#if dbHealth.recommendations?.length > 0}
+          {#each dbHealth.recommendations as rec (rec)}
+            <div class="health-rec">💡 {rec}</div>
+          {/each}
+        {/if}
+      </div>
+    {/if}
 
     <!-- Database Tree View -->
     <div class="db-tree">
@@ -448,4 +531,55 @@
     color: #6f6f6f;
     font-style: italic;
   }
+
+  .monitor-card {
+    background: var(--cds-layer-01, #262626);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .monitor-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--cds-text-primary, #f4f4f4);
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .stat-label { color: var(--cds-text-secondary, #c6c6c6); font-size: 13px; }
+  .stat-value { font-size: 18px; font-weight: 600; }
+  .good { color: #42be65; }
+  .caution { color: #f1c21b; }
+  .warning { color: #da1e28; }
+  .stat-details { font-size: 12px; color: var(--cds-text-secondary, #c6c6c6); margin-top: 8px; }
+  .progress-bar-container {
+    background: var(--cds-layer-02, #393939);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .progress-bar.good { background: linear-gradient(90deg, #42be65, #24a148); }
+  .progress-bar.caution { background: linear-gradient(90deg, #f1c21b, #d2a106); }
+  .progress-bar.warning { background: linear-gradient(90deg, #da1e28, #ba1b23); }
+  .health-issue {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    font-size: 13px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+  .warning-bg { background: rgba(241, 194, 27, 0.1); color: #f1c21b; }
+  .info-bg { background: rgba(66, 190, 101, 0.1); color: #42be65; }
+  .health-rec { font-size: 12px; color: var(--cds-text-secondary, #c6c6c6); padding: 4px 8px; }
 </style>
