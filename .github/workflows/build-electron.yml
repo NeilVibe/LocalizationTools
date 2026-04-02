@@ -38,10 +38,13 @@ jobs:
         id: check
         run: |
           # ============================================================
-          # ONE BUILD ONLY. QA is the default mode.
-          # Supports: Build, Build QA, Build Light, TROUBLESHOOT
+          # TWO BUILD TYPES:
+          #   Build Admin  — Full build with PG + dashboard (for admin/server PC)
+          #   Build User   — Light build, connects to admin's server (for team)
+          # Legacy aliases: Build = Build Admin, Build Light = Build User, Build QA = Build Admin
+          # Also: TROUBLESHOOT (test-only, no Windows build)
           # ============================================================
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA| Light)?$|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( Admin| User| QA| Light)?$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -59,11 +62,11 @@ jobs:
               echo "skip_build=yes" >> $GITHUB_OUTPUT
               echo "light_mode=no" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Test-only mode (no Windows build)"
-            elif echo "$TRIGGER" | grep -q "^Build Light"; then
+            elif echo "$TRIGGER" | grep -qE "^Build (Light|User)"; then
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=no" >> $GITHUB_OUTPUT
               echo "light_mode=yes" >> $GITHUB_OUTPUT
-              echo "[LIGHT MODE] Model2Vec only — no torch/transformers/Qwen"
+              echo "[USER BUILD] Model2Vec only, connects to admin server — no PG, no torch/Qwen"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=no" >> $GITHUB_OUTPUT
@@ -1207,7 +1210,7 @@ jobs:
 
           # Rename to include version (and Light suffix if light mode)
           if ($env:LIGHT_MODE -eq "yes") {
-            $newName = "LocaNext_v${version}_Light_Setup.exe"
+            $newName = "LocaNext_v${version}_User_Setup.exe"
           } else {
             $newName = "LocaNext_v${version}_Setup.exe"
           }
