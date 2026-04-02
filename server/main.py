@@ -371,6 +371,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"[Model2Vec] Not available: {e}")
 
+    # Signal to Electron that server is ready to accept connections
+    try:
+        from server.setup.jsonl import emit_server_ready
+        emit_server_ready(config.SERVER_PORT)
+    except Exception:
+        pass
     logger.success("Server startup complete")
 
     yield  # Server runs here
@@ -829,6 +835,19 @@ logger.info("Socket.IO integrated with FastAPI app at /ws/socket.io")
 if __name__ == "__main__":
     import uvicorn
 
+    # Emit boot_started so Electron knows the backend process is alive
+    try:
+        import json as _json
+        import sys as _sys
+        _boot_msg = _json.dumps({
+            "type": "boot_started",
+            "version": getattr(config, "VERSION", "unknown"),
+        })
+        _sys.stdout.write(_boot_msg + "\n")
+        _sys.stdout.flush()
+    except Exception:
+        pass
+
     # === FIRST-LAUNCH SETUP (replaces old auto-setup blob) ===
     # Step-by-step PG setup with JSONL progress for Electron splash screen.
     # Reads state file for crash recovery. Each step is idempotent.
@@ -917,14 +936,19 @@ if __name__ == "__main__":
                     )
                     logger.success(f"=== SETUP COMPLETE: LAN server ready at {lan_ip} ===")
             else:
-                # Subsequent launch — just start PG
-                emit_pg_starting()
-                ok, msg = start_pg(pg.pg_ctl, pg.data_dir, pg.log_file)
-                if ok:
+                # Subsequent launch — check if PG is already running first
+                from server.setup.pg_lifecycle import is_pg_running
+                if is_pg_running(pg.pg_isready, getattr(config, 'POSTGRES_PORT', 5432)):
                     emit_pg_ready()
-                    logger.info("PostgreSQL started for existing setup")
+                    logger.info("PostgreSQL already running — skipping start")
                 else:
-                    logger.warning(f"PostgreSQL start failed: {msg}")
+                    emit_pg_starting()
+                    ok, msg = start_pg(pg.pg_ctl, pg.data_dir, pg.log_file)
+                    if ok:
+                        emit_pg_ready()
+                        logger.info("PostgreSQL started for existing setup")
+                    else:
+                        logger.warning(f"PostgreSQL start failed: {msg}")
     except Exception as e:
         logger.warning(f"Setup phase skipped or failed: {e}")
 
