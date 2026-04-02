@@ -63,13 +63,13 @@ def _patch_all_steps(overrides: dict[str, MagicMock | StepResult] | None = None)
 
 @patch("server.setup.runner.detect_lan_ip", return_value="192.168.1.42")
 def test_run_setup_calls_all_steps(_mock_ip, config, state_path):
-    """All 7 steps succeed → result.success=True, all called once."""
+    """All 8 steps succeed → result.success=True, all called once."""
     patcher, mocks = _patch_all_steps()
     with patcher:
         result = run_setup(config, state_path)
 
     assert result.success is True
-    assert len(result.steps) == 7
+    assert len(result.steps) == 8
     assert result.lan_ip == "192.168.1.42"
     assert result.failed_step is None
     for name in STEP_NAMES:
@@ -163,7 +163,7 @@ def test_run_setup_calls_progress_callback(_mock_ip, config, state_path):
         result = run_setup(config, state_path, on_progress=callback)
 
     assert result.success is True
-    assert callback.call_count == 7
+    assert callback.call_count == 8
     # Each call receives a StepResult
     for call_args in callback.call_args_list:
         arg = call_args[0][0]
