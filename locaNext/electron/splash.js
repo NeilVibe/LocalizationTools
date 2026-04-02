@@ -217,7 +217,7 @@ export function showSetupMode(totalSteps = 7) {
   setupMode = true;
 
   // Resize for setup content
-  splashWindow.setSize(480, 440);
+  splashWindow.setSize(500, 500);
   splashWindow.center();
 
   const html = getSetupHTML(totalSteps);
@@ -567,6 +567,12 @@ function getSetupHTML(totalSteps) {
     }
     .complete-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
     .complete-ip { font-size: 14px; color: rgba(255,255,255,0.6); font-family: monospace; }
+    .elapsed {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
@@ -581,6 +587,14 @@ function getSetupHTML(totalSteps) {
       </div>
       <div class="progress-text" id="setup-progress-text">Step 0 of ${totalSteps}</div>
     </div>
+    <div class="elapsed" id="elapsed-timer">Elapsed: 0.0s</div>
+    <script>
+      var startTime = Date.now();
+      setInterval(function() {
+        var el = document.getElementById('elapsed-timer');
+        if (el) el.textContent = 'Elapsed: ' + ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+      }, 100);
+    </script>
   </div>
 </body>
 </html>
