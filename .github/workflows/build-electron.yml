@@ -729,6 +729,20 @@ jobs:
           # Model downloading (first-run setup uses this)
           & "tools\python\python.exe" -c "import huggingface_hub; print(f'[OK] huggingface_hub v{huggingface_hub.__version__}')"
 
+          # Verify packages that were installed but never checked
+          Write-Host ""
+          Write-Host "=== Verifying additional packages ==="
+          & "tools\python\python.exe" -c "from cryptography import x509; print('[OK] cryptography')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "cryptography verification failed"; exit 1 }
+          & "tools\python\python.exe" -c "from PIL import Image; print('[OK] Pillow')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Pillow verification failed"; exit 1 }
+          & "tools\python\python.exe" -c "import psutil; print('[OK] psutil')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "psutil verification failed"; exit 1 }
+          & "tools\python\python.exe" -c "from sse_starlette.sse import EventSourceResponse; print('[OK] sse-starlette')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "sse-starlette verification failed"; exit 1 }
+          & "tools\python\python.exe" -c "import xlsxwriter; print('[OK] xlsxwriter')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "xlsxwriter verification failed"; exit 1 }
+
           Write-Host ""
           Write-Host "=== Checking required files ==="
           Write-Host ""
@@ -765,6 +779,12 @@ jobs:
             exit 1
           }
           Write-Host "[OK] server/main.py exists"
+
+          # Verify setup module imports cleanly
+          Write-Host ""
+          Write-Host "=== Verifying setup module ==="
+          & "tools\python\python.exe" -c "from server.setup import SetupConfig, SetupResult, StepResult; from server.setup.runner import run_setup, STEP_FUNCTIONS; from server.setup.state import read_state, is_setup_complete, STEP_NAMES; from server.setup.pg_lifecycle import find_pg_binaries, start_pg, is_pg_running; from server.setup.hardware_detect import detect_hardware; from server.setup.jsonl import emit_jsonl, emit_setup_started, emit_server_ready; print(f'[OK] Setup module: {len(STEP_NAMES)} steps'); print(f'[OK] Step functions: {len(STEP_FUNCTIONS)} registered')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Setup module import failed"; exit 1 }
 
           Write-Host ""
           Write-Host "[PASS] All embedded Python dependencies verified!"
@@ -985,6 +1005,27 @@ jobs:
             Write-Error "PostgreSQL binaries not found after extraction!"
             Get-ChildItem $pgDir -Recurse | Select-Object -First 20
             exit 1
+          }
+
+          # Verify PG binaries are complete
+          Write-Host "=== Verifying PostgreSQL binaries ==="
+          $pgBinDir = Join-Path $pgDir "bin"
+          if (Test-Path $pgBinDir) {
+            $required = @("initdb.exe", "pg_ctl.exe", "psql.exe", "pg_isready.exe")
+            foreach ($bin in $required) {
+              $binPath = Join-Path $pgBinDir $bin
+              if (-not (Test-Path $binPath)) {
+                Write-Error "MISSING PG BINARY: $binPath"
+                exit 1
+              }
+              Write-Host "[OK] PG binary: $bin"
+            }
+            # Write pg_setup_mode flag
+            $flagPath = Join-Path (Split-Path $pgBinDir -Parent | Split-Path -Parent) "pg_setup_mode.flag"
+            "auto" | Out-File -FilePath $flagPath -Encoding ascii -NoNewline
+            Write-Host "[OK] pg_setup_mode.flag written (auto)"
+          } else {
+            Write-Host "[INFO] No PG binaries bundled (Build Light)"
           }
         shell: pwsh
 
