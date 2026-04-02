@@ -1,7 +1,6 @@
 """Sequential setup runner with state tracking, resume, and progress callbacks."""
 from __future__ import annotations
 
-import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +26,7 @@ from server.setup.steps import (
     step_start_database,
 )
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # ---------------------------------------------------------------------------
 # Step registry
@@ -85,10 +84,10 @@ def run_setup(
     logger.info("=" * 60)
     logger.info("SETUP WIZARD START")
     logger.info("=" * 60)
-    logger.info("  pg_bin_dir: %s", config.pg_bin_dir)
-    logger.info("  data_dir:   %s", config.data_dir)
-    logger.info("  pg_port:    %s", config.pg_port)
-    logger.info("  state_path: %s", state_path)
+    logger.info("  pg_bin_dir: {}", config.pg_bin_dir)
+    logger.info("  data_dir:   {}", config.data_dir)
+    logger.info("  pg_port:    {}", config.pg_port)
+    logger.info("  state_path: {}", state_path)
 
     state = read_state(state_path)
 
@@ -104,14 +103,14 @@ def run_setup(
         # ----- resume: skip already-done steps -----
         step_info = state.steps.get(step_name, {})
         if step_info.get("status") == "done":
-            logger.info("Skipping already-done step: %s", step_name)
+            logger.info("Skipping already-done step: {}", step_name)
             continue
 
         step_fn = STEP_FUNCTIONS[step_name]
         step_index = STEP_NAMES.index(step_name)
-        logger.info("[SETUP %d/%d] Running: %s", step_index + 1, len(STEP_NAMES), step_name)
+        logger.info("[SETUP {}/{}] Running: {}", step_index + 1, len(STEP_NAMES), step_name)
         result = _run_step_with_retry(step_name, step_fn, config)
-        logger.info("[SETUP %d/%d] %s → %s (%dms) %s",
+        logger.info("[SETUP {}/{}] {} → {} ({}ms) {}",
                      step_index + 1, len(STEP_NAMES), step_name,
                      result.status, result.duration_ms, result.message)
 
@@ -123,7 +122,7 @@ def run_setup(
             if step_name in OPTIONAL_STEPS:
                 # Optional steps don't block — mark done and continue
                 logger.warning(
-                    "Optional step '%s' failed, continuing: %s",
+                    "Optional step '{}' failed, continuing: {}",
                     step_name,
                     result.message,
                 )
@@ -139,7 +138,7 @@ def run_setup(
 
         # ----- fatal failure: abort -----
         if result.status == "failed" and step_name in FATAL_STEPS:
-            logger.error("Fatal step '%s' failed — aborting setup", step_name)
+            logger.error("Fatal step '{}' failed — aborting setup", step_name)
             return SetupResult(
                 success=False,
                 steps=results,
@@ -151,7 +150,7 @@ def run_setup(
         # ----- recoverable failure (after retry exhausted) -----
         if result.status == "failed" and step_name in RECOVERABLE_STEPS:
             logger.error(
-                "Recoverable step '%s' failed after retry — aborting setup",
+                "Recoverable step '{}' failed after retry — aborting setup",
                 step_name,
             )
             return SetupResult(
@@ -170,10 +169,10 @@ def run_setup(
     try:
         lan_ip = detect_lan_ip()
     except Exception as exc:
-        logger.warning("LAN IP detection failed: %s", exc)
+        logger.warning("LAN IP detection failed: {}", exc)
 
     logger.info("=" * 60)
-    logger.info("SETUP WIZARD COMPLETE — LAN IP: %s", lan_ip)
+    logger.info("SETUP WIZARD COMPLETE — LAN IP: {}", lan_ip)
     logger.info("=" * 60)
     return SetupResult(success=True, steps=results, lan_ip=lan_ip)
 
@@ -200,7 +199,7 @@ def _run_step_with_retry(
     # Auto-retry recoverable steps
     for attempt in range(1, _MAX_RETRIES + 1):
         logger.info(
-            "Retrying recoverable step '%s' (attempt %d/%d)",
+            "Retrying recoverable step '{}' (attempt {}/{})",
             step_name,
             attempt,
             _MAX_RETRIES,

@@ -1,14 +1,13 @@
 """PostgreSQL lifecycle management — find binaries, start, stop, check status, run SQL."""
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 _EXT = ".exe" if os.name == "nt" else ""
 
@@ -40,14 +39,14 @@ def find_pg_binaries(resources_path: str) -> Optional[PgPaths]:
     bin_dir = root / "bin" / "postgresql" / "bin"
 
     if not bin_dir.is_dir():
-        logger.debug("PG bin dir not found: %s", bin_dir)
+        logger.debug("PG bin dir not found: {}", bin_dir)
         return None
 
     paths: dict[str, Path] = {}
     for name in _REQUIRED_BINARIES:
         p = bin_dir / f"{name}{_EXT}"
         if not p.exists():
-            logger.debug("PG binary not found: %s", p)
+            logger.debug("PG binary not found: {}", p)
             return None
         paths[name] = p
 
@@ -83,7 +82,7 @@ def is_pg_running(pg_isready: Path, port: int = 5432) -> bool:
         )
         return result.returncode == 0
     except (OSError, subprocess.TimeoutExpired) as exc:
-        logger.debug("pg_isready check failed: %s", exc)
+        logger.debug("pg_isready check failed: {}", exc)
         return False
 
 

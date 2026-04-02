@@ -6,14 +6,13 @@ from the last successful step.
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 STEP_NAMES: list[str] = [
     "preflight_checks",
@@ -54,7 +53,7 @@ def read_state(path: Path) -> SetupState:
             config=data.get("config", {}),
         )
     except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Corrupt state file %s, starting fresh: %s", path, exc)
+        logger.warning("Corrupt state file {}, starting fresh: {}", path, exc)
         return SetupState()
 
 

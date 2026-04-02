@@ -1,7 +1,6 @@
 """7 idempotent setup steps: PRE-CHECK -> RUN -> VERIFY -> CLEANUP."""
 from __future__ import annotations
 
-import logging
 import os
 import secrets
 import shutil
@@ -14,7 +13,7 @@ from server.setup import SetupConfig, StepResult
 from server.setup.network import detect_lan_ip, get_subnet
 from server.setup.pg_lifecycle import PgPaths, _make_env, is_pg_running, run_sql
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 _EXT = ".exe" if os.name == "nt" else ""
 
@@ -127,7 +126,7 @@ def step_preflight_checks(config: SetupConfig) -> StepResult:
                 timeout=10,
             )
         except Exception as exc:
-            logger.warning("Firewall rule creation failed (LAN connections may be blocked): %s", exc)
+            logger.warning("Firewall rule creation failed (LAN connections may be blocked): {}", exc)
 
     return StepResult(
         step=step,
