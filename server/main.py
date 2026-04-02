@@ -375,8 +375,8 @@ async def lifespan(app: FastAPI):
     try:
         from server.setup.jsonl import emit_server_ready
         emit_server_ready(config.SERVER_PORT)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to emit server_ready JSONL: {}", e)
     logger.success("Server startup complete")
 
     yield  # Server runs here
@@ -837,16 +837,11 @@ if __name__ == "__main__":
 
     # Emit boot_started so Electron knows the backend process is alive
     try:
-        import json as _json
+        from server.setup.jsonl import emit_boot_started
+        emit_boot_started(getattr(config, "VERSION", "unknown"))
+    except Exception as e:
         import sys as _sys
-        _boot_msg = _json.dumps({
-            "type": "boot_started",
-            "version": getattr(config, "VERSION", "unknown"),
-        })
-        _sys.stdout.write(_boot_msg + "\n")
-        _sys.stdout.flush()
-    except Exception:
-        pass
+        print(f"[WARN] boot_started emit failed: {e}", file=_sys.stderr)
 
     # === FIRST-LAUNCH SETUP (replaces old auto-setup blob) ===
     # Step-by-step PG setup with JSONL progress for Electron splash screen.
@@ -953,6 +948,13 @@ if __name__ == "__main__":
         logger.warning(f"Setup phase skipped or failed: {e}")
 
     logger.info(f"Starting server on {config.SERVER_HOST}:{config.SERVER_PORT}")
+
+    # Keep silence timer alive while uvicorn starts
+    try:
+        from server.setup.jsonl import emit_setup_substep
+        emit_setup_substep("uvicorn", "Starting web server...")
+    except Exception:
+        pass
 
     uvicorn.run(
         app,  # Run the wrapped app directly

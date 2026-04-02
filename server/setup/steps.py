@@ -687,7 +687,7 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
     max_connections = 250
     shared_buffers_gb = max(1, hw.ram_gb // 4)
     effective_cache_size_gb = max(2, hw.ram_gb * 3 // 4)
-    work_mem_mb = max(16, min(128, hw.ram_gb * 1024 // (max_connections * 2)))
+    work_mem_mb = max(4, min(64, hw.ram_gb * 1024 // (max_connections * 4)))
     maintenance_work_mem_gb = max(1, min(4, hw.ram_gb // 16))
     max_parallel_workers = min(8, hw.physical_cores)
     max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
@@ -714,13 +714,18 @@ max_parallel_maintenance_workers = {max_parallel_per_gather}
 default_statistics_target = 200
 """
 
+    end_marker = "# End LocaNext Performance Tuning"
     try:
         existing = conf_path.read_text(encoding="utf-8")
         marker = "# LocaNext Performance Tuning"
         if marker in existing:
             before = existing[:existing.index(marker)]
-            existing = before.rstrip() + "\n"
-        conf_path.write_text(existing + "\n" + tuning_block, encoding="utf-8")
+            after_part = ""
+            if end_marker in existing:
+                after_idx = existing.index(end_marker) + len(end_marker)
+                after_part = existing[after_idx:]
+            existing = before.rstrip() + "\n" + after_part
+        conf_path.write_text(existing + "\n" + tuning_block + end_marker + "\n", encoding="utf-8")
     except Exception as exc:
         return StepResult(
             step=step, status="failed", duration_ms=_ms_since(t0),
@@ -728,17 +733,20 @@ default_statistics_target = 200
             error_code="TUNE_FAILED",
         )
 
-    # Reload PG config (no restart needed)
+    # shared_buffers and max_connections require restart, not reload
     env = _make_env(paths.bin_dir)
     try:
         result = subprocess.run(
-            [str(paths.pg_ctl), "reload", "-D", str(paths.data_dir)],
-            capture_output=True, text=True, timeout=10, env=env,
+            [str(paths.pg_ctl), "restart", "-D", str(paths.data_dir),
+             "-l", str(paths.log_file), "-w"],
+            capture_output=True, text=True, timeout=30, env=env,
         )
         if result.returncode != 0:
-            logger.warning("pg_ctl reload failed (settings apply on next restart): {}", result.stderr)
+            logger.warning("pg_ctl restart failed (settings apply on next manual restart): {}", result.stderr)
+    except subprocess.TimeoutExpired:
+        logger.warning("pg_ctl restart timed out — settings may apply on next launch")
     except Exception as exc:
-        logger.warning("pg_ctl reload failed: {} (settings apply on next restart)", exc)
+        logger.warning("pg_ctl restart failed: {} (settings apply on next launch)", exc)
 
     logger.info(
         "PG tuned: max_connections={}, shared_buffers={}GB, work_mem={}MB, parallel_workers={}, SSD={}",

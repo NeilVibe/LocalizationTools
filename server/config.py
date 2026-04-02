@@ -191,10 +191,12 @@ def _apply_lan_server_overrides():
         # No need to bind to 0.0.0.0 — each client runs its own backend.
         # Connection pool tuned for LAN server with 200+ concurrent connections
         # 25 base + 35 overflow = 60 max connections from this backend instance
+        # Connection pool for LAN server: 10 base + 20 overflow = 30 max
+        # With max_connections=250, supports ~8 concurrent LAN clients
         if not os.getenv("DB_POOL_SIZE"):
-            DB_POOL_SIZE = 25
+            DB_POOL_SIZE = 10
         if not os.getenv("DB_MAX_OVERFLOW"):
-            DB_MAX_OVERFLOW = 35
+            DB_MAX_OVERFLOW = 20
         if not os.getenv("DB_POOL_TIMEOUT"):
             DB_POOL_TIMEOUT = 20    # Fail fast if pool exhausted
         if not os.getenv("DB_POOL_RECYCLE"):
