@@ -252,9 +252,14 @@
     const lang = event.target.value;
     selectedLanguage = lang;
     await handleStop();
-    selectedAudio = null;
-    selectedEvent = null;
+    // MDG: language change only affects audio folder, NOT the selected entry or scripts.
+    // Scripts always show KOR + ENG regardless of audio language.
+    // Keep current selection — just refetch items for has_wem status update.
     fetchAllItems();
+    // Refetch detail for the selected event (has_wem may change per language)
+    if (selectedEvent) {
+      fetchAudioDetail(selectedEvent);
+    }
   }
 
   // MDG: cleanup cached WAV files

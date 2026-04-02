@@ -102,10 +102,17 @@ class AudioPlaybackService:
         if wem_path is None:
             return {"success": False, "message": f"No audio file for '{event_name}' in '{language}'", "event_name": event_name}
 
+        logger.info("[AudioPlayback] WEM lookup: event={}, lang={}, path={}", event_name, language, wem_path)
+
         # Convert Windows path to WSL path if needed
         if sys.platform != "win32":
             wem_path_str = convert_to_wsl_path(str(wem_path))
             wem_path = Path(wem_path_str)
+
+        # Verify WEM file exists before attempting conversion
+        if not wem_path.exists():
+            logger.error("[AudioPlayback] WEM file NOT FOUND: {}", wem_path)
+            return {"success": False, "message": f"WEM file not found: {wem_path}", "event_name": event_name}
 
         # Stop any current playback first (MDG: self.stop() at start of play())
         self.stop()
@@ -128,6 +135,21 @@ class AudioPlaybackService:
                     logger.error("[AudioPlayback] WEM→WAV conversion failed: {}", wem_path)
                     return
 
+                # Validate WAV file exists and is non-empty
+                if not wav_path.exists():
+                    logger.error("[AudioPlayback] WAV file does not exist after conversion: {}", wav_path)
+                    return
+
+                wav_size = wav_path.stat().st_size
+                if wav_size < 44:  # WAV header is 44 bytes minimum
+                    logger.error("[AudioPlayback] WAV file too small ({}B), likely corrupt: {}", wav_size, wav_path)
+                    # Delete corrupt cache entry so next attempt re-converts
+                    try:
+                        wav_path.unlink()
+                    except OSError:
+                        pass
+                    return
+
                 # Check if stopped during conversion (MDG: self._stop_event.is_set())
                 if self._stop_event.is_set():
                     return
@@ -136,10 +158,19 @@ class AudioPlaybackService:
                 self._duration = self._get_duration_from_wav(wav_path)
                 self._play_start_time = time.time()
 
-                logger.info("[AudioPlayback] Playing: {} → {}", event_name, wav_path.name)
+                logger.info(
+                    "[AudioPlayback] Playing: {} → {} ({}B, {:.1f}s)",
+                    event_name, wav_path.name, wav_size,
+                    self._duration or 0.0,
+                )
 
                 # MDG-exact: synchronous winsound.PlaySound — blocks until audio finishes
-                winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+                # SND_NODEFAULT prevents Windows from playing the system default sound
+                # when the WAV file can't be read/decoded
+                winsound.PlaySound(
+                    str(wav_path),
+                    winsound.SND_FILENAME | winsound.SND_NODEFAULT,
+                )
 
             except Exception as e:
                 if not self._stop_event.is_set():

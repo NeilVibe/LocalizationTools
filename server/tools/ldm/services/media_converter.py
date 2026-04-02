@@ -19,8 +19,15 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
 
+import sys
+
 from loguru import logger
 from PIL import Image
+
+# Suppress console window popup on Windows for subprocess calls
+_SUBPROCESS_KWARGS = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+)
 
 
 # =============================================================================
@@ -108,26 +115,28 @@ class MediaConverter:
         path_hash = hashlib.md5(str(wem_path).encode()).hexdigest()[:8]
         wav_path = self._wav_cache_dir / f"{path_hash}.wav"
 
-        # Check disk cache
+        # Check disk cache — must exist, be valid PCM WAV, and be newer than source
         if wav_path.exists():
             try:
-                if wav_path.stat().st_mtime >= wem_path.stat().st_mtime:
-                    logger.debug("WAV cache hit: {}", wav_path.name)
+                if wav_path.stat().st_mtime >= wem_path.stat().st_mtime and self._is_valid_pcm_wav(wav_path):
+                    logger.debug("WAV cache hit: {} ({}B)", wav_path.name, wav_path.stat().st_size)
                     return wav_path
+                else:
+                    logger.info("WAV cache invalid or stale, re-converting: {}", wav_path.name)
+                    wav_path.unlink()
             except OSError:
                 pass
 
-        # If .wem file is actually a WAV (RIFF header), just copy it
-        try:
-            with open(wem_path, "rb") as f:
-                header = f.read(4)
-            if header == b"RIFF":
-                import shutil
+        # NOTE: Do NOT shortcut on RIFF header — WEM files use RIFF containers too
+        # (Wwise wraps audio in RIFF). Must ALWAYS run vgmstream to get proper PCM WAV.
+        # Only skip conversion if the file is already a .wav extension (not .wem).
+        if wem_path.suffix.lower() == ".wav":
+            try:
                 shutil.copy2(wem_path, wav_path)
-                logger.debug("WEM is actually WAV, copied: {}", wem_path.name)
+                logger.debug("Source is already WAV, copied: {}", wem_path.name)
                 return wav_path
-        except OSError:
-            pass
+            except OSError:
+                pass
 
         # Find vgmstream-cli
         vgmstream = self._find_vgmstream()
@@ -136,29 +145,46 @@ class MediaConverter:
             return None
 
         try:
+            logger.info("[vgmstream] Converting: {} → {}", wem_path, wav_path)
             result = subprocess.run(
                 [str(vgmstream), "-o", str(wav_path), str(wem_path)],
                 capture_output=True,
                 text=True,
                 timeout=60,
+                **_SUBPROCESS_KWARGS,
             )
 
             if result.returncode != 0:
                 logger.warning(
-                    "vgmstream-cli failed for {}: {}",
+                    "vgmstream-cli failed for {} (rc={}): stdout={}, stderr={}",
                     wem_path.name,
-                    result.stderr.strip(),
+                    result.returncode,
+                    result.stdout.strip()[:200],
+                    result.stderr.strip()[:200],
                 )
                 # Clean up partial output
                 if wav_path.exists():
                     wav_path.unlink()
                 return None
 
+            # Log vgmstream output for diagnostics
+            if result.stdout.strip():
+                logger.debug("[vgmstream] stdout: {}", result.stdout.strip()[:300])
+
             if not wav_path.exists():
                 logger.warning("vgmstream-cli produced no output for {}", wem_path.name)
                 return None
 
-            logger.debug("Converted WEM to WAV: {}", wem_path.name)
+            wav_size = wav_path.stat().st_size
+            if wav_size <= 44 or not self._is_valid_pcm_wav(wav_path):
+                logger.error(
+                    "vgmstream-cli produced invalid WAV ({}B, valid_pcm={}) for {}",
+                    wav_size, self._is_valid_pcm_wav(wav_path), wem_path.name,
+                )
+                wav_path.unlink(missing_ok=True)
+                return None
+
+            logger.info("Converted WEM to WAV: {} → {} ({}B)", wem_path.name, wav_path.name, wav_size)
             return wav_path
 
         except subprocess.TimeoutExpired:
@@ -171,6 +197,33 @@ class MediaConverter:
     # -------------------------------------------------------------------------
     # Utilities
     # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _is_valid_pcm_wav(path: Path) -> bool:
+        """Check if a file is a valid PCM WAV (not a WEM with RIFF header).
+
+        Reads first 20 bytes: RIFF + size + WAVE + fmt + chunk_size + audio_format.
+        PCM WAV has audio_format == 1. WEM/Vorbis/etc. have other values.
+        """
+        try:
+            with open(path, "rb") as f:
+                header = f.read(20)
+            if len(header) < 20:
+                return False
+            # RIFF....WAVEfmt
+            if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+                return False
+            # Audio format at byte 20: 1 = PCM, 3 = IEEE float (both playable)
+            audio_format = int.from_bytes(header[20:22], "little") if len(header) >= 22 else 0
+            # Actually need to read 22 bytes for audio_format
+            with open(path, "rb") as f:
+                data = f.read(22)
+            if len(data) < 22:
+                return False
+            audio_format = int.from_bytes(data[20:22], "little")
+            return audio_format in (1, 3)  # PCM or IEEE float
+        except Exception:
+            return False
 
     def _find_vgmstream(self) -> Optional[Path]:
         """Locate the vgmstream-cli binary.
