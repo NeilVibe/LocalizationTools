@@ -809,6 +809,38 @@ ipcMain.handle('get-update-mode', async () => {
 /**
  * IPC: Run health check
  */
+/**
+ * IPC: Remote server config (Option B — Light Build)
+ */
+ipcMain.handle('get-remote-server', async () => {
+  const configPath = path.join(app.getPath('userData'), 'remote-server.json');
+  try {
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch (e) {
+    logger.warning('Failed to read remote server config', { error: e.message });
+  }
+  return null;
+});
+
+ipcMain.handle('set-remote-server', async (event, url) => {
+  const configPath = path.join(app.getPath('userData'), 'remote-server.json');
+  try {
+    if (url) {
+      fs.writeFileSync(configPath, JSON.stringify({ url, updated: new Date().toISOString() }), 'utf8');
+      logger.info('Remote server config saved', { url });
+    } else {
+      if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+      logger.info('Remote server config cleared');
+    }
+    return { success: true };
+  } catch (e) {
+    logger.error('Failed to save remote server config', { error: e.message });
+    return { success: false, error: e.message };
+  }
+});
+
 ipcMain.handle('run-health-check', async () => {
   try {
     const result = await performHealthCheck(paths);
@@ -1512,18 +1544,65 @@ app.whenReady().then(async () => {
     updateSplash('Starting...', 40);
   }
 
-  // Start backend server
-  updateSplash('Starting backend server...', 50);
-  const serverReady = await startBackendServer();
-  if (!serverReady && !isDev) {
-    logger.error('Failed to start backend server - app may not function correctly');
-    closeSplash();
-    // Show error dialog to user
-    dialog.showErrorBox(
-      'Backend Server Error',
-      'Failed to start the backend server. The application may not function correctly.\n\n' +
-      'Please try restarting the application or contact support.'
-    );
+  // Option B: Check for remote server configuration (Light Build)
+  // If light mode + remote server configured, skip local backend
+  const remoteConfigPath = path.join(app.getPath('userData'), 'remote-server.json');
+  let useRemoteServer = false;
+  let remoteServerUrl = null;
+
+  if (process.env.LOCANEXT_LIGHT_MODE === '1') {
+    try {
+      if (fs.existsSync(remoteConfigPath)) {
+        const remoteConfig = JSON.parse(fs.readFileSync(remoteConfigPath, 'utf8'));
+        if (remoteConfig.url) {
+          remoteServerUrl = remoteConfig.url;
+          logger.info('Remote server configured (Light Build)', { url: remoteServerUrl });
+          updateSplash('Connecting to server...', 50);
+
+          // Test remote server
+          try {
+            const testResult = await new Promise((resolve, reject) => {
+              http.get(`${remoteServerUrl}/health`, { timeout: 5000 }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => resolve({ ok: res.statusCode === 200, data }));
+              }).on('error', reject);
+            });
+            if (testResult.ok) {
+              useRemoteServer = true;
+              logger.success('Remote server reachable', { url: remoteServerUrl });
+              updateSplash('Server connected!', 60);
+            } else {
+              logger.warning('Remote server unhealthy, falling back to local backend');
+            }
+          } catch (e) {
+            logger.warning('Remote server unreachable, falling back to local backend', { error: e.message });
+          }
+        }
+      }
+    } catch (e) {
+      logger.warning('Failed to read remote config', { error: e.message });
+    }
+  }
+
+  if (useRemoteServer) {
+    // Skip local backend — frontend will connect to remote server
+    logger.info('Using remote server, skipping local backend startup');
+    updateSplash('Connected to remote server', 70);
+  } else {
+    // Start local backend server (normal flow)
+    updateSplash('Starting backend server...', 50);
+    const serverReady = await startBackendServer();
+    if (!serverReady && !isDev) {
+      logger.error('Failed to start backend server - app may not function correctly');
+      closeSplash();
+      // Show error dialog to user
+      dialog.showErrorBox(
+        'Backend Server Error',
+        'Failed to start the backend server. The application may not function correctly.\n\n' +
+        'Please try restarting the application or contact support.'
+      );
+    }
   }
 
   updateSplash('Loading interface...', 80);

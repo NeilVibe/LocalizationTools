@@ -39,8 +39,8 @@
   } from '$lib/stores/launcher.js';
   import { connectionMode } from '$lib/stores/sync.js';
 
-  // API base URL
-  const API_BASE = get(serverUrl);
+  // API base URL — read dynamically so remote server URL from localStorage is respected
+  function getAPI() { return get(serverUrl); }
 
   // Svelte 5: Local state
   let currentVersion = $state('');
@@ -106,7 +106,7 @@
 
   async function fetchVersion() {
     try {
-      const response = await fetch(`${API_BASE}/health`);
+      const response = await fetch(`${getAPI()}/health`);
       if (response.ok) {
         const health = await response.json();
         currentVersion = health.version || '';
@@ -120,7 +120,7 @@
     serverStatus.set('checking');
 
     try {
-      const response = await fetch(`${API_BASE}/health`, { timeout: 5000 });
+      const response = await fetch(`${getAPI()}/health`, { timeout: 5000 });
       if (response.ok) {
         serverStatus.set('connected');
         connectionMode.set('online');

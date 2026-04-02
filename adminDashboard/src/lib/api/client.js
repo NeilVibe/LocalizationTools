@@ -3,8 +3,13 @@
  * Connects to FastAPI backend for admin operations
  */
 
-// Use env var for production, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888/api/v2';
+// When served from FastAPI (bundled), use relative URL.
+// In dev mode (npm run dev on port 5174), use full localhost URL.
+const API_BASE_URL = import.meta.env.VITE_API_URL || (
+  typeof window !== 'undefined' && window.location.port === '5174'
+    ? 'http://localhost:8888/api/v2'  // Dev mode: dashboard on 5174, API on 8888
+    : '/api/v2'                        // Bundled: served from same origin as API
+);
 
 class AdminAPIClient {
   constructor() {
@@ -253,8 +258,9 @@ class AdminAPIClient {
 
   // HEALTH
   async getSystemHealth() {
-    const baseUrl = API_BASE_URL.replace(/\/api\/v2$/, '');
-    const response = await fetch(`${baseUrl}/health`);
+    const baseUrl = API_BASE_URL.replace(/\/api\/v2$/, '') || '';
+    const healthUrl = baseUrl ? `${baseUrl}/health` : '/health';
+    const response = await fetch(healthUrl);
     return await response.json();
   }
 

@@ -8,7 +8,12 @@ const config = {
   kit: {
     adapter: adapter({
       fallback: 'index.html'
-    })
+    }),
+    paths: {
+      // When bundled, served from FastAPI at /dashboard/
+      // In dev mode (npm run dev), this is ignored (uses root /)
+      base: process.env.DASHBOARD_BASE_PATH || ''
+    }
   }
 };
 

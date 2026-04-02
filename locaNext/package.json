@@ -114,6 +114,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "resources/admin-dashboard",
+        "to": "admin-dashboard",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {

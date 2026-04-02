@@ -183,14 +183,16 @@ USER_CONFIG_PATH = _get_user_config_path()
 
 # Apply LAN server mode overrides from user config
 def _apply_lan_server_overrides():
-    """Apply settings overrides when in LAN server mode."""
-    global DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT, DB_POOL_RECYCLE, CORS_ALLOW_ALL
+    """Apply settings overrides when in LAN server mode (Option B).
+
+    Option B: Admin's FastAPI serves LAN clients directly.
+    Light Build frontends connect to this server over HTTP.
+    """
+    global DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT, DB_POOL_RECYCLE, CORS_ALLOW_ALL, SERVER_HOST
     if _USER_CONFIG.get("server_mode") == "lan_server":
-        # PORT 8888 STAYS ON LOCALHOST — only PG port 5432 is on the network.
-        # Dashboard (5174) and API (8888) are both localhost-only.
-        # No need to bind to 0.0.0.0 — each client runs its own backend.
-        # Connection pool tuned for LAN server with 200+ concurrent connections
-        # 25 base + 35 overflow = 60 max connections from this backend instance
+        # Option B: Bind to all interfaces so LAN clients can reach us
+        if not os.getenv("SERVER_HOST"):
+            SERVER_HOST = "0.0.0.0"
         # Connection pool for LAN server: 10 base + 20 overflow = 30 max
         # With max_connections=250, supports ~8 concurrent LAN clients
         if not os.getenv("DB_POOL_SIZE"):
@@ -201,9 +203,8 @@ def _apply_lan_server_overrides():
             DB_POOL_TIMEOUT = 20    # Fail fast if pool exhausted
         if not os.getenv("DB_POOL_RECYCLE"):
             DB_POOL_RECYCLE = 1800  # Recycle every 30 min
-        # Disable CORS wildcard in LAN server mode (each client uses localhost)
-        if not os.getenv("CORS_ORIGINS"):
-            CORS_ALLOW_ALL = False
+        # Allow all CORS origins for MVP (internal LAN tool, Electron app:// origins vary)
+        CORS_ALLOW_ALL = True
 
 # NOTE: _apply_lan_server_overrides() called AFTER DB_POOL_SIZE is defined below
 

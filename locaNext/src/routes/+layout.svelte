@@ -405,6 +405,13 @@
   });
 
   onMount(() => {
+    // Option B: Restore saved remote server URL BEFORE any API calls
+    const savedServer = localStorage.getItem('locanext_remote_server');
+    if (savedServer) {
+      api.setBaseURL(savedServer);
+      logger.info("Remote server restored from localStorage", { url: savedServer });
+    }
+
     // Initialize global error monitoring
     remoteLogger.init();
 

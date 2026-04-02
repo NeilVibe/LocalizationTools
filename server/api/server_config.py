@@ -560,6 +560,50 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
     )
 
 
+@router.post("/lan-mode")
+async def toggle_lan_mode(
+    request: Request,
+    _user=Depends(get_current_active_user_async),
+):
+    """Toggle LAN server mode on/off (Option B).
+
+    When enabled: FastAPI binds 0.0.0.0:8888, accepts LAN connections.
+    When disabled: FastAPI binds 127.0.0.1:8888, localhost only.
+    Requires app restart to take effect. Localhost-only for security.
+    """
+    # Security: only allow from localhost
+    client_ip = request.client.host if request.client else "unknown"
+    if client_ip not in ("127.0.0.1", "::1"):
+        from starlette.responses import JSONResponse
+        return JSONResponse(
+            {"success": False, "message": f"LAN mode toggle only from localhost. Your IP: {client_ip}"},
+            status_code=403,
+        )
+
+    existing = config.get_user_config()
+    current_mode = existing.get("server_mode", "standalone")
+    new_mode = "standalone" if current_mode == "lan_server" else "lan_server"
+    existing["server_mode"] = new_mode
+
+    lan_ip = _get_lan_ip()
+    if new_mode == "lan_server":
+        existing["lan_ip"] = lan_ip
+
+    saved = config.save_user_config(existing)
+
+    if saved:
+        logger.info(f"LAN mode toggled: {current_mode} → {new_mode} (LAN IP: {lan_ip})")
+        return {
+            "success": True,
+            "server_mode": new_mode,
+            "lan_ip": lan_ip,
+            "message": f"LAN access {'enabled' if new_mode == 'lan_server' else 'disabled'}. Restart LocaNext to apply.",
+            "action_required": "restart",
+        }
+    else:
+        return {"success": False, "message": "Failed to save configuration"}
+
+
 @router.post("/setup/retry")
 async def retry_server_setup(request: Request, _user=Depends(get_current_active_user_async)):
     """Retry server setup from Admin Dashboard."""

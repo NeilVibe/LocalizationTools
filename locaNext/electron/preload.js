@@ -316,4 +316,20 @@ contextBridge.exposeInMainWorld('electronTelemetry', {
   getState: () => ipcRenderer.invoke('get-telemetry-state')
 });
 
+// Option B: Remote server config (Light Build)
+contextBridge.exposeInMainWorld('electronRemote', {
+  /**
+   * Get saved remote server URL
+   * @returns {Promise<{url, updated} | null>}
+   */
+  getRemoteServer: () => ipcRenderer.invoke('get-remote-server'),
+
+  /**
+   * Save remote server URL (or null to clear)
+   * @param {string|null} url
+   * @returns {Promise<{success, error?}>}
+   */
+  setRemoteServer: (url) => ipcRenderer.invoke('set-remote-server', url),
+});
+
 console.log('LocaNext preload script loaded');

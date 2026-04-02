@@ -540,6 +540,62 @@ app.include_router(ldm_router)
 
 
 # ============================================
+# Admin Dashboard (static files — bundled in Admin Build)
+# ============================================
+
+def _mount_admin_dashboard():
+    """Mount admin dashboard static files if available.
+
+    In Admin Build: dashboard is pre-built to resources/admin-dashboard/
+    In dev: run adminDashboard via `npm run dev` on port 5174 instead.
+    """
+    import sys
+    from pathlib import Path
+
+    # Search for built dashboard files
+    candidates = []
+
+    # 1. LOCANEXT_RESOURCES_PATH (Electron packaged app)
+    resources = os.environ.get("LOCANEXT_RESOURCES_PATH", "")
+    if resources:
+        candidates.append(Path(resources) / "admin-dashboard")
+
+    # 2. Co-located with python.exe (packaged)
+    candidates.append(Path(sys.executable).resolve().parent.parent.parent / "admin-dashboard")
+
+    # 3. Project root (dev — after manual build)
+    candidates.append(Path(__file__).resolve().parent.parent / "adminDashboard" / "build")
+
+    for dashboard_dir in candidates:
+        index_file = dashboard_dir / "index.html"
+        if index_file.exists():
+            from starlette.responses import FileResponse
+
+            # Single route handles both static files and SPA fallback.
+            # If the path maps to a real file (JS, CSS, images) → serve it.
+            # Otherwise → serve index.html for SPA client-side routing.
+            _dashboard_dir = dashboard_dir  # capture for closure
+
+            @app.get("/dashboard/{path:path}")
+            async def serve_dashboard(path: str = ""):
+                file_path = _dashboard_dir / path
+                if path and file_path.is_file():
+                    return FileResponse(str(file_path))
+                return FileResponse(str(_dashboard_dir / "index.html"))
+
+            @app.get("/dashboard")
+            async def serve_dashboard_root():
+                return FileResponse(str(_dashboard_dir / "index.html"))
+
+            logger.info(f"Admin Dashboard mounted at /dashboard from {dashboard_dir}")
+            return
+
+    logger.debug("Admin Dashboard not found — skipping mount (use npm run dev on port 5174 for dev)")
+
+_mount_admin_dashboard()
+
+
+# ============================================
 # Root Endpoints
 # ============================================
 
@@ -645,13 +701,15 @@ async def health_check(request: Request):
             logger.error(f"Health check database error: {e}")
             db_status = "error"
 
-    # Base response
+    # Base response — includes server_mode for Option B Light Build detection
+    _user_cfg = config.get_user_config()
     response = {
         "status": "healthy" if db_status == "connected" else "degraded",
         "database": db_status,
         "database_type": config.ACTIVE_DATABASE_TYPE,
         "version": config.APP_VERSION,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "server_mode": _user_cfg.get("server_mode", "standalone"),
     }
 
     # P33: Auto-token for SQLite offline mode

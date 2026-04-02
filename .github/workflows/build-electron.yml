@@ -1100,6 +1100,39 @@ jobs:
           }
         shell: pwsh
 
+      - name: Build Admin Dashboard (static files)
+        if: needs.check-build-trigger.outputs.light_mode != 'yes'
+        run: |
+          Write-Host "Building Admin Dashboard for bundling..."
+          cd adminDashboard
+          npm ci
+          $env:DASHBOARD_BASE_PATH = "/dashboard"
+          npm run build
+          $buildDir = "build"
+          if (Test-Path $buildDir) {
+            $fileCount = (Get-ChildItem $buildDir -Recurse -File | Measure-Object).Count
+            Write-Host "[OK] Admin Dashboard built ($fileCount files)" -ForegroundColor Green
+          } else {
+            Write-Host "[WARNING] Admin Dashboard build directory not found - skipping" -ForegroundColor Yellow
+          }
+          cd ..
+        shell: pwsh
+
+      - name: Copy Admin Dashboard to resources
+        if: needs.check-build-trigger.outputs.light_mode != 'yes'
+        run: |
+          $src = "adminDashboard\build"
+          $dst = "locaNext\resources\admin-dashboard"
+          if (Test-Path $src) {
+            New-Item -ItemType Directory -Path $dst -Force | Out-Null
+            Copy-Item -Path "$src\*" -Destination $dst -Recurse -Force
+            $count = (Get-ChildItem $dst -Recurse -File | Measure-Object).Count
+            Write-Host "[OK] Admin Dashboard copied to resources ($count files)" -ForegroundColor Green
+          } else {
+            Write-Host "[SKIP] No admin dashboard build to copy" -ForegroundColor Yellow
+          }
+        shell: pwsh
+
       - name: Build Electron App
         run: |
           cd locaNext
