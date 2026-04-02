@@ -1,2 +1,2 @@
 Build
-# ALL fixes: psql -h/-p + pg_isready -h + start_pg Popen + trust auth + Windows config + IPv6
+# Audio fix + Option B (dashboard bundled, LAN mode, Light Build connection)
