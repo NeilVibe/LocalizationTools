@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -18,6 +19,9 @@ from loguru import logger
 _EXT = ".exe" if os.name == "nt" else ""
 
 _MIN_DISK_MB = 500
+
+# SQL identifier allowlist — prevents injection in CREATE USER / CREATE DATABASE
+_SAFE_IDENT_RE = re.compile(r'^[a-z][a-z0-9_]{0,62}$')
 
 
 # ---------------------------------------------------------------------------
@@ -538,6 +542,14 @@ def step_create_account(config: SetupConfig) -> StepResult:
             message="pg_bin_dir not configured", error_code="MISSING_BINARIES",
         )
 
+    # Validate identifier to prevent SQL injection
+    if not _SAFE_IDENT_RE.match(config.service_user):
+        return StepResult(
+            step=step, status="failed", duration_ms=_ms_since(t0),
+            message=f"Invalid service_user: {config.service_user!r}",
+            error_code="INVALID_IDENTIFIER",
+        )
+
     # Pre-check: role exists?
     ok, out = run_sql(
         paths.psql,
@@ -547,11 +559,17 @@ def step_create_account(config: SetupConfig) -> StepResult:
     if ok and out.strip() == "1":
         # Role exists — ensure password is current (ALTER)
         password = secrets.token_urlsafe(24)
-        run_sql(
+        ok2, out2 = run_sql(
             paths.psql,
-            f"ALTER USER {config.service_user} WITH PASSWORD '{password}'",
+            f"ALTER USER {config.service_user} WITH PASSWORD $pw${password}$pw$",
             user=config.pg_superuser,
         )
+        if not ok2:
+            return StepResult(
+                step=step, status="failed", duration_ms=_ms_since(t0),
+                message=f"ALTER USER failed: {out2}", error_code="ALTER_USER_FAILED",
+                stderr=out2,
+            )
         return StepResult(
             step=step, status="skipped", duration_ms=_ms_since(t0),
             message=password,  # Caller stores this
@@ -560,7 +578,7 @@ def step_create_account(config: SetupConfig) -> StepResult:
     password = secrets.token_urlsafe(24)
     ok, out = run_sql(
         paths.psql,
-        f"CREATE USER {config.service_user} WITH PASSWORD '{password}'",
+        f"CREATE USER {config.service_user} WITH PASSWORD $pw${password}$pw$",
         user=config.pg_superuser,
     )
     if not ok:
@@ -591,6 +609,15 @@ def step_create_database(config: SetupConfig) -> StepResult:
             step=step, status="failed", duration_ms=_ms_since(t0),
             message="pg_bin_dir not configured", error_code="MISSING_BINARIES",
         )
+
+    # Validate identifiers to prevent SQL injection
+    for name, value in [("service_user", config.service_user), ("service_db", config.service_db)]:
+        if not _SAFE_IDENT_RE.match(value):
+            return StepResult(
+                step=step, status="failed", duration_ms=_ms_since(t0),
+                message=f"Invalid {name}: {value!r}",
+                error_code="INVALID_IDENTIFIER",
+            )
 
     # Pre-check
     ok, out = run_sql(
@@ -713,18 +740,20 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
             .sign(key, hashes.SHA256())
         )
 
-        # Write key (restricted permissions)
+        # Write key with restricted permissions (atomic: temp file → permissions → rename)
         key_bytes = key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        key_path.write_bytes(key_bytes)
+        import tempfile
+        tmp_key = Path(tempfile.mktemp(dir=str(paths.data_dir), suffix=".key.tmp"))
+        tmp_key.write_bytes(key_bytes)
         if os.name == "nt":
-            # Restrict key file to current user only (PG requires this for ssl=on)
+            # Restrict BEFORE renaming so the file is never world-readable at key_path
             try:
                 subprocess.run(
-                    ["icacls", str(key_path), "/inheritance:r",
+                    ["icacls", str(tmp_key), "/inheritance:r",
                      "/grant:r", f"{os.environ.get('USERNAME', 'SYSTEM')}:(R)"],
                     capture_output=True, text=True, timeout=10,
                 )
@@ -732,7 +761,8 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
             except Exception as exc:
                 logger.warning("Could not restrict SSL key permissions: {}", exc)
         else:
-            key_path.chmod(0o600)
+            tmp_key.chmod(0o600)
+        tmp_key.rename(key_path)
 
         # Write cert
         cert_bytes = cert.public_bytes(serialization.Encoding.PEM)
@@ -893,7 +923,7 @@ ssl_key_file = 'server.key'
         )
         try:
             retcode = proc.wait(timeout=60)
-            if retcode == 0:
+            if retcode == 0 and is_pg_running(paths.pg_isready, config.pg_port):
                 restart_ok = True
             else:
                 pg_log_tail = _read_pg_log_tail(paths.log_file, max_lines=15)
