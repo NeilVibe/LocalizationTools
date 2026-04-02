@@ -1108,6 +1108,7 @@ jobs:
         run: |
           Write-Host "Building Admin Dashboard for bundling..."
           cd adminDashboard
+          Remove-Item -Path package-lock.json -ErrorAction SilentlyContinue
           npm install
           $env:DASHBOARD_BASE_PATH = "/dashboard"
           npm run build
