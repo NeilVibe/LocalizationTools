@@ -160,10 +160,13 @@ def run_sql(
     user: str = "postgres",
     db: str = "postgres",
     password: str | None = None,
+    host: str = "127.0.0.1",
+    port: int = 5432,
     timeout: int = 10,
 ) -> tuple[bool, str]:
     """Run SQL via psql. Password via PGPASSWORD env var (NEVER as CLI arg).
 
+    Windows has no Unix domain sockets — -h and -p are REQUIRED for TCP connection.
     Returns (success, stdout).
     """
     env = _make_env(psql.parent)
@@ -172,6 +175,8 @@ def run_sql(
 
     cmd = [
         str(psql),
+        "-h", host,       # REQUIRED on Windows (no Unix sockets)
+        "-p", str(port),  # explicit port
         "-U", user,
         "-d", db,
         "-t",       # tuples only (no headers)

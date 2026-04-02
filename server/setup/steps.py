@@ -805,20 +805,28 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
         defaults_used = True
 
     # Calculate optimal settings
+    # Windows: PG docs recommend shared_buffers 64MB-512MB (OS double-buffers via NTFS cache)
+    # Linux: 25% of RAM is standard
     max_connections = 250
-    shared_buffers_gb = max(1, hw.ram_gb // 4)
+    if os.name == "nt":
+        shared_buffers_gb = 1   # Windows: 1GB safe ceiling (PG docs advise low values)
+        huge_pages = "off"      # Windows: needs SeLockMemoryPrivilege, risky for embedded app
+    else:
+        shared_buffers_gb = max(1, hw.ram_gb // 4)
+        huge_pages = "try"
     effective_cache_size_gb = max(2, hw.ram_gb * 3 // 4)
     work_mem_mb = max(4, min(64, hw.ram_gb * 1024 // (max_connections * 4)))
-    maintenance_work_mem_mb = max(256, min(2047, (hw.ram_gb * 1024) // 16))  # PG 15 max 2097151 kB (~2047MB)
+    maintenance_work_mem_mb = max(256, min(2047, (hw.ram_gb * 1024) // 16))
     max_parallel_workers = min(8, hw.physical_cores)
     max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
+    max_parallel_maintenance = min(4, max_parallel_workers // 2)
     random_page_cost = "1.1" if hw.is_ssd else "4.0"
     # Windows lacks posix_fadvise() — effective_io_concurrency MUST be 0
     effective_io_concurrency = 0 if os.name == "nt" else (200 if hw.is_ssd else 2)
 
     tuning_block = f"""
 # LocaNext Performance Tuning (auto-generated)
-# Hardware: {hw.ram_gb}GB RAM, {hw.physical_cores} cores, SSD={hw.is_ssd}
+# Hardware: {hw.ram_gb}GB RAM, {hw.physical_cores} cores, SSD={hw.is_ssd}, OS={os.name}
 max_connections = {max_connections}
 shared_buffers = {shared_buffers_gb}GB
 effective_cache_size = {effective_cache_size_gb}GB
@@ -832,9 +840,9 @@ random_page_cost = {random_page_cost}
 effective_io_concurrency = {effective_io_concurrency}
 max_parallel_workers_per_gather = {max_parallel_per_gather}
 max_parallel_workers = {max_parallel_workers}
-max_parallel_maintenance_workers = {max_parallel_per_gather}
+max_parallel_maintenance_workers = {max_parallel_maintenance}
 default_statistics_target = 200
-huge_pages = try
+huge_pages = {huge_pages}
 """
 
     # --- Enable SSL if certificates exist (two-phase: PG started plain, now add SSL) ---
