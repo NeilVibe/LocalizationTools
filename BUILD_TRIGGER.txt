@@ -1,2 +1,2 @@
 Build
-# Fix pg_hba.conf trust for superuser + maintenance_work_mem off-by-one
+# CRITICAL: psql -h/-p for Windows + shared_buffers 1GB + huge_pages off
