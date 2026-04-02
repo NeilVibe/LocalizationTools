@@ -71,11 +71,14 @@ def _make_env(bin_dir: Path) -> dict:
     return env
 
 
-def is_pg_running(pg_isready: Path, port: int = 5432) -> bool:
-    """Check if PG is running using pg_isready. Returns True/False."""
+def is_pg_running(pg_isready: Path, port: int = 5432, host: str = "127.0.0.1") -> bool:
+    """Check if PG is running using pg_isready. Returns True/False.
+
+    Windows has no Unix sockets — -h is REQUIRED for TCP check.
+    """
     try:
         result = subprocess.run(
-            [str(pg_isready), "-p", str(port)],
+            [str(pg_isready), "-h", host, "-p", str(port)],
             capture_output=True,
             text=True,
             timeout=5,
@@ -90,9 +93,14 @@ def start_pg(
     pg_ctl: Path,
     data_dir: Path,
     log_file: Path,
-    timeout: int = 30,
+    timeout: int = 60,
 ) -> tuple[bool, str]:
     """Start PG with pg_ctl start -D data_dir -l log_file -w.
+
+    Uses Popen with DEVNULL to avoid Windows pipe inheritance hang.
+    On Windows, postgres.exe inherits pipe handles from pg_ctl;
+    subprocess.run(capture_output=True) hangs in communicate() waiting
+    for postgres to release the handles — which it never does.
 
     Returns (success, message).
     """
@@ -105,17 +113,31 @@ def start_pg(
         "-w",
     ]
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             env=env,
         )
-        if result.returncode == 0:
-            return True, result.stdout.strip()
-        return False, result.stderr.strip() or result.stdout.strip()
+        retcode = proc.wait(timeout=timeout)
+        if retcode == 0:
+            return True, "PostgreSQL started"
+        return False, f"pg_ctl start exited with code {retcode}"
     except subprocess.TimeoutExpired:
+        # Kill the entire process tree on Windows
+        if os.name == "nt":
+            try:
+                subprocess.run(
+                    ["taskkill", "/pid", str(proc.pid), "/f", "/t"],
+                    capture_output=True, timeout=10,
+                )
+            except Exception:
+                pass
+        else:
+            try:
+                proc.kill()
+            except Exception:
+                pass
         return False, f"pg_ctl start timed out after {timeout}s"
     except OSError as exc:
         return False, f"Failed to start PG: {exc}"

@@ -961,6 +961,8 @@ if __name__ == "__main__":
                         logger.warning(f"PostgreSQL start failed: {msg}")
     except Exception as e:
         logger.warning(f"Setup phase skipped or failed: {e}")
+        if pg:  # Only fail if PG was found and setup was attempted
+            _setup_failed = True
 
     # Don't start the server if setup failed - Electron will show the error
     if _setup_failed:

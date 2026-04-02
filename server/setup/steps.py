@@ -237,7 +237,7 @@ host    all             {service_user}  ::1/128                 scram-sha-256
 hostssl {service_db}    {service_user}  {subnet}                scram-sha-256
 # Reject everything else
 host    all             all             0.0.0.0/0               reject
-host    all             all             ::0/0                   reject
+host    all             all             ::/0                    reject
 """
 
 _CONF_SETTINGS = """\
@@ -910,7 +910,6 @@ ssl_key_file = 'server.key'
         conf_backup = conf_path.with_suffix(".conf.bak")
         if conf_backup.exists():
             try:
-                import shutil
                 shutil.copy2(conf_backup, conf_path)
                 logger.info("Restored postgresql.conf from backup")
             except Exception as exc:
