@@ -903,7 +903,16 @@ if __name__ == "__main__":
 
                 if setup_result.success:
                     lan_ip = detect_lan_ip()
-                    db_password = secrets.token_urlsafe(24)
+                    # Extract the PG service password from the create_account step result
+                    # step_create_account returns the password in StepResult.message
+                    db_password = None
+                    for step_result in setup_result.steps:
+                        if step_result.step == "create_account":
+                            db_password = step_result.message
+                            break
+                    if not db_password:
+                        logger.error("create_account step did not return a password — generating new one")
+                        db_password = secrets.token_urlsafe(24)
                     server_config_data = {
                         "postgres_host": "localhost",
                         "postgres_port": 5432,

@@ -31,6 +31,10 @@ def emit_setup_started(run_id: str) -> None:
 def emit_setup_step(result: StepResult, run_id: str) -> None:
     """Emit progress for a single setup step."""
     index = STEP_NAMES.index(result.step) if result.step in STEP_NAMES else -1
+    # Redact password from create_account step (password is in message field)
+    message = result.message
+    if result.step == "create_account" and result.status in ("done", "skipped"):
+        message = "[credentials stored securely]"
     msg: dict = {
         "type": "setup_step",
         "run_id": run_id,
@@ -39,7 +43,7 @@ def emit_setup_step(result: StepResult, run_id: str) -> None:
         "total": len(STEP_NAMES),
         "status": result.status,
         "duration_ms": result.duration_ms,
-        "message": result.message,
+        "message": message,
     }
     if result.error_code:
         msg["error_code"] = result.error_code
