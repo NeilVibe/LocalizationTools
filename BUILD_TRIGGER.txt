@@ -1,2 +1,2 @@
 Build
-# Fix PG tune config: cap maintenance_work_mem 2GB, io_concurrency=0 on Windows
+# Fix pg_hba.conf trust for superuser + maintenance_work_mem off-by-one
