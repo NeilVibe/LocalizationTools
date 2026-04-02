@@ -86,7 +86,7 @@
         <strong>Error loading database stats</strong>
         <p>{error}</p>
       </div>
-      <button class="retry-btn" onclick={loadDatabaseStats}>Retry</button>
+      <button class="retry-btn" onclick={loadAll}>Retry</button>
     </div>
   {:else if dbStats}
     <!-- Overview Stats -->
@@ -127,7 +127,7 @@
           <span class="stat-value" class:good={pct < 50} class:caution={pct >= 50 && pct < 80} class:warning={pct >= 80}>{pct}%</span>
         </div>
         <div class="progress-bar-container">
-          <div class="progress-bar" class:good={pct < 80} class:warning={pct >= 80} style="width: {pct}%"></div>
+          <div class="progress-bar" class:good={pct < 50} class:caution={pct >= 50 && pct < 80} class:warning={pct >= 80} style="width: {pct}%"></div>
         </div>
         <div class="stat-details">
           Active: {activeConn} | Idle: {idleConn} | Waiting: {pool.waiting_connections || 0}

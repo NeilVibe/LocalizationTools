@@ -23,6 +23,7 @@ import { initializeTelemetry, shutdownTelemetry, telemetryLog, getTelemetryState
 let _serverReadyResolve = null;
 let _serverReadyReject = null;
 let _lastJsonlTime = Date.now();
+let _silenceCheckInterval = null;
 
 /**
  * Handle JSONL setup messages from Python backend stdout.
@@ -81,6 +82,7 @@ function handleSetupMessage(msg) {
       break;
 
     case 'server_ready':
+      if (_silenceCheckInterval) { clearInterval(_silenceCheckInterval); _silenceCheckInterval = null; }
       splash.updateSplash('Ready!', 100);
       if (_serverReadyResolve) {
         _serverReadyResolve(true);
@@ -294,18 +296,18 @@ function waitForServerJsonl(url, silenceTimeoutMs = 60000) {
     _serverReadyReject = reject;
     _lastJsonlTime = Date.now();
 
-    const silenceCheck = setInterval(() => {
+    _silenceCheckInterval = setInterval(() => {
       const silenceMs = Date.now() - _lastJsonlTime;
 
       // If already resolved/rejected, clean up
       if (_serverReadyResolve === null) {
-        clearInterval(silenceCheck);
+        clearInterval(_silenceCheckInterval);
         return;
       }
 
       // Check silence timeout
       if (silenceMs > silenceTimeoutMs) {
-        clearInterval(silenceCheck);
+        clearInterval(_silenceCheckInterval);
         logger.error('Backend silent for ' + (silenceMs / 1000).toFixed(0) + 's — may be stuck');
 
         // Last resort: try HTTP healthcheck once
@@ -337,7 +339,7 @@ function waitForServerJsonl(url, silenceTimeoutMs = 60000) {
     // Safety: listen for backend process exit
     if (backendProcess) {
       backendProcess.once('exit', (code) => {
-        clearInterval(silenceCheck);
+        clearInterval(_silenceCheckInterval);
         if (_serverReadyResolve) {
           _serverReadyReject(new Error(`Backend process exited with code ${code} before server was ready`));
           _serverReadyResolve = null;
@@ -439,6 +441,11 @@ async function startBackendServer() {
 
   backendProcess.on('error', (error) => {
     logger.error('Backend process error', { error: error.message });
+    if (_serverReadyReject) {
+      _serverReadyReject(new Error(`Backend process error: ${error.message}`));
+      _serverReadyResolve = null;
+      _serverReadyReject = null;
+    }
   });
 
   backendProcess.on('exit', (code, signal) => {

@@ -1021,7 +1021,8 @@ jobs:
               Write-Host "[OK] PG binary: $bin"
             }
             # Write pg_setup_mode flag
-            $flagPath = Join-Path (Split-Path $pgBinDir -Parent | Split-Path -Parent) "pg_setup_mode.flag"
+            $pgParent = Split-Path (Split-Path $pgBinDir -Parent) -Parent
+            $flagPath = Join-Path $pgParent "pg_setup_mode.flag"
             "auto" | Out-File -FilePath $flagPath -Encoding ascii -NoNewline
             Write-Host "[OK] pg_setup_mode.flag written (auto)"
           } else {
