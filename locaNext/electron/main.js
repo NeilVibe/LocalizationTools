@@ -419,11 +419,17 @@ async function startBackendServer() {
       if (!trimmed) continue;
 
       if (trimmed.startsWith('{')) {
+        let msg;
         try {
-          const msg = JSON.parse(trimmed);
-          handleSetupMessage(msg);
+          msg = JSON.parse(trimmed);
         } catch {
           logger.info('[Backend]', { output: trimmed });
+          continue;
+        }
+        try {
+          handleSetupMessage(msg);
+        } catch (err) {
+          logger.error('[Setup] handleSetupMessage error', { error: err.message, type: msg?.type });
         }
       } else {
         logger.info('[Backend]', { output: trimmed });

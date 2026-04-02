@@ -686,6 +686,7 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
         )
 
     # Detect hardware
+    defaults_used = False
     try:
         from server.setup.hardware_detect import detect_hardware
         hw = detect_hardware(str(paths.data_dir))
@@ -693,6 +694,7 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
         logger.warning("Hardware detection failed, using defaults: {}", exc)
         from server.setup.hardware_detect import HardwareInfo
         hw = HardwareInfo(ram_gb=8, physical_cores=4, logical_cores=8, is_ssd=True, os_name=os.name)
+        defaults_used = True
 
     # Calculate optimal settings
     max_connections = 250
@@ -723,6 +725,7 @@ max_parallel_workers_per_gather = {max_parallel_per_gather}
 max_parallel_workers = {max_parallel_workers}
 max_parallel_maintenance_workers = {max_parallel_per_gather}
 default_statistics_target = 200
+huge_pages = try
 """
 
     end_marker = "# End LocaNext Performance Tuning"
@@ -766,5 +769,6 @@ default_statistics_target = 200
 
     return StepResult(
         step=step, status="done", duration_ms=_ms_since(t0),
-        message=f"Tuned for {hw.ram_gb}GB RAM, {hw.physical_cores} cores, {max_connections} connections",
+        suffix = " (DEFAULTS — hardware detection failed)" if defaults_used else ""
+        message=f"Tuned for {hw.ram_gb}GB RAM, {hw.physical_cores} cores, {max_connections} connections{suffix}",
     )

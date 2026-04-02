@@ -54,7 +54,7 @@ def detect_hardware(data_dir: str = "") -> HardwareInfo:
             import subprocess
             # Use PowerShell to query disk type
             drive_letter = os.path.splitdrive(data_dir)[0]
-            if drive_letter:
+            if drive_letter and drive_letter[0].isalpha():
                 result = subprocess.run(
                     ["powershell", "-Command",
                      f"(Get-PhysicalDisk | Where-Object {{ $_.DeviceId -eq "
@@ -66,8 +66,8 @@ def detect_hardware(data_dir: str = "") -> HardwareInfo:
                     logger.info("Detected HDD storage")
                 else:
                     logger.info("Detected SSD storage")
-        except Exception:
-            logger.debug("SSD detection failed, assuming SSD")
+        except Exception as exc:
+            logger.warning("SSD detection failed (assuming SSD): {}", exc)
 
     info = HardwareInfo(
         ram_gb=ram_gb,
