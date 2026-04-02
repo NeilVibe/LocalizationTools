@@ -807,11 +807,12 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
     shared_buffers_gb = max(1, hw.ram_gb // 4)
     effective_cache_size_gb = max(2, hw.ram_gb * 3 // 4)
     work_mem_mb = max(4, min(64, hw.ram_gb * 1024 // (max_connections * 4)))
-    maintenance_work_mem_gb = max(1, min(4, hw.ram_gb // 16))
+    maintenance_work_mem_gb = max(1, min(2, hw.ram_gb // 16))  # PG 15 max ~2GB (2097151 kB)
     max_parallel_workers = min(8, hw.physical_cores)
     max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
     random_page_cost = "1.1" if hw.is_ssd else "4.0"
-    effective_io_concurrency = 200 if hw.is_ssd else 2
+    # Windows lacks posix_fadvise() — effective_io_concurrency MUST be 0
+    effective_io_concurrency = 0 if os.name == "nt" else (200 if hw.is_ssd else 2)
 
     tuning_block = f"""
 # LocaNext Performance Tuning (auto-generated)
@@ -871,6 +872,7 @@ ssl_key_file = 'server.key'
     # shared_buffers, max_connections, and ssl require restart (not reload)
     # Use Popen with DEVNULL to avoid Windows pipe inheritance hang (same fix as step_start_database)
     env = _make_env(paths.bin_dir)
+    restart_ok = False
     try:
         proc = subprocess.Popen(
             [str(paths.pg_ctl), "restart", "-D", str(paths.data_dir),
@@ -881,15 +883,50 @@ ssl_key_file = 'server.key'
         )
         try:
             retcode = proc.wait(timeout=60)
-            if retcode != 0:
-                pg_log_tail = _read_pg_log_tail(paths.log_file, max_lines=10)
-                logger.warning("pg_ctl restart exited with code {} (settings apply on next restart): {}",
-                               retcode, pg_log_tail)
+            if retcode == 0:
+                restart_ok = True
+            else:
+                pg_log_tail = _read_pg_log_tail(paths.log_file, max_lines=15)
+                logger.error("pg_ctl restart failed with code {}. pg.log:\n{}", retcode, pg_log_tail)
         except subprocess.TimeoutExpired:
             _kill_process_tree(proc.pid)
-            logger.warning("pg_ctl restart timed out - settings may apply on next launch")
+            logger.warning("pg_ctl restart timed out")
     except Exception as exc:
-        logger.warning("pg_ctl restart failed: {} (settings apply on next launch)", exc)
+        logger.warning("pg_ctl restart failed: {}", exc)
+
+    # CRITICAL: If restart failed, PG is DOWN. Restore backup config and restart plain.
+    if not restart_ok:
+        logger.warning("Tuning restart failed - restoring backup config and restarting PG")
+        conf_backup = conf_path.with_suffix(".conf.bak")
+        if conf_backup.exists():
+            try:
+                import shutil
+                shutil.copy2(conf_backup, conf_path)
+                logger.info("Restored postgresql.conf from backup")
+            except Exception as exc:
+                logger.error("Failed to restore config backup: {}", exc)
+
+        # Try to start PG with restored (or original) config
+        try:
+            proc2 = subprocess.Popen(
+                [str(paths.pg_ctl), "start", "-D", str(paths.data_dir),
+                 "-l", str(paths.log_file), "-w"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
+            )
+            retcode2 = proc2.wait(timeout=60)
+            if retcode2 == 0:
+                logger.info("PG restarted with original config (tuning skipped)")
+            else:
+                logger.error("PG failed to start even with original config!")
+        except Exception as exc:
+            logger.error("Failed to restart PG after config restore: {}", exc)
+
+        return StepResult(
+            step=step, status="done", duration_ms=_ms_since(t0),
+            message="Tuning applied but restart failed - reverted to original config",
+        )
 
     logger.info(
         "PG tuned: max_connections={}, shared_buffers={}GB, work_mem={}MB, parallel_workers={}, SSD={}",
