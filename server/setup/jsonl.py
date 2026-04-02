@@ -83,3 +83,61 @@ def emit_pg_ready() -> None:
 def emit_server_ready(port: int) -> None:
     """Emit when the FastAPI server is ready to accept connections."""
     emit_jsonl({"type": "server_ready", "port": port})
+
+
+def emit_boot_started(version: str, build_type: str = "unknown") -> None:
+    """Emit when __main__ block begins execution."""
+    emit_jsonl({
+        "type": "boot_started",
+        "version": version,
+        "build_type": build_type,
+    })
+
+
+def emit_setup_substep(step: str, detail: str) -> None:
+    """Emit a sub-step detail message for enriched progress display."""
+    emit_jsonl({
+        "type": "setup_substep",
+        "step": step,
+        "detail": detail,
+    })
+
+
+def emit_setup_error(
+    step: str,
+    error_code: str,
+    error_detail: str,
+    pg_log_tail: str = "",
+    suggestion: str = "",
+) -> None:
+    """Emit a setup error with full diagnostic info."""
+    emit_jsonl({
+        "type": "setup_error",
+        "step": step,
+        "error_code": error_code,
+        "error_detail": error_detail,
+        "pg_log_tail": pg_log_tail,
+        "suggestion": suggestion,
+    })
+
+
+# Error code to user-friendly suggestion mapping
+SUGGESTIONS: dict[str, str] = {
+    "PORT_CONFLICT": "Port 5432 is already in use. Close any other PostgreSQL instances.",
+    "LOW_DISK": "Less than 500MB free disk space. Free up space and retry.",
+    "MISSING_BINARIES": "PostgreSQL binaries not found. The installation may be corrupted.",
+    "INITDB_TIMEOUT": "Database initialization timed out. Check antivirus is not blocking.",
+    "INITDB_FAILED": "Database initialization failed. Check disk permissions.",
+    "START_TIMEOUT": "PostgreSQL failed to start. Check resources/bin/postgresql/pg.log",
+    "START_FAILED": "PostgreSQL failed to start. Check if port 5432 is available.",
+    "CERT_GENERATION_FAILED": "TLS certificate generation failed. Check disk space.",
+    "MISSING_CRYPTOGRAPHY": "Python cryptography package not installed.",
+    "CREATE_USER_FAILED": "Could not create database user. Check PostgreSQL logs.",
+    "CREATE_DB_FAILED": "Could not create database. Check PostgreSQL logs.",
+    "TUNE_FAILED": "Performance tuning failed. PG will work with default settings.",
+}
+
+
+def get_suggestion(error_code: str) -> str:
+    """Get a user-friendly suggestion for an error code."""
+    return SUGGESTIONS.get(error_code, "Check the application logs for details.")
