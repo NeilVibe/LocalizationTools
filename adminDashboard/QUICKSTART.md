@@ -31,10 +31,9 @@
    - Validate Dictionary
 
 ### ✅ State Management
-- Svelte stores for app state (`src/lib/stores/app.js`)
-- Current app selection
-- Current view (app vs tasks)
-- User authentication (ready for backend integration)
+- Svelte 5 runes (`$state`, `$derived`, `$effect`) — per-component state
+- Authentication via layout component
+- WebSocket real-time updates via `src/lib/api/websocket.js`
 
 ### ✅ Development Environment
 - Hot reload configured (Vite dev server)
@@ -156,8 +155,8 @@ locaNext/
 │   │   │   │   └── XLSTransfer.svelte  # ✅ All 7 functions
 │   │   │   ├── TaskManager.svelte       # ✅ Task management
 │   │   │   └── Welcome.svelte           # ✅ Landing page
-│   │   └── stores/
-│   │       └── app.js             # ✅ State management
+│   │   └── utils/
+│   │       └── logger.js          # ✅ Console logger
 │   └── app.html                   # ✅ HTML template
 ├── package.json                   # ✅ Dependencies
 ├── svelte.config.js               # ✅ SvelteKit config
@@ -167,7 +166,7 @@ locaNext/
 
 ## Troubleshooting
 
-**"Port 5173 is already in use"**:
+**"Port 5174 is already in use"**:
 - Kill the process: `pkill -f "vite dev"`
 - Or use different port in `vite.config.js`
 
@@ -190,10 +189,9 @@ locaNext/
 | Welcome Screen | ✅ Complete | Professional landing page |
 | Task Manager UI | ✅ Complete | Mock data for now |
 | XLSTransfer UI | ✅ Complete | All 7 functions visible |
-| State Management | ✅ Complete | Svelte stores working |
-| Backend Integration | ⏳ Next Phase | Coming soon |
-| Python Subprocess | ⏳ Next Phase | Coming soon |
-| WebSocket Real-Time | ⏳ Next Phase | Coming soon |
+| State Management | ✅ Complete | Svelte 5 runes ($state, $derived) |
+| Backend Integration | ✅ Complete | FastAPI REST API |
+| WebSocket Real-Time | ✅ Complete | socket.io-client |
 
 ---
 

@@ -202,26 +202,18 @@ class MediaConverter:
     def _is_valid_pcm_wav(path: Path) -> bool:
         """Check if a file is a valid PCM WAV (not a WEM with RIFF header).
 
-        Reads first 20 bytes: RIFF + size + WAVE + fmt + chunk_size + audio_format.
-        PCM WAV has audio_format == 1. WEM/Vorbis/etc. have other values.
+        Reads first 22 bytes: RIFF(4) + size(4) + WAVE(4) + fmt (4) + chunk_size(4) + audio_format(2).
+        PCM WAV has audio_format == 1, IEEE float has 3. Both are playable.
         """
         try:
-            with open(path, "rb") as f:
-                header = f.read(20)
-            if len(header) < 20:
-                return False
-            # RIFF....WAVEfmt
-            if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
-                return False
-            # Audio format at byte 20: 1 = PCM, 3 = IEEE float (both playable)
-            audio_format = int.from_bytes(header[20:22], "little") if len(header) >= 22 else 0
-            # Actually need to read 22 bytes for audio_format
             with open(path, "rb") as f:
                 data = f.read(22)
             if len(data) < 22:
                 return False
+            if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+                return False
             audio_format = int.from_bytes(data[20:22], "little")
-            return audio_format in (1, 3)  # PCM or IEEE float
+            return audio_format in (1, 3)
         except Exception:
             return False
 

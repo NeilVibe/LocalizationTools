@@ -127,8 +127,6 @@
 - **plotly 5.24.0** - Interactive charts
 - **matplotlib 3.9.2** - 2D plotting
 - **seaborn 0.13.2** - Statistical visualization
-- **chart.js 4.4.0** - Charting library (frontend)
-- **svelte-chartjs 3.1.5** - Svelte wrapper for Chart.js
 
 ## Configuration
 
