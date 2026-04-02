@@ -1,2 +1,2 @@
 Build
-# Fix Windows pipe inheritance hang in PG startup
+# Fix PG tune config: cap maintenance_work_mem 2GB, io_concurrency=0 on Windows
