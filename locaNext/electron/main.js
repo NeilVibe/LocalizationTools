@@ -828,6 +828,10 @@ ipcMain.handle('set-remote-server', async (event, url) => {
   const configPath = path.join(app.getPath('userData'), 'remote-server.json');
   try {
     if (url) {
+      // Validate URL format — only allow http/https
+      if (!/^https?:\/\/[\w\d.\-]+(:\d+)?$/.test(url)) {
+        return { success: false, error: 'Invalid URL format — must be http://host or http://host:port' };
+      }
       fs.writeFileSync(configPath, JSON.stringify({ url, updated: new Date().toISOString() }), 'utf8');
       logger.info('Remote server config saved', { url });
     } else {
@@ -1561,13 +1565,17 @@ app.whenReady().then(async () => {
 
           // Test remote server
           try {
-            const testResult = await new Promise((resolve, reject) => {
-              http.get(`${remoteServerUrl}/health`, { timeout: 5000 }, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => resolve({ ok: res.statusCode === 200, data }));
-              }).on('error', reject);
-            });
+            const testResult = await Promise.race([
+              new Promise((resolve, reject) => {
+                const req = http.get(`${remoteServerUrl}/health`, { timeout: 5000 }, (res) => {
+                  let data = '';
+                  res.on('data', chunk => data += chunk);
+                  res.on('end', () => resolve({ ok: res.statusCode === 200, data }));
+                }).on('error', reject);
+                req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')); });
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timed out')), 8000))
+            ]);
             if (testResult.ok) {
               useRemoteServer = true;
               logger.success('Remote server reachable', { url: remoteServerUrl });

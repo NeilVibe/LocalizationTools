@@ -75,8 +75,9 @@
       } else {
         isLightMode = true; // No local backend = light mode
       }
-    } catch {
-      // No local backend responding = definitely light mode
+    } catch (e) {
+      // No local backend responding = light mode
+      logger.info("Local backend not reachable — assuming light mode", { error: e?.message });
       isLightMode = true;
       if (savedRemoteUrl) {
         remoteAddress = savedRemoteUrl.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
@@ -109,18 +110,26 @@
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
-        const data = await res.json();
-        remoteServerInfo = {
-          version: data.version || "unknown",
-          server_mode: data.server_mode || "standalone",
-          database_type: data.database_type || "unknown",
-          status: data.status || "unknown",
-        };
-        remoteTestResult = {
-          success: true,
-          message: `Connected — LocaNext v${data.version || '?'}`,
-        };
-        logger.info("Remote server test passed", { address, version: data.version });
+        try {
+          const data = await res.json();
+          if (!data.version) {
+            remoteTestResult = { success: false, message: "Server responded but doesn't appear to be LocaNext" };
+          } else {
+            remoteServerInfo = {
+              version: data.version,
+              server_mode: data.server_mode || "standalone",
+              database_type: data.database_type || "unknown",
+              status: data.status || "unknown",
+            };
+            remoteTestResult = {
+              success: true,
+              message: `Connected — LocaNext v${data.version}`,
+            };
+            logger.info("Remote server test passed", { address, version: data.version });
+          }
+        } catch {
+          remoteTestResult = { success: false, message: "Server responded but returned invalid data — is this a LocaNext server?" };
+        }
       } else {
         remoteTestResult = { success: false, message: `Server responded with HTTP ${res.status}` };
       }

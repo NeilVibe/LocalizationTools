@@ -203,8 +203,10 @@ def _apply_lan_server_overrides():
             DB_POOL_TIMEOUT = 20    # Fail fast if pool exhausted
         if not os.getenv("DB_POOL_RECYCLE"):
             DB_POOL_RECYCLE = 1800  # Recycle every 30 min
-        # Allow all CORS origins for MVP (internal LAN tool, Electron app:// origins vary)
-        CORS_ALLOW_ALL = True
+        # Allow all CORS origins for LAN (internal tool, Electron app:// origins vary)
+        # Respect explicit CORS_ORIGINS env var if admin wants to restrict
+        if not os.getenv("CORS_ORIGINS"):
+            CORS_ALLOW_ALL = True
 
 # NOTE: _apply_lan_server_overrides() called AFTER DB_POOL_SIZE is defined below
 

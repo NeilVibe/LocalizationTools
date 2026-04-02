@@ -578,7 +578,11 @@ def _mount_admin_dashboard():
 
             @app.get("/dashboard/{path:path}")
             async def serve_dashboard(path: str = ""):
-                file_path = _dashboard_dir / path
+                file_path = (_dashboard_dir / path).resolve()
+                # SECURITY: prevent path traversal (../../etc/passwd)
+                if not str(file_path).startswith(str(_dashboard_dir.resolve())):
+                    from starlette.responses import Response
+                    return Response(status_code=404)
                 if path and file_path.is_file():
                     return FileResponse(str(file_path))
                 return FileResponse(str(_dashboard_dir / "index.html"))
