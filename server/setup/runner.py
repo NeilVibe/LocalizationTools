@@ -24,6 +24,7 @@ from server.setup.steps import (
     step_init_database,
     step_preflight_checks,
     step_start_database,
+    step_tune_performance,
 )
 
 from loguru import logger
@@ -38,6 +39,7 @@ STEP_FUNCTIONS: dict[str, Callable[[SetupConfig], StepResult]] = {
     "configure_access": step_configure_access,
     "generate_certificates": step_generate_certificates,
     "start_database": step_start_database,
+    "tune_performance": step_tune_performance,
     "create_account": step_create_account,
     "create_database": step_create_database,
 }
@@ -51,7 +53,7 @@ FATAL_STEPS: set[str] = {
     "start_database",
 }
 RECOVERABLE_STEPS: set[str] = {"create_account", "create_database"}
-OPTIONAL_STEPS: set[str] = set()  # None — all steps are required or recoverable
+OPTIONAL_STEPS: set[str] = {"tune_performance"}
 
 _MAX_RETRIES = 1  # auto-retry count for recoverable steps
 

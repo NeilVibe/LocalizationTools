@@ -645,3 +645,107 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
         step=step, status="done", duration_ms=_ms_since(t0),
         message=f"Self-signed certificate generated (LAN IP: {lan_ip})",
     )
+
+
+# ---------------------------------------------------------------------------
+# Step 5b — Tune performance (after PG is running)
+# ---------------------------------------------------------------------------
+
+
+def step_tune_performance(config: SetupConfig) -> StepResult:
+    """Detect hardware and write optimized postgresql.conf settings.
+
+    Tunes for 200+ concurrent connections based on detected RAM, CPU, SSD.
+    Applies settings via pg_ctl reload (no restart needed).
+    """
+    t0 = time.monotonic()
+    step = "tune_performance"
+    paths = _resolve_paths(config)
+    if paths is None:
+        return StepResult(
+            step=step, status="failed", duration_ms=_ms_since(t0),
+            message="pg_bin_dir not configured", error_code="TUNE_FAILED",
+        )
+
+    conf_path = paths.data_dir / "postgresql.conf"
+    if not conf_path.exists():
+        return StepResult(
+            step=step, status="failed", duration_ms=_ms_since(t0),
+            message="postgresql.conf not found", error_code="TUNE_FAILED",
+        )
+
+    # Detect hardware
+    try:
+        from server.setup.hardware_detect import detect_hardware
+        hw = detect_hardware(str(paths.data_dir))
+    except Exception as exc:
+        logger.warning("Hardware detection failed, using defaults: {}", exc)
+        from server.setup.hardware_detect import HardwareInfo
+        hw = HardwareInfo(ram_gb=8, physical_cores=4, logical_cores=8, is_ssd=True, os_name=os.name)
+
+    # Calculate optimal settings
+    max_connections = 250
+    shared_buffers_gb = max(1, hw.ram_gb // 4)
+    effective_cache_size_gb = max(2, hw.ram_gb * 3 // 4)
+    work_mem_mb = max(16, min(128, hw.ram_gb * 1024 // (max_connections * 2)))
+    maintenance_work_mem_gb = max(1, min(4, hw.ram_gb // 16))
+    max_parallel_workers = min(8, hw.physical_cores)
+    max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
+    random_page_cost = "1.1" if hw.is_ssd else "4.0"
+    effective_io_concurrency = 200 if hw.is_ssd else 2
+
+    tuning_block = f"""
+# LocaNext Performance Tuning (auto-generated)
+# Hardware: {hw.ram_gb}GB RAM, {hw.physical_cores} cores, SSD={hw.is_ssd}
+max_connections = {max_connections}
+shared_buffers = {shared_buffers_gb}GB
+effective_cache_size = {effective_cache_size_gb}GB
+work_mem = {work_mem_mb}MB
+maintenance_work_mem = {maintenance_work_mem_gb}GB
+wal_buffers = 64MB
+max_wal_size = 4GB
+min_wal_size = 1GB
+checkpoint_completion_target = 0.9
+random_page_cost = {random_page_cost}
+effective_io_concurrency = {effective_io_concurrency}
+max_parallel_workers_per_gather = {max_parallel_per_gather}
+max_parallel_workers = {max_parallel_workers}
+max_parallel_maintenance_workers = {max_parallel_per_gather}
+default_statistics_target = 200
+"""
+
+    try:
+        existing = conf_path.read_text(encoding="utf-8")
+        marker = "# LocaNext Performance Tuning"
+        if marker in existing:
+            before = existing[:existing.index(marker)]
+            existing = before.rstrip() + "\n"
+        conf_path.write_text(existing + "\n" + tuning_block, encoding="utf-8")
+    except Exception as exc:
+        return StepResult(
+            step=step, status="failed", duration_ms=_ms_since(t0),
+            message=f"Failed to write postgresql.conf: {exc}",
+            error_code="TUNE_FAILED",
+        )
+
+    # Reload PG config (no restart needed)
+    env = _make_env(paths.bin_dir)
+    try:
+        result = subprocess.run(
+            [str(paths.pg_ctl), "reload", "-D", str(paths.data_dir)],
+            capture_output=True, text=True, timeout=10, env=env,
+        )
+        if result.returncode != 0:
+            logger.warning("pg_ctl reload failed (settings apply on next restart): {}", result.stderr)
+    except Exception as exc:
+        logger.warning("pg_ctl reload failed: {} (settings apply on next restart)", exc)
+
+    logger.info(
+        "PG tuned: max_connections={}, shared_buffers={}GB, work_mem={}MB, parallel_workers={}, SSD={}",
+        max_connections, shared_buffers_gb, work_mem_mb, max_parallel_workers, hw.is_ssd,
+    )
+
+    return StepResult(
+        step=step, status="done", duration_ms=_ms_since(t0),
+        message=f"Tuned for {hw.ram_gb}GB RAM, {hw.physical_cores} cores, {max_connections} connections",
+    )

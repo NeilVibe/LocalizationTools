@@ -20,6 +20,7 @@ STEP_NAMES: list[str] = [
     "configure_access",
     "generate_certificates",
     "start_database",
+    "tune_performance",
     "create_account",
     "create_database",
 ]

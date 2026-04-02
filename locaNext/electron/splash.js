@@ -25,6 +25,7 @@ const SETUP_STEP_LABELS = [
   'Configuring network access',
   'Generating certificates',
   'Starting PostgreSQL',
+  'Tuning performance',
   'Creating service account',
   'Creating database',
 ];
