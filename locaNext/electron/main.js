@@ -19,12 +19,25 @@ import { showSplash, updateSplash, closeSplash } from './splash.js';
 import splash from './splash.js';
 import { initializeTelemetry, shutdownTelemetry, telemetryLog, getTelemetryState } from './telemetry.js';
 
+// Promise resolve/reject callbacks for JSONL-aware server startup
+let _serverReadyResolve = null;
+let _serverReadyReject = null;
+let _lastJsonlTime = Date.now();
+
 /**
  * Handle JSONL setup messages from Python backend stdout.
  * Routes messages to splash screen for visual feedback during first-launch setup.
+ * Also tracks last JSONL time for silence-based timeout detection.
  */
 function handleSetupMessage(msg) {
+  _lastJsonlTime = Date.now(); // Any JSONL = backend is alive
+
   switch (msg.type) {
+    case 'boot_started':
+      logger.info('[Setup] Boot started', { version: msg.version, build_type: msg.build_type });
+      splash.updateSplash('Initializing...', 5);
+      break;
+
     case 'setup_started':
       splash.showSetupMode(msg.total_steps);
       break;
@@ -33,24 +46,47 @@ function handleSetupMessage(msg) {
       splash.updateSetupStep(msg.index, msg.step, msg.status, msg.duration_ms, msg.error_detail);
       break;
 
+    case 'setup_substep':
+      logger.info('[Setup detail]', { step: msg.step, detail: msg.detail });
+      break;
+
     case 'setup_complete':
       if (msg.success) {
         splash.showSetupComplete(msg.lan_ip);
       } else {
         splash.showSetupError(msg.failed_step, msg.error_code, msg.error_detail);
+        if (_serverReadyReject) {
+          _serverReadyReject(new Error(`Setup failed at ${msg.failed_step}: ${msg.error_detail}`));
+          _serverReadyReject = null;
+          _serverReadyResolve = null;
+        }
+      }
+      break;
+
+    case 'setup_error':
+      splash.showSetupError(msg.step, msg.error_code, msg.error_detail);
+      if (_serverReadyReject) {
+        _serverReadyReject(new Error(`Setup error: ${msg.error_code} — ${msg.error_detail}`));
+        _serverReadyReject = null;
+        _serverReadyResolve = null;
       }
       break;
 
     case 'pg_starting':
-      splash.updateSplash('Starting database...');
+      splash.updateSplash('Starting database...', 70);
       break;
 
     case 'pg_ready':
-      splash.updateSplash('Starting server...');
+      splash.updateSplash('Starting server...', 85);
       break;
 
     case 'server_ready':
-      // Normal flow — waitForServer will detect /health
+      splash.updateSplash('Ready!', 100);
+      if (_serverReadyResolve) {
+        _serverReadyResolve(true);
+        _serverReadyResolve = null;
+        _serverReadyReject = null;
+      }
       break;
 
     default:
@@ -243,6 +279,76 @@ function waitForServer(url, maxRetries = 30, retryDelay = 1000) {
 }
 
 /**
+ * Wait for backend using JSONL progress tracking.
+ * Resolves when 'server_ready' JSONL message arrives from backend stdout.
+ * Rejects if 60 seconds pass with NO output at all (backend stuck).
+ * Falls back to HTTP healthcheck if JSONL never arrives.
+ *
+ * @param {string} url - Backend URL for fallback healthcheck
+ * @param {number} silenceTimeoutMs - Max silence before assuming stuck (default: 60000)
+ * @returns {Promise<boolean>}
+ */
+function waitForServerJsonl(url, silenceTimeoutMs = 60000) {
+  return new Promise((resolve, reject) => {
+    _serverReadyResolve = resolve;
+    _serverReadyReject = reject;
+    _lastJsonlTime = Date.now();
+
+    const silenceCheck = setInterval(() => {
+      const silenceMs = Date.now() - _lastJsonlTime;
+
+      // If already resolved/rejected, clean up
+      if (_serverReadyResolve === null) {
+        clearInterval(silenceCheck);
+        return;
+      }
+
+      // Check silence timeout
+      if (silenceMs > silenceTimeoutMs) {
+        clearInterval(silenceCheck);
+        logger.error('Backend silent for ' + (silenceMs / 1000).toFixed(0) + 's — may be stuck');
+
+        // Last resort: try HTTP healthcheck once
+        http.get(`${url}/health`, (res) => {
+          if (res.statusCode === 200) {
+            logger.info('Backend responding to HTTP despite JSONL silence');
+            if (_serverReadyResolve) {
+              _serverReadyResolve(true);
+              _serverReadyResolve = null;
+              _serverReadyReject = null;
+            }
+          } else {
+            if (_serverReadyReject) {
+              _serverReadyReject(new Error(`Backend silent for ${silenceTimeoutMs / 1000}s and HTTP check failed`));
+              _serverReadyResolve = null;
+              _serverReadyReject = null;
+            }
+          }
+        }).on('error', () => {
+          if (_serverReadyReject) {
+            _serverReadyReject(new Error(`Backend silent for ${silenceTimeoutMs / 1000}s — server not responding`));
+            _serverReadyResolve = null;
+            _serverReadyReject = null;
+          }
+        });
+      }
+    }, 2000); // Check every 2 seconds
+
+    // Safety: listen for backend process exit
+    if (backendProcess) {
+      backendProcess.once('exit', (code) => {
+        clearInterval(silenceCheck);
+        if (_serverReadyResolve) {
+          _serverReadyReject(new Error(`Backend process exited with code ${code} before server was ready`));
+          _serverReadyResolve = null;
+          _serverReadyReject = null;
+        }
+      });
+    }
+  });
+}
+
+/**
  * Start the Python backend server
  */
 async function startBackendServer() {
@@ -324,7 +430,11 @@ async function startBackendServer() {
   });
 
   backendProcess.stderr.on('data', (data) => {
-    logger.warning('[Backend stderr]', { output: data.toString().trim() });
+    _lastJsonlTime = Date.now(); // Any output = backend alive
+    const output = data.toString().trim();
+    if (output) {
+      logger.warning('[Backend stderr]', { output });
+    }
   });
 
   backendProcess.on('error', (error) => {
@@ -336,10 +446,11 @@ async function startBackendServer() {
     backendProcess = null;
   });
 
-  // Wait for server to be ready
-  // Use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues on Windows
+  // Wait for server to be ready via JSONL progress tracking
+  // No fixed timeout — waits as long as backend sends progress updates
+  // Only times out after 60s of complete silence
   try {
-    await waitForServer('http://127.0.0.1:8888', 90, 1000);
+    await waitForServerJsonl('http://127.0.0.1:8888', 60000);
     return true;
   } catch (error) {
     logger.error('Backend server failed to start', { error: error.message });
