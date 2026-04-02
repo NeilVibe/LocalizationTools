@@ -124,7 +124,7 @@ class TestWemConversion:
                 # Pre-create the output file so the converter finds it
                 expected_hash = hashlib.md5(str(WEM_FIXTURE).encode()).hexdigest()[:8]
                 wav_out = tmp_path / f"{expected_hash}.wav"
-                wav_out.write_bytes(b"RIFF" + b"\x00" * 40)
+                wav_out.write_bytes(b"RIFF" + b"\x24\x00\x00\x00" + b"WAVEfmt " + b"\x10\x00\x00\x00" + b"\x01\x00" + b"\x01\x00" + b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x02\x00\x10\x00" + b"data" + b"\x00\x00\x00\x00")
 
                 # Provide a fake vgmstream path
                 with patch.object(converter, "_find_vgmstream", return_value=Path("/usr/bin/vgmstream-cli")):
@@ -157,7 +157,7 @@ class TestWemConversion:
             with patch("server.tools.ldm.services.media_converter.subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0, stderr="")
                 wav_out = tmp_path / f"{expected_hash}.wav"
-                wav_out.write_bytes(b"RIFF" + b"\x00" * 40)
+                wav_out.write_bytes(b"RIFF" + b"\x24\x00\x00\x00" + b"WAVEfmt " + b"\x10\x00\x00\x00" + b"\x01\x00" + b"\x01\x00" + b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x02\x00\x10\x00" + b"data" + b"\x00\x00\x00\x00")
                 result = converter.convert_wem_to_wav(WEM_FIXTURE)
 
         assert result is not None
