@@ -32,7 +32,7 @@ def _fail(step: str, error_code: str = "ERR") -> StepResult:
 
 
 def _patch_all_steps(overrides: dict[str, MagicMock | StepResult] | None = None):
-    """Context manager that patches all 7 step functions.
+    """Context manager that patches all 8 step functions.
 
     *overrides* maps step name → MagicMock or StepResult.
     Un-overridden steps return ``_ok(name)``.
@@ -113,13 +113,14 @@ def test_run_setup_resumes_from_state(_mock_ip, config, state_path):
     # First two steps skipped (already done)
     mocks["preflight_checks"].assert_not_called()
     mocks["init_database"].assert_not_called()
-    # Remaining 5 steps should run
+    # Remaining 6 steps should run
     mocks["configure_access"].assert_called_once()
+    mocks["generate_certificates"].assert_called_once()
     mocks["start_database"].assert_called_once()
+    mocks["tune_performance"].assert_called_once()
     mocks["create_account"].assert_called_once()
     mocks["create_database"].assert_called_once()
-    mocks["generate_certificates"].assert_called_once()
-    assert len(result.steps) == 5
+    assert len(result.steps) == 6
 
 
 @patch("server.setup.runner.detect_lan_ip", return_value="127.0.0.1")
