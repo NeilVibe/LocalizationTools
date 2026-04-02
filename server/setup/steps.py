@@ -612,7 +612,18 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
             encryption_algorithm=serialization.NoEncryption(),
         )
         key_path.write_bytes(key_bytes)
-        if os.name != "nt":
+        if os.name == "nt":
+            # Restrict key file to current user only (PG requires this for ssl=on)
+            try:
+                subprocess.run(
+                    ["icacls", str(key_path), "/inheritance:r",
+                     "/grant:r", f"{os.environ.get('USERNAME', 'SYSTEM')}:(R)"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                logger.info("SSL key permissions restricted via icacls")
+            except Exception as exc:
+                logger.warning("Could not restrict SSL key permissions: {}", exc)
+        else:
             key_path.chmod(0o600)
 
         # Write cert
