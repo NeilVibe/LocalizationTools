@@ -1,2 +1,2 @@
-Build
-# Audio fix + Option B (dashboard bundled, LAN mode, Light Build connection)
+Build Light
+# Light Build: connects to Admin's FastAPI, dashboard NOT bundled, no PG
