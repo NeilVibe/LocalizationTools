@@ -6,7 +6,7 @@
 import { app, BrowserWindow, Menu, ipcMain, dialog, shell, protocol, session, net } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import fs from 'fs';
 import http from 'http';
 import { logger } from './logger.js';
@@ -474,7 +474,6 @@ function stopBackendServer() {
     const pgCtlPath = path.join(paths.projectRoot, 'resources', 'bin', 'postgresql', 'bin', 'pg_ctl.exe');
     const pgDataPath = path.join(paths.projectRoot, 'resources', 'bin', 'postgresql', 'data');
     if (fs.existsSync(pgCtlPath) && fs.existsSync(pgDataPath)) {
-      const { execFileSync } = require('child_process');
       execFileSync(pgCtlPath, ['stop', '-D', pgDataPath, '-m', 'fast'], { timeout: 10000 });
       logger.info('PostgreSQL stopped');
     }
@@ -678,14 +677,12 @@ ipcMain.handle('restart-app', async () => {
 
       // Launch the swap script
       if (process.platform === 'win32') {
-        const { spawn } = require('child_process');
         spawn('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
           detached: true,
           stdio: 'ignore',
           windowsHide: true
         }).unref();
       } else {
-        const { spawn } = require('child_process');
         spawn('bash', [scriptPath], {
           detached: true,
           stdio: 'ignore'
