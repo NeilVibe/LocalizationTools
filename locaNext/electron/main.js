@@ -463,7 +463,7 @@ async function startBackendServer() {
   // No fixed timeout — waits as long as backend sends progress updates
   // Only times out after 60s of complete silence
   try {
-    await waitForServerJsonl('http://127.0.0.1:8888', 60000);
+    await waitForServerJsonl('http://127.0.0.1:8888', 120000);
     return true;
   } catch (error) {
     logger.error('Backend server failed to start', { error: error.message });
