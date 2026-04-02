@@ -103,17 +103,16 @@ class TestDdsConversion:
 class TestWemConversion:
     """Tests for WEM-to-WAV conversion."""
 
-    def test_riff_wem_bypasses_vgmstream(self, tmp_path):
-        """WEM files with RIFF header (actually WAV) are copied directly without vgmstream."""
+    def test_wem_with_riff_header_still_needs_vgmstream(self, tmp_path):
+        """WEM files with RIFF header must still go through vgmstream (Wwise uses RIFF containers).
+        Without vgmstream available, conversion returns None."""
         from server.tools.ldm.services.media_converter import MediaConverter
         converter = MediaConverter(wav_cache_dir=tmp_path)
 
-        # WEM_FIXTURE is a WAV disguised as .wem — should be detected and copied
+        # WEM_FIXTURE has RIFF header but is .wem extension — must NOT be copied as-is
+        # Without vgmstream-cli in CI, this correctly returns None
         result = converter.convert_wem_to_wav(WEM_FIXTURE)
-
-        assert result is not None
-        assert isinstance(result, Path)
-        assert result.exists()
+        assert result is None
 
     def test_successful_conversion_returns_path(self, tmp_path):
         from server.tools.ldm.services.media_converter import MediaConverter
