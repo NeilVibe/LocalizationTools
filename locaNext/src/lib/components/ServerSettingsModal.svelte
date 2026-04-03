@@ -361,7 +361,7 @@
   bind:open
   modalHeading="Server Connection"
   passiveModal
-  size="md"
+  size="lg"
   onclose={handleClose}
 >
   <div class="server-settings">

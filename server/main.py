@@ -1124,24 +1124,29 @@ if __name__ == "__main__":
                 try:
                     pg_port = getattr(config, 'POSTGRES_PORT', 5432)
                     import subprocess as _sp
-                    # Check if rule already exists
-                    check = _sp.run(
-                        ["netsh", "advfirewall", "firewall", "show", "rule",
+                    # Delete old rule (may have wrong remoteip) then recreate
+                    _sp.run(
+                        ["netsh", "advfirewall", "firewall", "delete", "rule",
                          "name=LocaNext PostgreSQL"],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True, timeout=10,
                     )
-                    if check.returncode != 0:
+                    if True:
+                        # Use /16 from LAN IP (covers cross-subnet clients)
+                        _host = config.POSTGRES_HOST if config.POSTGRES_HOST not in ("localhost", "127.0.0.1") else None
+                        if not _host:
+                            from server.setup.network import detect_lan_ip
+                            _host = detect_lan_ip()
+                        _parts = _host.split(".")
+                        _remote = f"{_parts[0]}.{_parts[1]}.0.0/16" if len(_parts) == 4 else "localsubnet"
                         _sp.run(
                             ["netsh", "advfirewall", "firewall", "add", "rule",
                              "name=LocaNext PostgreSQL",
                              "dir=in", "action=allow", "protocol=TCP",
                              f"localport={pg_port}",
-                             "remoteip=localsubnet"],
+                             f"remoteip={_remote}"],
                             capture_output=True, text=True, timeout=10,
                         )
-                        logger.info(f"[LAN] Firewall rule added: TCP {pg_port} (localsubnet)")
-                    else:
-                        logger.debug(f"[LAN] Firewall rule already exists for port {pg_port}")
+                        logger.info(f"[LAN] Firewall rule added: TCP {pg_port} ({_remote})")
                 except Exception as fw_err:
                     logger.warning(f"[LAN] Firewall rule check failed: {fw_err}")
     except Exception as e:

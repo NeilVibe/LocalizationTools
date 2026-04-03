@@ -125,12 +125,16 @@ def step_preflight_checks(config: SetupConfig) -> StepResult:
                  f"name=LocaNext PostgreSQL"],
                 capture_output=True, timeout=10,
             )
+            # Use /16 subnet from LAN IP (covers cross-subnet LAN clients)
+            lan_ip = detect_lan_ip()
+            ip_parts = lan_ip.split(".")
+            remote_range = f"{ip_parts[0]}.{ip_parts[1]}.0.0/16" if len(ip_parts) == 4 else "localsubnet"
             result = subprocess.run(
                 ["netsh", "advfirewall", "firewall", "add", "rule",
                  f"name=LocaNext PostgreSQL",
                  "dir=in", "action=allow", "protocol=TCP",
                  f"localport={config.pg_port}",
-                 "remoteip=localsubnet"],
+                 f"remoteip={remote_range}"],
                 capture_output=True, text=True, timeout=10,
             )
             if result.returncode == 0:
