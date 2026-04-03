@@ -37,6 +37,8 @@
 
   // Local UI state
   let saved = $state(false);
+  let rebuilding = $state(false);
+  let rebuildTimer = null;
   let error = $state(null);
   let selectedBranch = $state('mainline');
   let driveInput = $state('F');
@@ -79,10 +81,14 @@
       mdgMetadataReading: metadataReading,
     }));
 
-    // Notify backend
+    // Configure backend paths + trigger MegaIndex REBUILD
+    // Uses /mapdata/paths/configure which:
+    // 1. Updates PerforcePathService with new drive/branch
+    // 2. Persists to path_settings.json for server restart
+    // 3. Triggers async MegaIndex rebuild with WebSocket progress tracking
     try {
       const API_BASE = get(serverUrl);
-      const response = await fetch(`${API_BASE}/api/ldm/mapdata/configure`, {
+      const response = await fetch(`${API_BASE}/api/ldm/mapdata/paths/configure`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ branch: selectedBranch, drive }),
@@ -94,6 +100,22 @@
         error = typeof detail === 'string' ? detail : `Server error: ${response.status}`;
         return;
       }
+
+      rebuilding = true;
+      // Rebuild runs async in background — Task Manager will show progress.
+      // Fallback: poll status after 120s if WebSocket event missed.
+      if (rebuildTimer) clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(async () => {
+        if (rebuilding) {
+          try {
+            const statusRes = await fetch(`${API_BASE}/api/ldm/mega/status`, { headers: getAuthHeaders() });
+            if (statusRes.ok) {
+              const data = await statusRes.json();
+              if (data.built) rebuilding = false;
+            }
+          } catch { /* ignore */ }
+        }
+      }, 120000);
     } catch (err) {
       // Non-blocking: backend may not be running (offline mode)
       logger.warning("MapData configure request failed (non-blocking)", { error: err.message });
@@ -101,7 +123,7 @@
 
     driveInput = drive;
     showSaved();
-    logger.userAction("MapData settings saved", { branch: selectedBranch, drive, metadataReading });
+    logger.userAction("MapData settings saved — MegaIndex rebuild triggered", { branch: selectedBranch, drive, metadataReading });
   }
 
   // Reset to defaults
@@ -121,12 +143,16 @@
     open = false;
   }
 
-  // Load when modal opens
+  // Load when modal opens — reset UI state and timer
   $effect(() => {
     if (open) {
       loadFromStore();
       saved = false;
       error = null;
+      // Don't reset rebuilding — it may still be in progress from a previous save
+    } else {
+      // Modal closed — clean up timer
+      if (rebuildTimer) { clearTimeout(rebuildTimer); rebuildTimer = null; }
     }
   });
 </script>
@@ -142,7 +168,18 @@
     {#if saved}
       <InlineNotification
         kind="success"
-        title="Settings saved"
+        title={rebuilding ? "Settings saved — MegaIndex rebuild started" : "Settings saved"}
+        subtitle={rebuilding ? "Check Task Manager for live progress (~50s)." : ""}
+        hideCloseButton
+        lowContrast
+      />
+    {/if}
+
+    {#if rebuilding && !saved}
+      <InlineNotification
+        kind="info"
+        title="MegaIndex rebuilding..."
+        subtitle="Check Task Manager for progress."
         hideCloseButton
         lowContrast
       />

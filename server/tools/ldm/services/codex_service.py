@@ -71,11 +71,15 @@ class CodexService:
         logger.info("[Codex] Initializing entity registry from MegaIndex...")
         t0 = time.time()
 
-        # Trigger MegaIndex build if not already built
+        # Trigger MegaIndex build if not already built.
+        # Guard against RuntimeError if a background rebuild is in progress.
         from server.tools.ldm.services.mega_index import get_mega_index
         mega = get_mega_index()
         if not mega._built:
-            mega.build()
+            try:
+                mega.build()
+            except RuntimeError:
+                logger.warning("[CODEX] MegaIndex build already in progress — using current state")
 
         self._populate_from_mega_index()
         self._resolve_cross_refs()

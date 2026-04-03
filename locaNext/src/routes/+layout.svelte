@@ -80,7 +80,7 @@
       const buildRes = await fetch(`${API}/api/ldm/mega/build`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({ trigger_reason: 'Initial login' })
       });
 
       // Dismiss the "building" toast

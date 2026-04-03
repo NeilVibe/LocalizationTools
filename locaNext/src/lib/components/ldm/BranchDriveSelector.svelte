@@ -24,27 +24,76 @@
 
   // Validation state
   let pathStatus = $state({ ok: false, missing: [], loading: true });
+  let rebuilding = $state(false);
 
   // PATH-03: Configure + Validate on mount
-  // FIX: Must call configure BEFORE validate — backend defaults to F:/mainline
-  // but user may have saved D:/cd_beta in localStorage. Without configure first,
-  // validate checks wrong paths and always shows PATHS NOT FOUND.
-  import { onMount } from 'svelte';
+  // On mount: configure backend with saved prefs (NO rebuild — +layout.svelte
+  // handles the initial build on login). Only user-driven dropdown changes trigger rebuild.
+  import { onMount, onDestroy } from 'svelte';
+  import { websocket } from '$lib/api/websocket.js';
+
+  let unsubComplete = null;
+  let unsubFailed = null;
+  let rebuildTimer = null;
+
   onMount(async () => {
-    await onSelectionChange();  // Configure backend with saved prefs, then validate
+    // Configure backend with saved prefs, then validate (NO rebuild trigger)
+    await configureAndValidate();
+
+    // Listen for MegaIndex build completion to clear rebuilding indicator
+    unsubComplete = websocket.on('operation_complete', (data) => {
+      if (data.tool_name === 'MegaIndex') {
+        rebuilding = false;
+        if (rebuildTimer) { clearTimeout(rebuildTimer); rebuildTimer = null; }
+        logger.info(`MegaIndex build complete: ${data.current_step || 'done'}`);
+      }
+    });
+    unsubFailed = websocket.on('operation_failed', (data) => {
+      if (data.tool_name === 'MegaIndex') {
+        rebuilding = false;
+        if (rebuildTimer) { clearTimeout(rebuildTimer); rebuildTimer = null; }
+        logger.error(`MegaIndex build failed: ${data.error_message || 'unknown'}`);
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (unsubComplete) unsubComplete();
+    if (unsubFailed) unsubFailed();
+    if (rebuildTimer) { clearTimeout(rebuildTimer); rebuildTimer = null; }
   });
 
   /**
-   * Handle branch or drive change:
+   * Configure-only: sync saved prefs to backend + validate.
+   * Does NOT trigger MegaIndex rebuild (initial build handled by +layout.svelte).
+   */
+  async function configureAndValidate() {
+    preferences.setBranchDrive(branch, drive);
+    try {
+      await fetch(`${API_BASE}/api/ldm/mapdata/paths/configure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ branch, drive }),
+      });
+    } catch (err) {
+      logger.warning('Path configure request failed (offline?)', { error: err.message });
+    }
+    await validatePaths();
+  }
+
+  /**
+   * Handle user-driven branch or drive change:
    * 1. Save to preferences (PATH-04)
-   * 2. Configure backend (POST /mapdata/paths/configure)
+   * 2. Configure backend (POST /mapdata/paths/configure) — triggers MegaIndex REBUILD
    * 3. Validate paths (GET /mapdata/paths/validate)
    */
   async function onSelectionChange() {
     // PATH-04: persist to localStorage
     preferences.setBranchDrive(branch, drive);
 
-    // Configure backend with new branch/drive
+    // Configure backend with new branch/drive — triggers MegaIndex REBUILD
+    rebuilding = true;
+    if (rebuildTimer) { clearTimeout(rebuildTimer); rebuildTimer = null; }
     try {
       const res = await fetch(`${API_BASE}/api/ldm/mapdata/paths/configure`, {
         method: 'POST',
@@ -57,9 +106,29 @@
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         logger.error('Path configure failed', { detail: data.detail });
+        rebuilding = false;
+      } else {
+        // Rebuild runs async — Task Manager shows progress.
+        // Fallback timeout polls status if WebSocket event is missed.
+        rebuildTimer = setTimeout(async () => {
+          if (rebuilding) {
+            try {
+              const statusRes = await fetch(`${API_BASE}/api/ldm/mega/status`, { headers: getAuthHeaders() });
+              if (statusRes.ok) {
+                const data = await statusRes.json();
+                if (data.built) {
+                  rebuilding = false;
+                  logger.warn('MegaIndex build completed but WebSocket event was missed');
+                }
+              }
+            } catch { /* ignore — will retry or user can check Task Manager */ }
+          }
+        }, 120000);
+        logger.info(`MegaIndex REBUILD triggered for ${drive}:/${branch}`);
       }
     } catch (err) {
       logger.warning('Path configure request failed (offline?)', { error: err.message });
+      rebuilding = false;
     }
 
     // PATH-03: validate after every change
@@ -109,12 +178,15 @@
 
   <span
     class="path-status"
-    class:ok={pathStatus.ok}
-    class:error={!pathStatus.ok && !pathStatus.loading}
+    class:ok={pathStatus.ok && !rebuilding}
+    class:error={!pathStatus.ok && !pathStatus.loading && !rebuilding}
     class:loading={pathStatus.loading}
-    title={pathStatus.missing.length > 0 ? `Missing: ${pathStatus.missing.join(', ')}` : 'All critical paths found'}
+    class:rebuilding={rebuilding}
+    title={rebuilding ? 'MegaIndex rebuilding — check Task Manager' : pathStatus.missing.length > 0 ? `Missing: ${pathStatus.missing.join(', ')}` : 'All critical paths found'}
   >
-    {#if pathStatus.loading}
+    {#if rebuilding}
+      REBUILDING...
+    {:else if pathStatus.loading}
       ...
     {:else if pathStatus.ok}
       PATHS OK
@@ -189,5 +261,16 @@
 
   .path-status.loading {
     color: var(--cds-text-03);
+  }
+
+  .path-status.rebuilding {
+    color: #4589ff;
+    background: rgba(69, 137, 255, 0.1);
+    animation: pulse-rebuild 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-rebuild {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 </style>

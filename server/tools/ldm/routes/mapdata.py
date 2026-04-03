@@ -30,6 +30,19 @@ from server.tools.ldm.services.media_converter import get_media_converter
 router = APIRouter(tags=["LDM"])
 
 
+def _log_build_task_exception(task: asyncio.Task) -> None:
+    """Done-callback for background MegaIndex build tasks.
+
+    Handles CancelledError safely (f.exception() raises if cancelled).
+    """
+    if task.cancelled():
+        logger.warning("[MEGAINDEX] Background build task was cancelled")
+        return
+    exc = task.exception()
+    if exc:
+        logger.error(f"[MEGAINDEX] Background build task failed: {exc}")
+
+
 # =============================================================================
 # Response Models
 # =============================================================================
@@ -353,18 +366,51 @@ async def configure_mapdata(
             detail=f"Unknown branch '{branch}'. Must be one of: {KNOWN_BRANCHES}",
         )
 
-    logger.info(
-        f"[MAPDATA] User {current_user['username']} configuring: "
-        f"branch={branch}, drive={drive}"
+    # Check if drive/branch actually changed before triggering expensive rebuild
+    path_service = get_perforce_path_service()
+    current_status = path_service.get_status()
+    settings_changed = (
+        current_status.get("drive") != drive
+        or current_status.get("branch") != branch
     )
 
+    logger.info(
+        f"[MAPDATA] User {current_user['username']} configuring: "
+        f"branch={branch}, drive={drive} (changed={settings_changed})"
+    )
+
+    # Configure PerforcePathService + MapDataService
+    path_service.configure(drive, branch)
     success = service.initialize(branch=branch, drive=drive)
+
+    # Persist drive+branch so server restores on next startup
+    try:
+        import json
+        settings_path = Path(__file__).resolve().parents[4] / "path_settings.json"
+        settings_path.write_text(json.dumps({"drive": drive, "branch": branch}))
+    except Exception as e:
+        logger.warning(f"[MAPDATA] Failed to persist path settings: {e}")
+
+    # Only trigger MegaIndex REBUILD if drive/branch actually changed.
+    if settings_changed:
+        from .mega_index import build_megaindex_with_progress
+
+        task = asyncio.create_task(
+            build_megaindex_with_progress(
+                trigger_reason=f"Branch/Drive changed to {drive}:/{branch}",
+            )
+        )
+        task.add_done_callback(_log_build_task_exception)
+    else:
+        logger.debug(
+            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) — skipping rebuild"
+        )
 
     return ConfigureResponse(
         success=success,
         branch=branch,
         drive=drive,
-        message=f"MapData service configured: {drive}:/{branch}"
+        message=f"MapData service configured: {drive}:/{branch} — MegaIndex rebuild started"
         if success
         else "Configuration failed - paths may not exist",
     )
@@ -404,11 +450,19 @@ async def configure_paths(
     """Configure drive letter and branch for PerforcePathService.
 
     Also re-initializes MapDataService with the new settings.
+    Only triggers MegaIndex rebuild if drive/branch actually CHANGED.
     """
     path_service = get_perforce_path_service()
 
     drive = request.drive.upper().strip()
     branch = request.branch.strip()
+
+    # Check if drive/branch actually changed before triggering expensive rebuild
+    current_status = path_service.get_status()
+    settings_changed = (
+        current_status.get("drive") != drive
+        or current_status.get("branch") != branch
+    )
 
     try:
         path_service.configure(drive, branch)
@@ -420,31 +474,30 @@ async def configure_paths(
         import json
         settings_path = Path(__file__).resolve().parents[4] / "path_settings.json"
         settings_path.write_text(json.dumps({"drive": drive, "branch": branch}))
-    except Exception:
-        pass  # Non-critical
-
-    # Re-initialize MapDataService with the new drive/branch
-    mapdata_service = get_mapdata_service()
-    mapdata_service.initialize(branch=branch, drive=drive)
-
-    # Auto-build MegaIndex with the new paths (enables Codex images, audio, entities)
-    try:
-        from server.tools.ldm.services.mega_index import get_mega_index
-        mega = get_mega_index()
-        if not mega._built:
-            mega.build()
-            logger.success(
-                f"[MAPDATA] MegaIndex auto-built after path configure: "
-                f"{len(mega.dds_by_stem)} textures, {len(mega.wem_by_event)} audio, "
-                f"{len(mega.knowledge_by_strkey)} knowledge"
-            )
     except Exception as e:
-        logger.warning(f"[MAPDATA] MegaIndex auto-build skipped: {e}")
+        logger.warning(f"[MAPDATA] Failed to persist path settings: {e}")
 
     logger.info(
         f"[MAPDATA] User {current_user['username']} configured paths: "
-        f"drive={drive}, branch={branch}"
+        f"drive={drive}, branch={branch} (changed={settings_changed})"
     )
+
+    # Only trigger MegaIndex REBUILD if drive/branch actually changed.
+    # Skips spurious rebuilds from mount-time configure calls where settings
+    # haven't changed. Progress is emitted via WebSocket for Task Manager.
+    if settings_changed:
+        from .mega_index import build_megaindex_with_progress
+
+        task = asyncio.create_task(
+            build_megaindex_with_progress(
+                trigger_reason=f"Branch/Drive changed to {drive}:/{branch}",
+            )
+        )
+        task.add_done_callback(_log_build_task_exception)
+    else:
+        logger.debug(
+            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) — skipping rebuild"
+        )
 
     return PathStatusResponse(**path_service.get_status())
 

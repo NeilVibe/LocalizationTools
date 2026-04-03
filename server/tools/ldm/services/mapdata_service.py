@@ -87,13 +87,14 @@ class MapDataService:
     def initialize(self, branch: str = "mainline", drive: str = "F") -> bool:
         """Initialize the service by populating indexes from MegaIndex.
 
-        Triggers MegaIndex build if needed, then populates:
+        Reads CURRENT MegaIndex state and populates:
         1. Knowledge table from MegaIndex knowledge_by_strkey
         2. DDS index from MegaIndex dds_by_stem
         3. Image chains from MegaIndex strkey_to_image_path (C1)
 
-        Gracefully degrades: if MegaIndex has no data, logs warnings and
-        marks as loaded with empty indexes.
+        NOTE: Does NOT trigger MegaIndex build. The caller (route or startup)
+        is responsible for building MegaIndex first. This separation ensures
+        rebuild is always explicit and tracked via WebSocket progress.
 
         Args:
             branch: Perforce branch name
@@ -110,10 +111,12 @@ class MapDataService:
         # Configure path service (still needed for thumbnail URL generation etc.)
         self._path_service.configure(drive, branch)
 
-        # Trigger MegaIndex build if not already built
         mega = get_mega_index()
         if not mega._built:
-            mega.build()
+            logger.warning(
+                "[MAPDATA] Cannot initialize — MegaIndex not yet built. "
+                "Image/audio lookups will return empty results."
+            )
 
         # Populate knowledge table from MegaIndex D1
         self._knowledge_table = {}
@@ -127,8 +130,8 @@ class MapDataService:
                 source_file=e.source_file,
             )
 
-        # DDS index from MegaIndex D9 (direct reference, same type Dict[str, Path])
-        self._dds_index = mega.dds_by_stem
+        # DDS index from MegaIndex D9 — independent copy so _reset() won't clear it
+        self._dds_index = dict(mega.dds_by_stem)
 
         # Image chains from MegaIndex C1 (strkey_to_image_path)
         self._strkey_to_image = {}
