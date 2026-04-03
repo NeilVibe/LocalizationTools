@@ -10,7 +10,7 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
   3. cleanup_no_translation    - Replace "no translation" Str/Desc with StrOrigin/DescOrigin
   4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII apostrophe
-  5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
+  5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP->space, delete zero-width)
   6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
   7. cleanup_ellipsis          - Normalize Unicode ellipsis (…) to three dots (non-CJK only)
   8. cleanup_double_escaped    - Decode double-escaped entities (&lt;/&gt;/&quot;/&apos;/&amp;ENTITY;)
@@ -42,7 +42,7 @@ from .text_utils import _SAFE_INVISIBLE_DELETE, _SAFE_INVISIBLE_NAMES, _GREY_ZON
 
 logger = logging.getLogger(__name__)
 
-# Languages that NEVER get ellipsis normalization (CJK — ellipsis is intentional)
+# Languages that NEVER get ellipsis normalization (CJK -- ellipsis is intentional)
 _CJK_SKIP_LANGS = frozenset({
     "KOR", "JPN", "ZHO-CN", "ZHO_CN", "ZHO-TW", "ZHO_TW",
 })
@@ -103,25 +103,25 @@ def _normalize_newlines(text: str) -> str:
     text = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', text)
 
     # Step 1: Unescape HTML-escaped <br> variants (from double-escaping)
-    # &lt;br/&gt; → <br/>,  &lt;br&gt; → <br/>,  &lt;BR/&gt; → <br/>
+    # &lt;br/&gt; -> <br/>,  &lt;br&gt; -> <br/>,  &lt;BR/&gt; -> <br/>
     text = _BR_ESCAPED_RE.sub('<br/>', text)
 
     # Step 2: Normalize all <br> tag variants to <br/>
-    # <br> → <br/>,  <BR/> → <br/>,  <br /> → <br/>,  <Br> → <br/>
-    # Note: <br/> → <br/> (no-op, correct form stays correct)
+    # <br> -> <br/>,  <BR/> -> <br/>,  <br /> -> <br/>,  <Br> -> <br/>
+    # Note: <br/> -> <br/> (no-op, correct form stays correct)
     text = _BR_TAG_RE.sub('<br/>', text)
 
     # Step 3: Replace CRLF entity combos FIRST (before individual entities)
-    # &#13;&#10; → <br/>,  &#xD;&#xA; → <br/>
+    # &#13;&#10; -> <br/>,  &#xD;&#xA; -> <br/>
     text = _CRLF_ENTITY_RE.sub('<br/>', text)
 
     # Step 4: Replace individual XML entity references
-    # &#10; → <br/>,  &#13; → <br/>
+    # &#10; -> <br/>,  &#13; -> <br/>
     text = text.replace('&#10;', '<br/>')
     text = text.replace('&#13;', '<br/>')
-    # &#xA; &#xa; &#x0A; &#x0a; → <br/>
+    # &#xA; &#xa; &#x0A; &#x0a; -> <br/>
     text = _HEX_LF_RE.sub('<br/>', text)
-    # &#xD; &#xd; &#x0D; &#x0d; → <br/>
+    # &#xD; &#xd; &#x0D; &#x0d; -> <br/>
     text = _HEX_CR_RE.sub('<br/>', text)
 
     # Step 5: Replace actual control characters (CRLF combo first!)
@@ -190,14 +190,14 @@ _SAFE_AMP_ENTITIES_RE = re.compile(
 def _decode_safe_entities(text: str) -> str:
     """Safely decode double-escaped XML entities.
 
-    Decodes (explicit allowlist — no guessing):
-      - &lt; / &gt;    → < / >    (double-escaped on disk → decoded in memory)
-      - &amp;desc;     → &desc;   (and other known named entities)
-      - &quot;         → "        (standalone, no pairing risk)
-      - &apos;         → '        (standalone, no pairing risk)
+    Decodes (explicit allowlist -- no guessing):
+      - &lt; / &gt;    -> < / >    (double-escaped on disk -> decoded in memory)
+      - &amp;desc;     -> &desc;   (and other known named entities)
+      - &quot;         -> "        (standalone, no pairing risk)
+      - &apos;         -> '        (standalone, no pairing risk)
 
     NOT decoded (too dangerous):
-      - &amp;          → NOT blindly decoded (could create broken entities)
+      - &amp;          -> NOT blindly decoded (could create broken entities)
 
     Every pattern is complete and atomic. No partial decode possible.
     """
@@ -281,7 +281,7 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
     Normalize all wrong newline representations to <br/> in parsed tree.
 
     Modifies Str and Desc attributes. StrOrigin/DescOrigin (Korean source) are
-    never touched — they must remain exactly as the source data provides them.
+    never touched -- they must remain exactly as the source data provides them.
 
     Args:
         root: Parsed XML root element
@@ -383,7 +383,7 @@ def cleanup_no_translation_on_tree(root) -> int:
                     loc.set(str_attr, origin)
                     fixed += 1
                 else:
-                    # StrOrigin is also empty — clear Str (golden rule)
+                    # StrOrigin is also empty -- clear Str (golden rule)
                     loc.set(str_attr, "")
                     fixed += 1
 
@@ -413,7 +413,7 @@ def cleanup_apostrophes_on_tree(root) -> int:
     Normalize curly/fancy apostrophes to standard ASCII apostrophe in parsed tree.
 
     Modifies Str and Desc attributes ONLY. StrOrigin/DescOrigin (Korean source) are
-    never touched — they must remain exactly as the source data provides them.
+    never touched -- they must remain exactly as the source data provides them.
 
     Args:
         root: Parsed XML root element
@@ -446,7 +446,7 @@ def cleanup_hyphens_on_tree(root) -> int:
     """
     Normalize Unicode hyphen lookalikes to standard ASCII hyphen-minus in parsed tree.
 
-    Only normalizes U+2010 (Hyphen) and U+2011 (Non-breaking hyphen) — these are
+    Only normalizes U+2010 (Hyphen) and U+2011 (Non-breaking hyphen) -- these are
     visually identical to ASCII hyphen-minus and never intentional in game text.
     CJK hyphens, en/em dashes, minus signs are NOT touched.
 
@@ -714,7 +714,7 @@ def _cleanup_invisible_chars(text):
             name = _SAFE_INVISIBLE_NAMES.get(ch, f'U+{ord(ch):04X}')
             detail_counts[name] = detail_counts.get(name, 0) + 1
         elif ch != ' ' and ch != '\u3000' and unicodedata.category(ch) == 'Zs':
-            # Bucket 1: Zs space → regular space (U+3000 ideographic space excluded — CJK intentional)
+            # Bucket 1: Zs space -> regular space (U+3000 ideographic space excluded -- CJK intentional)
             chars.append(' ')
             spaces_count += 1
             # Try to get a readable name
@@ -1033,7 +1033,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
       2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
       3. cleanup_no_translation    - Replace "no translation" Str/Desc with origin
       4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII
-      5. cleanup_invisible_chars   - Auto-fix invisible Unicode chars (NBSP→space, delete zero-width)
+      5. cleanup_invisible_chars   - Auto-fix invisible Unicode chars (NBSP->space, delete zero-width)
       6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
       7. cleanup_ellipsis          - Normalize Unicode ellipsis to three dots (non-CJK only)
 
@@ -1173,16 +1173,16 @@ _EXCEL_SKIP_COLUMNS = frozenset({
 
 def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
     """
-    Run cleanup on an Excel file — same normalizations as XML postprocess.
+    Run cleanup on an Excel file -- same normalizations as XML postprocess.
 
     Cleans Str/Correction/Desc columns (NOT StrOrigin/DescOrigin/StringID).
 
     Steps applied to each cell:
       1. Normalize linebreaks (including double-escaped &amp;lt;br/&amp;gt;)
-      2. Normalize apostrophes (curly → ASCII)
-      3. Clean invisible characters (NBSP → space, delete zero-width)
-      4. Normalize hyphens (Unicode → ASCII hyphen-minus)
-      5. Decode double-escaped entities (&amp;desc; → &desc;, &quot; → ", etc.)
+      2. Normalize apostrophes (curly -> ASCII)
+      3. Clean invisible characters (NBSP -> space, delete zero-width)
+      4. Normalize hyphens (Unicode -> ASCII hyphen-minus)
+      5. Decode double-escaped entities (&amp;desc; -> &desc;, &quot; -> ", etc.)
 
     Args:
         xlsx_path: Path to Excel file
@@ -1194,7 +1194,7 @@ def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
     try:
         import openpyxl
     except ImportError:
-        logger.error("openpyxl required for Excel preprocess — install with: pip install openpyxl")
+        logger.error("openpyxl required for Excel preprocess -- install with: pip install openpyxl")
         return {"total_fixes": 0, "error": "openpyxl not installed"}
 
     # Detect CJK from filename (e.g. corrections_KOR.xlsx, languagedata_jpn.xlsx)

@@ -38,7 +38,7 @@ _SUPPORTED_EXTENSIONS = (".xml", ".xlsx", ".xls")
 def _format_skip_reason(filename: str, suffix: str) -> str:
     """Format a consistent skip reason for unsupported file types."""
     ext_display = suffix if suffix else "(no extension)"
-    return f"{filename}: Unsupported file type '{ext_display}' — only .xml, .xlsx, .xls accepted"
+    return f"{filename}: Unsupported file type '{ext_display}' -- only .xml, .xlsx, .xls accepted"
 
 
 # Module-level cache for valid language codes (avoids repeated LOC folder globbing)
@@ -209,7 +209,7 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
             result.lang_files[lang] = [source_path]
         else:
             result.unrecognized.append(source_path)
-            reason = f"{source_path.name}: No valid language suffix detected — cannot determine target language"
+            reason = f"{source_path.name}: No valid language suffix detected -- cannot determine target language"
             result.warnings.append(reason)
             logger.warning(reason)
         return result
@@ -248,13 +248,13 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
             else:
                 # No language suffix - mark as unrecognized
                 result.unrecognized.append(child)
-                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                reason = f"{child.name}/: No valid language suffix detected -- folder skipped"
                 result.warnings.append(reason)
                 logger.warning(reason)
 
         elif child.is_file():
             if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
-                # Wrong file extension — explicitly log and skip
+                # Wrong file extension -- explicitly log and skip
                 reason = _format_skip_reason(child.name, child.suffix)
                 result.skipped_files.append(reason)
                 result.warnings.append(reason)
@@ -281,7 +281,7 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
                 logger.debug(f"File {child.name}: -> {lang}")
             else:
                 result.unrecognized.append(child)
-                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                reason = f"{child.name}: No valid language suffix detected -- cannot determine target language"
                 result.warnings.append(reason)
                 logger.warning(reason)
 
@@ -388,13 +388,13 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
                     result.warnings.append(f"Folder {child.name} has suffix {lang} but no target files")
             else:
                 result.unrecognized.append(child)
-                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                reason = f"{child.name}/: No valid language suffix detected -- folder skipped"
                 result.warnings.append(reason)
                 logger.warning(reason)
 
         elif child.is_file():
             if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
-                # Wrong file extension — explicitly log and skip
+                # Wrong file extension -- explicitly log and skip
                 reason = _format_skip_reason(child.name, child.suffix)
                 result.skipped_files.append(reason)
                 result.warnings.append(reason)
@@ -422,7 +422,7 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
                 logger.debug(f"Target file {child.name}: -> {lang}")
             else:
                 result.unrecognized.append(child)
-                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                reason = f"{child.name}: No valid language suffix detected -- cannot determine target language"
                 result.warnings.append(reason)
                 logger.warning(reason)
 
@@ -662,12 +662,12 @@ def format_scan_result(
 
 
 # =============================================================================
-# Transfer Plan - Full Tree Table of Source → Target Mappings
+# Transfer Plan - Full Tree Table of Source -> Target Mappings
 # =============================================================================
 
 @dataclass
 class FileMapping:
-    """Single source file → target file mapping."""
+    """Single source file -> target file mapping."""
     source_file: Path
     target_file: Optional[Path]
     language: str
@@ -728,7 +728,7 @@ def generate_transfer_plan(
     target_scan: Optional[TargetScanResult] = None,
 ) -> TransferPlan:
     """
-    Generate a complete transfer plan showing every source file → target mapping.
+    Generate a complete transfer plan showing every source file -> target mapping.
 
     This is the FULL TREE TABLE that shows exactly what will be transferred where.
     Uses flexible target scanning to support any XML/Excel target files.
@@ -755,7 +755,7 @@ def generate_transfer_plan(
     if target_scan is None:
         target_scan = scan_target_for_languages(target_folder)
 
-    # Build target language → files lookup (case-insensitive)
+    # Build target language -> files lookup (case-insensitive)
     target_files_by_lang: Dict[str, List[Path]] = {}
     for lang_code, files in target_scan.lang_files.items():
         target_files_by_lang[lang_code.upper()] = files
@@ -840,11 +840,11 @@ def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str
         Formatted tree table string
     """
     lines = []
-    H = "═"
+    H = "="
     h = "─"
-    V = "║"  # Double vertical to match other box characters
-    TL, TR, BL, BR = "╔", "╗", "╚", "╝"
-    LT, RT = "╠", "╣"
+    V = "|"  # Double vertical to match other box characters
+    TL, TR, BL, BR = "+", "+", "+", "+"
+    LT, RT = "+", "+"
 
     width = 80
 
@@ -878,12 +878,12 @@ def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str
             target_desc = "(NO TARGET)"
 
         lines.append(V + "".ljust(width - 2) + V)
-        lines.append(V + f"  {status_icon} {lang}: {lang_plan.file_count} source files → {target_desc}".ljust(width - 2) + V)
+        lines.append(V + f"  {status_icon} {lang}: {lang_plan.file_count} source files -> {target_desc}".ljust(width - 2) + V)
 
         # Show individual target files when multiple
         if len(target_files) > 1:
             for tf in target_files:
-                lines.append(V + f"      → {tf.name}".ljust(width - 2) + V)
+                lines.append(V + f"      -> {tf.name}".ljust(width - 2) + V)
 
         if lang_plan.status == "NO_TARGET":
             lines.append(V + f"      SKIPPED - no target files found for {lang}".ljust(width - 2) + V)
@@ -909,13 +909,13 @@ def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str
                     for m in mappings:
                         rel_path = m.source_file.name
                         size_str = f"{m.file_size_kb:.0f} KB" if m.file_size_kb < 1024 else f"{m.file_size_kb/1024:.1f} MB"
-                        status_str = "→ OK" if m.status == "OK" else "→ SKIP"
+                        status_str = "-> OK" if m.status == "OK" else "-> SKIP"
                         lines.append(V + f"        ├─ {rel_path:<36} {size_str:<10} {status_str}".ljust(width - 2) + V)
                 else:
                     # Direct file
                     m = mappings[0]
                     size_str = f"{m.file_size_kb:.0f} KB" if m.file_size_kb < 1024 else f"{m.file_size_kb/1024:.1f} MB"
-                    status_str = "→ OK" if m.status == "OK" else "→ SKIP"
+                    status_str = "-> OK" if m.status == "OK" else "-> SKIP"
                     lines.append(V + f"      {m.source_file.name:<40} {size_str:<10} {status_str}".ljust(width - 2) + V)
 
     # Unrecognized items

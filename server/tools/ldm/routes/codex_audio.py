@@ -1,6 +1,6 @@
 """Audio Codex API endpoints -- bulk list, category tree, detail, playback.
 
-Phase 48→108: Audio Codex UI — MDG-exact playback via winsound.
+Phase 48->108: Audio Codex UI -- MDG-exact playback via winsound.
 All data comes from MegaIndex D10/D11/D20/D21/C4/C5 dicts.
 
 Endpoints:
@@ -151,9 +151,9 @@ async def play_audio(
     language: str = Query(default="eng", description="Audio language folder"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Play audio via winsound — MDG-exact AudioHandler.play() port.
+    """Play audio via winsound -- MDG-exact AudioHandler.play() port.
 
-    Converts WEM → WAV via vgmstream-cli, then plays via winsound.PlaySound()
+    Converts WEM -> WAV via vgmstream-cli, then plays via winsound.PlaySound()
     in a background thread. On Linux (DEV), returns error gracefully.
     """
     try:
@@ -174,7 +174,7 @@ async def play_audio(
 async def stop_audio(
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Stop audio playback — MDG-exact AudioHandler.stop() port."""
+    """Stop audio playback -- MDG-exact AudioHandler.stop() port."""
     try:
         from server.tools.ldm.services.audio_playback import get_audio_playback
         player = get_audio_playback()
@@ -382,7 +382,7 @@ async def list_audio(
 
         # MDG sort: (export_path, xml_order, strkey) for category browse
         # search.py:get_entries_by_export_path sorts (export_path, xml_order, strkey)
-        # search.py:search sorts (has_image, match_score, name_length) — not applicable for bulk load
+        # search.py:search sorts (has_image, match_score, name_length) -- not applicable for bulk load
         def _sort_key(ev: str):
             export_path = mega.event_to_export_path.get(ev, "")
             order = mega.event_to_xml_order.get(ev)

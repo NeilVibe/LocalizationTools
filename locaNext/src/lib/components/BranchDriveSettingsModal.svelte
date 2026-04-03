@@ -84,13 +84,14 @@
       const API_BASE = get(serverUrl);
       const response = await fetch(`${API_BASE}/api/ldm/mapdata/configure`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ branch: selectedBranch, drive }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        error = data.detail || `Server error: ${response.status}`;
+        const detail = data.detail;
+        error = typeof detail === 'string' ? detail : `Server error: ${response.status}`;
         return;
       }
     } catch (err) {

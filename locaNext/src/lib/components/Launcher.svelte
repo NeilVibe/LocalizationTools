@@ -116,15 +116,31 @@
     }
   }
 
+  // Phase 112: LAN fallback warning + PG mode detection
+  let lanFallbackWarning = $state(null);
+  let isPGMode = $state(false);
+
   async function checkServerStatus() {
     serverStatus.set('checking');
+    isPGMode = false;
+    lanFallbackWarning = null;
 
     try {
-      const response = await fetch(`${getAPI()}/health`, { timeout: 5000 });
+      const response = await fetch(`${getAPI()}/health`, { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
+        const health = await response.json();
         serverStatus.set('connected');
         connectionMode.set('online');
         logger.info('Launcher: Server connected');
+
+        // Phase 112: Detect PG mode -- hide "Start Offline" when PG is active
+        isPGMode = health.database_type === 'postgresql';
+
+        // Phase 112: Detect LAN fallback -- PG was configured but unreachable
+        if (health.lan_fallback) {
+          lanFallbackWarning = `Cannot reach database at ${health.lan_host}:${health.lan_port}. Ask admin to verify: 1) LocaNext is running on admin PC, 2) IT has opened TCP port ${health.lan_port} for LAN. Using local mode until resolved.`;
+          logger.warning('Launcher: LAN fallback detected', { host: health.lan_host, port: health.lan_port });
+        }
       } else {
         serverStatus.set('offline');
         connectionMode.set('offline');
@@ -446,6 +462,16 @@
       <div class="login-form">
         <h3>Login to Central Server</h3>
 
+        {#if lanFallbackWarning}
+          <InlineNotification
+            kind="warning"
+            title="LAN Connection Failed"
+            subtitle={lanFallbackWarning}
+            hideCloseButton
+            lowContrast
+          />
+        {/if}
+
         {#if loginError}
           <InlineNotification
             kind="error"
@@ -492,11 +518,13 @@
     {:else}
       <!-- Main Buttons -->
       <div class="launcher-buttons">
+        {#if !isPGMode}
         <button class="launcher-btn offline-btn" onclick={handleStartOffline}>
           <CloudOffline size={32} />
           <span class="btn-title">Start Offline</span>
           <span class="btn-subtitle">No account needed</span>
         </button>
+        {/if}
 
         <button
           class="launcher-btn login-btn"

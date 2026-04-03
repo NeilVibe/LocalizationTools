@@ -42,7 +42,7 @@ def is_light_mode() -> bool:
     Check if LocaNext is running in Light Mode (no torch/sentence-transformers).
 
     Lazy-checks if sentence_transformers + torch are importable, caches result.
-    Returns True when Qwen/torch is NOT available → Model2Vec only.
+    Returns True when Qwen/torch is NOT available -> Model2Vec only.
     """
     global _light_mode
     if _light_mode is None:
@@ -303,7 +303,7 @@ class QwenEngine(EmbeddingEngine):
 
 
 # =============================================================================
-# Model2Vec Adapter — SentenceTransformer-compatible wrapper for Light Mode
+# Model2Vec Adapter -- SentenceTransformer-compatible wrapper for Light Mode
 # =============================================================================
 
 class Model2VecModelAdapter:
@@ -359,14 +359,14 @@ def get_model2vec_adapter() -> Model2VecModelAdapter:
 # =============================================================================
 
 def _get_available_engine_registry() -> dict:
-    """Dynamic engine registry — excludes QwenEngine in light mode."""
+    """Dynamic engine registry -- excludes QwenEngine in light mode."""
     registry = {"model2vec": Model2VecEngine}
     if not is_light_mode():
         registry["qwen"] = QwenEngine
     return registry
 
 
-# Static reference for internal use only — external callers use get_available_engines()
+# Static reference for internal use only -- external callers use get_available_engines()
 _AVAILABLE_ENGINES = {
     "model2vec": Model2VecEngine,
     "qwen": QwenEngine,
@@ -450,7 +450,7 @@ def get_embedding_engine(engine_name: Optional[str] = None) -> EmbeddingEngine:
 
     if engine_name not in registry:
         if engine_name == "qwen" and is_light_mode():
-            logger.warning(f"Qwen requested but Light Mode active — falling back to model2vec")
+            logger.warning(f"Qwen requested but Light Mode active -- falling back to model2vec")
             engine_name = "model2vec"
             _current_engine_name = "model2vec"
         else:

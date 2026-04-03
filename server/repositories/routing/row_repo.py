@@ -2,8 +2,8 @@
 Routing Row Repository.
 
 Transparently routes row operations based on entity IDs:
-- Negative IDs → SQLite OFFLINE mode (local Electron data)
-- Positive IDs → Primary repository (PostgreSQL or SQLite SERVER mode)
+- Negative IDs -> SQLite OFFLINE mode (local Electron data)
+- Positive IDs -> Primary repository (PostgreSQL or SQLite SERVER mode)
 
 This eliminates factory pattern violations where routes directly imported
 SQLiteRowRepository for negative IDs.

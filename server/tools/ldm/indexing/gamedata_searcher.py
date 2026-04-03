@@ -140,7 +140,7 @@ class GameDataSearcher:
             try:
                 self._ensure_model_loaded()
             except RuntimeError as e:
-                logger.warning(f"[GameDataSearcher] Tier 2 skipped — {e}")
+                logger.warning(f"[GameDataSearcher] Tier 2 skipped -- {e}")
                 self.whole_index = None  # Disable for remaining tiers
 
             query_embedding = self.model.encode(
@@ -212,7 +212,7 @@ class GameDataSearcher:
             try:
                 self._ensure_model_loaded()
             except RuntimeError as e:
-                logger.warning(f"[GameDataSearcher] Tier 4 skipped — {e}")
+                logger.warning(f"[GameDataSearcher] Tier 4 skipped -- {e}")
                 self.line_index = None
 
             line_results = []

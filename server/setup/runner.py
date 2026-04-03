@@ -78,8 +78,8 @@ def run_setup(
        c. If the step fails and is **recoverable**, auto-retry once.
        d. Persist state to disk after every step.
        e. Fire *on_progress* callback (if provided).
-       f. If failed and **fatal** → stop immediately, return failure.
-       g. If failed and **optional** → mark done, continue.
+       f. If failed and **fatal** -> stop immediately, return failure.
+       g. If failed and **optional** -> mark done, continue.
     4. When all steps complete: set ``completed_at``, return success
        with the detected LAN IP.
     """
@@ -112,7 +112,7 @@ def run_setup(
         step_index = STEP_NAMES.index(step_name)
         logger.info("[SETUP {}/{}] Running: {}", step_index + 1, len(STEP_NAMES), step_name)
         result = _run_step_with_retry(step_name, step_fn, config)
-        logger.info("[SETUP {}/{}] {} → {} ({}ms) {}",
+        logger.info("[SETUP {}/{}] {} -> {} ({}ms) {}",
                      step_index + 1, len(STEP_NAMES), step_name,
                      result.status, result.duration_ms, result.message)
 

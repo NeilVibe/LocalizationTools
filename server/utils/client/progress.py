@@ -149,23 +149,23 @@ class SimpleProgress:
         Args:
             message: Initial message
         """
-        print(f"⏳ {message}")
+        print(f"[WAIT] {message}")
         self.message = message
 
     def update(self, message: str):
         """Update progress message."""
-        print(f"⏳ {message}")
+        print(f"[WAIT] {message}")
 
     def done(self, message: Optional[str] = None):
         """Mark as complete."""
         if message:
-            print(f"✓ {message}")
+            print(f"[OK] {message}")
         else:
-            print(f"✓ {self.message} - Complete!")
+            print(f"[OK] {self.message} - Complete!")
 
     def error(self, message: str):
         """Mark as error."""
-        print(f"✗ {message}")
+        print(f"[FAIL] {message}")
 
 
 # Example usage

@@ -2,9 +2,9 @@
 File building utilities.
 
 TODO: Migrate from api.py lines 2623-2784
-- _build_txt_file → build_txt_file
-- _build_xml_file → build_xml_file
-- _build_excel_file → build_excel_file
+- _build_txt_file -> build_txt_file
+- _build_xml_file -> build_xml_file
+- _build_excel_file -> build_excel_file
 """
 
 from typing import List, Optional

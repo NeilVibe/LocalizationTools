@@ -191,7 +191,7 @@ class OfflineDatabase:
         """
         conn = await aiosqlite.connect(self.db_path)
         conn.row_factory = aiosqlite.Row
-        # Match sync connection pragmas — WAL + busy_timeout for concurrent access
+        # Match sync connection pragmas -- WAL + busy_timeout for concurrent access
         await conn.execute("PRAGMA journal_mode=WAL;")
         await conn.execute("PRAGMA busy_timeout=15000;")
         try:
@@ -437,7 +437,7 @@ class OfflineDatabase:
                     if not await cursor.fetchone():
                         break
                     counter += 1
-                logger.info(f"Auto-renamed duplicate folder: '{name}' → '{final_name}'")
+                logger.info(f"Auto-renamed duplicate folder: '{name}' -> '{final_name}'")
 
             # Use negative IDs to avoid conflicts with real server IDs
             # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
@@ -1771,7 +1771,7 @@ class OfflineDatabase:
 
         async with self._get_async_connection() as conn:
             # P9-FIX: Check for duplicate names within SAME FOLDER (per-folder unique)
-            # Uses same pattern as naming.py: test.txt → test_1.txt → test_2.txt
+            # Uses same pattern as naming.py: test.txt -> test_1.txt -> test_2.txt
             final_name = name
 
             # Query differs based on whether folder_id is provided
@@ -1815,7 +1815,7 @@ class OfflineDatabase:
                     if not await cursor.fetchone():
                         break
                     counter += 1
-                logger.info(f"Auto-renamed duplicate: '{name}' → '{final_name}'")
+                logger.info(f"Auto-renamed duplicate: '{name}' -> '{final_name}'")
 
             # Use negative IDs to avoid conflicts with real server IDs
             # Each new local file gets a unique negative ID based on timestamp
@@ -1856,7 +1856,7 @@ class OfflineDatabase:
         P9: Add rows to a local file in Offline Storage.
 
         Rows are created with sync_status='new' since they don't exist on server.
-        Uses batch INSERT (executemany) for performance — 10x+ faster than single inserts.
+        Uses batch INSERT (executemany) for performance -- 10x+ faster than single inserts.
         """
         import time
 

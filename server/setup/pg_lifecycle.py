@@ -1,4 +1,4 @@
-"""PostgreSQL lifecycle management — find binaries, start, stop, check status, run SQL."""
+"""PostgreSQL lifecycle management -- find binaries, start, stop, check status, run SQL."""
 from __future__ import annotations
 
 import os
@@ -74,7 +74,7 @@ def _make_env(bin_dir: Path) -> dict:
 def is_pg_running(pg_isready: Path, port: int = 5432, host: str = "127.0.0.1") -> bool:
     """Check if PG is running using pg_isready. Returns True/False.
 
-    Windows has no Unix sockets — -h is REQUIRED for TCP check.
+    Windows has no Unix sockets -- -h is REQUIRED for TCP check.
     """
     try:
         result = subprocess.run(
@@ -100,7 +100,7 @@ def start_pg(
     Uses Popen with DEVNULL to avoid Windows pipe inheritance hang.
     On Windows, postgres.exe inherits pipe handles from pg_ctl;
     subprocess.run(capture_output=True) hangs in communicate() waiting
-    for postgres to release the handles — which it never does.
+    for postgres to release the handles -- which it never does.
 
     Returns (success, message).
     """
@@ -188,7 +188,7 @@ def run_sql(
 ) -> tuple[bool, str]:
     """Run SQL via psql. Password via PGPASSWORD env var (NEVER as CLI arg).
 
-    Windows has no Unix domain sockets — -h and -p are REQUIRED for TCP connection.
+    Windows has no Unix domain sockets -- -h and -p are REQUIRED for TCP connection.
     Returns (success, stdout).
     """
     env = _make_env(psql.parent)

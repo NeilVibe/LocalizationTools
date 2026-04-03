@@ -23,7 +23,7 @@ from .korean_detection import is_korean_text
 from .text_utils import normalize_text, normalize_nospace, is_formula_text, is_text_integrity_issue
 
 # ---------------------------------------------------------------------------
-# Formula safeguard — detect Excel formulas, error values, and non-str types
+# Formula safeguard -- detect Excel formulas, error values, and non-str types
 # ---------------------------------------------------------------------------
 
 try:
@@ -192,7 +192,7 @@ def read_corrections_from_excel(
         corrections = []
         start_row = 2 if has_header else 1
 
-        # Detect ALL columns from header row (case-insensitive) — NO positional fallbacks
+        # Detect ALL columns from header row (case-insensitive) -- NO positional fallbacks
         stringid_col = None
         strorigin_col = None
         correction_col = None
@@ -210,7 +210,7 @@ def read_corrections_from_excel(
             eventname_col = col_indices.get("eventname", col_indices.get("event_name",
                             col_indices.get("soundeventname", None)))
             dialogvoice_col = col_indices.get("dialogvoice", col_indices.get("dialog_voice", None))
-            # Desc/DescOrigin columns (optional — voice direction descriptions)
+            # Desc/DescOrigin columns (optional -- voice direction descriptions)
             descorigin_col = col_indices.get("descorigin", col_indices.get("desc_origin", None))
             desc_col = col_indices.get("desc", col_indices.get("desctext",
                        col_indices.get("desc_text", col_indices.get("desccorrection", None))))
@@ -236,12 +236,12 @@ def read_corrections_from_excel(
                 )
             elif eventname_col and dialogvoice_col:
                 logger.info(
-                    "No StringID column — resolving EventName → StringID "
+                    "No StringID column -- resolving EventName -> StringID "
                     "via DialogVoice stripping + keyword extraction."
                 )
             elif eventname_col:
                 logger.info(
-                    "No StringID column — resolving EventName → StringID "
+                    "No StringID column -- resolving EventName -> StringID "
                     "via keyword extraction + export file lookup."
                 )
 
@@ -282,7 +282,7 @@ def read_corrections_from_excel(
 
                 corrected_str = str(corrected).strip()
 
-                # Decode double-escaped entities (&amp;lt; → &lt;) so lxml doesn't
+                # Decode double-escaped entities (&amp;lt; -> &lt;) so lxml doesn't
                 # triple-escape on write. Then normalize linebreaks.
                 corrected_str = _decode_excel_entities(corrected_str)
                 corrected_str = _convert_linebreaks_for_excel(corrected_str)
@@ -318,7 +318,7 @@ def read_corrections_from_excel(
                 if is_korean_text(corrected_str):
                     continue
 
-                # Skip "no translation" entries — these are NOT corrections.
+                # Skip "no translation" entries -- these are NOT corrections.
                 # Transferring them would overwrite real translations, then
                 # postprocess would replace with StrOrigin (Korean).
                 if ' '.join(corrected_str.split()).lower() == 'no translation':
@@ -352,7 +352,7 @@ def read_corrections_from_excel(
                                 'row': row[0].row, 'column': 'Desc',
                                 'string_id': _report_id, 'reason': bad,
                             })
-                        d_val = None  # Neutralize — prevents downstream str(d_val)
+                        d_val = None  # Neutralize -- prevents downstream str(d_val)
                     # Decode double-escaped entities and normalize linebreaks in Desc
                     if d_val is not None and isinstance(d_val, str):
                         d_val = _decode_excel_entities(d_val)
@@ -386,7 +386,7 @@ def read_corrections_from_excel(
                     if dialogvoice is not None:
                         entry["_source_dialogvoice"] = str(dialogvoice).strip()
 
-                # Flag when no EventName column exists — transfer pipeline uses
+                # Flag when no EventName column exists -- transfer pipeline uses
                 # this to auto-detect EventNames mixed into StringID column
                 if not eventname_col and has_id:
                     entry["_no_eventname_col"] = True
@@ -398,7 +398,7 @@ def read_corrections_from_excel(
                 if dialogvoice is not None:
                     entry["_original_dialogvoice"] = str(dialogvoice).strip()
 
-                # NOTE: Ellipsis detection removed — postprocess Step 7 auto-fixes
+                # NOTE: Ellipsis detection removed -- postprocess Step 7 auto-fixes
                 # Unicode ellipsis (…) to three dots for non-CJK languages.
 
                 corrections.append(entry)
@@ -797,22 +797,22 @@ def _decode_excel_entities(txt: str) -> str:
 
     When lxml writes text to an XML attribute, it escapes < > & " automatically.
     If Excel text already contains entities (&lt; &gt; &amp;), lxml would
-    double-escape them (&lt; → &amp;lt; on disk). We decode ALL entity levels
+    double-escape them (&lt; -> &amp;lt; on disk). We decode ALL entity levels
     so lxml's single escaping produces the correct result.
 
     Decode order:
-      1. Double-escaped: &amp;lt; → &lt; (regex, one level)
-      2. Single-escaped: &lt; → < (html.unescape, all standard entities)
+      1. Double-escaped: &amp;lt; -> &lt; (regex, one level)
+      2. Single-escaped: &lt; -> < (html.unescape, all standard entities)
 
-    After this, lxml re-escapes once: < → &lt; on disk. Correct.
+    After this, lxml re-escapes once: < -> &lt; on disk. Correct.
     """
     if not txt:
         return txt
-    # Step 1: Decode double-escaped (&amp;ENTITY; → &ENTITY;)
+    # Step 1: Decode double-escaped (&amp;ENTITY; -> &ENTITY;)
     if '&amp;' in txt:
         txt = re.sub(r'&amp;([a-zA-Z]+;|#[0-9]+;|#[xX][0-9a-fA-F]+;)',
                       lambda m: f'&{m.group(1)}', txt)
-    # Step 2: Decode single-escaped (&lt; → <, &gt; → >, &amp; → &, etc.)
+    # Step 2: Decode single-escaped (&lt; -> <, &gt; -> >, &amp; -> &, etc.)
     if '&' in txt:
         txt = html.unescape(txt)
     return txt
@@ -828,9 +828,9 @@ def _convert_linebreaks_for_excel(txt: str) -> str:
     """
     if not txt:
         return txt
-    # Double-escaped br: &amp;lt;br/&amp;gt; → <br/> (MUST come before single-escaped)
+    # Double-escaped br: &amp;lt;br/&amp;gt; -> <br/> (MUST come before single-escaped)
     txt = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', txt)
-    # Single-escaped br: &lt;br/&gt; → <br/>
+    # Single-escaped br: &lt;br/&gt; -> <br/>
     txt = txt.replace('&lt;br/&gt;', '<br/>')
     txt = txt.replace('&lt;br /&gt;', '<br/>')
     txt = txt.replace('<br />', '<br/>')
@@ -987,7 +987,7 @@ def merge_corrections_to_excel(
             })
 
         # Auto-create Desc column if DescOrigin exists but Desc doesn't
-        # Only for modes that write Desc (strict, stringid_only — NOT strorigin_only)
+        # Only for modes that write Desc (strict, stringid_only -- NOT strorigin_only)
         if descorigin_col and not desc_col and not dry_run and match_mode != "strorigin_only":
             # Insert Desc column after DescOrigin
             desc_col = descorigin_col + 1
@@ -1190,7 +1190,7 @@ def _merge_excel_strorigin_only(
                 conflicting += 1
                 logger.debug(
                     f"StrOrigin-only Excel: conflicting correction for StrOrigin "
-                    f"'{c.get('str_origin', '')}' — overwriting with last"
+                    f"'{c.get('str_origin', '')}' -- overwriting with last"
                 )
         correction_lookup[origin_norm] = c
     if conflicting:
@@ -1258,7 +1258,7 @@ def _merge_excel_stringid_only(
     ci_category = {k.lower(): v for k, v in stringid_to_category.items()} if stringid_to_category else {}
     ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
-    # Lazy EventName resolver — only loaded if needed
+    # Lazy EventName resolver -- only loaded if needed
     _en_resolver_loaded = False
     _en_mapping = None
     _en_extract_fn = None
@@ -1285,7 +1285,7 @@ def _merge_excel_stringid_only(
         return None
 
     # Build list-based lookup: one StringID can map to MULTIPLE target rows
-    # Note: do NOT filter out empty str_origin — StringID-only mode matches by ID alone,
+    # Note: do NOT filter out empty str_origin -- StringID-only mode matches by ID alone,
     # and the target may legitimately have no StrOrigin column (3D.C3 fix).
     target_by_sid = defaultdict(list)
     for entry in target_entries:

@@ -285,7 +285,7 @@ async def batch_image_lookup(
     request: BatchImageRequest,
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Batch image lookup for grid preload — exact match only, no fuzzy scan.
+    """Batch image lookup for grid preload -- exact match only, no fuzzy scan.
 
     Accepts up to 250,000 string IDs and returns simplified image info
     (has_image, thumbnail_url, texture_name) for each. Uses only the
@@ -462,7 +462,7 @@ async def validate_paths(
     status = path_service.get_status()
 
     # Use native OS paths for validation (not WSL-converted).
-    # WSL paths (/mnt/d/...) don't exist on Windows — always fail .exists().
+    # WSL paths (/mnt/d/...) don't exist on Windows -- always fail .exists().
     from server.tools.ldm.services.perforce_path_service import generate_paths
     raw_paths = generate_paths(status["drive"], status["branch"])
 

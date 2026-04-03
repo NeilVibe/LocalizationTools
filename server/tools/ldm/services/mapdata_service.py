@@ -227,7 +227,7 @@ class MapDataService:
         for key, ctx in self._strkey_to_image.items():
             key_lower = key.lower().replace("_", "")
             if sid_lower in key_lower or key_lower in sid_lower:
-                # Don't cache fuzzy matches — loose criterion may match wrong entity
+                # Don't cache fuzzy matches -- loose criterion may match wrong entity
                 return ctx
 
         return ImageContext(
@@ -331,7 +331,7 @@ class MapDataService:
         for key, ctx in self._strkey_to_audio.items():
             key_lower = key.lower().replace("_", "")
             if sid_lower in key_lower or key_lower in sid_lower:
-                # Don't cache fuzzy matches — loose criterion may match wrong entity
+                # Don't cache fuzzy matches -- loose criterion may match wrong entity
                 return ctx
 
         return AudioContext(

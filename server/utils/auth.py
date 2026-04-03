@@ -135,7 +135,7 @@ def verify_token(token: str) -> Optional[dict]:
         allow_offline = getattr(config, 'ALLOW_OFFLINE_TOKENS', True)
         # Block OFFLINE_MODE tokens when connected to PostgreSQL (LAN/online mode)
         if config.ACTIVE_DATABASE_TYPE == "postgresql":
-            logger.warning("OFFLINE_MODE token rejected — not allowed in PostgreSQL mode")
+            logger.warning("OFFLINE_MODE token rejected -- not allowed in PostgreSQL mode")
             return None
         if allow_offline:
             logger.debug("OFFLINE_MODE token accepted - user has Offline Storage access only")
@@ -194,13 +194,13 @@ def get_current_user(token: str, db) -> Optional[dict]:
         logger.warning("No user_id in token")
         return None
 
-    # P9/P33: Handle OFFLINE and LOCAL mode — look up real user from database
+    # P9/P33: Handle OFFLINE and LOCAL mode -- look up real user from database
     # This ensures we use the real integer user_id that works with foreign keys
     if payload.get("offline_mode") or user_id in ("OFFLINE", "LOCAL"):
         lookup_username = "LOCAL" if user_id == "LOCAL" else "OFFLINE"
         offline_user = db.query(User).filter(User.username == lookup_username).first()
         if offline_user:
-            logger.debug(f"[PHASE110:AUTH] sync: {lookup_username} fallback → real user_id={offline_user.user_id} role={offline_user.role}")
+            logger.debug(f"[PHASE110:AUTH] sync: {lookup_username} fallback -> real user_id={offline_user.user_id} role={offline_user.role}")
             return {
                 "user_id": offline_user.user_id,
                 "username": offline_user.username,
@@ -215,7 +215,7 @@ def get_current_user(token: str, db) -> Optional[dict]:
             logger.warning(f"[PHASE110:AUTH] sync: {lookup_username} user not found in database - run db_setup to create it")
             return None
 
-    # Fetch user from database — user_id should be integer from Phase 110 tokens
+    # Fetch user from database -- user_id should be integer from Phase 110 tokens
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         logger.warning(f"[PHASE110:AUTH] sync: user_id={user_id} (type={type(user_id).__name__}) not found in database")
@@ -270,14 +270,14 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
         logger.warning("No user_id in token")
         return None
 
-    # P9/P33: Handle OFFLINE and LOCAL mode — look up real user from database
+    # P9/P33: Handle OFFLINE and LOCAL mode -- look up real user from database
     # This ensures we use the real integer user_id that works with foreign keys
     if payload.get("offline_mode") or user_id in ("OFFLINE", "LOCAL"):
         lookup_username = "LOCAL" if user_id == "LOCAL" else "OFFLINE"
         result = await db.execute(select(User).where(User.username == lookup_username))
         offline_user = result.scalar_one_or_none()
         if offline_user:
-            logger.debug(f"[PHASE110:AUTH] async: {lookup_username} fallback → real user_id={offline_user.user_id} role={offline_user.role}")
+            logger.debug(f"[PHASE110:AUTH] async: {lookup_username} fallback -> real user_id={offline_user.user_id} role={offline_user.role}")
             return {
                 "user_id": offline_user.user_id,
                 "username": offline_user.username,
@@ -292,7 +292,7 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
             logger.warning(f"[PHASE110:AUTH] async: {lookup_username} user not found in database - run db_setup to create it")
             return None
 
-    # Fetch user from database — user_id should be integer from Phase 110 tokens
+    # Fetch user from database -- user_id should be integer from Phase 110 tokens
     result = await db.execute(select(User).where(User.user_id == user_id))
     user = result.scalar_one_or_none()
 

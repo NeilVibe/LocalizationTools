@@ -135,7 +135,7 @@ def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None
     Build correction lookup dicts ONCE for reuse across all target files.
 
     Returns (correction_lookup, correction_lookup_nospace) tuple.
-    correction_matched is NOT included — must be built per-file since different
+    correction_matched is NOT included -- must be built per-file since different
     files match different corrections.
 
     Args:
@@ -372,8 +372,8 @@ def _convert_linebreaks_for_xml(txt: str) -> str:
     (which lxml escapes to &lt;br/&gt; in attributes automatically).
 
     Also handles the case where Excel already contains &lt;br/&gt;
-    (from XML copy-paste) — unescapes first to prevent double-escaping
-    (&lt;br/&gt; → &amp;lt;br/&amp;gt;).
+    (from XML copy-paste) -- unescapes first to prevent double-escaping
+    (&lt;br/&gt; -> &amp;lt;br/&amp;gt;).
 
     Ported from LanguageDataExporter's locdev_merger.py.
 
@@ -409,7 +409,7 @@ def _try_write_desc(loc, correction, dry_run=False):
     desc_corrected = correction.get("desc_corrected", "")
     if not desc_corrected:
         return False
-    # Never transfer "no translation" — it would overwrite a real translation
+    # Never transfer "no translation" -- it would overwrite a real translation
     if _is_no_translation(desc_corrected):
         return False
     # Target must have non-empty DescOrigin
@@ -499,8 +499,8 @@ def merge_corrections_to_xml(
         # Build set of all StringIDs in target for diagnostic purposes
         # (to distinguish "StringID not found" vs "StrOrigin mismatch")
         target_stringids = set()
-        target_strorigin_map = {}  # sid.lower() → raw StrOrigin text
-        target_raw_attribs_map = {}  # sid.lower() → dict of ALL attributes
+        target_strorigin_map = {}  # sid.lower() -> raw StrOrigin text
+        target_raw_attribs_map = {}  # sid.lower() -> dict of ALL attributes
         for loc in all_elements:
             tsid = get_attr(loc, STRINGID_ATTRS).strip()
             if tsid:
@@ -557,7 +557,7 @@ def merge_corrections_to_xml(
                     })
                     continue
 
-                # Never transfer "no translation" — preserve existing translation
+                # Never transfer "no translation" -- preserve existing translation
                 if _is_no_translation(new_str):
                     logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                     result["details"].append({
@@ -703,13 +703,13 @@ def merge_corrections_stringid_only(
         script_corrections = []
         _eventname_resolved_count = 0
 
-        # Lazy EventName resolver — only loaded if needed
+        # Lazy EventName resolver -- only loaded if needed
         _en_resolver_loaded = False
         _en_mapping = None
         _en_extract_fn = None
 
         def _try_resolve_as_eventname(eventname_str):
-            """Try to resolve a value as EventName → StringID via 3-step waterfall."""
+            """Try to resolve a value as EventName -> StringID via 3-step waterfall."""
             nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
             if not _en_resolver_loaded:
                 _en_resolver_loaded = True
@@ -752,7 +752,7 @@ def merge_corrections_stringid_only(
                     resolved_lower = resolved_sid.lower()
                     resolved_category = ci_category.get(resolved_lower, "Uncategorized")
                     if resolved_category in SCRIPT_CATEGORIES:
-                        # EventName resolved to a SCRIPT StringID — use it
+                        # EventName resolved to a SCRIPT StringID -- use it
                         _eventname_resolved_count += 1
                         logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
                         sid = resolved_sid
@@ -900,7 +900,7 @@ def merge_corrections_stringid_only(
                     })
                     continue
 
-                # Never transfer "no translation" — preserve existing translation
+                # Never transfer "no translation" -- preserve existing translation
                 if _is_no_translation(new_str):
                     logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                     result["details"].append({
@@ -997,17 +997,17 @@ def _recover_not_found_via_eventname(
     When an Excel correction sheet has bogus StringIDs (actually EventNames),
     they fail to match in the target XML and end up as NOT_FOUND. This function
     takes those NOT_FOUND entries, runs them through the 3-step EventName
-    waterfall (DialogVoice strip → keyword extract → export lookup), and
+    waterfall (DialogVoice strip -> keyword extract -> export lookup), and
     re-merges any that resolve to a valid StringID.
 
     Args:
         file_result: Result dict from a merge function (has "details", "not_found", etc.)
         target_file: Path to the target XML file for re-merge
-        export_mapping: EventName→StringID mapping from get_eventname_mapping()
+        export_mapping: EventName->StringID mapping from get_eventname_mapping()
         dry_run: If True, don't write changes
         only_untranslated: If True, only fill untranslated entries
         log_callback: Optional GUI log callback
-        original_merge_mode: "strict" or "stringid_only" — determines which merge function to use for re-merge
+        original_merge_mode: "strict" or "stringid_only" -- determines which merge function to use for re-merge
         stringid_to_category: Category mapping (required when original_merge_mode="stringid_only")
         stringid_to_subfolder: Subfolder mapping (optional, for stringid_only exclusions)
 
@@ -1126,7 +1126,7 @@ def _recover_not_found_via_eventname(
         if not (d["status"] == "NOT_FOUND" and d.get("string_id", "").lower() in recovered_detail_sids)
     ]
 
-    # Update counters — decrement not_found by actual removals, not total matched
+    # Update counters -- decrement not_found by actual removals, not total matched
     actually_recovered = len(recovered_detail_sids)
     file_result["matched"] = file_result.get("matched", 0) + actually_recovered
     file_result["updated"] = file_result.get("updated", 0) + recovery_result.get("updated", 0)
@@ -1181,7 +1181,7 @@ def _fast_folder_merge(
     """
     Merge ALL corrections into ALL target XML files in one tight loop.
 
-    TMXTransfer11 pattern: parse → 1 match pass + 1 postprocess pass → write.
+    TMXTransfer11 pattern: parse -> 1 match pass + 1 postprocess pass -> write.
     No per-file details lists, no per-file correction_matched arrays.
     Global tracking of which corrections matched SOMEWHERE across all files.
 
@@ -1235,7 +1235,7 @@ def _fast_folder_merge(
 
     if match_mode == "strict":
         # correction_lookup: (sid_lower, norm_orig) -> list of (corrected, category, index)
-        # Track per correction index — use len(corrections) for robustness
+        # Track per correction index -- use len(corrections) for robustness
         # (handles edge case where some corrections are filtered out of lookup)
         correction_matched = bytearray(len(corrections))
 
@@ -1354,7 +1354,7 @@ def _fast_folder_merge(
                         })
                         continue
 
-                    # Never transfer "no translation" — preserve existing translation
+                    # Never transfer "no translation" -- preserve existing translation
                     if _is_no_translation(new_str):
                         logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
@@ -1373,7 +1373,7 @@ def _fast_folder_merge(
                         counters_desc_updated += 1
                         changed = True
                 else:
-                    # Not matched — capture for STRORIGIN_MISMATCH diagnostics
+                    # Not matched -- capture for STRORIGIN_MISMATCH diagnostics
                     if sid_lower in correction_sid_set:
                         target_sids_seen.add(sid_lower)
                         if sid_lower not in target_attribs_cache:
@@ -1413,7 +1413,7 @@ def _fast_folder_merge(
                         })
                         continue
 
-                    # Never transfer "no translation" — preserve existing translation
+                    # Never transfer "no translation" -- preserve existing translation
                     if _is_no_translation(new_str):
                         logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
@@ -1452,7 +1452,7 @@ def _fast_folder_merge(
                         })
                         continue
 
-                    # Never transfer "no translation" — preserve existing translation
+                    # Never transfer "no translation" -- preserve existing translation
                     if _is_no_translation(new_str):
                         logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
@@ -1510,7 +1510,7 @@ def _fast_folder_merge(
                         })
                         continue
 
-                    # Never transfer "no translation" — preserve existing translation
+                    # Never transfer "no translation" -- preserve existing translation
                     if _is_no_translation(new_str):
                         logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
@@ -1529,7 +1529,7 @@ def _fast_folder_merge(
                         counters_desc_updated += 1
                         changed = True
                 else:
-                    # Not matched — capture for DESCORIGIN_MISMATCH diagnostics
+                    # Not matched -- capture for DESCORIGIN_MISMATCH diagnostics
                     if orig in correction_origin_set:
                         target_origins_seen.add(orig)  # orig already normalized
                         if orig not in target_attribs_cache_so:
@@ -1545,7 +1545,7 @@ def _fast_folder_merge(
                 desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
                 desc = normalize_for_matching(desc_raw)
 
-                # PASS1: (StrOrigin, filepath, DescOrigin) — only if desc present
+                # PASS1: (StrOrigin, filepath, DescOrigin) -- only if desc present
                 match_entries = []
                 if desc:
                     match_entries = correction_lookup.get((orig, filepath, desc), [])
@@ -1971,7 +1971,7 @@ def transfer_folder_to_folder(
     if target_scan is None:
         target_scan = scan_target_for_languages(target_folder)
 
-    # Build target language → files lookup (case-insensitive)
+    # Build target language -> files lookup (case-insensitive)
     target_files_by_lang: Dict[str, List[Path]] = {}
     for lang_code, files in target_scan.lang_files.items():
         target_files_by_lang[lang_code.upper()] = files
@@ -2159,7 +2159,7 @@ def transfer_folder_to_folder(
         lang_groups[lang_upper]["corrections"].extend(corrections)
         lang_groups[lang_upper]["source_files"].append(source_file.name)
         target_names = ", ".join(f.name for f in target_files)
-        logger.info(f"Parsed {source_file.name}: {len(corrections)} corrections → {target_names}")
+        logger.info(f"Parsed {source_file.name}: {len(corrections)} corrections -> {target_names}")
 
     logger.info(f"Grouped {sum(len(g['corrections']) for g in lang_groups.values()):,} corrections "
                 f"across {len(lang_groups)} languages")
@@ -2214,7 +2214,7 @@ def transfer_folder_to_folder(
         results["_duplicate_strorigin_details"] = all_duplicate_details
 
     # ─── Non-Script pre-filter for Strict / StrOrigin+DescOrigin modes ──────
-    # Skip SCRIPT corrections (Dialog/Sequencer) — handle via StringID-Only pass.
+    # Skip SCRIPT corrections (Dialog/Sequencer) -- handle via StringID-Only pass.
     if strict_non_script_only and stringid_to_category and match_mode in ("strict", "strict_fuzzy", "strorigin_descorigin", "strorigin_descorigin_fuzzy"):
         ci_cat = {k.lower(): v for k, v in stringid_to_category.items()}
         total_skipped_script = 0
@@ -2305,7 +2305,7 @@ def transfer_folder_to_folder(
                 f"{len(all_missing_eventnames)} missing"
             )
         else:
-            logger.warning("EventName mapping is empty — export folder may not contain SoundEventName attributes")
+            logger.warning("EventName mapping is empty -- export folder may not contain SoundEventName attributes")
 
     # ─── Pre-filter: skip target files with zero matching corrections ─────
     # Raw-bytes regex scan (~2ms/file) avoids expensive XML parse+iterate
@@ -2337,7 +2337,7 @@ def transfer_folder_to_folder(
                         continue
                     file_sids = _quick_scan_stringids(tf)
                     if file_sids is None:
-                        continue  # fail-safe: scan error → don't skip
+                        continue  # fail-safe: scan error -> don't skip
                     if not file_sids.intersection(correction_sids):
                         keys_to_skip.append(target_key)
                 for k in keys_to_skip:
@@ -2363,7 +2363,7 @@ def transfer_folder_to_folder(
                         continue
                     file_origins = _quick_scan_strorigins(tf)
                     if file_origins is None:
-                        continue  # fail-safe: scan error → don't skip
+                        continue  # fail-safe: scan error -> don't skip
                     if not file_origins.intersection(correction_origins):
                         keys_to_skip.append(target_key)
                 for k in keys_to_skip:
@@ -2384,8 +2384,8 @@ def transfer_folder_to_folder(
 
     # ─── Build correction lookups ONCE per language for reuse across target files ─
     # TMXTransfer11 pattern: build dict once, lean dict.get() in inner loop.
-    # Multiple languages may have different corrections — cache by corrections list id.
-    _base_mode = match_mode.replace("_fuzzy", "")  # strict_fuzzy → strict
+    # Multiple languages may have different corrections -- cache by corrections list id.
+    _base_mode = match_mode.replace("_fuzzy", "")  # strict_fuzzy -> strict
     _lookup_cache = {}          # {id(corrections_list): (lookup, lookup_nospace)}
     _preprocess_stats_cache = {}  # {id(corrections_list): stats_dict}
 
@@ -2516,14 +2516,14 @@ def transfer_folder_to_folder(
                     results["total_skipped_excluded"] += _pp_stats.get("skipped_excluded", 0)
                     _preprocess_stats_counted.add(corr_id)
 
-            logger.info(f"═══ FAST MERGE [{lang}]: {len(corrections):,} corrections → {len(xml_files)} XML files ═══")
+            logger.info(f"=== FAST MERGE [{lang}]: {len(corrections):,} corrections -> {len(xml_files)} XML files ===")
             if log_callback:
                 log_callback(
-                    f"── {lang} · {len(corrections):,} corrections → {len(xml_files)} XML files ──",
+                    f"── {lang} - {len(corrections):,} corrections -> {len(xml_files)} XML files ──",
                     'header',
                 )
 
-            # Use base mode for fast merge (strict_fuzzy → strict, etc.)
+            # Use base mode for fast merge (strict_fuzzy -> strict, etc.)
             _fm_mode = _base_mode if match_mode.endswith("_fuzzy") else match_mode
 
             fast_result = _fast_folder_merge(
@@ -2613,7 +2613,7 @@ def transfer_folder_to_folder(
                     recovered_count = recovery.get("matched", 0)
                     results["total_not_found"] = max(0, results["total_not_found"] - recovered_count)
 
-            # ─── Fuzzy Step 2: FAISS on unmatched → fast merge by StringID ───
+            # ─── Fuzzy Step 2: FAISS on unmatched -> fast merge by StringID ───
             if match_mode.endswith("_fuzzy") and _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
                 _fr_entry = results["file_results"][representative_target]
                 if match_mode == "strict_fuzzy":
@@ -2637,7 +2637,7 @@ def transfer_folder_to_folder(
                     from .fuzzy_matching import find_matches_fuzzy
                     logger.info(f"[{lang}] Fuzzy Step 2: FAISS on {len(unconsumed)} unconsumed corrections")
                     if log_callback:
-                        log_callback(f"  Fuzzy Step 2: {len(unconsumed)} unmatched → FAISS search", 'info')
+                        log_callback(f"  Fuzzy Step 2: {len(unconsumed)} unmatched -> FAISS search", 'info')
 
                     fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
                         unconsumed, _fuzzy_texts, _fuzzy_entries,
@@ -2667,8 +2667,8 @@ def transfer_folder_to_folder(
                                 prev["max_score"] = max(all_s)
 
                     if fuzzy_matched:
-                        # Build lookup: fuzzy_target_string_id.lower() → correction dict
-                        # Same structure as stringid_only (sid.lower() → dict), so _fast_folder_merge works
+                        # Build lookup: fuzzy_target_string_id.lower() -> correction dict
+                        # Same structure as stringid_only (sid.lower() -> dict), so _fast_folder_merge works
                         fuzzy_lookup, _ = _build_correction_lookups(fuzzy_matched, "fuzzy")
 
                         fuzzy_result = _fast_folder_merge(
@@ -2747,7 +2747,7 @@ def transfer_folder_to_folder(
                     parts.append(f"{f_not_found} not found")
                 if f_strorigin_mm > 0 and match_mode in ("strict", "strict_fuzzy"):
                     parts.append(f"{f_strorigin_mm} origin mismatch")
-                log_callback(f"  Result: {' · '.join(parts)}", tag)
+                log_callback(f"  Result: {' - '.join(parts)}", tag)
     else:
         # Unknown mode: fall back to per-file processing for all targets
         logger.warning(f"match_mode '{match_mode}' not in fast merge modes, falling back to per-file processing")
@@ -2768,12 +2768,12 @@ def transfer_folder_to_folder(
         if progress_callback:
             progress_callback(f"Transferring to {target_file.name}... ({ti+1}/{len(_remaining_targets)})")
 
-        logger.info(f"═══ {target_file.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
+        logger.info(f"=== {target_file.name}: {len(corrections):,} corrections from {len(source_names)} files ===")
 
         # GUI per-language header
         if log_callback:
             lang_code = group.get("language", target_file.stem.replace("languagedata_", "").upper())
-            log_callback(f"── {lang_code} ({ti+1}/{len(_remaining_targets)}) · {len(corrections):,} corrections → {target_file.name} ──", 'header')
+            log_callback(f"── {lang_code} ({ti+1}/{len(_remaining_targets)}) - {len(corrections):,} corrections -> {target_file.name} ──", 'header')
 
         # ─── Dispatch based on target file type ───────────────────────
         if is_excel:
@@ -2854,7 +2854,7 @@ def transfer_folder_to_folder(
                 parts.append(f"{f_not_found} not found")
             if f_strorigin_mm > 0 and not match_mode.startswith("strorigin_only"):
                 parts.append(f"{f_strorigin_mm} origin mismatch")
-            log_callback(f"  Result: {' · '.join(parts)}", tag)
+            log_callback(f"  Result: {' - '.join(parts)}", tag)
 
     # ─── Fix total_corrections to reflect ORIGINAL count (before unique-only filter)
     # The per-file loop aggregated len(corrections) from the FILTERED list.
@@ -2886,7 +2886,7 @@ def transfer_folder_to_folder(
     return results
 
 
-# NOTE: transfer_file_to_file() removed — GUI only uses transfer_folder_to_folder()
+# NOTE: transfer_file_to_file() removed -- GUI only uses transfer_folder_to_folder()
 
 
 def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str = "") -> str:
@@ -2902,14 +2902,14 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         Formatted report string
     """
     lines = []
-    H = "═"
-    V = "║"
-    TL = "╔"
-    TR = "╗"
-    BL = "╚"
-    BR = "╝"
-    LT = "╠"
-    RT = "╣"
+    H = "="
+    V = "|"
+    TL = "+"
+    TR = "+"
+    BL = "+"
+    BR = "+"
+    LT = "+"
+    RT = "+"
 
     width = 72
     is_strorigin = match_mode.startswith("strorigin_only")
@@ -2956,14 +2956,14 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if results.get('total_skipped_empty_strorigin', 0) > 0 and not is_strorigin:
             lines.append(V + f"   Empty StrOrigin:  {results['total_skipped_empty_strorigin']:,}  (StringID exists, StrOrigin empty in target)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
-            skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
+            skip_label = "SCRIPT -- use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
             lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)
         if results.get('total_skipped_duplicate_strorigin', 0) > 0:
             lines.append(V + f"   Dup. StrOrigin:   {results['total_skipped_duplicate_strorigin']:,}  (unique-only filter, see report)".ljust(width - 2) + V)
         if results.get('total_skipped_script', 0) > 0:
             lines.append(V + f"   Non-Script Skip:  {results['total_skipped_script']:,}  (Dialog/Sequencer filtered out)".ljust(width - 2) + V)
         if results.get('total_eventname_recovered', 0) > 0:
-            lines.append(V + f"   EN Recovery:      {results['total_eventname_recovered']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
+            lines.append(V + f"   EN Recovery:      {results['total_eventname_recovered']:,}  (EventName->StringID resolved)".ljust(width - 2) + V)
 
         # Per-language breakdown
         file_results = results.get("file_results", {})
@@ -3021,11 +3021,11 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(V + f"   Skipped:          {s_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
         recovery = results.get('eventname_recovery', {})
         if recovery.get('matched', 0) > 0:
-            lines.append(V + f"   EN Recovery:      {recovery['matched']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
+            lines.append(V + f"   EN Recovery:      {recovery['matched']:,}  (EventName->StringID resolved)".ljust(width - 2) + V)
 
     # Success rate
     # Coverage is based on EFFECTIVE corrections (excluding duplicates that were
-    # intentionally skipped by the unique-only filter — they never had a chance
+    # intentionally skipped by the unique-only filter -- they never had a chance
     # to match, so including them would artificially deflate the rate).
     total = results.get('total_corrections', results.get('corrections_count', 0))
     dup_skipped = results.get('total_skipped_duplicate_strorigin', 0)
@@ -3037,11 +3037,11 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
     lines.append(LT + H * (width - 2) + RT)
     rate_str = f" COVERAGE: {rate:.1f}%"
     if rate >= 95:
-        rate_str += " ●"
+        rate_str += " *"
     elif rate >= 80:
-        rate_str += " ◐"
+        rate_str += " ~"
     else:
-        rate_str += " ○"
+        rate_str += " o"
     lines.append(V + rate_str.ljust(width - 2) + V)
     lines.append(BL + H * (width - 2) + BR)
 
@@ -3103,7 +3103,7 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append("=" * 60)
 
     lines.append("")
-    lines.append("Legend: ● >=95% coverage  ◐ >=80% coverage  ○ <80% coverage")
+    lines.append("Legend: * >=95% coverage  ~ >=80% coverage  o <80% coverage")
     lines.append("")
 
     return "\n".join(lines)

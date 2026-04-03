@@ -2,11 +2,11 @@
 CategoryService -- LanguageDataExporter two-tier category classification.
 
 Fully grafted from LDE's TwoTierCategoryMapper logic:
-1. Build reverse map: StringID → export filename (from MegaIndex D17)
+1. Build reverse map: StringID -> export filename (from MegaIndex D17)
 2. Categorize by export filename using LDE's exact algorithm:
-   - Tier 1 (STORY): Dialog subfolder → AIDialog/QuestDialog/NarrationDialog/Sequencer
-   - Tier 2 (GAME_DATA): Priority keywords in filename → Item/Quest/Skill/etc.
-   - Tier 2 fallback: Folder name matching → Knowledge/Character/Region/etc.
+   - Tier 1 (STORY): Dialog subfolder -> AIDialog/QuestDialog/NarrationDialog/Sequencer
+   - Tier 2 (GAME_DATA): Priority keywords in filename -> Item/Quest/Skill/etc.
+   - Tier 2 fallback: Folder name matching -> Knowledge/Character/Region/etc.
 3. Fallback: StringID prefix + keyword matching (when MegaIndex not available)
 """
 
@@ -21,7 +21,7 @@ from loguru import logger
 # LDE Two-Tier Category Logic (grafted from category_mapper.py)
 # =============================================================================
 
-# Tier 1: Dialog subfolder → STORY categories
+# Tier 1: Dialog subfolder -> STORY categories
 DIALOG_CATEGORIES = {
     "aidialog": "AIDialog",
     "narrationdialog": "NarrationDialog",
@@ -29,8 +29,8 @@ DIALOG_CATEGORIES = {
     "stageclosedialog": "QuestDialog",
 }
 
-# Tier 2: Priority keywords — checked FIRST, before folder matching
-# Example: KnowledgeInfo_Item.xml → "Item" (not Knowledge!)
+# Tier 2: Priority keywords -- checked FIRST, before folder matching
+# Example: KnowledgeInfo_Item.xml -> "Item" (not Knowledge!)
 PRIORITY_KEYWORDS = [
     ("gimmick", "Gimmick"),
     ("item", "Item"),
@@ -148,8 +148,8 @@ def categorize_by_stringid(string_id: Optional[str]) -> str:
 class CategoryService:
     """LDE two-tier category classification, fully grafted into LocaNext.
 
-    Primary: MegaIndex D17 (export_file_stringids) → reverse map → LDE algorithm
-    Fallback: C7 (stringid_to_entity) → entity type mapping
+    Primary: MegaIndex D17 (export_file_stringids) -> reverse map -> LDE algorithm
+    Fallback: C7 (stringid_to_entity) -> entity type mapping
     Fallback: StringID prefix + keyword matching
     """
 
@@ -158,14 +158,14 @@ class CategoryService:
         self._mega_checked = False
 
     def _build_reverse_map(self):
-        """Build StringID → export_filename from MegaIndex D17."""
+        """Build StringID -> export_filename from MegaIndex D17."""
         if self._mega_checked:
             return
         try:
             from server.tools.ldm.services.mega_index import get_mega_index
             mega = get_mega_index()
             if not mega._built:
-                return  # Don't set _mega_checked — allow retry when MegaIndex is ready
+                return  # Don't set _mega_checked -- allow retry when MegaIndex is ready
             self._mega_checked = True
 
             # D17: export_file_stringids = {export_filename: {sid1, sid2, ...}}
@@ -176,7 +176,7 @@ class CategoryService:
                     for sid in sids:
                         reverse[sid] = export_name
                 self._stringid_to_export = reverse
-                logger.info(f"[CATEGORY] Built reverse map: {len(reverse)} StringIDs → export filenames (LDE algorithm)")
+                logger.info(f"[CATEGORY] Built reverse map: {len(reverse)} StringIDs -> export filenames (LDE algorithm)")
 
             # Also cache entity map for fallback
             self._entity_map = mega.stringid_to_entity if len(mega.stringid_to_entity) > 0 else None

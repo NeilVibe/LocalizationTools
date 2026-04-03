@@ -24,7 +24,7 @@ from server.database.models import User
 from server.utils.auth import hash_password, verify_password
 
 
-# Valid user roles — Phase 110: added superadmin tier
+# Valid user roles -- Phase 110: added superadmin tier
 VALID_ROLES = ["user", "admin", "superadmin"]
 
 # Role hierarchy for permission checks

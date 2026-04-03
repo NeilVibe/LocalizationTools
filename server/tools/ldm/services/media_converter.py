@@ -115,7 +115,7 @@ class MediaConverter:
         path_hash = hashlib.md5(str(wem_path).encode()).hexdigest()[:8]
         wav_path = self._wav_cache_dir / f"{path_hash}.wav"
 
-        # Check disk cache — must exist, be valid PCM WAV, and be newer than source
+        # Check disk cache -- must exist, be valid PCM WAV, and be newer than source
         if wav_path.exists():
             try:
                 if wav_path.stat().st_mtime >= wem_path.stat().st_mtime and self._is_valid_pcm_wav(wav_path):
@@ -127,7 +127,7 @@ class MediaConverter:
             except OSError:
                 pass
 
-        # NOTE: Do NOT shortcut on RIFF header — WEM files use RIFF containers too
+        # NOTE: Do NOT shortcut on RIFF header -- WEM files use RIFF containers too
         # (Wwise wraps audio in RIFF). Must ALWAYS run vgmstream to get proper PCM WAV.
         # Only skip conversion if the file is already a .wav extension (not .wem).
         if wem_path.suffix.lower() == ".wav":
@@ -145,7 +145,7 @@ class MediaConverter:
             return None
 
         try:
-            logger.info("[vgmstream] Converting: {} → {}", wem_path, wav_path)
+            logger.info("[vgmstream] Converting: {} -> {}", wem_path, wav_path)
             result = subprocess.run(
                 [str(vgmstream), "-o", str(wav_path), str(wem_path)],
                 capture_output=True,
@@ -184,7 +184,7 @@ class MediaConverter:
                 wav_path.unlink(missing_ok=True)
                 return None
 
-            logger.info("Converted WEM to WAV: {} → {} ({}B)", wem_path.name, wav_path.name, wav_size)
+            logger.info("Converted WEM to WAV: {} -> {} ({}B)", wem_path.name, wav_path.name, wav_size)
             return wav_path
 
         except subprocess.TimeoutExpired:

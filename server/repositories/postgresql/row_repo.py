@@ -217,7 +217,7 @@ class PostgreSQLRowRepository(RowRepository):
         from server.database.db_utils import bulk_copy_rows
         from server.utils.dependencies import get_db
 
-        # bulk_copy_rows uses sync COPY protocol — needs sync session
+        # bulk_copy_rows uses sync COPY protocol -- needs sync session
         sync_db = next(get_db())
         try:
             inserted = bulk_copy_rows(sync_db, file_id, rows)
@@ -230,7 +230,7 @@ class PostgreSQLRowRepository(RowRepository):
         self,
         updates: List[Dict[str, Any]]
     ) -> int:
-        """Bulk update multiple rows — NO individual SELECTs.
+        """Bulk update multiple rows -- NO individual SELECTs.
 
         Previous: N individual SELECT + UPDATE per row (169k queries for a merge).
         Now: Direct UPDATE statements, no SELECT needed, single COMMIT.
@@ -246,7 +246,7 @@ class PostgreSQLRowRepository(RowRepository):
             if not row_id:
                 continue
 
-            # Build SET clause dynamically — only update provided fields
+            # Build SET clause dynamically -- only update provided fields
             set_clauses = []
             params: Dict[str, Any] = {"rid": int(row_id), "now": now}
 

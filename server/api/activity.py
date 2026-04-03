@@ -1,5 +1,5 @@
 """
-Activity Feed API — Provides recent activity for the Admin Dashboard.
+Activity Feed API -- Provides recent activity for the Admin Dashboard.
 
 Phase 111: Exposes ldm_edit_history + log_entries as a unified activity feed
 so the dashboard can show ALL user activity (row edits, tool operations, etc.)
@@ -27,7 +27,7 @@ async def get_recent_activity(
     _admin: dict = Depends(require_admin_async),
     db: AsyncSession = Depends(get_async_db),
 ):
-    """Get recent activity across all users — row edits + tool operations.
+    """Get recent activity across all users -- row edits + tool operations.
 
     Combines ldm_edit_history (row edits) and log_entries (tool operations)
     into a single chronological feed for the admin dashboard.

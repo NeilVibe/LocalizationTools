@@ -94,7 +94,7 @@ def _get_base_dir() -> Path:
         if p.is_dir():
             return p
 
-    # Only use mock_gamedata in DEV mode — production builds should not be locked to test fixtures
+    # Only use mock_gamedata in DEV mode -- production builds should not be locked to test fixtures
     if os.getenv("DEV_MODE", "false").lower() == "true":
         mock_dir = _DEFAULT_BASE_DIR / "tests" / "fixtures" / "mock_gamedata"
         if mock_dir.is_dir():
@@ -116,11 +116,11 @@ def _get_base_dir() -> Path:
             gamedata_root = knowledge_path.parent.parent  # .../resource/GameData
             if gamedata_root.is_dir():
                 return gamedata_root
-            logger.warning(f"GameData root not found: {gamedata_root} — using install directory")
+            logger.warning(f"GameData root not found: {gamedata_root} -- using install directory")
     except ImportError:
         logger.debug("PerforcePathService not available, using default base dir")
     except (KeyError, TypeError) as e:
-        logger.warning(f"PerforcePathService misconfigured: {e} — using default base dir")
+        logger.warning(f"PerforcePathService misconfigured: {e} -- using default base dir")
     except Exception as e:
         logger.error(f"Unexpected error resolving Perforce base dir: {e}")
 

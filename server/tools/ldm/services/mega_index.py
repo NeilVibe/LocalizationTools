@@ -65,7 +65,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
     """
 
     def __init__(self) -> None:
-        super().__init__()  # Cooperative MRO — propagates through all mixins
+        super().__init__()  # Cooperative MRO -- propagates through all mixins
         # === Phase 1: Foundation (Direct Dicts) ===
         self.knowledge_by_strkey: Dict[str, KnowledgeEntry] = {}  # D1
         self.dds_by_stem: Dict[str, Path] = {}  # D9
@@ -224,7 +224,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         if vrs_folder:
             self._apply_vrs_order(Path(vrs_folder))
         else:
-            logger.info("[MEGAINDEX] VRS folder not configured — using raw XML order")
+            logger.info("[MEGAINDEX] VRS folder not configured -- using raw XML order")
 
         # ----- Phase 5: Broad Scan -----
         self._scan_devmemo(staticinfo_folder)

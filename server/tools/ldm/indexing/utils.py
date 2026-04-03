@@ -20,22 +20,22 @@ def normalize_newlines_universal(text: str) -> str:
     if not text:
         return text
 
-    # 1. Escaped \\n → \n (TEXT files store as literal backslash-n)
+    # 1. Escaped \\n -> \n (TEXT files store as literal backslash-n)
     text = text.replace('\\n', '\n')
 
-    # 2. XML <br/> variants → \n
+    # 2. XML <br/> variants -> \n
     text = text.replace('<br/>', '\n')
     text = text.replace('<br />', '\n')
     text = text.replace('<BR/>', '\n')
     text = text.replace('<BR />', '\n')
 
-    # 3. HTML-escaped &lt;br/&gt; variants → \n
+    # 3. HTML-escaped &lt;br/&gt; variants -> \n
     text = text.replace('&lt;br/&gt;', '\n')
     text = text.replace('&lt;br /&gt;', '\n')
     text = text.replace('&LT;BR/&GT;', '\n')
     text = text.replace('&LT;BR /&GT;', '\n')
 
-    # 4. Windows/Mac line endings → \n
+    # 4. Windows/Mac line endings -> \n
     text = text.replace('\r\n', '\n')
     text = text.replace('\r', '\n')
 

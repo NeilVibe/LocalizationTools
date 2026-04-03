@@ -170,7 +170,7 @@ class GameDataTreeService:
 
         Uses sanitize_and_parse() which provides 5-stage sanitization,
         virtual ROOT wrapper, and dual-pass (strict then recovery) parsing.
-        The returned element is the virtual ROOT — iterate children for entities.
+        The returned element is the virtual ROOT -- iterate children for entities.
         """
         from server.tools.ldm.services.xml_sanitizer import sanitize_and_parse
 

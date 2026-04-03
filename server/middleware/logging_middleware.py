@@ -37,7 +37,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         url = str(request.url)
 
         # Get request body if present (for debugging)
-        # SKIP body reading for SSE streaming endpoints — BaseHTTPMiddleware
+        # SKIP body reading for SSE streaming endpoints -- BaseHTTPMiddleware
         # breaks EventSourceResponse when body is consumed (Starlette bug:
         # "Unexpected message received: http.request")
         body_data = None
@@ -67,7 +67,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request
         logger.info(
-            f"[{request_id}] → {method} {url} | "
+            f"[{request_id}] -> {method} {url} | "
             f"Client: {client_ip} | "
             f"User-Agent: {request.headers.get('user-agent', 'unknown')[:100]}"
         )
@@ -94,7 +94,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 log_level = "WARNING"
 
             log_message = (
-                f"[{request_id}] ← {status_code} {method} {url} | "
+                f"[{request_id}] <- {status_code} {method} {url} | "
                 f"Duration: {duration_ms:.2f}ms"
             )
 
@@ -119,7 +119,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log exception with full details
             logger.exception(
-                f"[{request_id}] ✗ EXCEPTION during {method} {url} | "
+                f"[{request_id}] EXCEPTION during {method} {url} | "
                 f"Duration: {duration_ms:.2f}ms | "
                 f"Error: {str(e)}"
             )

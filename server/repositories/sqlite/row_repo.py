@@ -43,10 +43,10 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
             logger.info(f"FTS5 available: {fts_table}")
         except sqlite3.OperationalError:
             self._fts_available = False
-            logger.info(f"FTS5 not available — falling back to LIKE search")
+            logger.info(f"FTS5 not available -- falling back to LIKE search")
         except Exception as e:
             self._fts_available = False
-            logger.warning(f"FTS5 check failed unexpectedly: {e} — falling back to LIKE search")
+            logger.warning(f"FTS5 check failed unexpectedly: {e} -- falling back to LIKE search")
         return self._fts_available
 
     def _normalize_row(self, row: Optional[Dict]) -> Optional[Dict[str, Any]]:
@@ -392,7 +392,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 elif filter_type == "qa_flagged":
                     base_query += " AND qa_flag_count > 0"
 
-            # Apply search — FTS5 for "contain" mode (instant), LIKE fallback for exact/not_contain
+            # Apply search -- FTS5 for "contain" mode (instant), LIKE fallback for exact/not_contain
             if search:
                 fields = [f.strip() for f in search_fields.split(",")]
                 valid_fields = {"string_id", "source", "target"}
@@ -401,7 +401,7 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                     fields = ["source", "target"]
 
                 if search_mode == "contain" and self._has_fts():
-                    # FTS5 inverted index search — O(1) lookup instead of O(n) scan
+                    # FTS5 inverted index search -- O(1) lookup instead of O(n) scan
                     fts_table = "offline_rows_fts" if self.schema_mode == SchemaMode.OFFLINE else "ldm_rows_fts"
                     # Escape FTS5 special chars by quoting as phrase (prevents injection of AND/OR/NOT/*/")
                     escaped_search = '"' + search.replace('"', '""') + '"'

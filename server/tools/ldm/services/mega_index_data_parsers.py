@@ -27,7 +27,7 @@ from server.tools.ldm.services.mega_index_schemas import (
 
 
 def _ci_attrs(elem) -> dict:
-    """Case-insensitive XML attribute extraction — lowercase BOTH keys and values used as IDs."""
+    """Case-insensitive XML attribute extraction -- lowercase BOTH keys and values used as IDs."""
     return {k.lower(): v for k, v in elem.attrib.items()}
 
 
@@ -58,7 +58,7 @@ class DataParsersMixin:
     def _scan_dds_textures(self, texture_folder: Path) -> None:
         """D9: Scan texture folder for DDS files.
 
-        GRAFTED from MDG DDSIndex.scan_folder() — dual-key strategy:
+        GRAFTED from MDG DDSIndex.scan_folder() -- dual-key strategy:
         Key 1 = stem.lower() (e.g. "character_varon")
         Key 2 = full filename.lower() (e.g. "character_varon.dds")
         First-seen-wins dedup per key slot.
@@ -132,7 +132,7 @@ class DataParsersMixin:
                 source_file = xml_path.name
 
                 # D1: KnowledgeInfo entries
-                # GRAFTED from MDG: "best value wins" dedup — if existing entry
+                # GRAFTED from MDG: "best value wins" dedup -- if existing entry
                 # has UITextureName and new one doesn't, KEEP the existing entry.
                 for elem in root.iter("KnowledgeInfo"):
                     a = _ci_attrs(elem)
@@ -194,7 +194,7 @@ class DataParsersMixin:
                     f for f in loc_folder.rglob("*.xml")
                     if "kor" in f.stem.lower() and "languagedata" in f.stem.lower()
                 ]
-            logger.debug(f"[MEGAINDEX] Korean loc files found: {len(kor_files)} — {[f.name for f in kor_files]}")
+            logger.debug(f"[MEGAINDEX] Korean loc files found: {len(kor_files)} -- {[f.name for f in kor_files]}")
             for kor_path in kor_files:
                 root = _safe_parse_xml(kor_path)
                 if root is None:
@@ -298,7 +298,7 @@ class DataParsersMixin:
 
         CRITICAL FIX: Uses RELATIVE PATH (not just filename) as D17 key so that
         categorize_by_export_path() can detect Sequencer/Dialog from the path prefix.
-        Also extracts SoundEventName → D11 event_to_stringid for audio linking.
+        Also extracts SoundEventName -> D11 event_to_stringid for audio linking.
         """
         try:
             if not export_folder.is_dir():
@@ -352,7 +352,7 @@ class DataParsersMixin:
                         if norm:
                             kor_map.setdefault(norm, []).append(sid)
 
-                    # Extract SoundEventName → D11 audio linking (CRITICAL FIX)
+                    # Extract SoundEventName -> D11 audio linking (CRITICAL FIX)
                     if sid:
                         sound_event = (a.get("soundeventname") or "").strip().lower()
                         if sound_event and sound_event not in self.event_to_stringid:
@@ -378,7 +378,7 @@ class DataParsersMixin:
                 f"[MEGAINDEX] Export .loc.xml: {parsed_ok}/{len(loc_files)} parsed, "
                 f"{len(self.export_file_stringids)} file sets, "
                 f"{len(self.ordered_export_index)} ordered indexes, "
-                f"{audio_links} SoundEventName→StringID audio links (D11)"
+                f"{audio_links} SoundEventName->StringID audio links (D11)"
             )
         except Exception as e:
             logger.exception(f"[MEGAINDEX] Export loc parse failed: {e}")
@@ -423,7 +423,7 @@ class DataParsersMixin:
         Events NOT in VRS keep their original xml_order offset after VRS entries.
         """
         if not vrs_folder or not vrs_folder.exists():
-            logger.info(f"[MEGAINDEX] VRS folder not found: {vrs_folder} — skipping")
+            logger.info(f"[MEGAINDEX] VRS folder not found: {vrs_folder} -- skipping")
             return
 
         # Find most recent Excel file
@@ -438,7 +438,7 @@ class DataParsersMixin:
         try:
             from openpyxl import load_workbook
         except ImportError:
-            logger.warning("[MEGAINDEX] openpyxl not installed — VRS ordering disabled")
+            logger.warning("[MEGAINDEX] openpyxl not installed -- VRS ordering disabled")
             return
 
         try:

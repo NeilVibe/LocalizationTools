@@ -55,12 +55,12 @@ def parse_corrections_from_xml(
 
             if string_id and str_value:
                 # Skip entries where Str is still Korean (untranslated).
-                # These are NOT corrections — including them would overwrite
+                # These are NOT corrections -- including them would overwrite
                 # real translations in the lookup (last-wins) with Korean text.
                 if is_korean_text(str_value):
                     continue
 
-                # Skip "no translation" entries — these are NOT corrections.
+                # Skip "no translation" entries -- these are NOT corrections.
                 # Transferring them would overwrite real translations, then
                 # postprocess would replace with StrOrigin (Korean).
                 _norm = ' '.join(str_value.split()).lower()
@@ -96,7 +96,7 @@ def parse_corrections_from_xml(
                             'reason': bad_integrity,
                             'value': str_value[:60],
                         })
-                    # Warnings (lone brackets matching source) still transfer — only skip blocking issues
+                    # Warnings (lone brackets matching source) still transfer -- only skip blocking issues
                     if not bad_integrity.startswith('Warning:'):
                         logger.debug("Skipping integrity-issue Str in XML: StringID=%s reason=%s", string_id, bad_integrity)
                         continue
@@ -148,7 +148,7 @@ def parse_corrections_from_xml(
                         else:
                             entry["desc_corrected"] = desc_value
 
-                # NOTE: Ellipsis detection removed — postprocess Step 7 auto-fixes
+                # NOTE: Ellipsis detection removed -- postprocess Step 7 auto-fixes
                 # Unicode ellipsis (…) to three dots for non-CJK languages.
 
                 corrections.append(entry)

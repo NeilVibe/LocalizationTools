@@ -313,7 +313,7 @@ class UpdateHistory(Base):
     machine_id = Column(String(64), nullable=False)
 
     def __repr__(self):
-        return f"<UpdateHistory(user_id={self.user_id}, {self.from_version} → {self.to_version})>"
+        return f"<UpdateHistory(user_id={self.user_id}, {self.from_version} -> {self.to_version})>"
 
 
 class ErrorLog(Base):
@@ -688,9 +688,9 @@ class LDMRow(Base):
     Source (StrOrigin) is READ-ONLY, Target (Str) is EDITABLE.
 
     extra_data stores additional columns/attributes for FULL file reconstruction:
-    - TXT: columns beyond 0-6 → {"col7": "...", "col8": "..."}
-    - XML: attributes beyond stringid/strorigin/str → {"attr1": "...", "attr2": "..."}
-    - Excel: columns beyond A-B → {"C": "...", "D": "..."}
+    - TXT: columns beyond 0-6 -> {"col7": "...", "col8": "..."}
+    - XML: attributes beyond stringid/strorigin/str -> {"attr1": "...", "attr2": "..."}
+    - Excel: columns beyond A-B -> {"C": "...", "D": "..."}
     """
     __tablename__ = "ldm_rows"
 
@@ -865,7 +865,7 @@ class LDMTranslationMemory(Base):
     whole_pairs = Column(Integer, default=0)  # Entries in whole_text index
     line_pairs = Column(Integer, default=0)   # Entries in line index
 
-    # Status: pending → indexing → ready → error
+    # Status: pending -> indexing -> ready -> error
     status = Column(String(50), default="pending")
     error_message = Column(Text, nullable=True)
 

@@ -71,7 +71,7 @@ async def set_embedding_engine(
         set_current_engine(request.engine)
         engine = get_embedding_engine(request.engine)
 
-        logger.info(f"[SETTINGS] User {current_user['username']} switched embedding engine: {previous_engine} → {request.engine}")
+        logger.info(f"[SETTINGS] User {current_user['username']} switched embedding engine: {previous_engine} -> {request.engine}")
 
         # TASK-002: Add warning when switching to Qwen (slower engine)
         warning = None

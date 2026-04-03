@@ -82,12 +82,12 @@ def _test_pg_connection(host: str, port: int, user: str, password: str, db: str)
         if result != 0:
             return ConnectionTestResult(
                 success=False,
-                message=f"Cannot reach {host}:{port} — is PostgreSQL running?",
+                message=f"Cannot reach {host}:{port} -- is PostgreSQL running?",
             )
     except Exception:
         return ConnectionTestResult(
             success=False,
-            message=f"Cannot reach {host}:{port} — network error",
+            message=f"Cannot reach {host}:{port} -- network error",
         )
 
     # Step 2: Full DB connection
@@ -118,11 +118,11 @@ def _test_pg_connection(host: str, port: int, user: str, password: str, db: str)
             latency_ms=round(latency, 1),
         )
     except Exception as e:
-        # Log full error server-side only — never expose credentials to client
+        # Log full error server-side only -- never expose credentials to client
         logger.error(f"Connection test to {host}:{port} failed: {e}")
         return ConnectionTestResult(
             success=False,
-            message="Connection failed — check credentials and server address",
+            message="Connection failed -- check credentials and server address",
         )
 
 
@@ -192,11 +192,11 @@ async def update_server_config(body: ServerConnectionConfig, _user=Depends(get_c
     Update server connection configuration.
 
     Saves to server-config.json. Requires app restart to take effect.
-    Does NOT save secret_key — that is only set by the setup script.
+    Does NOT save secret_key -- that is only set by the setup script.
     """
     logger.info(f"Updating server config: host={body.postgres_host}:{body.postgres_port}")
 
-    # Load existing config and merge — preserve secret_key if it exists
+    # Load existing config and merge -- preserve secret_key if it exists
     existing = config.get_user_config()
     existing.update({
         "postgres_host": body.postgres_host,
@@ -211,7 +211,7 @@ async def update_server_config(body: ServerConnectionConfig, _user=Depends(get_c
     success = config.save_user_config(existing)
 
     if success:
-        logger.info("Server config saved — restart required to apply")
+        logger.info("Server config saved -- restart required to apply")
         return {
             "success": True,
             "message": "Configuration saved. Restart the application to connect.",
@@ -335,9 +335,9 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
     steps = []
     lan_ip = _get_lan_ip()
 
-    # Find PostgreSQL binaries — check bundled location first, then system PATH
+    # Find PostgreSQL binaries -- check bundled location first, then system PATH
     def _find_pg_bin() -> str | None:
-        """Find psql binary — bundled or system."""
+        """Find psql binary -- bundled or system."""
         # Check bundled PG (Electron: resources/bin/postgresql/bin/)
         resources = _os.environ.get("LOCANEXT_RESOURCES_PATH", "")
         if resources:
@@ -379,7 +379,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
             )
             return result.returncode == 0, result.stdout.strip() or result.stderr.strip()
         except FileNotFoundError:
-            return False, "psql not found — is PostgreSQL installed or bundled?"
+            return False, "psql not found -- is PostgreSQL installed or bundled?"
         except subprocess.TimeoutExpired:
             return False, "Command timed out"
 
@@ -432,7 +432,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
             message="PostgreSQL not reachable. Make sure it's installed and running, or check that the bundled PostgreSQL started correctly.",
         )
 
-    # Step 2: Create service account (CRITICAL — abort on failure)
+    # Step 2: Create service account (CRITICAL -- abort on failure)
     db_password = secrets.token_urlsafe(24)
     ok, msg = run_psql(f"SELECT 1 FROM pg_roles WHERE rolname = 'locanext_service';")
     if "1" in msg:
@@ -444,9 +444,9 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
         )
         steps.append(SetupStep(step="Create service account", success=ok2, message="Created" if ok2 else msg2))
     if not ok2:
-        return SetupResult(success=False, steps=steps, lan_ip=lan_ip, message="Failed to create service account — check PostgreSQL permissions.")
+        return SetupResult(success=False, steps=steps, lan_ip=lan_ip, message="Failed to create service account -- check PostgreSQL permissions.")
 
-    # Step 3: Create database (CRITICAL — abort on failure)
+    # Step 3: Create database (CRITICAL -- abort on failure)
     ok, msg = run_psql(f"SELECT 1 FROM pg_database WHERE datname = 'localizationtools';")
     if "1" in msg:
         steps.append(SetupStep(step="Create database", success=True, message="Database already exists"))
@@ -491,7 +491,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
             else:
                 _os.environ[k] = v
 
-    # Step 5: SSL certificates (optional — depends on openssl)
+    # Step 5: SSL certificates (optional -- depends on openssl)
     # Initialize data_dir for Steps 5+6
     data_dir = None
     try:
@@ -516,7 +516,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
                         pass
                     steps.append(SetupStep(step="SSL certificates", success=True, message="Generated"))
                 else:
-                    steps.append(SetupStep(step="SSL certificates", success=False, message="OpenSSL not available — skipped"))
+                    steps.append(SetupStep(step="SSL certificates", success=False, message="OpenSSL not available -- skipped"))
             else:
                 steps.append(SetupStep(step="SSL certificates", success=True, message="Already exist"))
         else:
@@ -569,7 +569,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
     steps.append(SetupStep(
         step="Save configuration",
         success=saved,
-        message="Config saved — restart app to apply" if saved else "Failed to save config",
+        message="Config saved -- restart app to apply" if saved else "Failed to save config",
     ))
 
     all_ok = all(s.success for s in steps if s.step not in ("SSL certificates",))  # SSL is optional
@@ -578,7 +578,7 @@ async def run_server_setup(body: SetupRequest, request: Request, _user=Depends(g
         steps=steps,
         lan_ip=lan_ip,
         admin_dashboard_url="http://localhost:5174" if all_ok else None,
-        message="Server setup complete! Restart LocaNext to apply." if all_ok else "Setup completed with errors — check steps above.",
+        message="Server setup complete! Restart LocaNext to apply." if all_ok else "Setup completed with errors -- check steps above.",
     )
 
 
@@ -614,7 +614,7 @@ async def toggle_lan_mode(
     saved = config.save_user_config(existing)
 
     if saved:
-        logger.info(f"LAN mode toggled: {current_mode} → {new_mode} (LAN IP: {lan_ip})")
+        logger.info(f"LAN mode toggled: {current_mode} -> {new_mode} (LAN IP: {lan_ip})")
         return {
             "success": True,
             "server_mode": new_mode,

@@ -60,9 +60,9 @@ class GameDataBrowseService:
         """Resolve path. Allow absolute paths (Perforce) and base_dir-relative paths.
 
         Resolution order:
-        1. Absolute paths → used as-is (Perforce paths outside base_dir are valid)
-        2. Relative paths → try base_dir/path first
-        3. If base_dir/path doesn't exist → try CWD/path
+        1. Absolute paths -> used as-is (Perforce paths outside base_dir are valid)
+        2. Relative paths -> try base_dir/path first
+        3. If base_dir/path doesn't exist -> try CWD/path
         """
         path_obj = Path(path)
         if path_obj.is_absolute():

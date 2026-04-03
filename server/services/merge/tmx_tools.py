@@ -1,16 +1,16 @@
 # Origin: QuickTranslate/core/tmx_tools.py
 """
-TMX Tools — Cleaning, postprocessing, conversion and Excel export for TMX files.
+TMX Tools -- Cleaning, postprocessing, conversion and Excel export for TMX files.
 
 Ported from:
   - QuickStandaloneScripts/tmx_cleaner.py (cleaning + Excel pipeline)
   - QuickStandaloneScripts/tmxconvert41.py (postprocessor + conversion + batch)
 
 Provides:
-  - clean_segment() / clean_tmx_string() — strip ALL CAT tool markup
-  - postprocess_tmx_string() — wrap plain text back into MemoQ bpt/ept/ph format
-  - combine_xmls_to_tmx() / batch_tmx_from_folders() — XML→TMX conversion
-  - clean_and_convert_to_excel() — TMX→clean→dedup→Excel pipeline
+  - clean_segment() / clean_tmx_string() -- strip ALL CAT tool markup
+  - postprocess_tmx_string() -- wrap plain text back into MemoQ bpt/ept/ph format
+  - combine_xmls_to_tmx() / batch_tmx_from_folders() -- XML->TMX conversion
+  - clean_and_convert_to_excel() -- TMX->clean->dedup->Excel pipeline
 """
 from __future__ import annotations
 
@@ -139,17 +139,17 @@ def clean_segment(content: str) -> str:
     # 1) Strip zero-width characters
     content = ZERO_WIDTH_RE.sub('', content)
 
-    # 2) MemoQ StaticInfo bpt/ept → {StaticInfo:Category:ID#inner}
+    # 2) MemoQ StaticInfo bpt/ept -> {StaticInfo:Category:ID#inner}
     def _staticinfo_repl(m):
         category, ident, inner = m.group(1).strip(), m.group(2).strip(), m.group(3)
         return f'{{StaticInfo:{category}:{ident}#{inner}}}'
     content = MEMOQ_BPT_EPT_ESCAPED_RE.sub(_staticinfo_repl, content)
     content = MEMOQ_BPT_EPT_PLAIN_RE.sub(_staticinfo_repl, content)
 
-    # 3) Generic <bpt>...<ept> pairs → keep inner text
+    # 3) Generic <bpt>...<ept> pairs -> keep inner text
     content = GENERIC_BPT_EPT_RE.sub(r'\1', content)
 
-    # 4) Non-fmt <ph>...</ph> → smart 5-priority extraction
+    # 4) Non-fmt <ph>...</ph> -> smart 5-priority extraction
     def _ph_repl(m):
         ph_inner = m.group(1)
         if not ph_inner or ph_inner.isspace():
@@ -163,16 +163,16 @@ def clean_segment(content: str) -> str:
             val = val.replace('&', '&amp;')
             return val
 
-        # P2: formatting content (cf, b, i, etc.) → remove
+        # P2: formatting content (cf, b, i, etc.) -> remove
         if FORMATTING_CONTENT_RE.search(decoded):
             return ''
 
-        # P3: displaytext with no val → extract displaytext
+        # P3: displaytext with no val -> extract displaytext
         dm = re.search(r'displaytext="([^"]+)"', decoded)
         if dm:
             return dm.group(1)
 
-        # P4: structural XML tag (NOT <br/>) → remove
+        # P4: structural XML tag (NOT <br/>) -> remove
         stripped = decoded.strip()
         if (stripped.startswith('<') and stripped.endswith('>')
                 and not re.match(r'<\s*br\s*/?\s*>', stripped, re.IGNORECASE)):
@@ -183,26 +183,26 @@ def clean_segment(content: str) -> str:
 
     content = PH_RE.sub(_ph_repl, content)
 
-    # 5) Self-closing <ph .../> → remove
+    # 5) Self-closing <ph .../> -> remove
     content = PH_SELFCLOSE_RE.sub('', content)
 
-    # 6) <ph type='fmt'> → remove
+    # 6) <ph type='fmt'> -> remove
     content = PH_FMT_RE.sub('', content)
 
-    # 7) <it> tags → remove
+    # 7) <it> tags -> remove
     content = IT_RE.sub('', content)
 
-    # 8) <x/> tags → remove
+    # 8) <x/> tags -> remove
     content = X_RE.sub('', content)
 
-    # 9) <g>text</g> → keep inner text
+    # 9) <g>text</g> -> keep inner text
     content = G_RE.sub(r'\1', content)
 
-    # 10) Normalize newlines → &lt;br/&gt;
+    # 10) Normalize newlines -> &lt;br/&gt;
     content = re.sub(r'\r\n|\r|\n', '&lt;br/&gt;', content)
     content = content.replace('\\n', '&lt;br/&gt;')
 
-    # 11) Normalize all <br> variants → &lt;br/&gt;
+    # 11) Normalize all <br> variants -> &lt;br/&gt;
     content = BR_VARIANTS_RE.sub('&lt;br/&gt;', content)
 
     return content
@@ -224,9 +224,9 @@ def postprocess_tmx_string(xml_str: str) -> str:
     """
     Re-wrap plain text back into MemoQ bpt/ept/ph format.
 
-    1. {StaticInfo:Category:ID#inner} → <bpt>/<ept> pairs (per-segment counter)
-    2. Existing placeholder conversions → <ph>
-    3. Spaces after <ph> br → fmt
+    1. {StaticInfo:Category:ID#inner} -> <bpt>/<ept> pairs (per-segment counter)
+    2. Existing placeholder conversions -> <ph>
+    3. Spaces after <ph> br -> fmt
     4. Trim trailing whitespace at end of each <seg>
     """
 
@@ -243,7 +243,7 @@ def postprocess_tmx_string(xml_str: str) -> str:
         return ''.join(parts)
 
     # -------------------------------------------------------
-    # 1. StaticInfo → <bpt>/<ept> PAIRS  (Fix 1: any category, 3 groups)
+    # 1. StaticInfo -> <bpt>/<ept> PAIRS  (Fix 1: any category, 3 groups)
     # -------------------------------------------------------
     sk_pattern = re.compile(r'\{Static[Ii]nfo:(\w+):([^#}]+)#([^}]+)\}')
 
@@ -287,7 +287,7 @@ def postprocess_tmx_string(xml_str: str) -> str:
         return f'<ph>&lt;mq:rxt-req displaytext="Param{num}" val="%{num}#" /&gt;</ph>'
     xml_str = replace_outside_ph(r'%(\d)#', _repl_pct, xml_str)
 
-    # 2-B  {...} — exclude StaticInfo so it's not double-processed  (Fix 4)
+    # 2-B  {...} -- exclude StaticInfo so it's not double-processed  (Fix 4)
     def _repl_br(m):
         inner = m.group(1)
         return f'<ph>&lt;mq:rxt-req displaytext="{inner}" val="{{{inner}}}" /&gt;</ph>'
@@ -314,7 +314,7 @@ def postprocess_tmx_string(xml_str: str) -> str:
     )
 
     # -------------------------------------------------
-    # 3. Clean-up: spaces after <ph> br → fmt
+    # 3. Clean-up: spaces after <ph> br -> fmt
     # -------------------------------------------------
     def _repl_spaces(m):
         br_ph, spaces, nxt = m.groups()
@@ -388,7 +388,7 @@ def parse_xml_file(file_path: str):
 
 
 # =============================================================================
-# XML → TMX CONVERSION  (from tmxconvert41.py)
+# XML -> TMX CONVERSION  (from tmxconvert41.py)
 # =============================================================================
 
 def combine_xmls_to_tmx(
@@ -411,7 +411,7 @@ def combine_xmls_to_tmx(
         logger.info(f"[TMX] Found {total_files} XML file(s) to process")
 
         if not xml_files:
-            logger.warning("[TMX] No XML files found — nothing to convert")
+            logger.warning("[TMX] No XML files found -- nothing to convert")
             return False
 
         # Build TMX skeleton
@@ -431,7 +431,7 @@ def combine_xmls_to_tmx(
         XML_NS = "http://www.w3.org/XML/1998/namespace"
         target_lang_code = target_language.lower()
 
-        main_tu_map = {}   # (korean_text, string_id) → (mtime, tu_element)
+        main_tu_map = {}   # (korean_text, string_id) -> (mtime, tu_element)
         desc_tu_list = []
 
         total_entries = 0
@@ -660,7 +660,7 @@ def convert_to_memoq_tmx(input_path: str) -> list[tuple[str, str, bool]]:
         file_list = [str(f) for f in files]
 
         logger.info("-" * 40)
-        logger.info("[MemoQ-TMX] (%d/%d) %s — %d file(s), target=%s",
+        logger.info("[MemoQ-TMX] (%d/%d) %s -- %d file(s), target=%s",
                      i, len(langs_to_convert), upper, len(file_list), bcp47)
 
         ok = combine_xmls_to_tmx(
@@ -711,7 +711,7 @@ def read_file(path: str) -> str:
 
 
 # =============================================================================
-# TMX → EXCEL PIPELINE  (from tmx_cleaner.py, simplified output)
+# TMX -> EXCEL PIPELINE  (from tmx_cleaner.py, simplified output)
 # =============================================================================
 
 def parse_tmx_to_rows(fpath: str) -> list[dict]:
@@ -832,7 +832,7 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
     """
     empty_ctx = sum(1 for r in rows if not r['x_context'])
     if rows and empty_ctx > len(rows) * 0.5:
-        logger.warning(f"{empty_ctx}/{len(rows)} rows have no x-context — dedup is by KO text only")
+        logger.warning(f"{empty_ctx}/{len(rows)} rows have no x-context -- dedup is by KO text only")
 
     # Separate main and desc TUs
     main_rows = [r for r in rows if not r.get('is_desc')]
@@ -854,7 +854,7 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
         r.setdefault('desc_origin', '')
         r.setdefault('desc_text', '')
 
-    # Build context→row lookup for merging desc into main
+    # Build context->row lookup for merging desc into main
     ctx_lookup: dict[str, dict] = {}
     for r in result:
         ctx = r['x_context']
@@ -882,7 +882,7 @@ def dedup_rows(rows: list[dict]) -> list[dict]:
 
 
 def write_excel(rows: list[dict], output_path: str) -> None:
-    """Write rows to Excel using xlsxwriter — 6-column format with Desc + ChangeDate.
+    """Write rows to Excel using xlsxwriter -- 6-column format with Desc + ChangeDate.
     Synced from QuickTranslate core/tmx_tools.py."""
     import xlsxwriter
 
@@ -926,7 +926,7 @@ def write_excel(rows: list[dict], output_path: str) -> None:
 
 def clean_and_convert_to_excel(fpath: str) -> str:
     """
-    Full pipeline: TMX → clean → dedup → Excel.
+    Full pipeline: TMX -> clean -> dedup -> Excel.
     Output file: same name as input but _clean.xlsx.
     Returns the output path.
     """
@@ -937,7 +937,7 @@ def clean_and_convert_to_excel(fpath: str) -> str:
     logger.info("[1/3] Parsing TMX and cleaning CAT markup...")
     rows = parse_tmx_to_rows(fpath)
     if not rows:
-        logger.warning("  No TU entries found — file may be empty or malformed")
+        logger.warning("  No TU entries found -- file may be empty or malformed")
         raise ValueError(f"No TU entries found in {os.path.basename(fpath)}")
     # Count languages found
     langs = set(r.get('tgt_lang', '') for r in rows if r.get('tgt_lang'))

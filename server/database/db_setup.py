@@ -28,43 +28,48 @@ from server import config
 
 def check_postgresql_reachable(timeout: int = 3) -> bool:
     """
-    Quick check if PostgreSQL server is reachable.
-
-    Uses socket connection to check if the port is open.
-    Faster than trying a full database connection.
-
-    Args:
-        timeout: Connection timeout in seconds
-
-    Returns:
-        True if PostgreSQL server is reachable
+    Quick check if PostgreSQL server is reachable via TCP socket.
+    Uses longer timeout for LAN hosts (non-localhost).
     """
+    host = config.POSTGRES_HOST
+    port = config.POSTGRES_PORT
+    is_lan = host not in ("localhost", "127.0.0.1", "::1")
+    effective_timeout = max(timeout, 5) if is_lan else timeout
+
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((config.POSTGRES_HOST, config.POSTGRES_PORT))
+        sock.settimeout(effective_timeout)
+        result = sock.connect_ex((host, port))
         sock.close()
+        if result != 0:
+            # Log the actual OS error code for diagnostics
+            import errno
+            err_name = errno.errorcode.get(result, f"code={result}")
+            logger.warning(
+                f"[PG_CONNECT] TCP socket to {host}:{port} failed: {err_name} "
+                f"(timeout={effective_timeout}s, is_lan={is_lan}). "
+                f"Check: 1) PG listen_addresses='*', 2) firewall allows port {port}, "
+                f"3) pg_hba.conf allows connections from this subnet"
+            )
         return result == 0
     except Exception as e:
-        logger.debug(f"PostgreSQL reachability check failed: {e}")
+        logger.warning(f"[PG_CONNECT] Socket check to {host}:{port} exception: {e}")
         return False
 
 
 def test_postgresql_connection(timeout: int = 3) -> bool:
     """
-    Test actual PostgreSQL database connection.
-
-    Args:
-        timeout: Connection timeout in seconds
-
-    Returns:
-        True if connection successful
+    Test actual PostgreSQL database connection with full diagnostics.
     """
+    host = config.POSTGRES_HOST
+    port = config.POSTGRES_PORT
+    is_lan = host not in ("localhost", "127.0.0.1", "::1")
+    effective_timeout = max(timeout, 5) if is_lan else timeout
+
     try:
-        # Create engine with short timeout
         engine = create_engine(
             config.POSTGRES_DATABASE_URL,
-            connect_args={"connect_timeout": timeout},
+            connect_args={"connect_timeout": effective_timeout},
             pool_pre_ping=True
         )
         with engine.connect() as conn:
@@ -72,7 +77,25 @@ def test_postgresql_connection(timeout: int = 3) -> bool:
         engine.dispose()
         return True
     except Exception as e:
-        logger.debug(f"PostgreSQL connection test failed: {e}")
+        err_str = str(e)
+        # Provide actionable diagnostics based on error type
+        if "no pg_hba.conf entry" in err_str or "SSL" in err_str:
+            logger.warning(
+                f"[PG_CONNECT] Auth rejected by {host}:{port}: {e}. "
+                f"Fix: Admin must update pg_hba.conf (hostssl->host for LAN)"
+            )
+        elif "password authentication failed" in err_str:
+            logger.warning(
+                f"[PG_CONNECT] Wrong credentials for {host}:{port}: {e}. "
+                f"Fix: Re-connect in Server Settings to refresh PG credentials"
+            )
+        elif "timeout" in err_str.lower() or "could not connect" in err_str.lower():
+            logger.warning(
+                f"[PG_CONNECT] Connection to {host}:{port} timed out: {e}. "
+                f"Fix: Check firewall, listen_addresses, and network"
+            )
+        else:
+            logger.warning(f"[PG_CONNECT] Connection to {host}:{port} failed: {e}")
         return False
 
 
@@ -458,9 +481,9 @@ def setup_database(
     Complete database setup process with auto-fallback.
 
     P33 Offline Mode:
-    - If DATABASE_MODE=auto and PostgreSQL unreachable → use SQLite
-    - If DATABASE_MODE=postgresql → fail if unreachable
-    - If DATABASE_MODE=sqlite → use SQLite directly
+    - If DATABASE_MODE=auto and PostgreSQL unreachable -> use SQLite
+    - If DATABASE_MODE=postgresql -> fail if unreachable
+    - If DATABASE_MODE=sqlite -> use SQLite directly
 
     Args:
         drop_existing: If True, drop all existing tables first.

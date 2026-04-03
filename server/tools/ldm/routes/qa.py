@@ -489,7 +489,7 @@ async def check_file_qa(
     Run QA checks on entire file (Full File QA mode).
     P10: Uses repository pattern - works with both PostgreSQL and SQLite.
 
-    Used when user right-clicks file → "Run Full QA".
+    Used when user right-clicks file -> "Run Full QA".
     """
     logger.debug(f"[QA] check_file_qa: file_id={file_id}, checks={request.checks}")
 

@@ -22,7 +22,7 @@ _BR_TAG_RE = re.compile(r"<br\s*/?>", flags=re.IGNORECASE)
 _PLACEHOLDER_SUFFIX_RE = re.compile(r"\{([^#}]+)#[^}]+\}")
 _WHITESPACE_RE = re.compile(r"\s+", flags=re.UNICODE)
 
-# MDG config.py:192-201 — Language-to-audio-folder routing
+# MDG config.py:192-201 -- Language-to-audio-folder routing
 # Latin-script languages -> English(US) audio
 # Korean/Japanese/ZHO-TW -> Korean audio
 # ZHO-CN -> Chinese(PRC) audio
@@ -53,7 +53,7 @@ _ENTITY_TYPE_MAP = {
 
 
 def _get_stringid(elem: Any) -> str:
-    """Extract StringId from XML element — case-insensitive attrs AND value."""
+    """Extract StringId from XML element -- case-insensitive attrs AND value."""
     attrs = {k.lower(): v for k, v in elem.attrib.items()}
     val = attrs.get("stringid") or ""
     return val.strip().lower()
@@ -112,7 +112,7 @@ def _parse_world_position(wp_str: str) -> Optional[Tuple[float, float, float]]:
 
 
 def _find_knowledge_key(elem: Any) -> str:
-    """Search element and children for KnowledgeKey — case-insensitive attrs AND value."""
+    """Search element and children for KnowledgeKey -- case-insensitive attrs AND value."""
     attrs = {k.lower(): v for k, v in elem.attrib.items()}
     val = attrs.get("knowledgekey") or attrs.get("rewardknowledgekey") or ""
     if val:

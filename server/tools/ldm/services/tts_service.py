@@ -21,7 +21,7 @@ from server.tools.ldm.schemas.codex import CodexEntity
 
 
 # =============================================================================
-# Voice Profiles — VoiceDesign instructs (MUST be English/Chinese)
+# Voice Profiles -- VoiceDesign instructs (MUST be English/Chinese)
 # =============================================================================
 
 VOICE_PROFILES: Dict[str, Dict[str, str]] = {
@@ -197,7 +197,7 @@ class TTSService:
         """Build the best TTS text from entity data.
 
         Priority:
-        1. Character monologue (if defined in voice profile — best quality)
+        1. Character monologue (if defined in voice profile -- best quality)
         2. Entity description field
         3. CharacterDesc from attributes (Korean desc for characters)
         4. Entity name as fallback
@@ -221,7 +221,7 @@ class TTSService:
         return entity.name
 
     def generate_voice(self, entity: CodexEntity) -> Path:
-        """Generate Korean voice audio for an entity. SYNC — wrap in asyncio.to_thread.
+        """Generate Korean voice audio for an entity. SYNC -- wrap in asyncio.to_thread.
 
         Uses VoiceDesign model for truly distinct character voices.
         Caches result to disk; returns path to the .wav file.

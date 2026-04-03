@@ -1,5 +1,5 @@
 """
-PG LISTEN/NOTIFY — Real-time event bus for cross-backend sync.
+PG LISTEN/NOTIFY -- Real-time event bus for cross-backend sync.
 
 Phase 111: When multiple backends connect to the same PostgreSQL,
 PG LISTEN/NOTIFY propagates events to ALL of them. Each backend
@@ -50,7 +50,7 @@ async def pg_notify(channel: str, payload: dict):
     Falls back silently if PG is not available (SQLite mode).
     """
     if config.ACTIVE_DATABASE_TYPE != "postgresql":
-        return  # SQLite mode — no PG NOTIFY, local WebSocket handles it
+        return  # SQLite mode -- no PG NOTIFY, local WebSocket handles it
 
     try:
         dsn = _get_asyncpg_dsn()
@@ -69,7 +69,7 @@ async def start_listener():
     global _listener_conn, _listener_task
 
     if config.ACTIVE_DATABASE_TYPE != "postgresql":
-        logger.info("[PG_NOTIFY] SQLite mode — PG LISTEN not started (local WebSocket only)")
+        logger.info("[PG_NOTIFY] SQLite mode -- PG LISTEN not started (local WebSocket only)")
         return
 
     try:

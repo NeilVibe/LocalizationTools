@@ -145,7 +145,7 @@ def load_tm_entries(token: str, tm_id: int):
         {"source": "Shadow Ranger", "target": "그림자 레인저", "context": "Character"},
         {"source": "Starfall Strike", "target": "별 떨어지는 일격", "context": "Skill"},
 
-        # ── Fuzzy matches (10) — similar but not identical ──
+        # ── Fuzzy matches (10) -- similar but not identical ──
         {"source": "Welcome to the Realm of the Stars", "target": "별들의 왕국에 오신 것을 환영합니다", "context": "UI"},
         {"source": "Save All Changes", "target": "모든 변경 사항 저장", "context": "UI"},
         {"source": "Cancel Edit", "target": "편집 취소", "context": "UI"},
@@ -157,7 +157,7 @@ def load_tm_entries(token: str, tm_id: int):
         {"source": "Grimjaw the Blacksmith", "target": "대장장이 그림죠", "context": "Character"},
         {"source": "Strike of the Falling Stars", "target": "떨어지는 별들의 일격", "context": "Skill"},
 
-        # ── Semantic matches (10) — same meaning, different words ──
+        # ── Semantic matches (10) -- same meaning, different words ──
         {"source": "Greetings, traveler! You have arrived at the Star Kingdom.", "target": "인사드립니다, 여행자여! 별의 왕국에 도착하셨습니다.", "context": "UI"},
         {"source": "Store your work", "target": "작업을 저장하세요", "context": "UI"},
         {"source": "Abort current operation", "target": "현재 작업을 중단합니다", "context": "UI"},
@@ -217,7 +217,7 @@ def load_tm_entries(token: str, tm_id: int):
 
 def main():
     logger.info("=" * 60)
-    logger.info("Phase 42 — Showcase Demo Data Loader")
+    logger.info("Phase 42 -- Showcase Demo Data Loader")
     logger.info("=" * 60)
 
     # 1. Auth

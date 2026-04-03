@@ -4,7 +4,7 @@ Receives logs from user installations for centralized monitoring
 
 Priority 12.5 - Central Server Communication (Telemetry)
 
-Thin route handlers — business logic in server/services/remote_logging_service.py.
+Thin route handlers -- business logic in server/services/remote_logging_service.py.
 """
 
 from fastapi import APIRouter, HTTPException, Header, Depends, Request
@@ -333,7 +333,7 @@ async def log_frontend(
 ):
     """
     Receive logs from frontend browser and write to backend log file.
-    No authentication required — this is a local-only endpoint for dev visibility.
+    No authentication required -- this is a local-only endpoint for dev visibility.
     """
     try:
         body = await request.json()

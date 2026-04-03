@@ -5,7 +5,7 @@ Priority 12.5.8 - Admin Dashboard Telemetry Tab
 Provides endpoints for viewing telemetry data from desktop installations.
 Uses JWT authentication (admin role required).
 
-Thin route handlers — business logic in server/services/telemetry_service.py.
+Thin route handlers -- business logic in server/services/telemetry_service.py.
 """
 
 from typing import Optional

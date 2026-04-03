@@ -75,10 +75,10 @@ def escape_for_copy(value: Any) -> str:
     Escape a value for PostgreSQL COPY TEXT format.
 
     Handles:
-    - NULL values → \\N
-    - Tabs → space (COPY uses tabs as delimiter)
-    - Newlines → \\n (escaped newline)
-    - Backslashes → \\\\ (escaped backslash)
+    - NULL values -> \\N
+    - Tabs -> space (COPY uses tabs as delimiter)
+    - Newlines -> \\n (escaped newline)
+    - Backslashes -> \\\\ (escaped backslash)
 
     Args:
         value: Any value to escape
@@ -92,10 +92,10 @@ def escape_for_copy(value: Any) -> str:
     s = str(value)
 
     # Escape in order: backslash first, then other special chars
-    s = s.replace('\\', '\\\\')  # Backslash → \\
-    s = s.replace('\t', ' ')      # Tab → space (delimiter conflict)
-    s = s.replace('\n', '\\n')    # Newline → \n
-    s = s.replace('\r', '\\r')    # Carriage return → \r
+    s = s.replace('\\', '\\\\')  # Backslash -> \\
+    s = s.replace('\t', ' ')      # Tab -> space (delimiter conflict)
+    s = s.replace('\n', '\\n')    # Newline -> \n
+    s = s.replace('\r', '\\r')    # Carriage return -> \r
 
     return s
 

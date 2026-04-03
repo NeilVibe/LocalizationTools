@@ -1,8 +1,8 @@
 """
-Audio Playback Service — MDG AudioHandler port for LocaNext.
+Audio Playback Service -- MDG AudioHandler port for LocaNext.
 
 Exact port of MapDataGenerator/core/audio_handler.py:
-- WEM → WAV conversion via vgmstream-cli (reuses MediaConverter)
+- WEM -> WAV conversion via vgmstream-cli (reuses MediaConverter)
 - winsound.PlaySound() for synchronous playback in background thread
 - Generation counter prevents stale thread callbacks
 - Thread-safe stop via SND_PURGE + thread join
@@ -32,7 +32,7 @@ _SUBPROCESS_KWARGS = (
     {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
 )
 
-# Platform-specific audio — MDG: try import winsound
+# Platform-specific audio -- MDG: try import winsound
 try:
     import winsound
     HAS_WINSOUND = True
@@ -43,7 +43,7 @@ except ImportError:
 
 class AudioPlaybackService:
     """
-    MDG AudioHandler port — plays WAV audio via winsound on Windows.
+    MDG AudioHandler port -- plays WAV audio via winsound on Windows.
 
     Thread-safe. Generation counter prevents stale callbacks.
     """
@@ -87,7 +87,7 @@ class AudioPlaybackService:
 
     def play(self, event_name: str, language: str = "eng") -> dict:
         """
-        Play audio for an event. MDG-exact: convert WEM→WAV, winsound in thread.
+        Play audio for an event. MDG-exact: convert WEM->WAV, winsound in thread.
 
         Returns status dict: {success, message, event_name}
         """
@@ -128,11 +128,11 @@ class AudioPlaybackService:
 
         def play_thread():
             try:
-                # Convert WEM → WAV (MDG: off main thread)
+                # Convert WEM -> WAV (MDG: off main thread)
                 converter = get_media_converter()
                 wav_path = converter.convert_wem_to_wav(wem_path)
                 if not wav_path:
-                    logger.error("[AudioPlayback] WEM→WAV conversion failed: {}", wem_path)
+                    logger.error("[AudioPlayback] WEM->WAV conversion failed: {}", wem_path)
                     return
 
                 # Validate WAV file exists and is non-empty
@@ -159,12 +159,12 @@ class AudioPlaybackService:
                 self._play_start_time = time.time()
 
                 logger.info(
-                    "[AudioPlayback] Playing: {} → {} ({}B, {:.1f}s)",
+                    "[AudioPlayback] Playing: {} -> {} ({}B, {:.1f}s)",
                     event_name, wav_path.name, wav_size,
                     self._duration or 0.0,
                 )
 
-                # MDG-exact: synchronous winsound.PlaySound — blocks until audio finishes
+                # MDG-exact: synchronous winsound.PlaySound -- blocks until audio finishes
                 # SND_NODEFAULT prevents Windows from playing the system default sound
                 # when the WAV file can't be read/decoded
                 winsound.PlaySound(

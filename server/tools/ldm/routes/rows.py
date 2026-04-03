@@ -160,7 +160,7 @@ async def get_all_rows(
 ):
     """Get ALL rows for a file in one response. No pagination.
 
-    Used by the bulk-load frontend architecture — loads everything into
+    Used by the bulk-load frontend architecture -- loads everything into
     client memory for instant search/scroll/filter with zero API calls.
     """
     if file_id >= 0:

@@ -20,7 +20,7 @@ _EXT = ".exe" if os.name == "nt" else ""
 
 _MIN_DISK_MB = 500
 
-# SQL identifier allowlist — prevents injection in CREATE USER / CREATE DATABASE
+# SQL identifier allowlist -- prevents injection in CREATE USER / CREATE DATABASE
 _SAFE_IDENT_RE = re.compile(r'^[a-z][a-z0-9_]{0,62}$')
 
 
@@ -52,7 +52,7 @@ def _ms_since(t0: float) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Step 0 — Preflight checks
+# Step 0 -- Preflight checks
 # ---------------------------------------------------------------------------
 
 
@@ -116,21 +116,29 @@ def step_preflight_checks(config: SetupConfig) -> StepResult:
             error_code="PORT_CONFLICT",
         )
 
-    # --- Windows firewall (best effort) ---
+    # --- Open Windows Firewall for PG port (same as Windows auto-allows python.exe on 8888) ---
     if os.name == "nt":
         try:
+            # Delete existing rule first (idempotent)
             subprocess.run(
-                [
-                    "netsh", "advfirewall", "firewall", "add", "rule",
-                    f"name=LocaNext PG {config.pg_port}",
-                    "dir=in", "action=allow", "protocol=TCP",
-                    f"localport={config.pg_port}",
-                ],
-                capture_output=True,
-                timeout=10,
+                ["netsh", "advfirewall", "firewall", "delete", "rule",
+                 f"name=LocaNext PostgreSQL"],
+                capture_output=True, timeout=10,
             )
+            result = subprocess.run(
+                ["netsh", "advfirewall", "firewall", "add", "rule",
+                 f"name=LocaNext PostgreSQL",
+                 "dir=in", "action=allow", "protocol=TCP",
+                 f"localport={config.pg_port}",
+                 "remoteip=localsubnet"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0:
+                logger.info(f"[SETUP] Firewall: port {config.pg_port} opened for LAN connections")
+            else:
+                logger.warning(f"[SETUP] Firewall: failed to open port {config.pg_port} -- {result.stderr.strip()}")
         except Exception as exc:
-            logger.warning("Firewall rule creation failed (LAN connections may be blocked): {}", exc)
+            logger.warning(f"[SETUP] Firewall: could not add rule -- {exc}")
 
     return StepResult(
         step=step,
@@ -141,7 +149,7 @@ def step_preflight_checks(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 1 — Init database
+# Step 1 -- Init database
 # ---------------------------------------------------------------------------
 
 
@@ -158,14 +166,14 @@ def step_init_database(config: SetupConfig) -> StepResult:
 
     pg_version = paths.data_dir / "PG_VERSION"
     pg_conf = paths.data_dir / "postgresql.conf"
-    # Validate BOTH PG_VERSION and postgresql.conf exist — a partial/corrupted
+    # Validate BOTH PG_VERSION and postgresql.conf exist -- a partial/corrupted
     # data dir from a previous failed install must be wiped and re-created.
     if pg_version.exists() and pg_conf.exists() and pg_version.read_text().strip():
         return StepResult(
             step=step, status="skipped", duration_ms=_ms_since(t0),
             message="Database already initialized (PG_VERSION exists)",
         )
-    # Corrupted/partial data dir — wipe it so initdb can start fresh
+    # Corrupted/partial data dir -- wipe it so initdb can start fresh
     if paths.data_dir.exists() and not pg_conf.exists():
         logger.warning("Partial data_dir detected (PG_VERSION but no postgresql.conf) - wiping for fresh init")
         shutil.rmtree(paths.data_dir, ignore_errors=True)
@@ -223,29 +231,29 @@ def step_init_database(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 2 — Configure access (pg_hba.conf + postgresql.conf)
+# Step 2 -- Configure access (pg_hba.conf + postgresql.conf)
 # ---------------------------------------------------------------------------
 
 _HBA_MARKER = "# LocaNext"
 
 _HBA_TEMPLATE = """\
-# LocaNext — managed by setup wizard. Do not edit above this line.
+# LocaNext -- managed by setup wizard. Do not edit above this line.
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
 local   all             {superuser}                             trust
 # Superuser: trust on localhost (embedded DB, no password set by initdb)
-# Windows has no Unix sockets — local trust is dead code, need host trust
+# Windows has no Unix sockets -- local trust is dead code, need host trust
 host    all             {superuser}     127.0.0.1/32            trust
 host    all             {superuser}     ::1/128                 trust
 host    all             {service_user}  127.0.0.1/32            scram-sha-256
 host    all             {service_user}  ::1/128                 scram-sha-256
-hostssl {service_db}    {service_user}  {subnet}                scram-sha-256
+host    {service_db}    {service_user}  {subnet}                scram-sha-256
 # Reject everything else
 host    all             all             0.0.0.0/0               reject
 host    all             all             ::/0                    reject
 """
 
 _CONF_SETTINGS = """\
-# LocaNext — managed by setup wizard
+# LocaNext -- managed by setup wizard
 listen_addresses = '*'
 port = {port}
 """
@@ -265,14 +273,20 @@ def step_configure_access(config: SetupConfig) -> StepResult:
     hba_path = paths.data_dir / "pg_hba.conf"
     conf_path = paths.data_dir / "postgresql.conf"
 
-    # Pre-check: skip if marker exists
+    # Pre-check: skip if marker exists AND no stale hostssl rule
     if hba_path.exists():
         content = hba_path.read_text(encoding="utf-8")
-        if _HBA_MARKER in content:
+        if _HBA_MARKER in content and "hostssl" not in content:
             return StepResult(
                 step=step, status="skipped", duration_ms=_ms_since(t0),
                 message="pg_hba.conf already configured (marker found)",
             )
+        # Phase 112: hostssl->host migration for LAN compatibility
+        _is_migration = False
+        if _HBA_MARKER in content and "hostssl" in content:
+            logger.info("[SETUP] Migrating pg_hba.conf: hostssl -> host (LAN compatibility)")
+            _is_migration = True
+            # Fall through to rewrite
 
     # Backup originals
     hba_backup = hba_path.with_suffix(".conf.bak") if hba_path.exists() else None
@@ -286,12 +300,22 @@ def step_configure_access(config: SetupConfig) -> StepResult:
         lan_ip = detect_lan_ip()
         subnet = get_subnet(lan_ip)
 
-        hba_content = _HBA_TEMPLATE.format(
-            superuser=config.pg_superuser,
-            service_user=config.service_user,
-            service_db=config.service_db,
-            subnet=subnet,
-        )
+        if subnet:
+            hba_content = _HBA_TEMPLATE.format(
+                superuser=config.pg_superuser,
+                service_user=config.service_user,
+                service_db=config.service_db,
+                subnet=subnet,
+            )
+        else:
+            # Loopback-only machine -- skip LAN subnet line, localhost-only access
+            logger.warning(f"[SETUP] No LAN IP detected ({lan_ip}) -- PG will be localhost-only")
+            hba_content = _HBA_TEMPLATE.format(
+                superuser=config.pg_superuser,
+                service_user=config.service_user,
+                service_db=config.service_db,
+                subnet="127.0.0.1/32",
+            )
         hba_path.write_text(hba_content, encoding="utf-8")
 
         # Append LocaNext settings to postgresql.conf (preserve existing content)
@@ -329,6 +353,22 @@ def step_configure_access(config: SetupConfig) -> StepResult:
             error_code="CONFIGURE_VERIFY_FAILED",
         )
 
+    # Phase 112: If PG is already running AND this was a migration, reload config
+    if _is_migration:
+        try:
+            from server.setup.pg_lifecycle import is_pg_running
+            if is_pg_running(paths.pg_isready, config.pg_port):
+                result = subprocess.run(
+                    [str(paths.pg_ctl), "reload", "-D", str(paths.data_dir)],
+                    capture_output=True, text=True, timeout=10,
+                )
+                if result.returncode == 0:
+                    logger.info("[SETUP] PG config reloaded (hostssl->host migration applied)")
+                else:
+                    logger.warning(f"[SETUP] PG reload failed (rc={result.returncode}): {result.stderr.strip()}")
+        except Exception as reload_err:
+            logger.warning(f"[SETUP] PG reload after migration failed: {reload_err}")
+
     return StepResult(
         step=step, status="done", duration_ms=_ms_since(t0),
         message="pg_hba.conf and postgresql.conf configured",
@@ -336,7 +376,7 @@ def step_configure_access(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 4 — Start database
+# Step 4 -- Start database
 # ---------------------------------------------------------------------------
 
 
@@ -527,7 +567,7 @@ def step_start_database(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 5 — Create account
+# Step 5 -- Create account
 # ---------------------------------------------------------------------------
 
 
@@ -557,7 +597,7 @@ def step_create_account(config: SetupConfig) -> StepResult:
         user=config.pg_superuser,
     )
     if ok and out.strip() == "1":
-        # Role exists — ensure password is current (ALTER)
+        # Role exists -- ensure password is current (ALTER)
         password = secrets.token_urlsafe(24)
         ok2, out2 = run_sql(
             paths.psql,
@@ -595,7 +635,7 @@ def step_create_account(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 6 — Create database
+# Step 6 -- Create database
 # ---------------------------------------------------------------------------
 
 
@@ -670,7 +710,7 @@ def step_create_database(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 3 — Generate TLS certificates
+# Step 3 -- Generate TLS certificates
 # ---------------------------------------------------------------------------
 
 
@@ -740,7 +780,7 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
             .sign(key, hashes.SHA256())
         )
 
-        # Write key with restricted permissions (atomic: temp file → permissions → rename)
+        # Write key with restricted permissions (atomic: temp file -> permissions -> rename)
         key_bytes = key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
@@ -797,7 +837,7 @@ def step_generate_certificates(config: SetupConfig) -> StepResult:
 
 
 # ---------------------------------------------------------------------------
-# Step 5b — Tune performance (after PG is running)
+# Step 5b -- Tune performance (after PG is running)
 # ---------------------------------------------------------------------------
 
 
@@ -851,7 +891,7 @@ def step_tune_performance(config: SetupConfig) -> StepResult:
     max_parallel_per_gather = min(4, hw.physical_cores // 3) if hw.physical_cores >= 3 else 1
     max_parallel_maintenance = min(4, max_parallel_workers // 2)
     random_page_cost = "1.1" if hw.is_ssd else "4.0"
-    # Windows lacks posix_fadvise() — effective_io_concurrency MUST be 0
+    # Windows lacks posix_fadvise() -- effective_io_concurrency MUST be 0
     effective_io_concurrency = 0 if os.name == "nt" else (200 if hw.is_ssd else 2)
 
     tuning_block = f"""

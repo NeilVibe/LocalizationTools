@@ -138,7 +138,7 @@ class UsageLogger:
         }
 
         logger.info(
-            f"Logging: {username} → {tool_name}.{function_name} "
+            f"Logging: {username} -> {tool_name}.{function_name} "
             f"({duration_seconds:.2f}s, {status})"
         )
 

@@ -119,7 +119,7 @@ class SyncService:
         }
 
     # =========================================================================
-    # Sync to Offline (PostgreSQL → SQLite)
+    # Sync to Offline (PostgreSQL -> SQLite)
     # =========================================================================
 
     async def sync_folder_hierarchy(self, folder: LDMFolder) -> None:
@@ -148,11 +148,11 @@ class SyncService:
         This function syncs the full path hierarchy before syncing file content.
 
         Merge Rules (last-write-wins):
-        - Local synced + server newer → take server
-        - Local modified + server newer → server wins, discard local
-        - Local modified + local newer → keep local, push later
-        - Server has row we don't → insert
-        - We have row server deleted → delete local
+        - Local synced + server newer -> take server
+        - Local modified + server newer -> server wins, discard local
+        - Local modified + local newer -> keep local, push later
+        - Server has row we don't -> insert
+        - We have row server deleted -> delete local
 
         Returns:
             Dict with stats: inserted, updated, skipped, deleted, pushed
@@ -167,7 +167,7 @@ class SyncService:
 
         # =====================================================================
         # SYNC PATH HIERARCHY (Server = Source of Truth for structure)
-        # Order: Platform → Project → Folder → File
+        # Order: Platform -> Project -> Folder -> File
         # =====================================================================
 
         # 1. Get and sync Project (required)
@@ -397,7 +397,7 @@ class SyncService:
         return total_stats
 
     # =========================================================================
-    # Push to Server (SQLite → PostgreSQL)
+    # Push to Server (SQLite -> PostgreSQL)
     # =========================================================================
 
     async def push_file_changes_to_server(self, file_id: int) -> int:
@@ -566,7 +566,7 @@ class SyncService:
         return pushed_count
 
     # =========================================================================
-    # Sync to Central (SQLite → PostgreSQL)
+    # Sync to Central (SQLite -> PostgreSQL)
     # =========================================================================
 
     async def sync_file_to_central(
@@ -653,7 +653,7 @@ class SyncService:
 
         await self.pg.commit()
 
-        logger.success(f"[SYNC] sync_file_to_central complete: local_id={local_file_id} → "
+        logger.success(f"[SYNC] sync_file_to_central complete: local_id={local_file_id} -> "
                       f"central_id={new_file.id}, rows={len(local_rows)}")
 
         return {
@@ -717,7 +717,7 @@ class SyncService:
 
         await self.pg.commit()
 
-        logger.success(f"[SYNC] sync_tm_to_central complete: local_id={local_tm_id} → "
+        logger.success(f"[SYNC] sync_tm_to_central complete: local_id={local_tm_id} -> "
                       f"central_id={new_tm.id}, entries={len(local_entries)}")
 
         return {

@@ -87,7 +87,7 @@ class GlossaryService:
             entities: List of (entity_name, EntityInfo) pairs.
         """
         if not HAS_AHOCORASICK:
-            logger.warning("ahocorasick not available — glossary entity detection disabled (install pyahocorasick)")
+            logger.warning("ahocorasick not available -- glossary entity detection disabled (install pyahocorasick)")
             self._entity_index = {}
             self._loaded = True
             return

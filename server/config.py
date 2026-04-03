@@ -280,7 +280,7 @@ ALLOWED_IP_RANGE = os.getenv("ALLOWED_IP_RANGE", "")
 IP_FILTER_ALLOW_LOCALHOST = os.getenv("IP_FILTER_ALLOW_LOCALHOST", "true").lower() == "true"
 IP_FILTER_LOG_BLOCKED = os.getenv("IP_FILTER_LOG_BLOCKED", "true").lower() == "true"
 
-# JWT settings — auto-generate if user config has a key, otherwise use env/default
+# JWT settings -- auto-generate if user config has a key, otherwise use env/default
 SECRET_KEY = os.getenv("SECRET_KEY", _USER_CONFIG.get("secret_key", "dev-secret-key-CHANGE-IN-PRODUCTION"))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
@@ -560,7 +560,7 @@ def check_security_config() -> dict:
     if DEFAULT_ADMIN_PASSWORD == _DEFAULT_ADMIN_PASSWORD:
         warnings.append("Default admin password 'admin123' should be changed after first login!")
 
-    # Check IP filter + CORS (skip in LAN server mode — FastAPI is localhost-only, only PG is on LAN)
+    # Check IP filter + CORS (skip in LAN server mode -- FastAPI is localhost-only, only PG is on LAN)
     if _USER_CONFIG.get("server_mode") == "lan_server":
         # LAN server: FastAPI on localhost:8888 (not exposed). PG on LAN (pg_hba.conf secured).
         pass  # No IP range or CORS warnings needed

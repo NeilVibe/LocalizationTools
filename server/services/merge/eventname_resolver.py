@@ -162,7 +162,7 @@ def generate_stringid_from_dialogvoice(eventname: str, dialogvoice: str) -> str:
             diff = diff[1:]
         return diff
     elif not dialog and event:
-        # No DialogVoice — use EventName as-is, strip leading underscore
+        # No DialogVoice -- use EventName as-is, strip leading underscore
         return event[1:] if event.startswith("_") else event
     else:
         return ""
@@ -225,7 +225,7 @@ def resolve_eventnames_in_corrections(
         eventname = c.get("_source_eventname")
 
         if not eventname:
-            # No eventname — already has string_id from normal flow
+            # No eventname -- already has string_id from normal flow
             resolved.append(c)
             continue
 
@@ -274,7 +274,7 @@ def resolve_eventnames_in_corrections(
 
     logger.info(
         f"EventName resolution: {len(resolved)} resolved, {len(missing)} missing "
-        f"(out of {len(corrections)} total corrections) — "
+        f"(out of {len(corrections)} total corrections) -- "
         f"Step1-DialogVoice: {step_counts['dialogvoice']}, "
         f"Step2-Keyword: {step_counts['keyword']}, "
         f"Step3-Export: {step_counts['export']}"
@@ -302,7 +302,7 @@ def generate_missing_eventname_report(
     try:
         import xlsxwriter
     except ImportError:
-        logger.warning("xlsxwriter not available — cannot generate missing EventName report")
+        logger.warning("xlsxwriter not available -- cannot generate missing EventName report")
         return False
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

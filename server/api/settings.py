@@ -1,5 +1,5 @@
 """
-Project Settings API — Phase 56, Plan 02
+Project Settings API -- Phase 56, Plan 02
 
 Provides path validation for LOC PATH and EXPORT PATH settings.
 Validates that paths exist, are directories, and contain languagedata files.

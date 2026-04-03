@@ -553,11 +553,11 @@ try:
 except ImportError as e:
     logger.warning(f"Performance API not available: {e}")
 
-# Include Settings API (Phase 56: Project Settings — path validation)
+# Include Settings API (Phase 56: Project Settings -- path validation)
 from server.api import settings as settings_api
 app.include_router(settings_api.router)
 
-# Include Server Config API (LAN Server Mode — connection settings)
+# Include Server Config API (LAN Server Mode -- connection settings)
 from server.api import server_config as server_config_api
 app.include_router(server_config_api.router)
 
@@ -579,7 +579,7 @@ app.include_router(ldm_router)
 
 
 # ============================================
-# Admin Dashboard (static files — bundled in Admin Build)
+# Admin Dashboard (static files -- bundled in Admin Build)
 # ============================================
 
 def _mount_admin_dashboard():
@@ -602,7 +602,7 @@ def _mount_admin_dashboard():
     # 2. Co-located with python.exe (packaged)
     candidates.append(Path(sys.executable).resolve().parent.parent.parent / "admin-dashboard")
 
-    # 3. Project root (dev — after manual build)
+    # 3. Project root (dev -- after manual build)
     candidates.append(Path(__file__).resolve().parent.parent / "adminDashboard" / "build")
 
     for dashboard_dir in candidates:
@@ -611,8 +611,8 @@ def _mount_admin_dashboard():
             from starlette.responses import FileResponse
 
             # Single route handles both static files and SPA fallback.
-            # If the path maps to a real file (JS, CSS, images) → serve it.
-            # Otherwise → serve index.html for SPA client-side routing.
+            # If the path maps to a real file (JS, CSS, images) -> serve it.
+            # Otherwise -> serve index.html for SPA client-side routing.
             _dashboard_dir = dashboard_dir  # capture for closure
 
             @app.get("/dashboard/{path:path}")
@@ -633,7 +633,7 @@ def _mount_admin_dashboard():
             logger.info(f"Admin Dashboard mounted at /dashboard from {dashboard_dir}")
             return
 
-    logger.debug("Admin Dashboard not found — skipping mount (use npm run dev on port 5174 for dev)")
+    logger.debug("Admin Dashboard not found -- skipping mount (use npm run dev on port 5174 for dev)")
 
 _mount_admin_dashboard()
 
@@ -744,7 +744,7 @@ async def health_check(request: Request):
             logger.error(f"Health check database error: {e}")
             db_status = "error"
 
-    # Base response — includes server_mode for Option B Light Build detection
+    # Base response -- includes server_mode for Option B Light Build detection
     _user_cfg = config.get_user_config()
     response = {
         "status": "healthy" if db_status == "connected" else "degraded",
@@ -755,7 +755,18 @@ async def health_check(request: Request):
         "server_mode": _user_cfg.get("server_mode", "standalone"),
     }
 
-    # Phase 110: Auto-token for SQLite offline mode — use real LOCAL user from DB
+    # Phase 112: Detect LAN fallback -- PG was configured but unreachable
+    # This tells the Launcher to show a warning instead of silently using SQLite
+    is_lan_configured = config.POSTGRES_HOST not in ("localhost", "127.0.0.1", "::1")
+    if is_lan_configured and config.ACTIVE_DATABASE_TYPE == "sqlite":
+        response["lan_fallback"] = True
+        # Only expose host/port to localhost (Launcher runs on same machine)
+        client_ip = request.client.host if request.client else ""
+        if client_ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1", "0:0:0:0:0:0:0:1"):
+            response["lan_host"] = config.POSTGRES_HOST
+            response["lan_port"] = config.POSTGRES_PORT
+
+    # Phase 110: Auto-token for SQLite offline mode -- use real LOCAL user from DB
     # Local mode = no login required, full admin access
     if config.ACTIVE_DATABASE_TYPE == "sqlite":
         from server.utils.auth import create_access_token
@@ -824,7 +835,7 @@ async def get_origin_admin_token(request: Request):
         logger.warning(f"Origin admin token rejected for non-localhost IP: {client_ip}")
         return JSONResponse({"error": "Only available from localhost"}, status_code=403)
 
-    # Phase 110: Resolve real DB user — superadmin first, admin fallback, user_id=1 nuclear
+    # Phase 110: Resolve real DB user -- superadmin first, admin fallback, user_id=1 nuclear
     resolved_user = None
     try:
         async for db in get_async_db():
@@ -837,7 +848,7 @@ async def get_origin_admin_token(request: Request):
                 result = await db.execute(select(User).where(User.role == "admin").order_by(User.user_id).limit(1))
                 resolved_user = result.scalar_one_or_none()
             if not resolved_user:
-                # Priority 3: nuclear fallback — user_id=1 (machine owner, always exists)
+                # Priority 3: nuclear fallback -- user_id=1 (machine owner, always exists)
                 result = await db.execute(select(User).where(User.user_id == 1))
                 resolved_user = result.scalar_one_or_none()
             break
@@ -846,7 +857,7 @@ async def get_origin_admin_token(request: Request):
         return JSONResponse({"error": "Database error resolving admin user"}, status_code=500)
 
     if not resolved_user:
-        logger.error("[PHASE110:TOKEN] origin-admin-token: NO users found in DB — db_setup may not have run")
+        logger.error("[PHASE110:TOKEN] origin-admin-token: NO users found in DB -- db_setup may not have run")
         return JSONResponse({"error": "No admin user found in database"}, status_code=500)
 
     token = create_access_token({
@@ -936,7 +947,7 @@ def get_announcements(db: Session = Depends(get_db)):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler — includes CORS headers so errors aren't masked."""
+    """Global exception handler -- includes CORS headers so errors aren't masked."""
     logger.exception(f"Unhandled exception: {exc}")
 
     origin = request.headers.get("origin", "*")
@@ -1018,7 +1029,7 @@ if __name__ == "__main__":
             state = read_state(state_path)
 
             if not is_setup_complete(state):
-                # First launch or resume after crash — run setup wizard
+                # First launch or resume after crash -- run setup wizard
                 import secrets
                 from server.setup import SetupConfig
                 from server.setup.runner import run_setup
@@ -1093,7 +1104,7 @@ if __name__ == "__main__":
                     )
                     logger.success(f"=== SETUP COMPLETE: LAN server ready at {lan_ip} ===")
             else:
-                # Subsequent launch — check if PG is already running first
+                # Subsequent launch -- check if PG is already running first
                 from server.setup.pg_lifecycle import is_pg_running
                 if is_pg_running(pg.pg_isready, getattr(config, 'POSTGRES_PORT', 5432)):
                     emit_pg_ready()
@@ -1106,6 +1117,33 @@ if __name__ == "__main__":
                         logger.info("PostgreSQL started for existing setup")
                     else:
                         logger.warning(f"PostgreSQL start failed: {msg}")
+
+            # Phase 112: Ensure firewall rule exists for LAN mode (idempotent)
+            _user_cfg = config.get_user_config()
+            if _user_cfg.get("server_mode") == "lan_server" and os.name == "nt":
+                try:
+                    pg_port = getattr(config, 'POSTGRES_PORT', 5432)
+                    import subprocess as _sp
+                    # Check if rule already exists
+                    check = _sp.run(
+                        ["netsh", "advfirewall", "firewall", "show", "rule",
+                         "name=LocaNext PostgreSQL"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    if check.returncode != 0:
+                        _sp.run(
+                            ["netsh", "advfirewall", "firewall", "add", "rule",
+                             "name=LocaNext PostgreSQL",
+                             "dir=in", "action=allow", "protocol=TCP",
+                             f"localport={pg_port}",
+                             "remoteip=localsubnet"],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                        logger.info(f"[LAN] Firewall rule added: TCP {pg_port} (localsubnet)")
+                    else:
+                        logger.debug(f"[LAN] Firewall rule already exists for port {pg_port}")
+                except Exception as fw_err:
+                    logger.warning(f"[LAN] Firewall rule check failed: {fw_err}")
     except Exception as e:
         logger.warning(f"Setup phase skipped or failed: {e}")
         if pg:  # Only fail if PG was found and setup was attempted

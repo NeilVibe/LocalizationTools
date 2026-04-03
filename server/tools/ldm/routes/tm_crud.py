@@ -189,7 +189,7 @@ async def upload_tm(
         with PerfTimer("tm_upload", file_size_bytes=file_size_bytes, filename=filename):
             result = await asyncio.to_thread(_upload_tm)
 
-        # Return result immediately — indexing runs in background
+        # Return result immediately -- indexing runs in background
         upload_response = {
             "tm_id": result.get("tm_id"),
             "name": result.get("name", name),
@@ -200,13 +200,13 @@ async def upload_tm(
             "indexing_status": "pending" if auto_index else "skipped"
         }
 
-        # TMAU-04: Batch inline index update — run in background task
+        # TMAU-04: Batch inline index update -- run in background task
         if auto_index and result.get("tm_id"):
             tm_id = result["tm_id"]
             entry_count = result.get("entry_count", 0)
             logger.info(f"[TMAU-04] Starting background indexing for TM {tm_id} ({entry_count} entries)")
 
-            # Run indexing as background task — don't block the response
+            # Run indexing as background task -- don't block the response
             background_tasks.add_task(
                 _background_index_tm,
                 tm_id=tm_id,

@@ -200,7 +200,7 @@ def _get_cached_indexes(tm_id: int) -> dict:
     if tm_id in _context_index_cache:
         return _context_index_cache[tm_id]
 
-    indexer = TMIndexer(db=None, data_dir=None)  # db=None is safe — load_indexes only reads files
+    indexer = TMIndexer(db=None, data_dir=None)  # db=None is safe -- load_indexes only reads files
     indexes = indexer.load_indexes(tm_id)
     _context_index_cache[tm_id] = indexes
     return indexes

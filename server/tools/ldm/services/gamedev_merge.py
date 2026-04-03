@@ -365,7 +365,7 @@ class GameDevMergeService:
         Returns:
             GameDevMergeResult with counts and output_xml bytes
         """
-        # Parse original XML — intentionally NOT using sanitize_and_parse() because
+        # Parse original XML -- intentionally NOT using sanitize_and_parse() because
         # merge must preserve exact tree structure for write-back. Use text-level
         # sanitization (bad entities, control chars) then recovery-mode parse.
         import re

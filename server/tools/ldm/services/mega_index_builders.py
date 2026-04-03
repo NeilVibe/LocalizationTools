@@ -174,7 +174,7 @@ class BuildersMixin:
     # =========================================================================
 
     def _find_dds(self, ui_texture_name: str) -> Optional[Path]:
-        """GRAFTED from MDG DDSIndex.find() — exact same lookup chain.
+        """GRAFTED from MDG DDSIndex.find() -- exact same lookup chain.
 
         1. Strip path components (/ or \\)
         2. Try stem without extension
@@ -208,7 +208,7 @@ class BuildersMixin:
         if name_with_ext in self.dds_by_stem:
             return self.dds_by_stem[name_with_ext]
 
-        # Attempt 4: FALLBACK — substring match (MDG safety net)
+        # Attempt 4: FALLBACK -- substring match (MDG safety net)
         for key in self.dds_by_stem:
             if lookup_name in key or key in lookup_name:
                 logger.debug(f"[MEGAINDEX] DDS fuzzy match: '{ui_texture_name}' -> '{key}'")
@@ -224,7 +224,7 @@ class BuildersMixin:
           Phase A: KnowledgeEntry.ui_texture_name (original, highest priority)
           Phase B: entity_texture_refs collected during parsing (greedy scan of all
                    texture/icon/image attributes from XML nodes + immediate children)
-          Phase C: Korean name R1 fallback — if entity has same Korean name as another
+          Phase C: Korean name R1 fallback -- if entity has same Korean name as another
                    entity that HAS images, inherit those images
 
         Result: strkey_to_image_paths[strkey] = [Path, ...] (unique, deduped by stem)
@@ -252,7 +252,7 @@ class BuildersMixin:
                         existing.append(dds)
                         phase_b_hits += 1
 
-        # Phase C: knowledge_key chain — entity → KnowledgeEntry → UITextureName → DDS
+        # Phase C: knowledge_key chain -- entity -> KnowledgeEntry -> UITextureName -> DDS
         phase_c_hits = 0
         all_entity_dicts = [
             self.character_by_strkey, self.item_by_strkey,
@@ -273,7 +273,7 @@ class BuildersMixin:
                             existing.append(dds)
                             phase_c_hits += 1
 
-        # Phase D: Korean name R1 fallback — entities with matching Korean names share images
+        # Phase D: Korean name R1 fallback -- entities with matching Korean names share images
         phase_d_hits = 0
         for entity_dict in all_entity_dicts:
             for strkey, entry in entity_dict.items():
@@ -370,7 +370,7 @@ class BuildersMixin:
 
     def _build_entity_strkey_to_stringids(self) -> None:
         """C6: Entity StrKey -> source_file -> export StringIds + Korean text matching."""
-        # Build filename-only → D17 key reverse index.
+        # Build filename-only -> D17 key reverse index.
         # D17 keys are relative paths like "characterinfo/characterinfo_kliff"
         # but entity source_file is just "CharacterInfo_Kliff.xml" (filename only).
         # We need to map filename stems to their full D17 keys.

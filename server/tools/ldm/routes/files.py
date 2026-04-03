@@ -45,6 +45,7 @@ async def _auto_mirror_tm(
     project_id: Optional[int],
     tm_repo,
     folder_repo,
+    owner_id: Optional[int] = None,
 ) -> None:
     """
     Auto-create and assign a TM for a folder if none exists.
@@ -77,7 +78,7 @@ async def _auto_mirror_tm(
 
         # Create TM
         tm_name = f"TM - {folder_name}"
-        tm = await tm_repo.create(name=tm_name, source_lang="ko", target_lang="en")
+        tm = await tm_repo.create(name=tm_name, source_lang="ko", target_lang="en", owner_id=owner_id)
         tm_id = tm["id"]
 
         # Assign to folder and activate
@@ -185,7 +186,7 @@ async def upload_file(
     # P9: Storage destination - 'server' (PostgreSQL) or 'local' (SQLite Offline Storage)
     storage: Optional[str] = Form("server"),
     # NAV-05: Page context for file type enforcement
-    context: Optional[str] = Form(None),  # "translator" or "gamedev" — validates file type after parse
+    context: Optional[str] = Form(None),  # "translator" or "gamedev" -- validates file type after parse
     # Excel column mapping (optional, only used for Excel files)
     source_col: Optional[int] = Form(None),      # Column index for source (0=A, 1=B, etc.)
     target_col: Optional[int] = Form(None),      # Column index for target
@@ -401,6 +402,7 @@ async def upload_file(
             project_id=project_id,
             tm_repo=tm_repo,
             folder_repo=folder_repo,
+            owner_id=current_user.get("user_id"),
         )
 
     # Return FileResponse-compatible dict
@@ -722,8 +724,8 @@ async def register_file_as_tm(
     Convert an LDM file into a Translation Memory.
 
     P10: FULL ABSTRACT - Uses FileRepository + TMRepository.
-    - Offline files (negative IDs) → SQLite TM
-    - Online files (positive IDs) → PostgreSQL TM
+    - Offline files (negative IDs) -> SQLite TM
+    - Online files (positive IDs) -> PostgreSQL TM
 
     Permission checks are INSIDE repositories.
     Takes all source/target pairs from the file and creates a new TM.
@@ -770,7 +772,7 @@ async def register_file_as_tm(
             entry_count = await tm_repo.add_entries_bulk(tm["id"], entries_data)
 
             # P11-UX: Assign TM to same scope as source file for intuitive experience
-            # User registers file from a folder → TM appears in that folder
+            # User registers file from a folder -> TM appears in that folder
             from server.repositories.interfaces.tm_repository import AssignmentTarget
             file_folder_id = file.get("folder_id")
             file_project_id = file.get("project_id")
@@ -830,7 +832,7 @@ async def register_file_as_tm(
             result = await asyncio.to_thread(_create_tm)
 
             # P11-FIX: Assign TM to same scope as source file (PARITY with offline mode)
-            # User registers file from a folder → TM appears in that folder
+            # User registers file from a folder -> TM appears in that folder
             from server.repositories.interfaces.tm_repository import AssignmentTarget
             if file_folder_id:
                 await tm_repo.assign(result["tm_id"], AssignmentTarget(folder_id=file_folder_id))
@@ -933,7 +935,7 @@ async def merge_file(
     """
     Export-merge: merge reviewed translations from LDM back into original file for download.
 
-    This is the "export merge" endpoint — it takes an uploaded original file,
+    This is the "export merge" endpoint -- it takes an uploaded original file,
     applies reviewed LDM edits, and returns the merged file for download.
     NOT the TranslatorMergeService endpoint (which is at /files/{file_id}/merge).
 
@@ -1081,13 +1083,13 @@ async def convert_file(
     Permission checks are INSIDE repository.
 
     Supported conversions:
-    - TXT → Excel, XML, TMX
-    - XML → Excel, TMX
-    - Excel → XML, TMX
+    - TXT -> Excel, XML, TMX
+    - XML -> Excel, TMX
+    - Excel -> XML, TMX
 
     NOT supported (StringID loss):
-    - XML → TXT
-    - Excel → TXT
+    - XML -> TXT
+    - Excel -> TXT
     """
     # P10: Get file via repository (permissions checked inside - returns None if no access)
     file = await repo.get(file_id)
@@ -1152,7 +1154,7 @@ async def convert_file(
     base_name = original_filename.rsplit('.', 1)[0] if '.' in original_filename else original_filename
     download_name = f"{base_name}_converted{extension}"
 
-    logger.info(f"LDM CONVERT: file_id={file_id}, {source_format} → {target_format}, {len(rows)} rows")
+    logger.info(f"LDM CONVERT: file_id={file_id}, {source_format} -> {target_format}, {len(rows)} rows")
 
     return StreamingResponse(
         BytesIO(content),
@@ -1205,7 +1207,7 @@ async def extract_glossary(
     # Count occurrences of each source term
     source_counts = Counter(row.get("source", "").strip() for row in rows if row.get("source"))
 
-    # Build source → target mapping (first occurrence wins)
+    # Build source -> target mapping (first occurrence wins)
     source_to_target = {}
     for row in rows:
         source = (row.get("source") or "").strip()

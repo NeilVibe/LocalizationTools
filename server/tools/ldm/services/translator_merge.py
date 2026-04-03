@@ -95,8 +95,8 @@ class TranslatorMergeService:
     ) -> None:
         """Record a match, skipping DB write if target is already identical.
 
-        QT graft: xml_transfer.py L574 — `if new_str != old_str: update else: UNCHANGED`
-        Also handles transfer_scope="untranslated" — skip already-translated rows.
+        QT graft: xml_transfer.py L574 -- `if new_str != old_str: update else: UNCHANGED`
+        Also handles transfer_scope="untranslated" -- skip already-translated rows.
         """
         result.matched += 1
         result.match_type_counts[mode] += 1
@@ -123,7 +123,7 @@ class TranslatorMergeService:
                 return
 
         if matched_text.strip() == existing:
-            # IDENTICAL — skip DB write
+            # IDENTICAL -- skip DB write
             result.unchanged += 1
             result.by_category[category]["unchanged"] += 1
             result.details.append({
@@ -134,7 +134,7 @@ class TranslatorMergeService:
                 "category": category,
             })
         else:
-            # DIFFERENT — queue for DB write
+            # DIFFERENT -- queue for DB write
             updated = dict(target)
             updated["target"] = matched_text
             result.updated_rows.append(updated)
@@ -225,7 +225,7 @@ class TranslatorMergeService:
                 if origin_key not in seen_origins:
                     seen_origins.add(origin_key)
                     unique.append(c)
-            logger.info("unique_only: %d → %d corrections (removed %d duplicates)",
+            logger.info("unique_only: %d -> %d corrections (removed %d duplicates)",
                         len(corrections), len(unique), len(corrections) - len(unique))
             corrections = unique
 

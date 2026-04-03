@@ -44,7 +44,7 @@ class MergeRequest(BaseModel):
         default=False,
         description="CJK language flag for postprocess pipeline",
     )
-    # BUG-16: Options that frontend sends — previously silently dropped
+    # BUG-16: Options that frontend sends -- previously silently dropped
     transfer_scope: str = Field(
         default="all",
         description="'all' (overwrite) or 'untranslated' (only empty/Korean targets)",
@@ -122,7 +122,7 @@ async def merge_files(
         request.threshold,
     )
 
-    # Fetch source rows — ONLY confirmed (reviewed) rows get merged
+    # Fetch source rows -- ONLY confirmed (reviewed) rows get merged
     all_source_rows = await row_repo.get_all_for_file(request.source_file_id)
     source_rows = [r for r in all_source_rows if r.get('status') == 'reviewed']
     if not source_rows:
@@ -201,7 +201,7 @@ async def merge_files_stream(
     current_user: dict = Depends(get_current_active_user_async),
     row_repo=Depends(get_row_repository),
 ):
-    """SSE streaming merge — same as /merge but with live progress events.
+    """SSE streaming merge -- same as /merge but with live progress events.
 
     Events:
       - progress: {phase, processed, matched, updated, unchanged}
@@ -228,14 +228,14 @@ async def merge_files_stream(
     progress_queue: asyncio.Queue = asyncio.Queue()
 
     def progress_callback(data: dict):
-        """Called from merge thread — puts events into async queue."""
+        """Called from merge thread -- puts events into async queue."""
         progress_queue.put_nowait(data)
 
     async def event_generator():
         """SSE event stream."""
         try:
             # Emit start
-            yield f"event: log\ndata: {json.dumps({'message': f'Starting merge: {len(source_rows)} source → {len(target_rows)} target rows', 'level': 'info'})}\n\n"
+            yield f"event: log\ndata: {json.dumps({'message': f'Starting merge: {len(source_rows)} source -> {len(target_rows)} target rows', 'level': 'info'})}\n\n"
 
             # Run merge in thread with progress callback
             svc = TranslatorMergeService()

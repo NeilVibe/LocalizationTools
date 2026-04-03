@@ -111,8 +111,10 @@
     if (savedRemoteUrl) isLightMode = true;
 
     // Load admin config if in admin mode AND logged in (avoid 401 pre-login)
-    const hasToken = typeof window !== 'undefined' && localStorage.getItem('auth_token');
-    if (!isLightMode && hasToken) {
+    // Also check token isn't an expired/OFFLINE token
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const hasValidToken = storedToken && !storedToken.startsWith('OFFLINE_MODE_');
+    if (!isLightMode && hasValidToken) {
       loadAdminConfig();
     }
   }
@@ -230,11 +232,16 @@
 
       hasRemoteConfig = true;
       savedRemote = true;
-      logger.userAction("Connected to server — restart app to sync", { url, user: lanUsername });
-      setTimeout(() => { savedRemote = false; }, 5000);
+      logger.userAction("Connected to server -- restarting app", { url, user: lanUsername });
+
+      // Auto-restart after 2s so user sees success message
+      const restart = window.electronRemote?.restartApp;
+      if (restart) {
+        setTimeout(() => { try { restart(); } catch { /* app closing */ } }, 2000);
+      }
     } catch (e) {
       remoteError = e.name === 'TimeoutError'
-        ? `Cannot reach ${address}:8888 — check the address`
+        ? `Cannot reach ${address}:8888 -- check the address`
         : `Connection failed: ${e.message}`;
       logger.error("LAN connect failed", e);
     } finally {
@@ -354,7 +361,7 @@
   bind:open
   modalHeading="Server Connection"
   passiveModal
-  size="sm"
+  size="md"
   onclose={handleClose}
 >
   <div class="server-settings">
@@ -488,9 +495,7 @@
         />
       {/if}
 
-      {#if remoteError && !remoteTestResult}
-        <InlineNotification kind="error" title="Error" subtitle={remoteError} hideCloseButton />
-      {/if}
+      <!-- remoteError already shown above -->
 
       <!-- Setup Guide -->
       <div class="info-section">
@@ -557,12 +562,15 @@
           <TextInput bind:value={dbName} labelText="Database Name" placeholder="localizationtools" size="sm" />
 
           <div class="button-row">
-            <Button kind="secondary" size="small" icon={IotConnect} onclick={testConnection} disabled={testing}>
+            <Button kind="secondary" size="small" icon={IotConnect} onclick={testConnection} disabled={testing || !localStorage.getItem('auth_token')}>
               {testing ? "Testing..." : "Test Connection"}
             </Button>
-            <Button kind="primary" size="small" onclick={saveConfig} disabled={saving}>
+            <Button kind="primary" size="small" onclick={saveConfig} disabled={saving || !localStorage.getItem('auth_token')}>
               {saving ? "Saving..." : "Save & Restart Required"}
             </Button>
+            {#if !localStorage.getItem('auth_token')}
+              <p class="hint">Login first to manage server settings</p>
+            {/if}
           </div>
         </div>
       {:else}

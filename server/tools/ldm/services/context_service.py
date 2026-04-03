@@ -183,7 +183,7 @@ class ContextService:
         if knowledge is None:
             logger.debug(f"[CONTEXT] Chain broke at step 1: StringID={string_id}, StrKey={strkey}")
 
-            # Step 1b: Fallback — Korean text -> R1 -> entity -> image
+            # Step 1b: Fallback -- Korean text -> R1 -> entity -> image
             # Try StrOrigin from MegaIndex first, then fall back to source_text from row
             korean_text = None
             if mega._built:

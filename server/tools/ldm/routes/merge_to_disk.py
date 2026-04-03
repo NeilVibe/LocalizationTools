@@ -1,5 +1,5 @@
 """
-Merge-to-disk endpoints — write corrections directly to files on disk.
+Merge-to-disk endpoints -- write corrections directly to files on disk.
 
 POST /api/ldm/merge/to-file     -- Merge source DB rows into a single target file on disk
 POST /api/ldm/merge/to-folder   -- Merge source folder files into target folder on disk (suffix matching)
@@ -63,7 +63,7 @@ class MergeToFolderRequest(BaseModel):
 
 
 # =============================================================================
-# Helpers: Convert DB rows → correction dicts for QT engine
+# Helpers: Convert DB rows -> correction dicts for QT engine
 # =============================================================================
 
 
@@ -122,14 +122,14 @@ def _apply_merge_pre_filters(
 
     if len(corrections) != original_count:
         logger.info(
-            "[MERGE-TO-DISK] Pre-filter: %d → %d corrections (non_script=%s, all_cat=%s, unique=%s)",
+            "[MERGE-TO-DISK] Pre-filter: %d -> %d corrections (non_script=%s, all_cat=%s, unique=%s)",
             original_count, len(corrections), non_script_only, all_categories, unique_only,
         )
     return corrections
 
 
 def _extract_language_suffix(filename: str) -> Optional[str]:
-    """Extract language code from filename like languagedata_KOR.loc.xml → KOR."""
+    """Extract language code from filename like languagedata_KOR.loc.xml -> KOR."""
     import re
     # Standard pattern: languagedata_XXX.loc.xml or languagedata_XXX.xml
     m = re.match(r"languagedata_([a-zA-Z\-]+)", filename, re.IGNORECASE)
@@ -174,7 +174,7 @@ async def merge_to_file(
     if not target_path.exists():
         raise HTTPException(status_code=404, detail=f"Target file not found: {request.target_path}")
 
-    # Fetch source rows — ONLY confirmed (reviewed) rows get merged to disk
+    # Fetch source rows -- ONLY confirmed (reviewed) rows get merged to disk
     all_rows = await row_repo.get_all_for_file(request.source_file_id)
     source_rows = [r for r in all_rows if r.get('status') == 'reviewed']
     if not source_rows:
@@ -197,7 +197,7 @@ async def merge_to_file(
         return {"matched": 0, "updated": 0, "not_found": 0, "message": "No corrections after option filtering"}
 
     logger.info(
-        "[MERGE-TO-DISK] file: source=%d (%d corrections) → %s, mode=%s",
+        "[MERGE-TO-DISK] file: source=%d (%d corrections) -> %s, mode=%s",
         request.source_file_id, len(corrections), target_path.name, request.match_mode,
     )
 
@@ -206,7 +206,7 @@ async def merge_to_file(
 
     def _do_merge():
         if mode == "stringid_only":
-            # Build StringID→Category mapping from corrections
+            # Build StringID->Category mapping from corrections
             sid_to_cat = {
                 (c.get("string_id") or "").strip(): (c.get("category") or "Uncategorized")
                 for c in corrections if c.get("string_id")
@@ -219,7 +219,7 @@ async def merge_to_file(
                 only_untranslated=request.only_untranslated,
             )
         else:
-            # strict mode (default) — uses full (StringID, StrOrigin) matching
+            # strict mode (default) -- uses full (StringID, StrOrigin) matching
             return merge_corrections_to_xml(
                 xml_path=target_path,
                 corrections=corrections,

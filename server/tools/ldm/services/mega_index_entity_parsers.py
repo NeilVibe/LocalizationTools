@@ -33,7 +33,7 @@ from server.tools.ldm.services.mega_index_schemas import (
 
 
 def _ci_attrs(elem) -> dict:
-    """Case-insensitive XML attribute extraction — lowercase keys."""
+    """Case-insensitive XML attribute extraction -- lowercase keys."""
     return {k.lower(): v for k, v in elem.attrib.items()}
 
 

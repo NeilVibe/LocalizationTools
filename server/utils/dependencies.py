@@ -47,9 +47,9 @@ def initialize_database():
 
     P33 Offline Mode:
     - Uses setup_database() which handles DATABASE_MODE auto-detection
-    - If DATABASE_MODE=auto and PostgreSQL unreachable → uses SQLite
-    - If DATABASE_MODE=postgresql → fails if PostgreSQL unreachable
-    - If DATABASE_MODE=sqlite → uses SQLite directly
+    - If DATABASE_MODE=auto and PostgreSQL unreachable -> uses SQLite
+    - If DATABASE_MODE=postgresql -> fails if PostgreSQL unreachable
+    - If DATABASE_MODE=sqlite -> uses SQLite directly
     """
     global _engine, _session_maker
 
@@ -290,7 +290,7 @@ def _get_dev_user() -> dict:
 
 # Log DEV_MODE status on module load
 if config.DEV_MODE:
-    logger.warning("⚠️  DEV_MODE enabled - localhost auto-authentication active")
+    logger.warning("DEV_MODE enabled - localhost auto-authentication active")
 
 
 def get_current_active_user(
