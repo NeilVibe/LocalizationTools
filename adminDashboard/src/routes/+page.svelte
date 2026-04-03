@@ -21,6 +21,7 @@
 
   // Non-reactive
   let unsubscribe;
+  let refreshTimer;
 
   onMount(async () => {
     await loadData();
@@ -29,11 +30,11 @@
     websocket.connect();
     isLive = true;
 
-    // Listen for new activity
+    // Listen for new activity — debounce to avoid re-fetch storm
     unsubscribe = websocket.on('log_entry', (newLog) => {
       recentLogs = [newLog, ...recentLogs].slice(0, 10);
-      // Refresh stats
-      loadData();
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(loadData, 3000);
     });
   });
 

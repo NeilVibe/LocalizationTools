@@ -258,8 +258,8 @@ async def update_row(
     try:
         from server.database.pg_notify import pg_notify
         await pg_notify("locanext_row_update", _update_payload)
-    except Exception:
-        pass  # PG NOTIFY failure is non-critical
+    except Exception as e:
+        logger.debug(f"[ROWS] PG NOTIFY failed for row {row_id}: {e}")
 
     # FEAT-001: Auto-add to linked TM if status is 'reviewed'
     tm_updated = False
@@ -354,19 +354,19 @@ async def batch_update_rows(
 
     # Phase 111: Broadcast batch update via WebSocket + PG NOTIFY
     if updated_rows:
-        try:
-            for row_data in updated_rows:
+        for row_data in updated_rows:
+            try:
                 await broadcast_cell_update(**row_data)
-        except Exception as e:
-            logger.warning(f"[ROWS] Batch WebSocket broadcast failed: {e}")
+            except Exception as e:
+                logger.debug(f"[ROWS] Batch broadcast failed for row {row_data.get('row_id')}: {e}")
         try:
             from server.database.pg_notify import pg_notify
             await pg_notify("locanext_row_update", {
                 "batch": True, "file_id": file_id,
                 "count": updated_count, "updated_by": current_user["username"],
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[ROWS] Batch PG NOTIFY failed: {e}")
 
     return {"updated": updated_count, "total": len(payload.updates)}
 

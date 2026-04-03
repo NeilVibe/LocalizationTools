@@ -77,7 +77,7 @@ async def get_recent_activity(
                    l.timestamp_start, l.status, l.file_name, l.rows_processed,
                    u.username
             FROM log_entries l
-            LEFT JOIN users u ON l.user_id = u.id
+            LEFT JOIN users u ON l.user_id = u.user_id
             WHERE l.timestamp_start >= :since
             ORDER BY l.timestamp_start DESC
             LIMIT :limit

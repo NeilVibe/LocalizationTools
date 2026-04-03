@@ -69,9 +69,7 @@
         if (remoteConfig?.url) {
           hasRemoteConfig = true;
           remoteAddress = remoteConfig.url.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
-          pgUser = remoteConfig.pg_user || "locanext_service";
-          pgPassword = remoteConfig.pg_password || "";
-          pgDb = remoteConfig.pg_db || "localizationtools";
+          // PG creds stored but not shown — auto-fetched during connect flow
         }
       } catch { /* no remote config */ }
     }
@@ -261,7 +259,7 @@
 
     hasRemoteConfig = false;
     remoteAddress = "";
-    pgPassword = "";
+    lanPassword = "";
     remoteTestResult = null;
     remoteServerInfo = null;
     savedRemote = false;

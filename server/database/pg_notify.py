@@ -61,7 +61,7 @@ async def pg_notify(channel: str, payload: dict):
         finally:
             await conn.close()
     except Exception as e:
-        logger.debug(f"[PG_NOTIFY] Failed to send on {channel}: {e}")
+        logger.warning(f"[PG_NOTIFY] Failed to send on {channel}: {e}")
 
 
 async def start_listener():
@@ -118,7 +118,7 @@ def _handle_notification(conn, pid, channel, payload):
     for cb in callbacks:
         try:
             # Schedule callback in the event loop (notification handler is sync)
-            asyncio.get_event_loop().create_task(cb(data))
+            asyncio.get_running_loop().create_task(cb(data))
         except Exception as e:
             logger.error(f"[PG_NOTIFY] Callback error on {channel}: {e}")
 
@@ -139,7 +139,8 @@ async def _keepalive_loop():
                 await stop_listener()
                 await asyncio.sleep(5)
                 await start_listener()
-            except Exception:
+            except Exception as reconnect_err:
+                logger.error(f"[PG_NOTIFY] Reconnect failed: {reconnect_err}. Listener stopped permanently.")
                 break
 
 
