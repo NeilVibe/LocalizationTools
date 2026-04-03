@@ -11,7 +11,7 @@ FACTORIZED: Single version format for ALL uses (datetime + semver)
 # - Human readable: Dec 13, 2025, 15:40 KST
 # - Auto-increments with time
 # - Works everywhere: electron, CI, installer, UI
-VERSION = "26.403.1951"
+VERSION = "26.404.0000"
 
 # Version footer for UI display
 VERSION_FOOTER = f"ver. {VERSION} | AI-Powered Localization Platform"
