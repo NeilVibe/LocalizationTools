@@ -198,6 +198,34 @@
       });
     }
 
+    // Phase 111: Local Processing Status
+    // Show what's available for client-side features
+    {
+      const details = [];
+      const megaBuilt = data.mega_index?.status === "built";
+      const model2vecLoaded = data.model2vec?.status === "loaded";
+      const dbType = health?.database_type || data.database?.mode || "unknown";
+      const isOnline = dbType === "postgresql";
+
+      details.push({ label: "Heavy Processing", value: "Local (own backend)" });
+      details.push({ label: "DB Sync", value: isOnline ? `PostgreSQL (${health?.server_mode || "standalone"})` : "SQLite (offline)" });
+      details.push({ label: "MegaIndex", value: megaBuilt ? "Built (Codex enabled)" : "Not built (Codex disabled)" });
+      details.push({ label: "Semantic Search", value: model2vecLoaded ? "Model2Vec loaded" : "Hash-based only" });
+      if (data.server?.perforce_path) {
+        details.push({ label: "Perforce", value: data.server.perforce_path });
+      } else {
+        details.push({ label: "Perforce", value: "Not configured (GameData/Codex disabled)" });
+      }
+
+      list.push({
+        id: "architecture",
+        title: "Processing Architecture",
+        status: isOnline ? "online" : "local",
+        severity: isOnline ? "success" : "warning",
+        details
+      });
+    }
+
     // Version
     if (data.version) {
       list.push({
