@@ -240,19 +240,26 @@ async def update_row(
     )
 
     # Broadcast cell update to all viewers (real-time sync)
+    _update_payload = {
+        "file_id": updated_row.get("file_id"),
+        "row_id": updated_row.get("id"),
+        "row_num": updated_row.get("row_num"),
+        "target": updated_row.get("target"),
+        "status": updated_row.get("status"),
+        "updated_by": current_user["user_id"],
+        "updated_by_username": current_user["username"],
+    }
     try:
-        await broadcast_cell_update(
-            file_id=updated_row.get("file_id"),
-            row_id=updated_row.get("id"),
-            row_num=updated_row.get("row_num"),
-            target=updated_row.get("target"),
-            status=updated_row.get("status"),
-            updated_by=current_user["user_id"],
-            updated_by_username=current_user["username"]
-        )
+        await broadcast_cell_update(**_update_payload)
     except Exception as e:
-        # WebSocket broadcast failure shouldn't fail the API call
         logger.warning(f"[ROWS] WebSocket broadcast failed for row {row_id}: {e}")
+
+    # Phase 111: PG NOTIFY for cross-backend real-time sync
+    try:
+        from server.database.pg_notify import pg_notify
+        await pg_notify("locanext_row_update", _update_payload)
+    except Exception:
+        pass  # PG NOTIFY failure is non-critical
 
     # FEAT-001: Auto-add to linked TM if status is 'reviewed'
     tm_updated = False
@@ -324,6 +331,7 @@ async def batch_update_rows(
 ):
     """Batch update multiple rows in a single transaction (for Find & Replace All)."""
     updated_count = 0
+    updated_rows = []
     for update in payload.updates:
         try:
             result = await repo.update(
@@ -333,8 +341,33 @@ async def batch_update_rows(
             )
             if result:
                 updated_count += 1
+                updated_rows.append({
+                    "file_id": file_id,
+                    "row_id": update.row_id,
+                    "target": update.target,
+                    "status": update.status,
+                    "updated_by": current_user["user_id"],
+                    "updated_by_username": current_user["username"],
+                })
         except Exception as e:
             logger.error(f"Batch update failed for row {update.row_id}: {e}")
+
+    # Phase 111: Broadcast batch update via WebSocket + PG NOTIFY
+    if updated_rows:
+        try:
+            for row_data in updated_rows:
+                await broadcast_cell_update(**row_data)
+        except Exception as e:
+            logger.warning(f"[ROWS] Batch WebSocket broadcast failed: {e}")
+        try:
+            from server.database.pg_notify import pg_notify
+            await pg_notify("locanext_row_update", {
+                "batch": True, "file_id": file_id,
+                "count": updated_count, "updated_by": current_user["username"],
+            })
+        except Exception:
+            pass
+
     return {"updated": updated_count, "total": len(payload.updates)}
 
 

@@ -371,6 +371,34 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"[Model2Vec] Not available: {e}")
 
+    # Phase 111: Start PG LISTEN/NOTIFY for real-time cross-backend sync
+    try:
+        from server.database.pg_notify import start_listener, stop_listener, on_notify
+        from server.utils.websocket import sio
+
+        # Register WebSocket broadcast callbacks for PG notifications
+        async def _on_row_update(data):
+            """Broadcast row update from PG NOTIFY to local WebSocket clients."""
+            file_id = data.get("file_id")
+            if file_id:
+                await sio.emit("ldm_cell_update", data, room=f"ldm_file_{file_id}")
+
+        async def _on_file_change(data):
+            """Broadcast file/folder change to admin dashboard."""
+            await sio.emit("file_change", data, room="admin")
+
+        async def _on_activity(data):
+            """Broadcast activity to dashboard live feed."""
+            await sio.emit("log_entry", data, room="logs")
+
+        on_notify("locanext_row_update", _on_row_update)
+        on_notify("locanext_file_change", _on_file_change)
+        on_notify("locanext_activity", _on_activity)
+
+        await start_listener()
+    except Exception as e:
+        logger.warning(f"[PG_NOTIFY] Listener setup failed: {e}. Cross-user real-time sync disabled.")
+
     # Signal to Electron that server is ready to accept connections
     try:
         from server.setup.jsonl import emit_server_ready
@@ -383,6 +411,13 @@ async def lifespan(app: FastAPI):
 
     # === SHUTDOWN ===
     logger.info("Server shutting down...")
+
+    # Stop PG LISTEN/NOTIFY listener
+    try:
+        from server.database.pg_notify import stop_listener
+        await stop_listener()
+    except Exception as e:
+        logger.warning(f"PG NOTIFY listener stop error: {e}")
 
     # Disconnect Redis cache
     try:
@@ -506,6 +541,10 @@ app.include_router(admin_db_stats.router)
 # Include Health Status API (P24: Server Status Dashboard)
 from server.api import health
 app.include_router(health.router)
+
+# Phase 111: Activity Feed API (dashboard unified activity view)
+from server.api import activity as activity_api
+app.include_router(activity_api.router)
 
 # Include Performance Metrics API (Phase 63: Performance Instrumentation)
 try:

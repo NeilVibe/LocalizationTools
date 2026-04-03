@@ -167,6 +167,15 @@ class AdminAPIClient {
     return await this.request('/logs/stats/by-tool');
   }
 
+  // ACTIVITY FEED (Phase 111 — unified activity for dashboard)
+  async getRecentActivity(limit = 50, hours = 24) {
+    return await this.request(`/activity/recent?limit=${limit}&hours=${hours}`);
+  }
+
+  async getActivityStats(hours = 24) {
+    return await this.request(`/activity/stats?hours=${hours}`);
+  }
+
   // DASHBOARD STATISTICS (NEW - comprehensive analytics)
   async getOverviewStats() {
     return await this.request('/admin/stats/overview');

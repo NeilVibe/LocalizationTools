@@ -10,9 +10,11 @@
   let loading = $state(true);
   let isLive = $state(false);
   let overviewStats = $state(null);
+  let activityStats = $state(null);
   let appRankings = $state([]);
   let functionRankings = $state([]);
   let recentLogs = $state([]);
+  let recentActivity = $state([]);
 
   // Svelte 5: Derived value
   let totalOps = $derived(appRankings.reduce((sum, app) => sum + (app.usage_count || 0), 0));
@@ -43,21 +45,27 @@
     try {
       loading = true;
 
-      const [overview, apps, functions, logs] = await Promise.all([
+      const [overview, actStats, apps, functions, logs, activity] = await Promise.all([
         adminAPI.getOverviewStats().catch(() => ({
           active_users: 0,
           today_operations: 0,
           success_rate: 0
         })),
+        adminAPI.getActivityStats(24).catch(() => ({
+          rows_edited: 0, rows_confirmed: 0, active_users: 0, tool_operations: 0
+        })),
         adminAPI.getAppRankings('all_time').catch(() => ({ rankings: [] })),
         adminAPI.getFunctionRankings('all_time', 5).catch(() => ({ rankings: [] })),
-        adminAPI.getAllLogs({ limit: 10 }).catch(() => [])
+        adminAPI.getAllLogs({ limit: 10 }).catch(() => []),
+        adminAPI.getRecentActivity(20, 24).catch(() => ({ activities: [] }))
       ]);
 
       overviewStats = overview;
+      activityStats = actStats;
       appRankings = apps.rankings || [];
       functionRankings = functions.rankings || [];
       recentLogs = logs;
+      recentActivity = activity.activities || [];
 
       loading = false;
     } catch (error) {
@@ -90,29 +98,29 @@
       <div class="compact-stat">
         <div class="compact-stat-icon"><Activity size={20} /></div>
         <div>
-          <div class="compact-stat-value">{overviewStats.active_users}</div>
-          <div class="compact-stat-label">Active Users (24h)</div>
+          <div class="compact-stat-value">{activityStats?.active_users || overviewStats.active_users || 0}</div>
+          <div class="compact-stat-label">Active Translators (24h)</div>
         </div>
       </div>
       <div class="compact-stat">
         <div class="compact-stat-icon"><ChartLine size={20} /></div>
         <div>
-          <div class="compact-stat-value">{overviewStats.today_operations}</div>
-          <div class="compact-stat-label">Today's Operations</div>
-        </div>
-      </div>
-      <div class="compact-stat">
-        <div class="compact-stat-icon"><ChartLine size={20} /></div>
-        <div>
-          <div class="compact-stat-value">{totalOps}</div>
-          <div class="compact-stat-label">Total Operations</div>
+          <div class="compact-stat-value">{activityStats?.rows_edited || 0}</div>
+          <div class="compact-stat-label">Rows Edited (24h)</div>
         </div>
       </div>
       <div class="compact-stat highlight">
         <div class="compact-stat-icon"><ChartLine size={20} /></div>
         <div>
-          <div class="compact-stat-value">{overviewStats.success_rate ? overviewStats.success_rate.toFixed(1) : 0}%</div>
-          <div class="compact-stat-label">Success Rate</div>
+          <div class="compact-stat-value">{activityStats?.rows_confirmed || 0}</div>
+          <div class="compact-stat-label">Strings Confirmed (24h)</div>
+        </div>
+      </div>
+      <div class="compact-stat">
+        <div class="compact-stat-icon"><ChartLine size={20} /></div>
+        <div>
+          <div class="compact-stat-value">{activityStats?.tool_operations || overviewStats.today_operations || 0}</div>
+          <div class="compact-stat-label">Tool Operations</div>
         </div>
       </div>
     </div>
@@ -159,13 +167,36 @@
       </ExpandableCard>
     </div>
 
-    <!-- Recent Activity Terminal -->
+    <!-- Translation Activity Feed (Phase 111) -->
+    {#if recentActivity.length > 0}
+      <div class="recent-activity">
+        <h2 class="section-title">Translation Activity (24h)</h2>
+        <div class="activity-feed">
+          {#each recentActivity.slice(0, 15) as act (act.timestamp)}
+            <div class="activity-item {act.type}">
+              <span class="activity-time">{new Date(act.timestamp).toLocaleTimeString()}</span>
+              <span class="activity-user">{act.user}</span>
+              {#if act.type === 'row_edit'}
+                <span class="activity-action">{act.action}</span>
+                <span class="activity-detail">{act.details?.string_id || ''} in {act.details?.file_name || ''}</span>
+              {:else}
+                <span class="activity-action">{act.details?.function || act.action}</span>
+                <span class="activity-detail">{act.details?.tool || ''} {act.details?.status === 'success' ? '' : `(${act.details?.status})`}</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+        <a href="/logs" class="view-all-link">View all activity →</a>
+      </div>
+    {/if}
+
+    <!-- Tool Operations Terminal -->
     <div class="recent-activity">
-      <h2 class="section-title">Recent Activity</h2>
+      <h2 class="section-title">Tool Operations</h2>
       <TerminalLog
         logs={recentLogs}
         title="Last 10 Operations"
-        height="350px"
+        height="250px"
         live={isLive}
       />
       <a href="/logs" class="view-all-link">View all logs →</a>
@@ -330,6 +361,52 @@
 
   .recent-activity {
     margin-bottom: 24px;
+  }
+
+  .activity-feed {
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 6px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .activity-item {
+    display: flex;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid #222;
+    align-items: baseline;
+  }
+
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item.row_edit { color: #78a9ff; }
+  .activity-item.tool_operation { color: #a8a8a8; }
+
+  .activity-time {
+    color: #6f6f6f;
+    font-family: monospace;
+    font-size: 0.75rem;
+    min-width: 70px;
+  }
+
+  .activity-user {
+    color: #42be65;
+    font-weight: 600;
+    min-width: 80px;
+  }
+
+  .activity-action {
+    color: #be95ff;
+    min-width: 70px;
+  }
+
+  .activity-detail {
+    color: #c6c6c6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .section-title {
