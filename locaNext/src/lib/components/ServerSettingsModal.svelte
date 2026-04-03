@@ -39,6 +39,7 @@
   let pgUser = $state("locanext_service");
   let pgPassword = $state("");
   let pgDb = $state("localizationtools");
+  let hasRemoteConfig = $state(false);  // Whether remote-server.json exists (for Disconnect button)
   let remoteServerInfo = $state(null); // {version, server_mode, database_type}
 
   // === Admin Mode State (PG config) ===
@@ -61,9 +62,22 @@
   });
 
   async function loadConfig() {
-    // Check if we're in light mode — authoritative source is Electron env var
+    // Phase 111: Check Electron's remote-server.json (not localStorage which is now cleared)
+    if (window.electronRemote) {
+      try {
+        const remoteConfig = await window.electronRemote.getRemoteServer();
+        if (remoteConfig?.url) {
+          hasRemoteConfig = true;
+          remoteAddress = remoteConfig.url.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
+          pgUser = remoteConfig.pg_user || "locanext_service";
+          pgPassword = remoteConfig.pg_password || "";
+          pgDb = remoteConfig.pg_db || "localizationtools";
+        }
+      } catch { /* no remote config */ }
+    }
+    // Legacy fallback: check localStorage
     const savedRemoteUrl = localStorage.getItem('locanext_remote_server');
-    if (savedRemoteUrl) {
+    if (savedRemoteUrl && !hasRemoteConfig) {
       remoteAddress = savedRemoteUrl.replace(/^https?:\/\//, '').replace(/:8888\/?$/, '');
     }
 
@@ -163,35 +177,58 @@
       remoteError = "Enter a server address first";
       return;
     }
-
-    const url = `http://${address}:8888`;
-
-    // Phase 111: Save full config with PG credentials to remote-server.json
-    // The local backend reads this on startup and connects to admin's PostgreSQL.
-    // Frontend ALWAYS stays on localhost:8888 (own backend handles DB routing).
-    if (window.electronRemote) {
-      await window.electronRemote.setRemoteServer(JSON.stringify({
-        url,
-        pg_user: pgUser.trim() || 'locanext_service',
-        pg_password: pgPassword,
-        pg_db: pgDb.trim() || 'localizationtools',
-        pg_port: 5432
-      }));
+    if (!pgPassword.trim()) {
+      remoteError = "PostgreSQL password is required for LAN sync";
+      return;
     }
 
-    savedRemote = true;
-    logger.userAction("LAN sync config saved — restart app to apply", { url });
-    setTimeout(() => { savedRemote = false; }, 3000);
+    const url = `http://${address}:8888`;
+    savingRemote = true;
+    remoteError = null;
+
+    try {
+      if (window.electronRemote) {
+        const result = await window.electronRemote.setRemoteServer(JSON.stringify({
+          url,
+          pg_user: pgUser.trim() || 'locanext_service',
+          pg_password: pgPassword,
+          pg_db: pgDb.trim() || 'localizationtools',
+          pg_port: 5432
+        }));
+        if (!result?.success) {
+          remoteError = result?.error || "Failed to save config";
+          return;
+        }
+      }
+      hasRemoteConfig = true;
+      savedRemote = true;
+      logger.userAction("LAN sync config saved — restart app to apply", { url });
+      setTimeout(() => { savedRemote = false; }, 3000);
+    } catch (e) {
+      remoteError = `Failed to save: ${e.message}`;
+      logger.error("IPC error saving LAN config", e);
+    } finally {
+      savingRemote = false;
+    }
   }
 
   async function disconnectRemote() {
     localStorage.removeItem('locanext_remote_server');
 
-    // Clear Electron config — next restart will use local SQLite
-    if (window.electronRemote) {
-      await window.electronRemote.setRemoteServer(null);
+    try {
+      if (window.electronRemote) {
+        const result = await window.electronRemote.setRemoteServer(null);
+        if (!result?.success) {
+          remoteError = "Failed to remove config file";
+          return;
+        }
+      }
+    } catch (e) {
+      remoteError = `Disconnect failed: ${e.message}`;
+      return;
     }
 
+    hasRemoteConfig = false;
     remoteAddress = "";
     pgPassword = "";
     remoteTestResult = null;
@@ -329,6 +366,7 @@
             placeholder="192.168.1.100"
             size="sm"
             on:keydown={(e) => { if (e.key === 'Enter') testRemoteConnection(); }}
+            on:input={() => { remoteTestResult = null; }}
           />
         </div>
 
@@ -350,7 +388,7 @@
           >
             Save
           </Button>
-          {#if localStorage.getItem('locanext_remote_server')}
+          {#if hasRemoteConfig}
             <Button
               kind="danger-tertiary"
               size="small"

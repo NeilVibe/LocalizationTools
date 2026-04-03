@@ -408,7 +408,11 @@
     // Phase 111: Frontend ALWAYS talks to localhost:8888 (own local backend).
     // The backend handles DB routing internally via the factory pattern.
     // Clear any stale remote server URL from previous Option B behavior.
-    localStorage.removeItem('locanext_remote_server');
+    const staleRemote = localStorage.getItem('locanext_remote_server');
+    if (staleRemote) {
+      logger.info("Cleared stale remote server URL from localStorage (Phase 111)", { url: staleRemote });
+      localStorage.removeItem('locanext_remote_server');
+    }
 
     // Initialize global error monitoring
     remoteLogger.init();

@@ -57,7 +57,10 @@ try:
     from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
     from server.repositories.postgresql.capability_repo import PostgreSQLCapabilityRepository
     _PG_REPOS_AVAILABLE = True
-except ImportError:
+except ImportError as exc:
+    from loguru import logger as _pg_logger
+    _pg_logger.warning(f"PostgreSQL repositories unavailable ({exc}). "
+                       f"All DB requests will use SQLite. Install psycopg2-binary to fix.")
     _PG_REPOS_AVAILABLE = False
 
 
