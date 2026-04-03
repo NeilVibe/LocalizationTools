@@ -381,6 +381,7 @@ async def admin_create_user(
             department=user_data.department,
             must_change_password=user_data.must_change_password,
             created_by=admin["user_id"],
+            creator_role=admin.get("role"),
         )
     except ValueError as e:
         raise HTTPException(

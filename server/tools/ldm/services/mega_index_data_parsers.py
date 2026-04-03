@@ -271,9 +271,9 @@ class DataParsersMixin:
                 if root is None:
                     continue
 
-                # Relative path from export root
+                # Relative path from export root (Phase 110: normalize backslashes for Windows)
                 try:
-                    rel_dir = str(xml_path.relative_to(export_folder).parent)
+                    rel_dir = str(xml_path.relative_to(export_folder).parent).replace("\\", "/")
                 except ValueError:
                     rel_dir = ""
 
@@ -330,8 +330,9 @@ class DataParsersMixin:
                     )
 
                 # Also compute the relative directory for D20 (export_path category)
+                # Phase 110: normalize backslashes for Windows (MDG does this too)
                 try:
-                    rel_dir = str(xml_path.relative_to(export_folder).parent)
+                    rel_dir = str(xml_path.relative_to(export_folder).parent).replace("\\", "/")
                     if rel_dir == ".":
                         rel_dir = ""
                 except ValueError:

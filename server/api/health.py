@@ -74,6 +74,69 @@ async def get_detailed_health(
     return await service.get_detailed_health()
 
 
+@router.get("/server-health")
+async def get_server_health(
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Phase 110: Server & Database health info for StatusPage.
+
+    No auth required (same as /health). Returns DB type, version, connection, table count.
+    """
+    from sqlalchemy import text
+    from loguru import logger
+    import server.config as config
+
+    db_type = config.ACTIVE_DATABASE_TYPE
+    info = {
+        "database_type": db_type,
+        "database_version": None,
+        "connection_status": "unknown",
+        "table_count": 0,
+        "server_mode": config.get_user_config().get("server_mode", "standalone"),
+        "app_version": config.APP_VERSION,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        if db_type == "postgresql":
+            result = await db.execute(text("SELECT version()"))
+            row = result.scalar_one_or_none()
+            info["database_version"] = row or "unknown"
+
+            result = await db.execute(text(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            ))
+            info["table_count"] = result.scalar_one_or_none() or 0
+
+            result = await db.execute(text("SELECT pg_postmaster_start_time()"))
+            start_time = result.scalar_one_or_none()
+            if start_time:
+                info["uptime_since"] = start_time.isoformat()
+
+            result = await db.execute(text("SELECT pg_database_size(current_database())"))
+            db_size = result.scalar_one_or_none() or 0
+            info["database_size_mb"] = round(db_size / (1024 * 1024), 1)
+
+        else:
+            result = await db.execute(text("SELECT sqlite_version()"))
+            info["database_version"] = f"SQLite {result.scalar_one_or_none()}"
+
+            result = await db.execute(text(
+                "SELECT count(*) FROM sqlite_master WHERE type='table'"
+            ))
+            info["table_count"] = result.scalar_one_or_none() or 0
+
+        info["connection_status"] = "connected"
+        logger.info(f"[PHASE110:HEALTH] db={db_type} version={info['database_version']} tables={info['table_count']} connected=true")
+    except Exception as exc:
+        info["connection_status"] = "error"
+        info["error"] = str(exc)
+        logger.error(f"[PHASE110:HEALTH] db={db_type} connection error: {exc}")
+
+    return info
+
+
 @router.get("/ping")
 async def ping():
     """

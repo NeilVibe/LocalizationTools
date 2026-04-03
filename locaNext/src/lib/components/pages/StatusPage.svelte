@@ -3,6 +3,7 @@
   import { logger } from "$lib/utils/logger.js";
 
   let statusData = $state(null);
+  let serverHealth = $state(null);
   let loading = $state(true);
   let errorMsg = $state(null);
   let lastUpdated = $state(null);
@@ -11,11 +12,16 @@
     try {
       loading = true;
       const base = getApiBase();
-      const res = await fetch(`${base}/api/ldm/system-status`, {
-        headers: getAuthHeaders()
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      statusData = await res.json();
+      // Fetch both in parallel
+      const [sysRes, healthRes] = await Promise.all([
+        fetch(`${base}/api/ldm/system-status`, { headers: getAuthHeaders() }),
+        fetch(`${base}/api/health/server-health`, { headers: getAuthHeaders() }).catch(() => null),
+      ]);
+      if (!sysRes.ok) throw new Error(`HTTP ${sysRes.status}`);
+      statusData = await sysRes.json();
+      if (healthRes && healthRes.ok) {
+        serverHealth = await healthRes.json();
+      }
       lastUpdated = new Date();
       errorMsg = null;
     } catch (e) {
@@ -48,9 +54,9 @@
   /**
    * Build the card list from statusData.
    */
-  let cards = $derived(buildCards(statusData));
+  let cards = $derived(buildCards(statusData, serverHealth));
 
-  function buildCards(data) {
+  function buildCards(data, health) {
     if (!data) return [];
     const list = [];
 
@@ -66,6 +72,28 @@
           { label: "Platform", value: data.server.platform },
           { label: "Python", value: data.server.python_version },
         ]
+      });
+    }
+
+    // Phase 110: Server & Database Health (from /api/health/server-health)
+    if (health) {
+      const severity = health.connection_status === "connected" ? "success" : "error";
+      const details = [
+        { label: "Connection", value: health.connection_status },
+        { label: "Type", value: health.database_type },
+      ];
+      if (health.database_version) details.push({ label: "Version", value: health.database_version });
+      if (health.table_count) details.push({ label: "Tables", value: String(health.table_count) });
+      if (health.database_size_mb != null) details.push({ label: "Size", value: `${health.database_size_mb} MB` });
+      if (health.uptime_since) details.push({ label: "Uptime Since", value: new Date(health.uptime_since).toLocaleString() });
+      if (health.server_mode) details.push({ label: "Server Mode", value: health.server_mode });
+      if (health.error) details.push({ label: "Error", value: health.error });
+      list.push({
+        id: "server-health",
+        title: "Server & Database",
+        status: health.connection_status,
+        severity,
+        details
       });
     }
 

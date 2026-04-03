@@ -200,6 +200,7 @@ def get_current_user(token: str, db) -> Optional[dict]:
         lookup_username = "LOCAL" if user_id == "LOCAL" else "OFFLINE"
         offline_user = db.query(User).filter(User.username == lookup_username).first()
         if offline_user:
+            logger.debug(f"[PHASE110:AUTH] sync: {lookup_username} fallback → real user_id={offline_user.user_id} role={offline_user.role}")
             return {
                 "user_id": offline_user.user_id,
                 "username": offline_user.username,
@@ -211,19 +212,20 @@ def get_current_user(token: str, db) -> Optional[dict]:
                 "offline_mode": True
             }
         else:
-            logger.warning(f"{lookup_username} user not found in database - run db_setup to create it")
+            logger.warning(f"[PHASE110:AUTH] sync: {lookup_username} user not found in database - run db_setup to create it")
             return None
 
-    # Fetch user from database
+    # Fetch user from database — user_id should be integer from Phase 110 tokens
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
-        logger.warning(f"User {user_id} not found in database")
+        logger.warning(f"[PHASE110:AUTH] sync: user_id={user_id} (type={type(user_id).__name__}) not found in database")
         return None
 
     if not user.is_active:
-        logger.warning(f"User {user_id} is not active")
+        logger.warning(f"[PHASE110:AUTH] sync: user_id={user_id} is not active")
         return None
 
+    logger.debug(f"[PHASE110:AUTH] sync: user_id={user.user_id} username={user.username} role={user.role} OK")
     return {
         "user_id": user.user_id,
         "username": user.username,
@@ -275,6 +277,7 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
         result = await db.execute(select(User).where(User.username == lookup_username))
         offline_user = result.scalar_one_or_none()
         if offline_user:
+            logger.debug(f"[PHASE110:AUTH] async: {lookup_username} fallback → real user_id={offline_user.user_id} role={offline_user.role}")
             return {
                 "user_id": offline_user.user_id,
                 "username": offline_user.username,
@@ -286,21 +289,22 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
                 "offline_mode": True
             }
         else:
-            logger.warning(f"{lookup_username} user not found in database - run db_setup to create it")
+            logger.warning(f"[PHASE110:AUTH] async: {lookup_username} user not found in database - run db_setup to create it")
             return None
 
-    # Fetch user from database (AsyncSession with asyncpg or aiosqlite)
+    # Fetch user from database — user_id should be integer from Phase 110 tokens
     result = await db.execute(select(User).where(User.user_id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        logger.warning(f"User {user_id} not found in database")
+        logger.warning(f"[PHASE110:AUTH] async: user_id={user_id} (type={type(user_id).__name__}) not found in database")
         return None
 
     if not user.is_active:
-        logger.warning(f"User {user_id} is not active")
+        logger.warning(f"[PHASE110:AUTH] async: user_id={user_id} is not active")
         return None
 
+    logger.debug(f"[PHASE110:AUTH] async: user_id={user.user_id} username={user.username} role={user.role} OK")
     return {
         "user_id": user.user_id,
         "username": user.username,

@@ -211,6 +211,20 @@ async def get_audio_categories(
         categories = _build_category_tree(mega.event_to_export_path)
         total_events = len(mega.event_to_stringid)  # D11, matches list_audio source
 
+        # Phase 110: diagnostic logging for tree structure
+        def _max_depth(nodes, d=1):
+            if not nodes:
+                return d
+            return max(_max_depth(n.children, d + 1) for n in nodes)
+
+        depth = _max_depth(categories, 0) if categories else 0
+        sample_paths = list(mega.event_to_export_path.values())[:5]
+        logger.info(
+            f"[PHASE110:AUDIO] category tree: {len(categories)} roots, "
+            f"max_depth={depth}, total_events={total_events}, "
+            f"sample_paths={sample_paths}"
+        )
+
         return AudioCategoryTreeResponse(
             categories=categories,
             total_events=total_events,

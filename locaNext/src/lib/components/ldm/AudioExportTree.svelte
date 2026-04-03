@@ -17,7 +17,7 @@
     onselect = () => {},
   } = $props();
 
-  const AUTO_EXPAND_DEPTH = 0; // Start fully collapsed — user drills down by clicking
+  const AUTO_EXPAND_DEPTH = 2; // Phase 110: MDG-match — auto-expand first 2 levels
 
   // Track expanded nodes — auto-expand first N levels on mount
   let expandedPaths = $state(new Set());

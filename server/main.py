@@ -716,17 +716,35 @@ async def health_check(request: Request):
         "server_mode": _user_cfg.get("server_mode", "standalone"),
     }
 
-    # P33: Auto-token for SQLite offline mode
+    # Phase 110: Auto-token for SQLite offline mode — use real LOCAL user from DB
     # Local mode = no login required, full admin access
     if config.ACTIVE_DATABASE_TYPE == "sqlite":
         from server.utils.auth import create_access_token
+        from server.database.models import User
         response["local_mode"] = True
+
+        # Resolve real LOCAL user from DB for integer user_id
+        local_user_id = "LOCAL"
+        local_role = "admin"
+        try:
+            from server.utils.dependencies import _session_maker
+            if _session_maker:
+                with _session_maker() as sess:
+                    local_user = sess.query(User).filter(User.username == "LOCAL").first()
+                    if local_user:
+                        local_user_id = local_user.user_id
+                        local_role = local_user.role
+                        logger.debug(f"[PHASE110:TOKEN] health auto_token: resolved LOCAL user_id={local_user_id} role={local_role}")
+                    else:
+                        logger.warning("[PHASE110:TOKEN] health auto_token: LOCAL user not found in DB, using string fallback")
+        except Exception as exc:
+            logger.warning(f"[PHASE110:TOKEN] health auto_token: DB query failed ({exc}), using string fallback")
+
         response["auto_token"] = create_access_token({
-            "user_id": "LOCAL",
+            "user_id": local_user_id,
             "username": "LOCAL",
-            "role": "admin"
+            "role": local_role
         })
-        logger.debug("Health check: SQLite mode - auto_token provided for local access")
     else:
         response["local_mode"] = False
 
@@ -745,12 +763,15 @@ async def get_origin_admin_token(request: Request):
     """
     IP-Lock Admin: Issue admin JWT for localhost in LAN server mode.
 
+    Phase 110: Queries DB for real superadmin/admin user instead of synthetic "ORIGIN_ADMIN".
     This is a POST endpoint (not GET) to prevent caching.
     Only works from localhost (127.0.0.1 / ::1).
     Only works when server_mode=lan_server.
     """
     from starlette.responses import JSONResponse
     from server.utils.auth import create_access_token
+    from server.database.models import User
+    from server.utils.dependencies import get_async_db
 
     user_config = config.get_user_config()
 
@@ -764,13 +785,38 @@ async def get_origin_admin_token(request: Request):
         logger.warning(f"Origin admin token rejected for non-localhost IP: {client_ip}")
         return JSONResponse({"error": "Only available from localhost"}, status_code=403)
 
+    # Phase 110: Resolve real DB user — superadmin first, admin fallback, user_id=1 nuclear
+    resolved_user = None
+    try:
+        async for db in get_async_db():
+            from sqlalchemy import select
+            # Priority 1: superadmin
+            result = await db.execute(select(User).where(User.role == "superadmin").order_by(User.user_id).limit(1))
+            resolved_user = result.scalar_one_or_none()
+            if not resolved_user:
+                # Priority 2: admin
+                result = await db.execute(select(User).where(User.role == "admin").order_by(User.user_id).limit(1))
+                resolved_user = result.scalar_one_or_none()
+            if not resolved_user:
+                # Priority 3: nuclear fallback — user_id=1 (machine owner, always exists)
+                result = await db.execute(select(User).where(User.user_id == 1))
+                resolved_user = result.scalar_one_or_none()
+            break
+    except Exception as exc:
+        logger.error(f"[PHASE110:TOKEN] origin-admin-token DB query failed: {exc}")
+        return JSONResponse({"error": "Database error resolving admin user"}, status_code=500)
+
+    if not resolved_user:
+        logger.error("[PHASE110:TOKEN] origin-admin-token: NO users found in DB — db_setup may not have run")
+        return JSONResponse({"error": "No admin user found in database"}, status_code=500)
+
     token = create_access_token({
-        "user_id": "ORIGIN_ADMIN",
-        "username": "Origin Admin",
-        "role": "admin",
+        "user_id": resolved_user.user_id,  # Real integer user_id
+        "username": resolved_user.username,
+        "role": resolved_user.role,
         "origin_admin": True,
     })
-    logger.info("Origin admin token issued via IP-lock (localhost)")
+    logger.info(f"[PHASE110:TOKEN] origin-admin-token: resolved user_id={resolved_user.user_id} username={resolved_user.username} role={resolved_user.role}")
 
     return JSONResponse(
         {"admin_token": token},

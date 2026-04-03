@@ -361,6 +361,7 @@
             <select id="role" bind:value={createForm.role}>
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option value="superadmin">Superadmin</option>
             </select>
           </div>
         </div>
@@ -419,6 +420,7 @@
             <select id="edit_role" bind:value={editForm.role}>
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option value="superadmin">Superadmin</option>
             </select>
           </div>
         </div>

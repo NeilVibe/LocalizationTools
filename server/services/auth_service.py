@@ -24,8 +24,11 @@ from server.database.models import User
 from server.utils.auth import hash_password, verify_password
 
 
-# Valid user roles
-VALID_ROLES = ["user", "admin"]
+# Valid user roles — Phase 110: added superadmin tier
+VALID_ROLES = ["user", "admin", "superadmin"]
+
+# Role hierarchy for permission checks
+ROLE_HIERARCHY = {"user": 0, "admin": 1, "superadmin": 2}
 
 
 class AuthService:
@@ -216,6 +219,7 @@ class AuthService:
         department: str | None = None,
         must_change_password: bool = False,
         created_by: int | None = None,
+        creator_role: str | None = None,
     ) -> User:
         """
         Admin creates a user with full profile fields.
@@ -241,6 +245,11 @@ class AuthService:
         # Validate role
         if role not in VALID_ROLES:
             raise ValueError(f"Invalid role. Must be one of: {VALID_ROLES}")
+
+        # Phase 110: Only superadmin can assign superadmin role
+        if role == "superadmin" and creator_role != "superadmin":
+            logger.warning(f"[PHASE110:ROLE] Non-superadmin (role={creator_role}) tried to create superadmin user '{username}'")
+            raise ValueError("Only superadmin can assign superadmin role")
 
         new_user = User(
             username=username,
@@ -300,8 +309,15 @@ class AuthService:
         if new_role and new_role not in VALID_ROLES:
             raise ValueError(f"Invalid role. Must be one of: {VALID_ROLES}")
 
+        # Phase 110: Only superadmin can assign/change to superadmin role
+        if new_role == "superadmin":
+            admin = await self.get_user_by_id(admin_user_id)
+            if not admin or admin.role != "superadmin":
+                logger.warning(f"[PHASE110:ROLE] Non-superadmin (user_id={admin_user_id}) tried to set superadmin on user_id={user_id}")
+                raise ValueError("Only superadmin can assign superadmin role")
+
         # Prevent admin from demoting themselves
-        if user.user_id == admin_user_id and new_role == "user":
+        if user.user_id == admin_user_id and new_role and ROLE_HIERARCHY.get(new_role, 0) < ROLE_HIERARCHY.get(user.role, 0):
             raise ValueError("Cannot demote your own account")
 
         # Apply updates
@@ -321,7 +337,7 @@ class AuthService:
 
         Raises:
             LookupError: If user not found.
-            ValueError: If admin tries to delete themselves.
+            ValueError: If admin tries to delete themselves or user_id=1.
         """
         user = await self.get_user_by_id(user_id)
         if not user:
@@ -329,6 +345,11 @@ class AuthService:
 
         if user.user_id == admin_user_id:
             raise ValueError("Cannot delete your own account")
+
+        # Phase 110: user_id=1 is the machine owner, cannot be deleted
+        if user.user_id == 1:
+            logger.warning(f"[PHASE110:ROLE] Attempt to delete protected user_id=1 (machine owner) by admin_user_id={admin_user_id}")
+            raise ValueError("Cannot delete the machine owner account (user_id=1)")
 
         user.is_active = False
         await self.db.commit()

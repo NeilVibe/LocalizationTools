@@ -559,7 +559,6 @@ def setup_database(
         # Works for both SQLite and PostgreSQL backends - user role for Offline Storage only
         existing_offline = SessionLocal.query(User).filter(User.username == "OFFLINE").first()
         if not existing_offline:
-            logger.info("Creating OFFLINE user for offline mode...")
             offline_user = User(
                 username="OFFLINE",
                 email="offline@localhost",
@@ -570,17 +569,17 @@ def setup_database(
             )
             SessionLocal.add(offline_user)
             SessionLocal.commit()
-            logger.success(f"OFFLINE user created (user_id={offline_user.user_id}) - launcher offline mode enabled")
+            logger.info(f"[PHASE110:SEED] OFFLINE user_id={offline_user.user_id} role=user (created)")
         else:
             # P9: Ensure existing OFFLINE user has correct role (not admin)
-            if existing_offline.role == "admin":
+            if existing_offline.role != "user":
                 existing_offline.role = "user"
                 SessionLocal.commit()
-                logger.info(f"OFFLINE user role updated to 'user' (user_id={existing_offline.user_id})")
+                logger.info(f"[PHASE110:SEED] OFFLINE user_id={existing_offline.user_id} role updated to 'user'")
             else:
-                logger.info(f"OFFLINE user already exists (user_id={existing_offline.user_id})")
+                logger.info(f"[PHASE110:SEED] OFFLINE user_id={existing_offline.user_id} role=user (exists)")
 
-        # Seed default admin user (for login via LocaNext app)
+        # Phase 110: Seed default admin as SUPERADMIN (machine owner, user_id=1)
         # Uses DEFAULT_ADMIN_USERNAME/PASSWORD from config.py
         # Lazy import: bcrypt failure must not crash entire db_setup
         try:
@@ -588,22 +587,27 @@ def setup_database(
 
             existing_admin = SessionLocal.query(User).filter(User.username == config.DEFAULT_ADMIN_USERNAME).first()
             if not existing_admin:
-                logger.info("Creating default admin user...")
                 admin_user = User(
                     username=config.DEFAULT_ADMIN_USERNAME,
                     email=config.DEFAULT_ADMIN_EMAIL,
                     password_hash=hash_password(config.DEFAULT_ADMIN_PASSWORD),
                     full_name="Administrator",
-                    role="admin",
+                    role="superadmin",  # Phase 110: machine owner gets superadmin
                     is_active=True
                 )
                 SessionLocal.add(admin_user)
                 SessionLocal.commit()
-                logger.success(f"Admin user '{config.DEFAULT_ADMIN_USERNAME}' created (user_id={admin_user.user_id})")
+                logger.info(f"[PHASE110:SEED] admin user_id={admin_user.user_id} role=superadmin (created)")
             else:
-                logger.info(f"Admin user '{config.DEFAULT_ADMIN_USERNAME}' already exists (user_id={existing_admin.user_id})")
+                # Phase 110: Ensure existing admin has superadmin role
+                if existing_admin.role != "superadmin":
+                    existing_admin.role = "superadmin"
+                    SessionLocal.commit()
+                    logger.info(f"[PHASE110:SEED] admin user_id={existing_admin.user_id} role upgraded to superadmin")
+                else:
+                    logger.info(f"[PHASE110:SEED] admin user_id={existing_admin.user_id} role=superadmin (exists)")
         except Exception as exc:
-            logger.error(f"Failed to create admin user: {exc}. Database is ready but admin login won't work.")
+            logger.error(f"[PHASE110:SEED] Failed to create admin user: {exc}. Database is ready but admin login won't work.")
             try:
                 SessionLocal.rollback()
             except Exception:
@@ -613,7 +617,6 @@ def setup_database(
         if use_sqlite:
             existing_local = SessionLocal.query(User).filter(User.username == "LOCAL").first()
             if not existing_local:
-                logger.info("Creating LOCAL user for SQLite offline mode...")
                 local_user = User(
                     username="LOCAL",
                     email="local@localhost",
@@ -623,9 +626,9 @@ def setup_database(
                 )
                 SessionLocal.add(local_user)
                 SessionLocal.commit()
-                logger.success("LOCAL user created for offline mode (auto-login enabled)")
+                logger.info(f"[PHASE110:SEED] LOCAL user_id={local_user.user_id} role=admin (sqlite, created)")
             else:
-                logger.info("LOCAL user already exists")
+                logger.info(f"[PHASE110:SEED] LOCAL user_id={existing_local.user_id} role={existing_local.role} (sqlite, exists)")
     finally:
         SessionLocal.close()
 
