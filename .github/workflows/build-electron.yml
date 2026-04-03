@@ -1209,11 +1209,11 @@ jobs:
 
           Write-Host "[OK] Found installer: $($installer.Name)"
 
-          # Rename to include version (and Light suffix if light mode)
+          # Rename to include version and build type
           if ($env:LIGHT_MODE -eq "yes") {
             $newName = "LocaNext_v${version}_User_Setup.exe"
           } else {
-            $newName = "LocaNext_v${version}_Setup.exe"
+            $newName = "LocaNext_v${version}_Admin_Setup.exe"
           }
           Copy-Item $installer.FullName -Destination "$outDir\$newName"
 
