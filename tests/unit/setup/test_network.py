@@ -63,8 +63,11 @@ class TestGetSubnet:
     def test_another_ip(self):
         assert get_subnet("10.0.5.42") == "10.0.5.0/24"
 
-    def test_invalid_ip_returns_wildcard(self):
-        assert get_subnet("not-an-ip") == "0.0.0.0/0"
+    def test_invalid_ip_returns_none(self):
+        assert get_subnet("not-an-ip") is None
 
     def test_empty_string(self):
-        assert get_subnet("") == "0.0.0.0/0"
+        assert get_subnet("") is None
+
+    def test_loopback_returns_none(self):
+        assert get_subnet("127.0.0.1") is None
