@@ -559,7 +559,7 @@ class TestAdminUserManagement:
             json={
                 "username": "test_invalid_role",
                 "password": "testpass123",
-                "role": "superadmin"  # Invalid role
+                "role": "megaboss"  # Invalid role (superadmin is valid since Phase 110)
             }
         )
         assert response.status_code == 400
