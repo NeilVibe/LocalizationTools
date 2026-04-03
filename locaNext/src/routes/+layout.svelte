@@ -21,6 +21,7 @@
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import ServerSettingsModal from "$lib/components/ServerSettingsModal.svelte";
+  import BranchDriveSettingsModal from "$lib/components/BranchDriveSettingsModal.svelte";
   import MergeModal from "$lib/components/ldm/MergeModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
@@ -47,6 +48,7 @@
   let showAbout = $state(false);
   let showPreferences = $state(false);
   let showServerSettings = $state(false);
+  let showBranchDrive = $state(false);
   // Phase 59: Merge modal state
   let showMergeModal = $state(false);
   let mergeMultiLanguage = $state(false);
@@ -271,6 +273,12 @@
   function openServerSettings() {
     logger.userAction("Server settings modal opened");
     showServerSettings = true;
+    isSettingsMenuOpen = false;
+  }
+
+  function openBranchDrive() {
+    logger.userAction("Branch/Drive settings opened");
+    showBranchDrive = true;
     isSettingsMenuOpen = false;
   }
 
@@ -650,6 +658,9 @@
             <button class="compact-dropdown-item" onclick={openPreferences}>
               Preferences
             </button>
+            <button class="compact-dropdown-item" onclick={openBranchDrive}>
+              Perforce Branch &amp; Drive
+            </button>
             <button class="compact-dropdown-item" onclick={openServerSettings}>
               Server Connection
             </button>
@@ -704,6 +715,7 @@
 
   <!-- Server Settings Modal (OUTSIDE auth gate — accessible from Launcher pre-login) -->
   <ServerSettingsModal bind:open={showServerSettings} />
+  <BranchDriveSettingsModal bind:open={showBranchDrive} />
 </Theme>
 
 <style>

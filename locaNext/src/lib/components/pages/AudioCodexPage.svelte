@@ -20,7 +20,7 @@
 
   const API_BASE = getApiBase();
 
-  // ── Tree panel resize ──
+  // ── Tree panel resize (left) ──
   let treeWidth = $state(280);
   let isTreeResizing = $state(false);
   let treeResizeStartX = $state(0);
@@ -45,6 +45,34 @@
     isTreeResizing = false;
     document.removeEventListener('mousemove', handleTreeResize);
     document.removeEventListener('mouseup', stopTreeResize);
+  }
+
+  // ── Player panel resize (right) ──
+  let playerWidth = $state(340);
+  let isPlayerResizing = $state(false);
+  let playerResizeStartX = $state(0);
+  let playerResizeStartWidth = $state(0);
+
+  function startPlayerResize(event) {
+    event.preventDefault();
+    isPlayerResizing = true;
+    playerResizeStartX = event.clientX;
+    playerResizeStartWidth = playerWidth;
+    document.addEventListener('mousemove', handlePlayerResize);
+    document.addEventListener('mouseup', stopPlayerResize);
+  }
+
+  function handlePlayerResize(event) {
+    if (!isPlayerResizing) return;
+    // Dragging LEFT = bigger panel (negative delta = wider)
+    const delta = playerResizeStartX - event.clientX;
+    playerWidth = Math.max(200, Math.min(600, playerResizeStartWidth + delta));
+  }
+
+  function stopPlayerResize() {
+    isPlayerResizing = false;
+    document.removeEventListener('mousemove', handlePlayerResize);
+    document.removeEventListener('mouseup', stopPlayerResize);
   }
 
   // ── State ──
@@ -376,7 +404,7 @@
       <InlineLoading description="Loading audio categories..." />
     </div>
   {:else}
-    <div class="three-panel" class:tree-resizing={isTreeResizing}>
+    <div class="three-panel" class:tree-resizing={isTreeResizing} class:player-resizing={isPlayerResizing}>
       <!-- LEFT: Export Tree -->
       <div style="width: {treeWidth}px; flex-shrink: 0;">
         <AudioExportTree
@@ -405,7 +433,12 @@
         />
       {/if}
 
+      <!-- Resize handle between grid and player -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="player-resize-handle" onmousedown={startPlayerResize}></div>
+
       <!-- RIGHT: Audio Player Panel (MDG audio_viewer.py layout) -->
+      <div style="width: {playerWidth}px; flex-shrink: 0;">
       <AudioPlayerPanel
         audio={selectedAudio}
         playing={playingEvent != null}
@@ -418,6 +451,7 @@
         onnext={handleNext}
         oncleanup={handleCleanup}
       />
+      </div>
     </div>
   {/if}
 </div>
@@ -557,9 +591,27 @@
     background: var(--cds-interactive-01, #0f62fe);
   }
 
-  .three-panel.tree-resizing {
+  .three-panel.tree-resizing,
+  .three-panel.player-resizing {
     cursor: col-resize;
     user-select: none;
+  }
+
+  .player-resize-handle {
+    width: 5px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    border-left: 1px solid var(--cds-border-subtle-01);
+    transition: background 0.15s;
+  }
+
+  .player-resize-handle:hover {
+    background: var(--cds-interactive-01, #0f62fe);
+  }
+
+  .three-panel.player-resizing .player-resize-handle {
+    background: var(--cds-interactive-01, #0f62fe);
   }
 
   .three-panel.tree-resizing .tree-resize-handle {
