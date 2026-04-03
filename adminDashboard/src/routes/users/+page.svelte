@@ -95,7 +95,12 @@
   async function createUser() {
     try {
       formError = null;
-      await adminAPI.adminCreateUser(createForm);
+      // Convert empty strings to null for optional fields (Pydantic rejects "" as email)
+      const payload = { ...createForm };
+      for (const key of ['email', 'full_name', 'team', 'language', 'department']) {
+        if (payload[key] === '') payload[key] = null;
+      }
+      await adminAPI.adminCreateUser(payload);
       showCreateModal = false;
       formSuccess = 'User created successfully';
       await loadUsers();

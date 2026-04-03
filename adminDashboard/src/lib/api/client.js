@@ -60,7 +60,14 @@ class AdminAPIClient {
       const response = await fetch(url, config);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        // Handle FastAPI validation errors (detail is array) and string errors
+        let message;
+        if (Array.isArray(error.detail)) {
+          message = error.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+        } else {
+          message = error.detail || `HTTP ${response.status}`;
+        }
+        throw new Error(message);
       }
       return await response.json();
     } catch (error) {
