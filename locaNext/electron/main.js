@@ -824,16 +824,29 @@ ipcMain.handle('get-remote-server', async () => {
   return null;
 });
 
-ipcMain.handle('set-remote-server', async (event, url) => {
+ipcMain.handle('set-remote-server', async (event, configOrUrl) => {
   const configPath = path.join(app.getPath('userData'), 'remote-server.json');
   try {
-    if (url) {
-      // Validate URL format — only allow http/https
-      if (!/^https?:\/\/[\w\d.\-]+(:\d+)?$/.test(url)) {
-        return { success: false, error: 'Invalid URL format — must be http://host or http://host:port' };
+    if (configOrUrl) {
+      // Phase 111: Accept full config object (with PG creds) or legacy URL string
+      let config;
+      if (typeof configOrUrl === 'string' && configOrUrl.startsWith('{')) {
+        // JSON string from ServerSettingsModal (Phase 111 format)
+        config = JSON.parse(configOrUrl);
+      } else if (typeof configOrUrl === 'string') {
+        // Legacy URL string — validate format
+        if (!/^https?:\/\/[\w\d.\-]+(:\d+)?$/.test(configOrUrl)) {
+          return { success: false, error: 'Invalid URL format — must be http://host or http://host:port' };
+        }
+        config = { url: configOrUrl };
+      } else if (typeof configOrUrl === 'object') {
+        config = configOrUrl;
+      } else {
+        return { success: false, error: 'Invalid config format' };
       }
-      fs.writeFileSync(configPath, JSON.stringify({ url, updated: new Date().toISOString() }), 'utf8');
-      logger.info('Remote server config saved', { url });
+      config.updated = new Date().toISOString();
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+      logger.info('Remote server config saved', { url: config.url, hasPassword: !!config.pg_password });
     } else {
       if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
       logger.info('Remote server config cleared');
@@ -1548,63 +1561,46 @@ app.whenReady().then(async () => {
     updateSplash('Starting...', 40);
   }
 
-  // Option B: Check for remote server configuration (Light Build)
-  // If light mode + remote server configured, skip local backend
+  // Option B: LAN Mode — read remote server config for PostgreSQL credentials
+  // ARCHITECTURE: Each user ALWAYS runs their own local backend.
+  // Heavy processing (GameData, MegaIndex, Codex, Audio, etc.) runs locally.
+  // Only DB sync (language data, TM, users) goes to the shared PostgreSQL.
+  // See: docs/architecture/CLIENT_SERVER_PROCESSING.md
   const remoteConfigPath = path.join(app.getPath('userData'), 'remote-server.json');
-  let useRemoteServer = false;
-  let remoteServerUrl = null;
 
   if (process.env.LOCANEXT_LIGHT_MODE === '1') {
     try {
       if (fs.existsSync(remoteConfigPath)) {
         const remoteConfig = JSON.parse(fs.readFileSync(remoteConfigPath, 'utf8'));
         if (remoteConfig.url) {
-          remoteServerUrl = remoteConfig.url;
-          logger.info('Remote server configured (Light Build)', { url: remoteServerUrl });
-          updateSplash('Connecting to server...', 50);
-
-          // Test remote server
-          try {
-            const testResult = await Promise.race([
-              new Promise((resolve, reject) => {
-                const req = http.get(`${remoteServerUrl}/health`, { timeout: 5000 }, (res) => {
-                  let data = '';
-                  res.on('data', chunk => data += chunk);
-                  res.on('end', () => resolve({ ok: res.statusCode === 200, data }));
-                }).on('error', reject);
-                req.on('timeout', () => { req.destroy(); reject(new Error('Connection timed out')); });
-              }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timed out')), 8000))
-            ]);
-            if (testResult.ok) {
-              useRemoteServer = true;
-              logger.success('Remote server reachable', { url: remoteServerUrl });
-              updateSplash('Server connected!', 60);
-            } else {
-              logger.warning('Remote server unhealthy, falling back to local backend');
-            }
-          } catch (e) {
-            logger.warning('Remote server unreachable, falling back to local backend', { error: e.message });
-          }
+          // Extract admin's hostname for PostgreSQL connection
+          const remoteHost = new URL(remoteConfig.url).hostname;
+          process.env.POSTGRES_HOST = remoteHost;
+          process.env.POSTGRES_PORT = String(remoteConfig.pg_port || 5432);
+          process.env.POSTGRES_USER = remoteConfig.pg_user || 'locanext_service';
+          process.env.POSTGRES_PASSWORD = remoteConfig.pg_password || '';
+          process.env.POSTGRES_DB = remoteConfig.pg_db || 'localizationtools';
+          process.env.DATABASE_MODE = 'auto';  // Try PG first, fallback to SQLite
+          logger.info('LAN mode: local backend will sync to remote PostgreSQL', {
+            host: remoteHost,
+            port: process.env.POSTGRES_PORT,
+            db: process.env.POSTGRES_DB
+          });
+          updateSplash('Configuring LAN sync...', 50);
         }
       }
     } catch (e) {
-      logger.warning('Failed to read remote config', { error: e.message });
+      logger.warning('Failed to read remote config — backend will use local SQLite', { error: e.message });
     }
   }
 
-  if (useRemoteServer) {
-    // Skip local backend — frontend will connect to remote server
-    logger.info('Using remote server, skipping local backend startup');
-    updateSplash('Connected to remote server', 70);
-  } else {
-    // Start local backend server (normal flow)
+  // ALWAYS start local backend (every user runs their own)
+  {
     updateSplash('Starting backend server...', 50);
     const serverReady = await startBackendServer();
     if (!serverReady && !isDev) {
       logger.error('Failed to start backend server - app may not function correctly');
       closeSplash();
-      // Show error dialog to user
       dialog.showErrorBox(
         'Backend Server Error',
         'Failed to start the backend server. The application may not function correctly.\n\n' +

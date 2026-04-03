@@ -28,13 +28,17 @@
   // Light mode = localStorage flag OR no local backend responding on localhost
   let isLightMode = $state(false);
 
-  // === Light Mode State (Option B) ===
+  // === Light Mode State (LAN sync) ===
   let remoteAddress = $state("");
   let testingRemote = $state(false);
   let remoteTestResult = $state(null);
   let savingRemote = $state(false);
   let savedRemote = $state(false);
   let remoteError = $state(null);
+  // PG credentials for LAN sync (backend connects to admin's PostgreSQL)
+  let pgUser = $state("locanext_service");
+  let pgPassword = $state("");
+  let pgDb = $state("localizationtools");
   let remoteServerInfo = $state(null); // {version, server_mode, database_type}
 
   // === Admin Mode State (PG config) ===
@@ -161,33 +165,39 @@
     }
 
     const url = `http://${address}:8888`;
-    localStorage.setItem('locanext_remote_server', url);
-    api.setBaseURL(url);
 
-    // Also persist to Electron's userData for main process (skip backend on next launch)
+    // Phase 111: Save full config with PG credentials to remote-server.json
+    // The local backend reads this on startup and connects to admin's PostgreSQL.
+    // Frontend ALWAYS stays on localhost:8888 (own backend handles DB routing).
     if (window.electronRemote) {
-      await window.electronRemote.setRemoteServer(url);
+      await window.electronRemote.setRemoteServer(JSON.stringify({
+        url,
+        pg_user: pgUser.trim() || 'locanext_service',
+        pg_password: pgPassword,
+        pg_db: pgDb.trim() || 'localizationtools',
+        pg_port: 5432
+      }));
     }
 
     savedRemote = true;
-    logger.userAction("Remote server saved", { url });
+    logger.userAction("LAN sync config saved — restart app to apply", { url });
     setTimeout(() => { savedRemote = false; }, 3000);
   }
 
   async function disconnectRemote() {
     localStorage.removeItem('locanext_remote_server');
-    api.setBaseURL('http://localhost:8888');
 
-    // Clear Electron config too
+    // Clear Electron config — next restart will use local SQLite
     if (window.electronRemote) {
       await window.electronRemote.setRemoteServer(null);
     }
 
     remoteAddress = "";
+    pgPassword = "";
     remoteTestResult = null;
     remoteServerInfo = null;
     savedRemote = false;
-    logger.userAction("Disconnected from remote server");
+    logger.userAction("LAN sync disconnected — restart app to use local mode");
   }
 
   // === Admin Mode Functions ===

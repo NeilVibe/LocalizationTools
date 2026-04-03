@@ -405,23 +405,10 @@
   });
 
   onMount(() => {
-    // Option B: Restore saved remote server URL BEFORE any API calls
-    const savedServer = localStorage.getItem('locanext_remote_server');
-    if (savedServer) {
-      try {
-        const parsed = new URL(savedServer);
-        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-          api.setBaseURL(savedServer);
-          logger.info("Remote server restored from localStorage", { url: savedServer });
-        } else {
-          logger.warning("Invalid remote server URL protocol — ignoring", { url: savedServer });
-          localStorage.removeItem('locanext_remote_server');
-        }
-      } catch {
-        logger.warning("Malformed remote server URL — clearing", { url: savedServer });
-        localStorage.removeItem('locanext_remote_server');
-      }
-    }
+    // Phase 111: Frontend ALWAYS talks to localhost:8888 (own local backend).
+    // The backend handles DB routing internally via the factory pattern.
+    // Clear any stale remote server URL from previous Option B behavior.
+    localStorage.removeItem('locanext_remote_server');
 
     // Initialize global error monitoring
     remoteLogger.init();

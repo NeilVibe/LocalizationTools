@@ -8,6 +8,7 @@ save inline edits back to XML files.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 
@@ -149,7 +150,7 @@ async def browse_gamedata(
 
     try:
         svc = GameDataBrowseService(base_dir=base_dir)
-        root_node = svc.scan_folder(browse_path, max_depth=request.max_depth)
+        root_node = await asyncio.to_thread(svc.scan_folder, browse_path, request.max_depth)
     except ValueError as e:
         logger.warning(f"[GameData API] Path traversal attempt: {e}")
         raise HTTPException(status_code=403, detail=str(e))
@@ -215,7 +216,7 @@ async def detect_columns(
 
     try:
         svc = GameDataBrowseService(base_dir=base_dir)
-        result = svc.detect_columns(request.xml_path)
+        result = await asyncio.to_thread(svc.detect_columns, request.xml_path)
     except ValueError as e:
         logger.warning(f"[GameData API] Path traversal attempt: {e}")
         raise HTTPException(status_code=403, detail=str(e))
@@ -250,11 +251,9 @@ async def save_gamedata(
 
     try:
         svc = GameDataEditService(base_dir=base_dir)
-        success = svc.update_entity_attribute(
-            xml_path=request.xml_path,
-            entity_index=request.entity_index,
-            attr_name=request.attr_name,
-            new_value=request.new_value,
+        success = await asyncio.to_thread(
+            svc.update_entity_attribute,
+            request.xml_path, request.entity_index, request.attr_name, request.new_value,
         )
     except ValueError as e:
         logger.warning(f"[GameData API] Invalid request: {e}")
@@ -314,7 +313,7 @@ async def get_gamedata_rows(
         )
 
     # --- parse XML (sanitized + virtual root + dual-pass) ----------------
-    root = sanitize_and_parse(resolved)
+    root = await asyncio.to_thread(sanitize_and_parse, resolved)
     if root is None:
         raise HTTPException(
             status_code=422,
