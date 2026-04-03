@@ -2,6 +2,7 @@
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
+  import { base } from '$app/paths';
   import { websocket } from '$lib/api/websocket.js';
   import adminAPI from '$lib/api/client.js';
   import { Dashboard, UserMultiple, Activity, ChartLine, Trophy, Search, Logout, WatsonHealthStackedScrolling_1 as Telemetry, DataBase, Meter } from 'carbon-icons-svelte';
@@ -125,9 +126,9 @@
     <nav style="padding: 1rem 0; flex: 1;">
       {#each navItems as item}
         <a
-          href={item.href}
+          href="{base}{item.href}"
           class="nav-link"
-          class:active={$page.url.pathname === item.href}
+          class:active={$page.url.pathname === `${base}${item.href}`}
         >
           <svelte:component this={item.icon} size={20} />
           {item.label}
