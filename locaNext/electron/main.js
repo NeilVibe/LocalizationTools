@@ -1561,37 +1561,35 @@ app.whenReady().then(async () => {
     updateSplash('Starting...', 40);
   }
 
-  // Option B: LAN Mode — read remote server config for PostgreSQL credentials
-  // ARCHITECTURE: Each user ALWAYS runs their own local backend.
-  // Heavy processing (GameData, MegaIndex, Codex, Audio, etc.) runs locally.
-  // Only DB sync (language data, TM, users) goes to the shared PostgreSQL.
+  // LAN Mode: Read PG credentials from remote-server.json (saved by ServerSettingsModal)
+  // Each user runs their own backend. PG creds let it connect to Admin's shared PostgreSQL.
+  // Heavy processing stays local. Only DB sync uses the shared PG.
   // See: docs/architecture/CLIENT_SERVER_PROCESSING.md
   const remoteConfigPath = path.join(app.getPath('userData'), 'remote-server.json');
 
-  if (process.env.LOCANEXT_LIGHT_MODE === '1') {
-    try {
-      if (fs.existsSync(remoteConfigPath)) {
-        const remoteConfig = JSON.parse(fs.readFileSync(remoteConfigPath, 'utf8'));
-        if (remoteConfig.url) {
-          // Extract admin's hostname for PostgreSQL connection
-          const remoteHost = new URL(remoteConfig.url).hostname;
-          process.env.POSTGRES_HOST = remoteHost;
-          process.env.POSTGRES_PORT = String(remoteConfig.pg_port || 5432);
-          process.env.POSTGRES_USER = remoteConfig.pg_user || 'locanext_service';
-          process.env.POSTGRES_PASSWORD = remoteConfig.pg_password || '';
-          process.env.POSTGRES_DB = remoteConfig.pg_db || 'localizationtools';
-          process.env.DATABASE_MODE = 'auto';  // Try PG first, fallback to SQLite
-          logger.info('LAN mode: local backend will sync to remote PostgreSQL', {
-            host: remoteHost,
-            port: process.env.POSTGRES_PORT,
-            db: process.env.POSTGRES_DB
-          });
-          updateSplash('Configuring LAN sync...', 50);
-        }
+  try {
+    if (fs.existsSync(remoteConfigPath)) {
+      const remoteConfig = JSON.parse(fs.readFileSync(remoteConfigPath, 'utf8'));
+      if (remoteConfig.pg_host && remoteConfig.pg_password) {
+        // PG credentials available — backend will connect to shared PostgreSQL
+        process.env.POSTGRES_HOST = remoteConfig.pg_host;
+        process.env.POSTGRES_PORT = String(remoteConfig.pg_port || 5432);
+        process.env.POSTGRES_USER = remoteConfig.pg_user || 'locanext_service';
+        process.env.POSTGRES_PASSWORD = remoteConfig.pg_password;
+        process.env.POSTGRES_DB = remoteConfig.pg_db || 'localizationtools';
+        process.env.DATABASE_MODE = 'auto';
+        logger.info('LAN mode: backend will connect to shared PostgreSQL', {
+          host: remoteConfig.pg_host,
+          port: process.env.POSTGRES_PORT,
+          db: process.env.POSTGRES_DB
+        });
+        updateSplash('Connecting to shared database...', 50);
+      } else if (remoteConfig.url) {
+        logger.info('Remote server URL configured but no PG credentials — configure in Settings');
       }
-    } catch (e) {
-      logger.warning('Failed to read remote config — backend will use local SQLite', { error: e.message });
     }
+  } catch (e) {
+    logger.warning('Failed to read remote config', { error: e.message });
   }
 
   // ALWAYS start local backend (every user runs their own)

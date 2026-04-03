@@ -147,6 +147,28 @@ async def get_server_status(_user=Depends(get_current_active_user_async)):
     )
 
 
+@router.get("/lan-credentials")
+async def get_lan_credentials(_user=Depends(get_current_active_user_async)):
+    """Return PG connection details for LAN users to connect their own backend.
+
+    Only available when server_mode=lan_server. Returns full credentials
+    so the User Build's backend can connect directly to the shared PostgreSQL.
+    """
+    user_config = config.get_user_config()
+    if user_config.get("server_mode") != "lan_server":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Server is not in LAN mode. Enable LAN mode in the setup wizard first."
+        )
+    return {
+        "postgres_host": _get_lan_ip() or config.POSTGRES_HOST,
+        "postgres_port": config.POSTGRES_PORT,
+        "postgres_user": config.POSTGRES_USER,
+        "postgres_password": config.POSTGRES_PASSWORD,
+        "postgres_db": config.POSTGRES_DB,
+    }
+
+
 @router.get("/config")
 async def get_server_config(_user=Depends(get_current_active_user_async)):
     """Get current server connection configuration (passwords redacted)."""

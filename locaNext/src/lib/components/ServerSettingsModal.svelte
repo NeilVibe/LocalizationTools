@@ -35,11 +35,11 @@
   let savingRemote = $state(false);
   let savedRemote = $state(false);
   let remoteError = $state(null);
-  // PG credentials for LAN sync (backend connects to admin's PostgreSQL)
-  let pgUser = $state("locanext_service");
-  let pgPassword = $state("");
-  let pgDb = $state("localizationtools");
-  let hasRemoteConfig = $state(false);  // Whether remote-server.json exists (for Disconnect button)
+  let hasRemoteConfig = $state(false);
+  // LAN login (to fetch PG creds from Admin's server automatically)
+  let lanUsername = $state("");
+  let lanPassword = $state("");
+  let connecting = $state(false);
   let remoteServerInfo = $state(null); // {version, server_mode, database_type}
 
   // === Admin Mode State (PG config) ===
@@ -171,44 +171,75 @@
     }
   }
 
-  async function saveRemoteServer() {
+  async function connectToServer() {
     const address = remoteAddress.trim();
-    if (!address) {
-      remoteError = "Enter a server address first";
-      return;
-    }
-    if (!pgPassword.trim()) {
-      remoteError = "PostgreSQL password is required for LAN sync";
+    if (!address) { remoteError = "Enter a server address first"; return; }
+    if (!lanUsername.trim() || !lanPassword.trim()) {
+      remoteError = "Enter your username and password to connect";
       return;
     }
 
     const url = `http://${address}:8888`;
-    savingRemote = true;
+    connecting = true;
     remoteError = null;
 
     try {
+      // 1. Login to Admin's server
+      const loginRes = await fetch(`${url}/api/v2/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: lanUsername.trim(), password: lanPassword }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!loginRes.ok) {
+        const err = await loginRes.json().catch(() => ({}));
+        remoteError = err.detail || `Login failed (HTTP ${loginRes.status})`;
+        return;
+      }
+      const loginData = await loginRes.json();
+      const token = loginData.access_token;
+      if (!token) { remoteError = "Login succeeded but no token received"; return; }
+
+      // 2. Fetch PG credentials from Admin's server
+      const credRes = await fetch(`${url}/api/server-config/lan-credentials`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!credRes.ok) {
+        const err = await credRes.json().catch(() => ({}));
+        remoteError = err.detail || `Failed to get database credentials (HTTP ${credRes.status})`;
+        return;
+      }
+      const creds = await credRes.json();
+
+      // 3. Save full config (URL + PG creds) to remote-server.json
       if (window.electronRemote) {
         const result = await window.electronRemote.setRemoteServer(JSON.stringify({
           url,
-          pg_user: pgUser.trim() || 'locanext_service',
-          pg_password: pgPassword,
-          pg_db: pgDb.trim() || 'localizationtools',
-          pg_port: 5432
+          token,
+          pg_host: creds.postgres_host,
+          pg_port: creds.postgres_port,
+          pg_user: creds.postgres_user,
+          pg_password: creds.postgres_password,
+          pg_db: creds.postgres_db,
         }));
         if (!result?.success) {
           remoteError = result?.error || "Failed to save config";
           return;
         }
       }
+
       hasRemoteConfig = true;
       savedRemote = true;
-      logger.userAction("LAN sync config saved — restart app to apply", { url });
-      setTimeout(() => { savedRemote = false; }, 3000);
+      logger.userAction("Connected to server — restart app to sync", { url, user: lanUsername });
+      setTimeout(() => { savedRemote = false; }, 5000);
     } catch (e) {
-      remoteError = `Failed to save: ${e.message}`;
-      logger.error("IPC error saving LAN config", e);
+      remoteError = e.name === 'TimeoutError'
+        ? `Cannot reach ${address}:8888 — check the address`
+        : `Connection failed: ${e.message}`;
+      logger.error("LAN connect failed", e);
     } finally {
-      savingRemote = false;
+      connecting = false;
     }
   }
 
@@ -370,35 +401,15 @@
           />
         </div>
 
-        <div class="button-row">
-          <Button
-            kind="secondary"
-            size="small"
-            icon={IotConnect}
-            onclick={testRemoteConnection}
-            disabled={testingRemote || !remoteAddress.trim()}
-          >
-            {testingRemote ? "Testing..." : "Test Connection"}
-          </Button>
-          <Button
-            kind="primary"
-            size="small"
-            onclick={saveRemoteServer}
-            disabled={!remoteTestResult?.success}
-          >
-            Save
-          </Button>
-          {#if hasRemoteConfig}
-            <Button
-              kind="danger-tertiary"
-              size="small"
-              icon={Close}
-              onclick={disconnectRemote}
-            >
-              Disconnect
-            </Button>
-          {/if}
-        </div>
+        <Button
+          kind="secondary"
+          size="small"
+          icon={IotConnect}
+          onclick={testRemoteConnection}
+          disabled={testingRemote || !remoteAddress.trim()}
+        >
+          {testingRemote ? "Testing..." : "Test Connection"}
+        </Button>
       </div>
 
       <!-- Test Result -->
@@ -407,10 +418,48 @@
           {#if remoteTestResult.success}
             <InlineNotification
               kind="success"
-              title="Connected!"
+              title="Server Found"
               subtitle={remoteTestResult.message}
               hideCloseButton
             />
+
+            <!-- Login to fetch PG credentials automatically -->
+            <div class="login-section">
+              <h4>Login to Connect</h4>
+              <p class="hint">Enter your LocaNext account (created by admin)</p>
+              <TextInput
+                bind:value={lanUsername}
+                placeholder="Username"
+                size="sm"
+              />
+              <TextInput
+                bind:value={lanPassword}
+                placeholder="Password"
+                size="sm"
+                type="password"
+                on:keydown={(e) => { if (e.key === 'Enter') connectToServer(); }}
+              />
+              <div class="button-row" style="margin-top: 8px;">
+                <Button
+                  kind="primary"
+                  size="small"
+                  onclick={connectToServer}
+                  disabled={connecting || !lanUsername.trim() || !lanPassword.trim()}
+                >
+                  {connecting ? "Connecting..." : "Connect & Sync"}
+                </Button>
+                {#if hasRemoteConfig}
+                  <Button
+                    kind="danger-tertiary"
+                    size="small"
+                    icon={Close}
+                    onclick={disconnectRemote}
+                  >
+                    Disconnect
+                  </Button>
+                {/if}
+              </div>
+            </div>
           {:else}
             <InlineNotification
               kind="error"
@@ -422,16 +471,25 @@
         </div>
       {/if}
 
-      {#if savedRemote}
+      {#if remoteError}
         <InlineNotification
-          kind="success"
-          title="Saved"
-          subtitle="Server address saved. Refresh the page to apply."
+          kind="error"
+          title="Error"
+          subtitle={remoteError}
           hideCloseButton
         />
       {/if}
 
-      {#if remoteError}
+      {#if savedRemote}
+        <InlineNotification
+          kind="success"
+          title="Connected!"
+          subtitle="Database credentials saved. Restart the app to sync with the server."
+          hideCloseButton
+        />
+      {/if}
+
+      {#if remoteError && !remoteTestResult}
         <InlineNotification kind="error" title="Error" subtitle={remoteError} hideCloseButton />
       {/if}
 
@@ -648,6 +706,13 @@
     gap: 0.5rem;
     margin-top: 0.5rem;
     flex-wrap: wrap;
+  }
+
+  .login-section {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .pg-version {
