@@ -73,13 +73,11 @@ async def get_recent_activity(
     # 2. Tool operations from log_entries
     try:
         result = await db.execute(text("""
-            SELECT l.id, l.user_id, l.tool_name, l.function_name,
-                   l.timestamp_start, l.status, l.file_name, l.rows_processed,
-                   u.username
+            SELECT l.log_id, l.user_id, l.tool_name, l.function_name,
+                   l.timestamp, l.status, l.username
             FROM log_entries l
-            LEFT JOIN users u ON l.user_id = u.user_id
-            WHERE l.timestamp_start >= :since
-            ORDER BY l.timestamp_start DESC
+            WHERE l.timestamp >= :since
+            ORDER BY l.timestamp DESC
             LIMIT :limit
         """), {"since": since, "limit": limit})
         rows = result.mappings().all()
@@ -88,15 +86,13 @@ async def get_recent_activity(
             activities.append({
                 "type": "tool_operation",
                 "action": row["function_name"],
-                "timestamp": row["timestamp_start"].isoformat() if row["timestamp_start"] else None,
+                "timestamp": row["timestamp"].isoformat() if row["timestamp"] else None,
                 "user": row["username"] or "Unknown",
                 "user_id": row["user_id"],
                 "details": {
                     "tool": row["tool_name"],
                     "function": row["function_name"],
                     "status": row["status"],
-                    "file_name": row["file_name"],
-                    "rows_processed": row["rows_processed"],
                 },
             })
     except Exception as e:
@@ -156,7 +152,7 @@ async def get_activity_stats(
         result = await db.execute(text("""
             SELECT COUNT(*) as ops
             FROM log_entries
-            WHERE timestamp_start >= :since
+            WHERE timestamp >= :since
         """), {"since": since})
         row = result.mappings().first()
         if row:

@@ -110,8 +110,9 @@
     // If saved remote URL exists, always light mode
     if (savedRemoteUrl) isLightMode = true;
 
-    // Load admin config if in admin mode
-    if (!isLightMode) {
+    // Load admin config if in admin mode AND logged in (avoid 401 pre-login)
+    const hasToken = typeof window !== 'undefined' && localStorage.getItem('auth_token');
+    if (!isLightMode && hasToken) {
       loadAdminConfig();
     }
   }
