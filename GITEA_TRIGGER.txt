@@ -1,2 +1,1 @@
-Build
-# 1774884800
+trigger: Build Admin + User (Phase 114 OWASP security hardening)
