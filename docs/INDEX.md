@@ -40,13 +40,13 @@
 |-----|-------------|
 | [ARCHITECTURE_SUMMARY.md](architecture/ARCHITECTURE_SUMMARY.md) | System overview — 99% client, 1% DB sync |
 | [OFFLINE_ONLINE_MODE.md](architecture/OFFLINE_ONLINE_MODE.md) | Offline/Online design |
-| [OFFLINE_ONLINE_SYNC.md](architecture/OFFLINE_ONLINE_SYNC.md) | Sync mechanisms |
 | [CLIENT_SERVER_PROCESSING.md](architecture/CLIENT_SERVER_PROCESSING.md) | What runs where |
 | [DB_ABSTRACTION_LAYER.md](architecture/DB_ABSTRACTION_LAYER.md) | Factory pattern, 3-mode |
 | [PLATFORM_PATTERN.md](architecture/PLATFORM_PATTERN.md) | Platform abstraction pattern |
 | [TM_HIERARCHY_PLAN.md](architecture/TM_HIERARCHY_PLAN.md) | TM folder system |
 | [BACKEND_PRINCIPLES.md](architecture/BACKEND_PRINCIPLES.md) | Backend design patterns |
 | [ASYNC_PATTERNS.md](architecture/ASYNC_PATTERNS.md) | Async code patterns |
+| [STATS_DASHBOARD_SPEC.md](architecture/STATS_DASHBOARD_SPEC.md) | Admin dashboard stats specification |
 
 ---
 
@@ -57,9 +57,7 @@
 | [GRANULAR_DEBUG_PROTOCOL.md](protocols/GRANULAR_DEBUG_PROTOCOL.md) | GDP — microscopic logging for bug hunting |
 | [PRXR.md](protocols/PRXR.md) | Plan-Review-Execute-Review for non-trivial changes |
 | [QUICK_DEBUG_REFERENCE.md](protocols/QUICK_DEBUG_REFERENCE.md) | Common debug scenarios |
-| [PARALLEL_AGENT_PROTOCOL.md](protocols/PARALLEL_AGENT_PROTOCOL.md) | Using agents in parallel |
-| [AGENT_ORCHESTRATION.md](protocols/AGENT_ORCHESTRATION.md) | Conductor pattern |
-| [DEBUG_AND_SUBAGENTS.md](protocols/DEBUG_AND_SUBAGENTS.md) | Subagents for debugging |
+| [AGENT_PROTOCOL.md](protocols/AGENT_PROTOCOL.md) | Unified agent guide: types, conductor, parallel, debug, case studies |
 
 ---
 
@@ -76,7 +74,6 @@ Full deployment guide: [reference/enterprise/HUB.md](reference/enterprise/HUB.md
 
 ### Other
 [AI_POWER_STACK.md](reference/AI_POWER_STACK.md) — What's installed (models, MCP servers)
-[AGENT_QUICK_REFERENCE.md](reference/AGENT_QUICK_REFERENCE.md) — Agent usage
 [AGENT_SWARM_SETUP.md](reference/AGENT_SWARM_SETUP.md) — Agent swarm setup guide
 [SWARM_GSD_INTEGRATION.md](reference/SWARM_GSD_INTEGRATION.md) — GSD + Swarm wiring
 [TRIBUNAL_MCP.md](reference/TRIBUNAL_MCP.md) — Tribunal usage
@@ -112,7 +109,6 @@ Executive demo materials and architecture diagrams. Generator scripts + output P
 | [LDM_GUIDE.md](guides/tools/LDM_GUIDE.md) | Language Data Manager |
 | [LDM_TEXT_SEARCH.md](guides/tools/LDM_TEXT_SEARCH.md) | LDM text search feature |
 | [XLSTRANSFER_GUIDE.md](guides/tools/XLSTRANSFER_GUIDE.md) | XLSTransfer tool |
-| [STATS_DASHBOARD_SPEC.md](guides/tools/STATS_DASHBOARD_SPEC.md) | Stats dashboard specification |
 | [QUICK_START_GUIDE.md](guides/getting-started/QUICK_START_GUIDE.md) | Getting started |
 | [ADMIN_SETUP.md](guides/getting-started/ADMIN_SETUP.md) | Admin setup |
 | [PROJECT_STRUCTURE.md](guides/getting-started/PROJECT_STRUCTURE.md) | Project structure |
