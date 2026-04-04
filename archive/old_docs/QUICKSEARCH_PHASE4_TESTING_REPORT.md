@@ -99,7 +99,7 @@ $ curl http://localhost:8888/api/v2/xlstransfer/health
 - Dashboard communication requires authenticated user session
 
 ### Test Data Ready
-**Location:** `/home/neil1988/LocalizationTools/RessourcesForCodingTheProject/datausedfortesting/test123.txt`
+**Location:** `/home/<USERNAME>/LocalizationTools/RessourcesForCodingTheProject/datausedfortesting/test123.txt`
 
 **Contents:**
 - 1,185 lines of Korean-French game localization
@@ -251,10 +251,10 @@ $ curl http://localhost:8888/api/v2/xlstransfer/health
 **Monitor Backend Logs:**
 ```bash
 # In terminal, watch server log in real-time:
-tail -f /home/neil1988/LocalizationTools/server/data/logs/server.log
+tail -f /home/<USERNAME>/LocalizationTools/server/data/logs/server.log
 
 # Filter for QuickSearch activity:
-tail -f /home/neil1988/LocalizationTools/server/data/logs/server.log | grep -i quicksearch
+tail -f /home/<USERNAME>/LocalizationTools/server/data/logs/server.log | grep -i quicksearch
 ```
 
 **Test 14: Log Verification**
@@ -370,7 +370,7 @@ tail -f /home/neil1988/LocalizationTools/server/data/logs/server.log | grep -i q
 
 **Test Data:**
 - Test File: `/RessourcesForCodingTheProject/datausedfortesting/test123.txt`
-- Server Logs: `/home/neil1988/LocalizationTools/server/data/logs/server.log`
+- Server Logs: `/home/<USERNAME>/LocalizationTools/server/data/logs/server.log`
 
 **Documentation:**
 - Roadmap: `/Roadmap.md`

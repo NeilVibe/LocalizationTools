@@ -91,7 +91,7 @@ cd C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject; node test_full_flow_detailed.j
 
 ```bash
 # Copy all tests to Windows
-cp /home/neil1988/LocalizationTools/tests/cdp/*.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/
+cp /home/<USERNAME>/LocalizationTools/tests/cdp/*.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/
 ```
 
 ---

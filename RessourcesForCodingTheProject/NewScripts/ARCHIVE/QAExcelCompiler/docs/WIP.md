@@ -56,12 +56,12 @@
 **Mapping File Format (`languageTOtester_list.txt`):**
 ```
 ENG
-김동헌
+테스터A
 황하연
 ...
 
 ZHO-CN
-김춘애
+테스터B
 최문석
 ...
 ```

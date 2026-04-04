@@ -695,7 +695,7 @@ def pretranslate_batch(self, batch_data: dict):
 
 ## 🔧 PRIORITY 2: Data Preprocessing
 
-**SOURCE:** `/home/neil1988/WebTranslatorNew/app/services/glossary/preprocessor.py`
+**SOURCE:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary/preprocessor.py`
 
 **Class:** `DataPreprocessor`
 
@@ -792,7 +792,7 @@ def _filter_database_duplicates(self, df, glossary_id):
 
 | File | What |
 |------|------|
-| `/home/neil1988/WebTranslatorNew/app/services/glossary/preprocessor.py` | `DataPreprocessor` class |
+| `/home/<USERNAME>/WebTranslatorNew/app/services/glossary/preprocessor.py` | `DataPreprocessor` class |
 
 ### API-Dependent Features (FUTURE)
 

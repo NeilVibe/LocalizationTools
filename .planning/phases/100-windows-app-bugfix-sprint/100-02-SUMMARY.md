@@ -121,7 +121,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 - All 6 frontend bugs (BUG-7 through BUG-12) addressed
 - Build succeeds (`npm run build` zero errors)
-- Ready for Windows app testing on PEARL PC
+- Ready for Windows app testing on <PC_NAME> PC
 
 ---
 *Phase: 100-windows-app-bugfix-sprint*

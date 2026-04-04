@@ -385,12 +385,12 @@ def load_tester_mapping() -> dict:
 
     File format (section-based):
         ENG
-        김동헌
+        테스터A
         황하연
         ...
 
         ZHO-CN
-        김춘애
+        테스터B
         최문석
         ...
 
@@ -432,7 +432,7 @@ def load_tester_type_mapping() -> dict:
         ...
 
         Gameplay
-        김춘애
+        테스터B
         최문석
         ...
 

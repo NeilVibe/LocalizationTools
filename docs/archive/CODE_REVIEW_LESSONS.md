@@ -248,7 +248,7 @@ const API_BASE = get(serverUrl);
 **Backend (Python):**
 ```python
 # BAD: Hardcoded URL
-LANGUAGETOOL_URL = "http://172.28.150.120:8081/v2/check"
+LANGUAGETOOL_URL = "http://<GITEA_HOST>:8081/v2/check"
 
 # GOOD: Import from config (configurable via env vars)
 from server.config import LANGUAGETOOL_URL

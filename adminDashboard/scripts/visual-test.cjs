@@ -129,7 +129,7 @@ async function runVisualTests() {
     console.log('This is why you see "ERR_CONNECTION_REFUSED" or "Failed to fetch" errors.');
     console.log('');
     console.log('FIX: Start the backend server first:');
-    console.log('  cd /home/neil1988/LocalizationTools');
+    console.log('  cd /home/<USERNAME>/LocalizationTools');
     console.log('  python3 server/main.py');
     console.log('');
     console.log('Then run this test again.');
@@ -156,7 +156,7 @@ async function runVisualTests() {
     console.log('ERROR: Dashboard is NOT running on port 5175');
     console.log('');
     console.log('FIX: Start the dashboard first:');
-    console.log('  cd /home/neil1988/LocalizationTools/adminDashboard');
+    console.log('  cd /home/<USERNAME>/LocalizationTools/adminDashboard');
     console.log('  npm run dev -- --port 5175');
     console.log('');
     process.exit(1);

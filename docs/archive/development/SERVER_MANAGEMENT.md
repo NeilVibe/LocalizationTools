@@ -176,7 +176,7 @@ cat /tmp/locanext/backend.log
 **ALWAYS run at start of development session:**
 
 ```bash
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 ./scripts/check_servers.sh
 # If not OK:
 ./scripts/start_all_servers.sh --with-vite

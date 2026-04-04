@@ -170,7 +170,7 @@ Before first production use:
 
 ### Run the Script
 ```bash
-cd /home/neil1988/LocalizationTools/RessourcesForCodingTheProject/NewScripts/WordCountMaster
+cd /home/<USERNAME>/LocalizationTools/RessourcesForCodingTheProject/NewScripts/WordCountMaster
 python wordcount_diff_master.py
 ```
 

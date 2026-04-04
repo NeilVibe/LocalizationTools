@@ -281,3 +281,6 @@ error_capture_report.json
 
 # -------------------- Sensitive Game Data (local only) --------------------
 **/EXPORT PATH TREE.txt
+
+# Binary with personal info (regenerate from source)
+RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/USER_GUIDE.pdf

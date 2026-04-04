@@ -73,7 +73,7 @@ Keep as-is. The `OFFLINE_MODE_*` prefix returns `user_id: "OFFLINE"` which is ca
 
 **ONE keyword to search: `PHASE110`**
 
-All new logging uses `[PHASE110:MODULE]` prefix so the user can test ONCE on PEARL, grab the log file (`server/data/logs/server.log`), and search for `PHASE110` to get a complete picture of what happened.
+All new logging uses `[PHASE110:MODULE]` prefix so the user can test ONCE on <PC_NAME>, grab the log file (`server/data/logs/server.log`), and search for `PHASE110` to get a complete picture of what happened.
 
 ### Log Tags
 
@@ -174,7 +174,7 @@ rel_dir = str(xml_path.relative_to(export_folder).parent)
 rel_dir = str(xml_path.relative_to(export_folder).parent)
 ```
 
-On Windows (PEARL), `Path.parent` produces `Dialog\QuestDialog`. Then `_build_category_tree()` splits on `/`:
+On Windows (<PC_NAME>), `Path.parent` produces `Dialog\QuestDialog`. Then `_build_category_tree()` splits on `/`:
 ```python
 parts = full_path.split("/")  # "Dialog\QuestDialog".split("/") → ["Dialog\QuestDialog"] = 1 segment!
 ```
@@ -213,11 +213,11 @@ rel_dir = str(xml_path.relative_to(export_folder).parent).replace("\\", "/")
 
 ---
 
-## Test Plan (ONE test on PEARL)
+## Test Plan (ONE test on <PC_NAME>)
 
 ### Pre-test: Search log for `PHASE110`
 
-After installing on PEARL, grab `server/data/logs/server.log` and search for `PHASE110`. Expected output:
+After installing on <PC_NAME>, grab `server/data/logs/server.log` and search for `PHASE110`. Expected output:
 
 1. `[PHASE110:SEED]` — 3 users seeded with correct roles
 2. `[PHASE110:TOKEN]` — origin-admin-token resolved to integer user_id

@@ -53,9 +53,9 @@ PartOf=gitea.service
 
 [Service]
 Type=simple
-User=neil1988
-WorkingDirectory=/home/neil1988/gitea
-ExecStart=/home/neil1988/gitea/act_runner daemon
+User=<USERNAME>
+WorkingDirectory=/home/<USERNAME>/gitea
+ExecStart=/home/<USERNAME>/gitea/act_runner daemon
 Restart=on-failure          # NOT "always"
 RestartSec=30               # 30 second cooldown
 StartLimitBurst=3           # Max 3 restarts in 5 min

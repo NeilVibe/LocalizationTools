@@ -218,7 +218,7 @@ curl -s http://localhost:8888/health && echo " ✓ Backend OK"
 
 ### Check Database Operations
 ```bash
-python3 -c "import sqlite3; c=sqlite3.connect('/home/neil1988/LocalizationTools/server/data/localizationtools.db').cursor(); c.execute('SELECT COUNT(*) FROM active_operations'); print(f'Operations: {c.fetchone()[0]}')"
+python3 -c "import sqlite3; c=sqlite3.connect('/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db').cursor(); c.execute('SELECT COUNT(*) FROM active_operations'); print(f'Operations: {c.fetchone()[0]}')"
 ```
 
 ---

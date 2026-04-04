@@ -167,7 +167,7 @@ def test_cross_domain_policies(make_app):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'server.middleware.security_headers'`
 
 - [ ] **Step 3: Write the middleware implementation**
@@ -244,7 +244,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py -v`
 Expected: All 6 tests PASS
 
 - [ ] **Step 5: Wire middleware into main.py**
@@ -320,7 +320,7 @@ def test_lan_mode_cors_not_allow_all():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/config/test_cors_lan_mode.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/config/test_cors_lan_mode.py -v`
 Expected: FAIL with `ImportError: cannot import name '_build_lan_cors_origins'`
 
 - [ ] **Step 3: Add `_build_lan_cors_origins` helper and update `_apply_lan_server_overrides`**
@@ -381,7 +381,7 @@ Also update `check_security_config()` (around line 570) — remove the `pass` fo
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/config/test_cors_lan_mode.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/config/test_cors_lan_mode.py -v`
 Expected: Both tests PASS
 
 - [ ] **Step 5: Commit**
@@ -443,7 +443,7 @@ def test_default_secret_key_is_detectable():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/setup/test_secret_generation.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/setup/test_secret_generation.py -v`
 Expected: First two PASS (pure logic), third PASS (constant exists). All pass because these test the spec, not the wiring.
 
 - [ ] **Step 3: Wire security_mode into setup wizard config**
@@ -480,7 +480,7 @@ This way: fresh installs get `strict` from setup wizard config. Old installs wit
 
 - [ ] **Step 4: Verify no regression**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/setup/ -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/setup/ -v`
 Expected: All tests PASS
 
 - [ ] **Step 5: Commit**
@@ -544,7 +544,7 @@ def test_token_schema_defaults_false():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/auth/test_must_change_password.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/auth/test_must_change_password.py -v`
 Expected: FAIL on first test — `Token.__init__() got an unexpected keyword argument 'must_change_password'`
 
 - [ ] **Step 3: Add `must_change_password` to Token schema**
@@ -564,7 +564,7 @@ class Token(BaseModel):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/auth/test_must_change_password.py -v`
+Run: `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/auth/test_must_change_password.py -v`
 Expected: Both PASS
 
 - [ ] **Step 5: Include `must_change_password` in login response**
@@ -796,14 +796,14 @@ No code commit needed. Log the verification results in the session.
 - [ ] **Step 1: Run all new tests**
 
 ```bash
-cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py tests/unit/config/test_cors_lan_mode.py tests/unit/setup/test_secret_generation.py tests/unit/auth/test_must_change_password.py -v
+cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/middleware/test_security_headers.py tests/unit/config/test_cors_lan_mode.py tests/unit/setup/test_secret_generation.py tests/unit/auth/test_must_change_password.py -v
 ```
 Expected: All tests PASS
 
 - [ ] **Step 2: Run `check_security_config()` to verify improvement**
 
 ```bash
-cd /home/neil1988/LocalizationTools && python3 -c "
+cd /home/<USERNAME>/LocalizationTools && python3 -c "
 from server.config import check_security_config
 result = check_security_config()
 print('Secure:', result['is_secure'])
@@ -816,7 +816,7 @@ for e in result['errors']: print(f'  ERROR: {e}')
 - [ ] **Step 3: Run full test suite**
 
 ```bash
-cd /home/neil1988/LocalizationTools && python -m pytest tests/ -v --tb=short -q 2>&1 | tail -20
+cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/ -v --tb=short -q 2>&1 | tail -20
 ```
 Expected: No regressions
 

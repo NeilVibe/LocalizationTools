@@ -325,7 +325,7 @@ export const serverStatus = writable('unknown'); // 'connected' | 'offline' | 'u
 ```
 OFFLINE MODE                    ONLINE MODE
 ├── SQLite (local)              ├── PostgreSQL (central)
-├── /appdata/locanext.db        ├── 172.28.150.120:5432
+├── /appdata/locanext.db        ├── <GITEA_HOST>:5432
 ├── Single-user                 ├── Multi-user
 └── No sync                     └── WebSocket sync
 ```

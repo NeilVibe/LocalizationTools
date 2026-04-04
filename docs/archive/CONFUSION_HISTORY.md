@@ -32,7 +32,7 @@
 | 10 | **Wrong DB table name** (`files` vs `ldm_files`) | Check schema first with `pg_tables` query |
 | 11 | **Wrong DB column name** (`source_text` vs `source`) | Check columns with `information_schema.columns` |
 | 12 | **Running commands from wrong directory** | Always `cd` to correct dir OR use absolute paths |
-| 13 | **Playwright test from root instead of locaNext** | Run from `/home/neil1988/LocalizationTools/locaNext` |
+| 13 | **Playwright test from root instead of locaNext** | Run from `/home/<USERNAME>/LocalizationTools/locaNext` |
 | 14 | **Hardcoded wrong DB credentials** | Use `from config import DATABASE_URL` |
 | 15 | **ModuleNotFoundError for config** | Must run from LocalizationTools dir with `sys.path.insert` |
 | 16 | **INSTALL vs UPDATE confusion** | INSTALL = fresh from .exe, UPDATE = auto-updater. See DOC-001 |
@@ -95,7 +95,7 @@ npx playwright test tests/xxx.spec.ts  # No tests found
 **Correct commands:**
 ```bash
 # RIGHT: Run from LocalizationTools with sys.path
-cd /home/neil1988/LocalizationTools && python3 << 'EOF'
+cd /home/<USERNAME>/LocalizationTools && python3 << 'EOF'
 import sys
 sys.path.insert(0, 'server')
 from config import DATABASE_URL
@@ -111,7 +111,7 @@ SELECT * FROM ldm_projects
 SELECT id, row_num, source, target FROM ldm_rows
 
 # RIGHT: Run Playwright from locaNext directory
-cd /home/neil1988/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts
+cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts
 ```
 
 ---
@@ -268,7 +268,7 @@ fi
 5. **CHECK STATE** - What version is installed?
 6. **Check runner status via SQL:**
    ```bash
-   python3 -c "import sqlite3; c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor(); c.execute('SELECT id, status FROM action_run ORDER BY id DESC LIMIT 3'); print(c.fetchall())"
+   python3 -c "import sqlite3; c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor(); c.execute('SELECT id, status FROM action_run ORDER BY id DESC LIMIT 3'); print(c.fetchall())"
    ```
 
 ---

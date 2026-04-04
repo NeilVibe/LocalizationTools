@@ -102,7 +102,7 @@ docs/presentations/html/{number}_{name}.html
 ```bash
 cd docs/presentations
 npx playwright screenshot --browser chromium --viewport-size=2560,1600 --full-page \
-    "file:///home/neil1988/LocalizationTools/docs/presentations/html/filename.html" \
+    "file:///home/<USERNAME>/LocalizationTools/docs/presentations/html/filename.html" \
     "images/filename.png"
 ```
 
@@ -151,7 +151,7 @@ cd docs/presentations
 for f in html/*.html; do
   name=$(basename "$f" .html)
   npx playwright screenshot --browser chromium --viewport-size=2560,1600 --full-page \
-      "file:///home/neil1988/LocalizationTools/docs/presentations/$f" \
+      "file:///home/<USERNAME>/LocalizationTools/docs/presentations/$f" \
       "images/${name}.png"
 done
 

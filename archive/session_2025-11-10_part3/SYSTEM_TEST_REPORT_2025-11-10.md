@@ -280,7 +280,7 @@ None found.
 ## 9. Monitoring Tools Created
 
 ### System Monitor Script
-**Location:** `/home/neil1988/LocalizationTools/scripts/monitor_system.sh`
+**Location:** `/home/<USERNAME>/LocalizationTools/scripts/monitor_system.sh`
 
 **Usage:**
 ```bash
@@ -324,7 +324,7 @@ python3 -c "import socketio; sio = socketio.Client(); sio.connect('http://localh
 ```bash
 python3 << 'EOF'
 import sqlite3
-conn = sqlite3.connect('/home/neil1988/LocalizationTools/server/data/localizationtools.db')
+conn = sqlite3.connect('/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db')
 cursor = conn.cursor()
 cursor.execute("SELECT COUNT(*) FROM active_operations")
 print(f"Active operations: {cursor.fetchone()[0]}")

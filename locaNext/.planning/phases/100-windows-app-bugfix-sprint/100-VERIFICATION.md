@@ -25,7 +25,7 @@ score: 13/13
 | BUG-11 | About version auto-detect | PASS | window.electronAPI.getVersion() with backend fallback |
 | BUG-12 | About cleanup + credits | PASS | Created by Neil Schmitt, dead content removed |
 
-## Human Verification Needed (PEARL PC)
+## Human Verification Needed (<PC_NAME> PC)
 
 1. Audio routing: Open Korean .loc.xml, voiced row -> Korean audio plays (not English)
 2. Image fallback: Row with no StringID image -> Korean text match shows with badge

@@ -23,9 +23,9 @@ This document establishes a resource monitoring protocol and remediation plan.
 
 | Process | Source | Memory | CPU | Root Cause |
 |---------|--------|--------|-----|------------|
-| **Gunicorn x3** | `/home/neil1988/WebTranslator` | ~2.4 GB | Low | `webtranslator.service` (disabled but ran) |
-| **Nest.js x2** | `/home/neil1988/CityEmpire/backend` | ~600 MB | Low | Manual `npm run dev` never stopped |
-| **Gitea** | `/home/neil1988/gitea` | 260 MB | 36% | `gitea.service` ENABLED (auto-start) |
+| **Gunicorn x3** | `/home/<USERNAME>/WebTranslator` | ~2.4 GB | Low | `webtranslator.service` (disabled but ran) |
+| **Nest.js x2** | `/home/<USERNAME>/CityEmpire/backend` | ~600 MB | Low | Manual `npm run dev` never stopped |
+| **Gitea** | `/home/<USERNAME>/gitea` | 260 MB | 36% | `gitea.service` ENABLED (auto-start) |
 
 ### Systemd Services Found
 
@@ -269,11 +269,11 @@ Description=Web Translator Gunicorn service
 After=network.target
 
 [Service]
-User=neil1988
-Group=neil1988
-WorkingDirectory=/home/neil1988/WebTranslator
-Environment="PATH=/home/neil1988/WebTranslator/venv/bin"
-ExecStart=/home/neil1988/WebTranslator/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5001 --timeout 1800 --graceful-timeout 300 --keep-alive 65 --max-requests 1000 --max-requests-jitter 50 run:app
+User=<USERNAME>
+Group=<USERNAME>
+WorkingDirectory=/home/<USERNAME>/WebTranslator
+Environment="PATH=/home/<USERNAME>/WebTranslator/venv/bin"
+ExecStart=/home/<USERNAME>/WebTranslator/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5001 --timeout 1800 --graceful-timeout 300 --keep-alive 65 --max-requests 1000 --max-requests-jitter 50 run:app
 Restart=always
 
 [Install]
@@ -292,9 +292,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=neil1988
-WorkingDirectory=/home/neil1988/gitea
-ExecStart=/home/neil1988/gitea/gitea web
+User=<USERNAME>
+WorkingDirectory=/home/<USERNAME>/gitea
+ExecStart=/home/<USERNAME>/gitea/gitea web
 Restart=on-failure
 RestartSec=30
 

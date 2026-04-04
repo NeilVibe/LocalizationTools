@@ -193,8 +193,8 @@ wsl -d Ubuntu2
 ## Full Documentation
 
 For complete details, see CheckComputer project:
-- `/home/neil1988/CheckComputer/docs/WSL-AUTOSTART-AND-INTEROP-FIX.md`
-- `/home/neil1988/CheckComputer/docs/WSL-WINDOWS-INTEGRATION.md`
+- `/home/<USERNAME>/CheckComputer/docs/WSL-AUTOSTART-AND-INTEROP-FIX.md`
+- `/home/<USERNAME>/CheckComputer/docs/WSL-WINDOWS-INTEGRATION.md`
 
 ---
 

@@ -25,7 +25,7 @@ The script is at: `scripts/wsl_ssh_watchdog.ps1`
 
 From WSL:
 ```bash
-cp /home/neil1988/LocalizationTools/scripts/wsl_ssh_watchdog.ps1 /mnt/c/Scripts/
+cp /home/<USERNAME>/LocalizationTools/scripts/wsl_ssh_watchdog.ps1 /mnt/c/Scripts/
 ```
 
 Or from Windows, copy from: `D:\LocalizationTools\scripts\wsl_ssh_watchdog.ps1`

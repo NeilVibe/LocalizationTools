@@ -43,7 +43,7 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 STATUS = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN', 7:'BLOCK'}
 for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
@@ -151,7 +151,7 @@ Smart checkpoint system that persists across CI runs:
 6. Final: Build QA for official release
 ```
 
-**Checkpoint location:** `/home/neil1988/.locanext_checkpoint`
+**Checkpoint location:** `/home/<USERNAME>/.locanext_checkpoint`
 
 ### Checkpoint Commands
 

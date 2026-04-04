@@ -21,7 +21,7 @@ template_xlsx = sorted_by_mtime[0]["xlsx_path"]
 ### Example
 
 If you have these Quest QA files:
-- `김동헌_Quest/Quest.xlsx` - modified Jan 15
+- `테스터A_Quest/Quest.xlsx` - modified Jan 15
 - `황하연_Quest/Quest.xlsx` - modified Feb 1 ← **This becomes template (newest)**
 
 ---
@@ -128,7 +128,7 @@ Tracker BEFORE:
 ┌────────────┬─────────┬───────────┬────────┐
 │ Date       │ User    │ Category  │ Issues │
 ├────────────┼─────────┼───────────┼────────┤
-│ 2024-01-15 │ 김동헌  │ Quest     │ 5      │  ← OLD
+│ 2024-01-15 │ 테스터A  │ Quest     │ 5      │  ← OLD
 │ 2024-01-15 │ 황하연  │ Item      │ 3      │  ← Untouched
 └────────────┴─────────┴───────────┴────────┘
 
@@ -136,8 +136,8 @@ Tracker AFTER (only Quest processed):
 ┌────────────┬─────────┬───────────┬────────┐
 │ Date       │ User    │ Category  │ Issues │
 ├────────────┼─────────┼───────────┼────────┤
-│ 2024-02-05 │ 김동헌  │ Quest     │ 12     │  ← NEW entry
-│ 2024-01-15 │ 김동헌  │ Quest     │ 5      │  ← OLD preserved
+│ 2024-02-05 │ 테스터A  │ Quest     │ 12     │  ← NEW entry
+│ 2024-01-15 │ 테스터A  │ Quest     │ 5      │  ← OLD preserved
 │ 2024-01-15 │ 황하연  │ Item      │ 3      │  ← Untouched
 └────────────┴─────────┴───────────┴────────┘
 ```

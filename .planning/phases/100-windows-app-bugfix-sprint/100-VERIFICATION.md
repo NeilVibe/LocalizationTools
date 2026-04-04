@@ -8,7 +8,7 @@ re_verification: false
 
 # Phase 100: Windows App Bugfix Sprint Verification Report
 
-**Phase Goal:** Fix 12 issues from PEARL PC Windows app testing. FIX-1 to FIX-4 committed. Case-insensitive MegaIndex done. 8 remaining: multi-language audio, image Korean fallback, StatusPage nav, merge direction, category column, dead Project Settings, About version, About cleanup.
+**Phase Goal:** Fix 12 issues from <PC_NAME> PC Windows app testing. FIX-1 to FIX-4 committed. Case-insensitive MegaIndex done. 8 remaining: multi-language audio, image Korean fallback, StatusPage nav, merge direction, category column, dead Project Settings, About version, About cleanup.
 **Verified:** 2026-03-30T07:30:00Z
 **Status:** PASSED
 **Re-verification:** No — initial verification
@@ -134,7 +134,7 @@ No TODOs, FIXMEs, placeholder comments, stub returns, or hardcoded empty data fo
 
 **Test:** Open a Korean XML file in the Windows app. Navigate to a row with audio. Check that the audio panel plays from the Korean audio folder (not English).
 **Expected:** Audio plays Korean pronunciation; panel does not silently fail or play English audio.
-**Why human:** Requires actual F:\perforce\ audio folder files on PEARL PC. Cannot verify audio folder existence or WEM file scanning in dev environment.
+**Why human:** Requires actual F:\perforce\ audio folder files on <PC_NAME> PC. Cannot verify audio folder existence or WEM file scanning in dev environment.
 
 #### 2. Korean Text Image Fallback Badge
 
@@ -162,7 +162,7 @@ No gaps found. All 13 requirements (FIX-1 through FIX-4, CASE-INSENSITIVE, BUG-5
 
 All 13 documented commits exist and are valid in git history. All key artifacts pass all 4 verification levels (exists, substantive, wired, data flowing). No anti-patterns detected.
 
-Four items require human testing on PEARL PC Windows app for final validation of end-to-end behavior.
+Four items require human testing on <PC_NAME> PC Windows app for final validation of end-to-end behavior.
 
 ---
 

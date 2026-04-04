@@ -20,7 +20,7 @@ echo "=============================================="
 echo ""
 
 ALL_OK=true
-AUDIT_LOG="/home/neil1988/LocalizationTools/server/data/logs/security_audit.log"
+AUDIT_LOG="/home/<USERNAME>/LocalizationTools/server/data/logs/security_audit.log"
 
 # Check PostgreSQL
 echo -n "PostgreSQL (5432)... "

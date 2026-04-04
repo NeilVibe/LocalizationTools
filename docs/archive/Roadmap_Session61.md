@@ -352,7 +352,7 @@ echo "Build" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build" && git 
 | Service | URL |
 |---------|-----|
 | Backend API | http://localhost:8888 |
-| Gitea | http://172.28.150.120:3000 |
+| Gitea | http://<GITEA_HOST>:3000 |
 | CDP | http://127.0.0.1:9222 |
 
 ### Navigation

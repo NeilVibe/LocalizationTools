@@ -661,7 +661,7 @@ python coverage.py
 | CI System | GitHub Actions |
 | Trigger File | `QACOMPILER_BUILD.txt` |
 | Push To | **GitHub only** (NOT Gitea) |
-| Check Status | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
+| Check Status | [GitHub Actions](https://github.com/<GIT_USER>/LocalizationTools/actions) |
 
 ### Two Workflows in LocalizationTools Repo
 
@@ -678,7 +678,7 @@ echo "Build: <description>" >> QACOMPILER_BUILD.txt
 git add -A && git commit -m "Trigger QAC build" && git push origin main
 
 # Check build progress at:
-# https://github.com/NeilVibe/LocalizationTools/actions
+# https://github.com/<GIT_USER>/LocalizationTools/actions
 ```
 
 ### Workflow File

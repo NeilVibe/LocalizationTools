@@ -20,15 +20,15 @@
  * - Installs on restart
  *
  * SERVERS:
- * - Gitea:  http://172.28.150.120:3000/neilvibe/LocaNext/releases (PRIMARY)
- * - GitHub: https://github.com/NeilVibe/LocalizationTools/releases (backup)
+ * - Gitea:  http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases (PRIMARY)
+ * - GitHub: https://github.com/<GIT_USER>/LocalizationTools/releases (backup)
  */
 
 // Determine update source from environment (default: gitea)
 const UPDATE_SERVER = process.env.UPDATE_SERVER || 'gitea';
 
 // Gitea server URL (internal)
-const GITEA_URL = process.env.GITEA_URL || 'http://172.28.150.120:3000';
+const GITEA_URL = process.env.GITEA_URL || 'http://localhost:3000';
 
 // Configuration based on update source
 let autoUpdaterConfig;
@@ -38,13 +38,13 @@ if (UPDATE_SERVER === 'gitea') {
   // Uses generic provider with Gitea's release asset URL
   autoUpdaterConfig = {
     provider: 'generic',
-    url: `${GITEA_URL}/neilvibe/LocaNext/releases/download/latest`,
+    url: `${GITEA_URL}/<GIT_USER>/LocaNext/releases/download/latest`,
   };
 } else if (UPDATE_SERVER === 'github') {
   // GitHub Releases (backup - public)
   autoUpdaterConfig = {
     provider: 'github',
-    owner: 'NeilVibe',
+    owner: '<GIT_USER>',
     repo: 'LocalizationTools',
   };
 } else {
@@ -68,7 +68,7 @@ export function isAutoUpdateEnabled() {
  *
  * 1. Gitea (Default - PRIMARY):
  *    - No env var needed
- *    - Uses Gitea at http://172.28.150.120:3000
+ *    - Uses Gitea at http://<GITEA_HOST>:3000
  *    - This is where CI/CD builds and releases
  *
  * 2. GitHub (Backup):

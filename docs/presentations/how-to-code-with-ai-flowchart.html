@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Code with AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --canvas: #F5F6F8;
+    --surface: #FFFFFF;
+    --ink: #16181D;
+    --ink-secondary: #3D4150;
+    --muted: #6B7280;
+    --light-muted: #9CA3AF;
+    --whisper: rgba(0,0,0,0.05);
+
+    --plan: #2563EB;
+    --plan-bg: #EFF6FF;
+    --plan-border: #BFDBFE;
+
+    --exec: #059669;
+    --exec-bg: #ECFDF5;
+    --exec-border: #A7F3D0;
+
+    --verify: #D97706;
+    --verify-bg: #FFFBEB;
+    --verify-border: #FDE68A;
+
+    --fix: #DC2626;
+    --fix-bg: #FEF2F2;
+    --fix-border: #FECACA;
+
+    --secure: #7C3AED;
+    --secure-bg: #F5F3FF;
+    --secure-border: #C4B5FD;
+
+    --ship: #16181D;
+
+    --memory: #0E7490;
+    --memory-bg: #ECFEFF;
+    --memory-border: #A5F3FC;
+
+    --logging: #B45309;
+    --logging-bg: #FFFBEB;
+    --logging-border: #FDE68A;
+
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-page: 0 20px 60px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem 1.5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 1120px;
+    background: var(--surface);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-page);
+    padding: 2.5rem 2.75rem 1.75rem;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .header-left h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .header-left p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  .header-right .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--light-muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── 3-Column Grid ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 215px 215px;
+    gap: 1.75rem;
+    align-items: start;
+  }
+
+  /* ── Flow ── */
+  .flow { display: flex; flex-direction: column; }
+
+  .phase-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.57rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--light-muted);
+    margin-top: 0.85rem;
+    margin-bottom: 0.3rem;
+    padding-left: 0.1rem;
+  }
+  .phase-header:first-child { margin-top: 0; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1.9rem 1fr;
+    gap: 0.7rem;
+    align-items: center;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.65rem;
+    border: 1.5px solid transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .step:hover { transform: translateX(3px); box-shadow: var(--shadow-card); }
+
+  .num {
+    width: 1.9rem; height: 1.9rem;
+    border-radius: 0.45rem;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 0.65rem; color: white;
+  }
+
+  .step h3 { font-size: 0.8rem; font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+  .step p { font-size: 0.62rem; color: var(--muted); line-height: 1.35; margin-top: 0.05rem; }
+
+  .conn { padding: 0.08rem 0; margin-left: 1.6rem; }
+  .conn-line { width: 1.5px; height: 10px; background: var(--light-muted); opacity: 0.35; }
+
+  .s-plan { background: var(--plan-bg); border-color: var(--plan-border); }
+  .s-plan .num { background: var(--plan); }
+  .s-exec { background: var(--exec-bg); border-color: var(--exec-border); }
+  .s-exec .num { background: var(--exec); }
+  .s-verify { background: var(--verify-bg); border-color: var(--verify-border); }
+  .s-verify .num { background: var(--verify); }
+  .s-fix { background: var(--fix-bg); border-color: var(--fix-border); }
+  .s-fix .num { background: var(--fix); }
+  .s-secure { background: var(--secure-bg); border-color: var(--secure-border); }
+  .s-secure .num { background: var(--secure); }
+
+  .loop {
+    display: flex; align-items: center; gap: 0.35rem;
+    margin: 0.15rem 0 0.15rem 2.2rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.35rem;
+    border: 1px dashed var(--fix-border);
+    background: var(--fix-bg); width: fit-content;
+  }
+  .loop svg { width: 11px; height: 11px; color: var(--fix); }
+  .loop span { font-size: 0.56rem; color: var(--fix); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Security Gate ── */
+  .security-gate {
+    margin: 0.5rem 0;
+    padding: 0.55rem 0.85rem;
+    border: 2px solid var(--secure-border);
+    border-radius: 0.65rem;
+    background: var(--secure-bg);
+    display: flex; align-items: center; gap: 0.65rem;
+    position: relative;
+  }
+  .security-gate::before {
+    content: ''; position: absolute;
+    left: -1px; top: -1px; bottom: -1px;
+    width: 4px; background: var(--secure);
+    border-radius: 0.65rem 0 0 0.65rem;
+  }
+  .gate-icon {
+    width: 2.2rem; height: 2.2rem;
+    border-radius: 0.5rem; background: var(--secure);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .gate-icon svg { width: 14px; height: 14px; color: white; }
+  .gate-content h3 { font-size: 0.8rem; font-weight: 700; color: var(--secure); }
+  .gate-content p { font-size: 0.6rem; color: var(--muted); line-height: 1.35; margin-top: 0.05rem; }
+  .gate-checklist { display: flex; gap: 0.35rem; margin-top: 0.25rem; flex-wrap: wrap; }
+  .gate-check {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem; font-weight: 500; color: var(--secure);
+    background: rgba(124, 58, 237, 0.08);
+    padding: 0.1rem 0.35rem; border-radius: 0.2rem; white-space: nowrap;
+  }
+
+  .ship {
+    display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+    margin-top: 0.5rem; padding: 0.5rem 1.5rem;
+    border-radius: 2rem; background: var(--ship);
+    color: white; font-weight: 700; font-size: 0.85rem;
+    width: fit-content; align-self: center;
+  }
+  .ship svg { width: 14px; height: 14px; }
+
+  /* ── Sidebar Cards ── */
+  .sidebar { display: flex; flex-direction: column; gap: 0.85rem; }
+
+  /* ── Discipline Card (shared) ── */
+  .discipline {
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+    position: relative;
+  }
+
+  .discipline::before {
+    content: ''; position: absolute;
+    left: -1px; top: -1px; bottom: -1px;
+    width: 3px; border-radius: 0.75rem 0 0 0.75rem;
+  }
+
+  .disc-header {
+    display: flex; align-items: center; gap: 0.35rem;
+    margin-bottom: 0.5rem; padding-bottom: 0.4rem;
+  }
+  .disc-header svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .disc-header h2 { font-size: 0.72rem; font-weight: 800; }
+  .disc-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.48rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem; margin-left: auto;
+  }
+
+  .disc-item { padding: 0.3rem 0; }
+  .disc-item h4 { font-size: 0.64rem; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .disc-item p { font-size: 0.55rem; color: var(--muted); line-height: 1.4; margin-top: 0.02rem; }
+
+  .disc-footer {
+    margin-top: 0.4rem; padding-top: 0.35rem;
+    text-align: center;
+  }
+  .disc-footer p { font-size: 0.54rem; font-weight: 600; line-height: 1.5; }
+
+  /* ── Memory ── */
+  .disc-memory {
+    background: var(--memory-bg);
+    border: 1.5px solid var(--memory-border);
+  }
+  .disc-memory::before { background: var(--memory); }
+  .disc-memory .disc-header { border-bottom: 1px solid rgba(14, 116, 144, 0.12); }
+  .disc-memory .disc-header svg, .disc-memory .disc-header h2 { color: var(--memory); }
+  .disc-memory .disc-badge { background: rgba(14, 116, 144, 0.1); color: var(--memory); }
+  .disc-memory .disc-item { border-bottom: 1px solid rgba(14, 116, 144, 0.06); }
+  .disc-memory .disc-item:last-of-type { border-bottom: none; }
+  .disc-memory .disc-footer { border-top: 1px dashed rgba(14, 116, 144, 0.15); }
+  .disc-memory .disc-footer p { color: var(--memory); }
+
+  /* ── Logging ── */
+  .disc-logging {
+    background: var(--logging-bg);
+    border: 1.5px solid var(--logging-border);
+  }
+  .disc-logging::before { background: var(--logging); }
+  .disc-logging .disc-header { border-bottom: 1px solid rgba(180, 83, 9, 0.12); }
+  .disc-logging .disc-header svg, .disc-logging .disc-header h2 { color: var(--logging); }
+  .disc-logging .disc-badge { background: rgba(180, 83, 9, 0.1); color: var(--logging); }
+  .disc-logging .disc-item { border-bottom: 1px solid rgba(180, 83, 9, 0.06); }
+  .disc-logging .disc-item:last-of-type { border-bottom: none; }
+  .disc-logging .disc-footer { border-top: 1px dashed rgba(180, 83, 9, 0.15); }
+  .disc-logging .disc-footer p { color: var(--logging); }
+
+  /* ── Callout ── */
+  .callout {
+    font-size: 0.56rem; font-weight: 600;
+    padding: 0.3rem 0.5rem; border-radius: 0.3rem;
+    line-height: 1.4; margin-top: 0.3rem;
+  }
+  .callout-memory { background: rgba(14, 116, 144, 0.08); color: var(--memory); }
+  .callout-logging { background: rgba(180, 83, 9, 0.08); color: var(--logging); }
+
+  /* ── Key Principles ── */
+  .principles-card {
+    background: #F9FAFB; border: 1.5px solid #E5E7EB;
+    border-radius: 0.75rem; padding: 0.85rem;
+  }
+  .principles-card h2 {
+    font-size: 0.72rem; font-weight: 800; color: var(--ink);
+    margin-bottom: 0.4rem; padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--whisper);
+  }
+  .principle { padding: 0.22rem 0; display: flex; gap: 0.35rem; align-items: flex-start; }
+  .principle-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem; font-weight: 600; color: var(--light-muted);
+    min-width: 0.9rem; padding-top: 0.02rem;
+  }
+  .principle-text { font-size: 0.58rem; color: var(--ink-secondary); line-height: 1.35; font-weight: 500; }
+  .principle-text strong { color: var(--ink); font-weight: 700; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 1.25rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--whisper);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .legend { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.2rem; font-size: 0.52rem; color: var(--muted); font-weight: 500; }
+  .ldot { width: 6px; height: 6px; border-radius: 2px; }
+  .footer-right { font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; color: var(--light-muted); }
+
+  @media print {
+    body { padding: 0; background: white; }
+    .page { box-shadow: none; border-radius: 0; padding: 1rem 1.25rem; max-width: 100%; }
+    .step:hover { transform: none; box-shadow: none; }
+  }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .page { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>How to Code with AI</h1>
+      <p>The complete workflow from idea to production</p>
+    </div>
+    <div class="header-right">
+      <span class="tagline">10 STEPS + 2 DISCIPLINES</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- ══════ Column 1: Flow ══════ -->
+    <div class="flow">
+
+      <div class="phase-header">Phase 1 &mdash; Think</div>
+
+      <div class="step s-plan">
+        <div class="num">01</div>
+        <div>
+          <h3>Gather Context</h3>
+          <p>Read existing code, docs, constraints before touching anything. AI is only as good as the context you feed it.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-plan">
+        <div class="num">02</div>
+        <div>
+          <h3>Plan</h3>
+          <p>Break into small steps. Define scope, approach, and "done." Get this reviewed before coding.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-plan">
+        <div class="num">03</div>
+        <div>
+          <h3>Plan Review</h3>
+          <p>Challenge assumptions. Stress-test edges. Kill bad ideas now, not after 2 hours of coding.</p>
+        </div>
+      </div>
+
+      <div class="phase-header">Phase 2 &mdash; Build</div>
+
+      <div class="step s-exec">
+        <div class="num">04</div>
+        <div>
+          <h3>Execute</h3>
+          <p>Code in small increments. Watch for hallucinated APIs, over-engineering, and scope creep.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-exec">
+        <div class="num">05</div>
+        <div>
+          <h3>Code Review</h3>
+          <p>Review every AI output. Verify imports exist, logic is right, scope isn't exceeded.</p>
+        </div>
+      </div>
+
+      <div class="phase-header">Phase 3 &mdash; Verify</div>
+
+      <div class="step s-verify">
+        <div class="num">06</div>
+        <div>
+          <h3>Test</h3>
+          <p>Run it. Auto tests + manual checks. Never trust "it should work." Get proof.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-verify">
+        <div class="num">07</div>
+        <div>
+          <h3>Read Logs</h3>
+          <p>Full output, not just exit codes. Understand what actually happened, not what you expected.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-fix">
+        <div class="num">08</div>
+        <div>
+          <h3>Fix Bugs</h3>
+          <p>Root cause first. Small targeted fix. Verify it. Don't bandaid &mdash; understand why.</p>
+        </div>
+      </div>
+
+      <div class="loop">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l3-3 3 3"/><path d="M6 6v6"/><path d="M13 4v5a3 3 0 01-3 3H6"/></svg>
+        <span>LOOP TO 04 UNTIL GREEN</span>
+      </div>
+
+      <div class="phase-header">Phase 4 &mdash; Harden &amp; Ship</div>
+
+      <div class="security-gate">
+        <div class="gate-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="gate-content">
+          <h3>09 &mdash; Security Gate</h3>
+          <p>Mandatory before shipping. No exceptions.</p>
+          <div class="gate-checklist">
+            <span class="gate-check">Injection</span>
+            <span class="gate-check">Auth</span>
+            <span class="gate-check">Secrets</span>
+            <span class="gate-check">Input Validation</span>
+            <span class="gate-check">Dependencies</span>
+            <span class="gate-check">OWASP Top 10</span>
+          </div>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-secure">
+        <div class="num">10</div>
+        <div>
+          <h3>Final Review</h3>
+          <p>Full pass. Matches plan? Scope right? Clean up. Last chance before production.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="ship">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Ship
+      </div>
+    </div>
+
+    <!-- ══════ Column 2: Memory & Docs ══════ -->
+    <div class="sidebar">
+
+      <div class="discipline disc-memory">
+        <div class="disc-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          <h2>Memory &amp; Docs</h2>
+          <span class="disc-badge">Critical</span>
+        </div>
+
+        <div class="disc-item">
+          <h4>Record while working</h4>
+          <p>Decisions, findings, context. During, not after.</p>
+        </div>
+        <div class="disc-item">
+          <h4>Keep it fresh</h4>
+          <p>Stale context = wrong AI output. Update actively.</p>
+        </div>
+        <div class="disc-item">
+          <h4>Purge aggressively</h4>
+          <p>Delete outdated memory. Less is more accurate.</p>
+        </div>
+        <div class="disc-item">
+          <h4>Self-improve</h4>
+          <p>Promote patterns into rules each cycle.</p>
+        </div>
+
+        <div class="callout callout-memory">
+          AI remembers nothing between sessions. Your docs ARE its brain. Bad docs = blind AI.
+        </div>
+
+        <div class="disc-footer">
+          <p>Runs parallel to every step.<br>Not a phase. A discipline.</p>
+        </div>
+      </div>
+
+      <div class="principles-card">
+        <h2>Key Principles</h2>
+        <div class="principle">
+          <span class="principle-num">01</span>
+          <span class="principle-text"><strong>Small increments.</strong> Big changes = big failures.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">02</span>
+          <span class="principle-text"><strong>Verify everything.</strong> AI hallucinates APIs and libraries.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">03</span>
+          <span class="principle-text"><strong>Scope discipline.</strong> AI over-engineers. Say "only what I asked."</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">04</span>
+          <span class="principle-text"><strong>Root cause first.</strong> Why, then how.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">05</span>
+          <span class="principle-text"><strong>Security is mandatory.</strong> OWASP before every ship.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">06</span>
+          <span class="principle-text"><strong>Proof over promises.</strong> Tests, logs, screenshots.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ Column 3: Rich Logging ══════ -->
+    <div class="sidebar">
+
+      <div class="discipline disc-logging">
+        <div class="disc-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <h2>Rich Logging</h2>
+          <span class="disc-badge">Critical</span>
+        </div>
+
+        <div class="disc-item">
+          <h4>Logs are for the AI, not you</h4>
+          <p>Humans skim logs. AI reads every line. Rich logs give AI full execution context.</p>
+        </div>
+        <div class="disc-item">
+          <h4>Log every decision point</h4>
+          <p>What ran, what was skipped, why. Every branch, every fallback, every value.</p>
+        </div>
+        <div class="disc-item">
+          <h4>AI fixes 100x better with context</h4>
+          <p>A stack trace alone is guesswork. A detailed execution log is a roadmap.</p>
+        </div>
+        <div class="disc-item">
+          <h4>Expose limitations</h4>
+          <p>Logs reveal what the code can't do. That's how you find what to build next.</p>
+        </div>
+
+        <div class="callout callout-logging">
+          Always make AI write code with rich logging. This is the single biggest force multiplier for AI-assisted debugging.
+        </div>
+
+        <div class="disc-footer">
+          <p>Baked into every function.<br>Not an afterthought. A requirement.</p>
+        </div>
+      </div>
+
+      <div class="principles-card" style="background: var(--logging-bg); border-color: var(--logging-border);">
+        <h2 style="color: var(--logging);">What to Log</h2>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">IN</span>
+          <span class="principle-text">Function entry + input values + state</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">DO</span>
+          <span class="principle-text">Each step, branch taken, values computed</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">OUT</span>
+          <span class="principle-text">Result, duration, success/failure, why</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--fix);">ERR</span>
+          <span class="principle-text">Full context: what was attempted, what failed, what state was left</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background: var(--plan);"></div> Think</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--exec);"></div> Build</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--verify);"></div> Verify</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--fix);"></div> Fix</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--secure);"></div> Harden</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--memory);"></div> Memory</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--logging);"></div> Logging</div>
+    </div>
+    <div class="footer-right">v2.0 &mdash; 2026</div>
+  </div>
+
+</div>
+</body>
+</html>

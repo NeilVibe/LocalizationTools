@@ -34,15 +34,15 @@ LocaNext.exe (Build 408)                    Gitea Server
 ```javascript
 // Default: Gitea (internal server)
 const UPDATE_SERVER = process.env.UPDATE_SERVER || 'gitea';
-const GITEA_URL = process.env.GITEA_URL || 'http://172.28.150.120:3000';
+const GITEA_URL = process.env.GITEA_URL || 'http://<GITEA_HOST>:3000';
 
 autoUpdaterConfig = {
   provider: 'generic',
-  url: `${GITEA_URL}/neilvibe/LocaNext/releases/download/latest`,
+  url: `${GITEA_URL}/<GIT_USER>/LocaNext/releases/download/latest`,
 };
 ```
 
-**URL checked:** `http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest/latest.yml`
+**URL checked:** `http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml`
 
 ---
 
@@ -121,7 +121,7 @@ Check these in `logs/locanext_app.log`:
 cat "/mnt/c/.../Playground/LocaNext/resources/version.json"
 
 # 2. Check Gitea latest version
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest/latest.yml" | head -3
+curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml" | head -3
 
 # 3. Launch app
 powershell.exe -c "Start-Process 'C:\...\LocaNext.exe'"

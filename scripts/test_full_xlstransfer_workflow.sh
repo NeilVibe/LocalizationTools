@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/neil1988/LocalizationTools"
+PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
 TEST_DIR="/tmp/xlstransfer_full_test"
 OUTPUT_DIR="$TEST_DIR/output"
 
@@ -108,7 +108,7 @@ echo ""
 
 python3 << 'PYTHON_CREATE_DICT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 from client.tools.xls_transfer.core import *
 from pathlib import Path
@@ -214,7 +214,7 @@ echo ""
 
 python3 << 'PYTHON_LOAD_DICT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 from pathlib import Path
 import numpy as np
@@ -261,7 +261,7 @@ echo ""
 
 python3 << 'PYTHON_TRANSLATE_TXT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 from pathlib import Path
 import numpy as np

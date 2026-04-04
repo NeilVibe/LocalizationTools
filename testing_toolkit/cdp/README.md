@@ -34,7 +34,7 @@ Between EASY/MEDIUM/HARD approaches, we ALWAYS choose HARD:
 
 **Always run CDP tests from Windows PowerShell:**
 ```powershell
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 node quick_check.js
 ```
 
@@ -106,7 +106,7 @@ sleep 10
 
 ```powershell
 # Access test scripts via UNC path (reaches WSL filesystem)
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 
 # Login first (if at login screen)
 node login.js

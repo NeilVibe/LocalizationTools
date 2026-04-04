@@ -249,12 +249,12 @@ If no logs and app shows error dialog:
 Example: `ERR_MODULE_NOT_FOUND: Cannot find module 'telemetry.js'`
 ```bash
 # Fix: Copy missing file
-cp /home/neil1988/LocalizationTools/locaNext/electron/telemetry.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
+cp /home/<USERNAME>/LocalizationTools/locaNext/electron/telemetry.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
 ```
 
 Always sync ALL electron files after changes:
 ```bash
-cp /home/neil1988/LocalizationTools/locaNext/electron/*.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
+cp /home/<USERNAME>/LocalizationTools/locaNext/electron/*.js /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/LocaNext/resources/app/electron/
 ```
 
 ---
@@ -414,7 +414,7 @@ After making changes and rebuilding:
 
 ```bash
 # 1. Build the frontend
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run build
 
 # 2. Copy to Windows app

@@ -148,7 +148,7 @@
     },
     "publish": {
       "provider": "generic",
-      "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+      "url": "http://localhost:3000/<GIT_USER>/LocaNext/releases/download/latest"
     }
   }
 }

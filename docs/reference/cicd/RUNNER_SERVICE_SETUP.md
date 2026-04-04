@@ -51,9 +51,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=neil1988
-WorkingDirectory=/home/neil1988/gitea
-ExecStart=/home/neil1988/gitea/gitea web
+User=<USERNAME>
+WorkingDirectory=/home/<USERNAME>/gitea
+ExecStart=/home/<USERNAME>/gitea/gitea web
 
 # Restart policy
 Restart=on-failure
@@ -87,9 +87,9 @@ ExecStartPre=/bin/bash -c 'curl -sf http://localhost:3000/api/v1/version || exit
 
 [Service]
 Type=simple
-User=neil1988
-WorkingDirectory=/home/neil1988/gitea
-ExecStart=/home/neil1988/gitea/act_runner daemon
+User=<USERNAME>
+WorkingDirectory=/home/<USERNAME>/gitea
+ExecStart=/home/<USERNAME>/gitea/act_runner daemon
 
 # Graceful shutdown - let runner finish current job
 # SIGQUIT tells runner to stop accepting new jobs, finish current

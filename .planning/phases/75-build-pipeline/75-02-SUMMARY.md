@@ -84,7 +84,7 @@ None - no external service configuration required.
 
 **Task 2 is pending human verification.** The user will:
 1. Wait for GitHub Actions build to complete (~30-45 min)
-2. Download installer from GitHub Releases: https://github.com/NeilVibe/LocalizationTools/releases
+2. Download installer from GitHub Releases: https://github.com/<GIT_USER>/LocalizationTools/releases
 3. Transfer to offline Windows PC
 4. Install, launch, and verify merge module works
 5. Check for ImportError messages in app console

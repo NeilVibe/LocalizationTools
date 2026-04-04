@@ -33,7 +33,7 @@ Time: < 2 seconds
 ```python
 # CORRECT: Use server config
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools/server')
 from config import DATABASE_URL
 engine = create_engine(DATABASE_URL)
 ```

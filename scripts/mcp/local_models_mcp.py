@@ -1038,7 +1038,7 @@ async def gemini_vision_review(params: GeminiVisionInput):
     Use for milestone reviews, deep design critique, final quality checks.
     Use local_vision_review (Qwen3-VL) for quick free checks during development.
 
-    Requires: GEMINI_API_KEY in /home/neil1988/.nano-banana/.env
+    Requires: GEMINI_API_KEY in /home/<USERNAME>/.nano-banana/.env
     """
     image_path = Path(params.image_path)
     if not image_path.exists():

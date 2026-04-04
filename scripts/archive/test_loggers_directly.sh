@@ -6,7 +6,7 @@ echo "🧪 Testing Logging Infrastructure"
 echo "========================================"
 echo ""
 
-PROJECT_ROOT="/home/neil1988/LocalizationTools"
+PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
 
 # Test 1: Backend logging (already working)
 echo "1️⃣  Testing Backend Server Logging..."

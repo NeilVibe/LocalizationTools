@@ -24,7 +24,7 @@ async function testLocalRecycleBin() {
   const headers = { 'Authorization': `Bearer ${token}` };
 
   // 1. Use sample test file (known to work)
-  const testFilePath = '/home/neil1988/LocalizationTools/tests/fixtures/sample_language_data.txt';
+  const testFilePath = '/home/<USERNAME>/LocalizationTools/tests/fixtures/sample_language_data.txt';
   console.log('1. Using sample test file');
 
   // 2. Upload to Offline Storage (storage=local)

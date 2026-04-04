@@ -6,7 +6,7 @@ import time
 # --------------------------------------------------------------------------- #
 # DEFAULT CONFIG – **your original hard-coded paths are kept**
 # --------------------------------------------------------------------------- #
-INPUT_LIST_PATH  = r"C:\Users\PEARL\Desktop\CD SCRIPTS\WorkingScripts\audiotofind.txt"
+INPUT_LIST_PATH  = r"C:\Users\<USERNAME>\Desktop\CD SCRIPTS\WorkingScripts\audiotofind.txt"
 SEARCH_ROOT      = r"F:\perforce\cd\mainline\resource\Sound\Windows\English(US)"
 FOUND_OUT_PATH   = "found_audio_files.txt"
 MISSING_OUT_PATH = "missing_audio_files.txt"

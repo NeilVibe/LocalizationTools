@@ -64,9 +64,9 @@ After GitHub creates a release, mirror it to Gitea:
 #!/bin/bash
 # Mirror latest GitHub release to Gitea
 
-GITHUB_REPO="NeilVibe/LocalizationTools"
+GITHUB_REPO="<GIT_USER>/LocalizationTools"
 GITEA_URL="http://localhost:3000"
-GITEA_REPO="neilvibe/LocaNext"
+GITEA_REPO="<GIT_USER>/LocaNext"
 GITEA_TOKEN="${GITEA_TOKEN}"
 
 # Get latest GitHub release
@@ -232,7 +232,7 @@ Keep only the latest 2 builds to save disk space.
 # Keep only the latest N releases
 
 GITEA_URL="http://localhost:3000"
-GITEA_REPO="neilvibe/LocaNext"
+GITEA_REPO="<GIT_USER>/LocaNext"
 GITEA_TOKEN="${GITEA_TOKEN}"
 KEEP_COUNT=2
 
@@ -344,7 +344,7 @@ Desktop App Launch
 
 1. Check `latest.yml` is accessible:
    ```bash
-   curl http://localhost:3000/neilvibe/LocaNext/releases/download/latest/latest.yml
+   curl http://localhost:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml
    ```
 
 2. Check version format matches

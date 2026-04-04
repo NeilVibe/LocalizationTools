@@ -395,8 +395,8 @@ def test_round_trip_parse_merge_export_reparse():
 |----------|-------|
 | Framework | pytest (existing) |
 | Config file | tests/conftest.py |
-| Quick run command | `cd /home/neil1988/LocalizationTools && python -m pytest tests/integration/test_mock_gamedata_pipeline.py -x -v` |
-| Full suite command | `cd /home/neil1988/LocalizationTools && python -m pytest tests/ -x -v --timeout=60` |
+| Quick run command | `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/integration/test_mock_gamedata_pipeline.py -x -v` |
+| Full suite command | `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/ -x -v --timeout=60` |
 
 ### Phase Requirements -> Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |

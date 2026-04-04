@@ -167,7 +167,7 @@ Dec 28 13:02
 ### Rule 1: Never Start Gitea Manually
 ```bash
 # WRONG - creates zombie
-cd /home/neil1988/gitea && ./gitea web
+cd /home/<USERNAME>/gitea && ./gitea web
 
 # RIGHT - use systemd
 sudo systemctl start gitea

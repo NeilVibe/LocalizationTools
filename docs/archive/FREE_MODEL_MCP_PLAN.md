@@ -598,7 +598,7 @@ if __name__ == "__main__":
 // Add to ~/.claude.json → mcpServers
 "local-models": {
     "command": "python3",
-    "args": ["/home/neil1988/LocalizationTools/scripts/mcp/local_models_mcp.py"],
+    "args": ["/home/<USERNAME>/LocalizationTools/scripts/mcp/local_models_mcp.py"],
     "env": {
         "CUDA_VISIBLE_DEVICES": "0"
     }

@@ -112,7 +112,7 @@ git push origin main
 
 **Build starts automatically AFTER you push BUILD_TRIGGER.txt update.**
 
-Check: https://github.com/NeilVibe/LocalizationTools/actions
+Check: https://github.com/<GIT_USER>/LocalizationTools/actions
 
 ---
 

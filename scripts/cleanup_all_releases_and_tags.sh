@@ -89,8 +89,8 @@ echo ""
 # ============================================================================
 echo "=== GITEA ==="
 
-GITEA_URL="${GITEA_URL:-http://172.28.150.120:3000}"
-GITEA_REPO="neilvibe/LocaNext"
+GITEA_URL="${GITEA_URL:-http://localhost:3000}"
+GITEA_REPO="<GIT_USER>/LocaNext"
 
 if [ -z "$GITEA_TOKEN" ]; then
     echo "[SKIP] GITEA_TOKEN not set"

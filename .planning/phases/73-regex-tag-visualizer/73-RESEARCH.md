@@ -407,7 +407,7 @@ Dark-theme colors chosen to match the existing VirtualGrid dark theme with grey/
 - `locaNext/src/lib/utils/colorParser.js` -- existing parser pattern (full file reviewed)
 - `locaNext/src/lib/components/ldm/ColorText.svelte` -- existing renderer pattern (full file reviewed)
 - `locaNext/src/lib/components/ldm/VirtualGrid.svelte` -- cell rendering at lines 2844, 2894, 2926; edit mode at lines 1264-1340; formatGridText at line 2181
-- `~/.claude/projects/-home-neil1988-LocalizationTools/memory/reference_tag_regex_patterns.md` -- pre-documented tag patterns
+- `~/.claude/projects/-home-<USERNAME>-LocalizationTools/memory/reference_tag_regex_patterns.md` -- pre-documented tag patterns
 
 ### Secondary (MEDIUM confidence)
 - MemoQ tag visualization concept -- industry-standard CAT tool pattern for tag pills

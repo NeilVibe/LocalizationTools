@@ -9,7 +9,7 @@
 ### 1. Start the Backend Server
 
 ```bash
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 python3 server/main.py
 ```
 
@@ -30,7 +30,7 @@ Server runs on `http://localhost:8888`
 ### 2. Run LocaNext Desktop App
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 
 # Development mode (with hot reload)
 npm run dev
@@ -51,7 +51,7 @@ npm run dev:svelte -- --port 5176
 ### 3. Run Admin Dashboard
 
 ```bash
-cd /home/neil1988/LocalizationTools/adminDashboard
+cd /home/<USERNAME>/LocalizationTools/adminDashboard
 npm run dev -- --port 5175
 ```
 
@@ -64,7 +64,7 @@ Dashboard runs on `http://localhost:5175`
 ### Run All Tests
 
 ```bash
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 
 # All tests
 python3 -m pytest
@@ -202,7 +202,7 @@ git push origin main
 git push gitea main
 ```
 
-**Build Status:** https://github.com/NeilVibe/LocalizationTools/actions
+**Build Status:** https://github.com/<GIT_USER>/LocalizationTools/actions
 
 ---
 

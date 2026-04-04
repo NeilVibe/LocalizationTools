@@ -90,7 +90,7 @@ cd /mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext
 
 ```powershell
 # Access test scripts via UNC path
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 
 # Login and test
 node login.js

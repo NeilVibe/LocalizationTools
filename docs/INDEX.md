@@ -117,7 +117,7 @@ Executive demo materials and architecture diagrams. Generator scripts + output P
 
 ## Memory System
 
-Claude's persistent memory lives at `~/.claude/projects/-home-neil1988-LocalizationTools/memory/`.
+Claude's persistent memory lives at `~/.claude/projects/-home-<USERNAME>-LocalizationTools/memory/`.
 
 ```
 memory/

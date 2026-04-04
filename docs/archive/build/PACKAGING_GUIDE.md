@@ -51,7 +51,7 @@ url: 'http://192.168.1.100:8888/updates'  // Your IP
 #### **Step 2: Build the Windows Installer**
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 
 # Build Svelte app
 npm run build
@@ -113,7 +113,7 @@ sha512: [keep existing hash]
 
 Start the dev server:
 ```bash
-cd /home/neil1988/LocalizationTools/adminDashboard
+cd /home/<USERNAME>/LocalizationTools/adminDashboard
 npm run dev -- --port 5175
 ```
 
@@ -141,7 +141,7 @@ python3 -m http.server 5175
 ```nginx
 server {
     listen 5175;
-    root /home/neil1988/LocalizationTools/adminDashboard/build;
+    root /home/<USERNAME>/LocalizationTools/adminDashboard/build;
     index index.html;
 }
 ```
@@ -154,7 +154,7 @@ server {
 
 ```bash
 # 1. Start backend server (keeps running)
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 python3 server/main.py &
 
 # 2. Start admin dashboard (keeps running)

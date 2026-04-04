@@ -60,7 +60,7 @@
 ┌─────────────────────────────────┐
 │ Server Connection               │
 │                                 │
-│ [Online ✓] Connected to PEARL   │
+│ [Online ✓] Connected to <PC_NAME>   │
 │ LAN IP: 10.0.0.1            │
 │                                 │
 │ Server Address: [10.0.0.1 ] │
@@ -118,7 +118,7 @@
 |---|------|--------|-------|
 | F1 | Build Full Admin (with PG, setup wizard) | TODO | BUILD_TRIGGER.txt = "Build" |
 | F2 | Build Light (no PG, server IP settings) | TODO | BUILD_TRIGGER.txt = "Build Light" |
-| F3 | Test: Admin installs → setup wizard → PG up | TODO | On PEARL |
+| F3 | Test: Admin installs → setup wizard → PG up | TODO | On <PC_NAME> |
 | F4 | Test: Admin opens dashboard → creates user account | TODO | localhost:5174 |
 | F5 | Test: Admin enables LAN access | TODO | |
 | F6 | Test: User installs Light → enters admin IP → connects | TODO | On user PC |
@@ -141,14 +141,14 @@
 ## Architecture Summary (Option B)
 
 ```
-ADMIN PC (PEARL)                         USER PC (Light Build)
+ADMIN PC (<PC_NAME>)                         USER PC (Light Build)
 ┌──────────────────────┐                ┌──────────────────────┐
 │ LocaNext Full Admin  │                │ LocaNext Light       │
 │                      │                │                      │
 │ Svelte Frontend ─────┼── port 5173    │ Svelte Frontend ─────┤
 │        │             │                │        │             │
 │        ▼             │                │        │ API_BASE =  │
-│ FastAPI Backend ─────┼── port 8888 ◄──┼────────┘ PEARL:8888  │
+│ FastAPI Backend ─────┼── port 8888 ◄──┼────────┘ <PC_NAME>:8888  │
 │        │             │    (0.0.0.0)   │                      │
 │        ▼             │                │ No local backend     │
 │ PostgreSQL ──────────┼── port 5432    │ No PostgreSQL        │

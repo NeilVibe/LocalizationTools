@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI와 함께 코딩하는 법</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --canvas: #F5F6F8;
+    --surface: #FFFFFF;
+    --ink: #16181D;
+    --ink-secondary: #3D4150;
+    --muted: #6B7280;
+    --light-muted: #9CA3AF;
+    --whisper: rgba(0,0,0,0.05);
+
+    --plan: #2563EB;
+    --plan-bg: #EFF6FF;
+    --plan-border: #BFDBFE;
+
+    --exec: #059669;
+    --exec-bg: #ECFDF5;
+    --exec-border: #A7F3D0;
+
+    --verify: #D97706;
+    --verify-bg: #FFFBEB;
+    --verify-border: #FDE68A;
+
+    --fix: #DC2626;
+    --fix-bg: #FEF2F2;
+    --fix-border: #FECACA;
+
+    --secure: #7C3AED;
+    --secure-bg: #F5F3FF;
+    --secure-border: #C4B5FD;
+
+    --ship: #16181D;
+
+    --memory: #0E7490;
+    --memory-bg: #ECFEFF;
+    --memory-border: #A5F3FC;
+
+    --logging: #B45309;
+    --logging-bg: #FFFBEB;
+    --logging-border: #FDE68A;
+
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-page: 0 20px 60px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem 1.5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 1120px;
+    background: var(--surface);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-page);
+    padding: 2.5rem 2.75rem 1.75rem;
+    position: relative;
+  }
+
+  .header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 1.75rem; padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .header-left h1 { font-size: 1.85rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; }
+  .header-left p { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+  .header-right .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem; font-weight: 500; color: var(--light-muted); letter-spacing: 0.04em;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 220px 220px;
+    gap: 1.75rem;
+    align-items: start;
+  }
+
+  .flow { display: flex; flex-direction: column; }
+
+  .phase-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.57rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.14em; color: var(--light-muted);
+    margin-top: 0.85rem; margin-bottom: 0.3rem; padding-left: 0.1rem;
+  }
+  .phase-header:first-child { margin-top: 0; }
+
+  .step {
+    display: grid; grid-template-columns: 1.9rem 1fr;
+    gap: 0.7rem; align-items: center;
+    padding: 0.55rem 0.75rem; border-radius: 0.65rem;
+    border: 1.5px solid transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .step:hover { transform: translateX(3px); box-shadow: var(--shadow-card); }
+
+  .num {
+    width: 1.9rem; height: 1.9rem; border-radius: 0.45rem;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 0.65rem; color: white;
+  }
+  .step h3 { font-size: 0.8rem; font-weight: 700; line-height: 1.25; }
+  .step p { font-size: 0.6rem; color: var(--muted); line-height: 1.5; margin-top: 0.05rem; }
+
+  .conn { padding: 0.08rem 0; margin-left: 1.6rem; }
+  .conn-line { width: 1.5px; height: 10px; background: var(--light-muted); opacity: 0.35; }
+
+  .s-plan { background: var(--plan-bg); border-color: var(--plan-border); }
+  .s-plan .num { background: var(--plan); }
+  .s-exec { background: var(--exec-bg); border-color: var(--exec-border); }
+  .s-exec .num { background: var(--exec); }
+  .s-verify { background: var(--verify-bg); border-color: var(--verify-border); }
+  .s-verify .num { background: var(--verify); }
+  .s-fix { background: var(--fix-bg); border-color: var(--fix-border); }
+  .s-fix .num { background: var(--fix); }
+  .s-secure { background: var(--secure-bg); border-color: var(--secure-border); }
+  .s-secure .num { background: var(--secure); }
+
+  .loop {
+    display: flex; align-items: center; gap: 0.35rem;
+    margin: 0.15rem 0 0.15rem 2.2rem;
+    padding: 0.25rem 0.5rem; border-radius: 0.35rem;
+    border: 1px dashed var(--fix-border);
+    background: var(--fix-bg); width: fit-content;
+  }
+  .loop svg { width: 11px; height: 11px; color: var(--fix); }
+  .loop span { font-size: 0.56rem; color: var(--fix); font-weight: 700; }
+
+  .security-gate {
+    margin: 0.5rem 0; padding: 0.55rem 0.85rem;
+    border: 2px solid var(--secure-border); border-radius: 0.65rem;
+    background: var(--secure-bg);
+    display: flex; align-items: center; gap: 0.65rem; position: relative;
+  }
+  .security-gate::before {
+    content: ''; position: absolute;
+    left: -1px; top: -1px; bottom: -1px;
+    width: 4px; background: var(--secure); border-radius: 0.65rem 0 0 0.65rem;
+  }
+  .gate-icon {
+    width: 2.2rem; height: 2.2rem; border-radius: 0.5rem;
+    background: var(--secure);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .gate-icon svg { width: 14px; height: 14px; color: white; }
+  .gate-content h3 { font-size: 0.8rem; font-weight: 700; color: var(--secure); }
+  .gate-content p { font-size: 0.58rem; color: var(--muted); line-height: 1.45; margin-top: 0.05rem; }
+  .gate-checklist { display: flex; gap: 0.35rem; margin-top: 0.25rem; flex-wrap: wrap; }
+  .gate-check {
+    font-size: 0.5rem; font-weight: 600; color: var(--secure);
+    background: rgba(124, 58, 237, 0.08);
+    padding: 0.1rem 0.35rem; border-radius: 0.2rem; white-space: nowrap;
+  }
+
+  .ship {
+    display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+    margin-top: 0.5rem; padding: 0.5rem 1.5rem;
+    border-radius: 2rem; background: var(--ship);
+    color: white; font-weight: 700; font-size: 0.85rem;
+    width: fit-content; align-self: center;
+  }
+  .ship svg { width: 14px; height: 14px; }
+
+  .sidebar { display: flex; flex-direction: column; gap: 0.85rem; }
+
+  .discipline { border-radius: 0.75rem; padding: 0.85rem; position: relative; }
+  .discipline::before {
+    content: ''; position: absolute;
+    left: -1px; top: -1px; bottom: -1px;
+    width: 3px; border-radius: 0.75rem 0 0 0.75rem;
+  }
+  .disc-header {
+    display: flex; align-items: center; gap: 0.35rem;
+    margin-bottom: 0.5rem; padding-bottom: 0.4rem;
+  }
+  .disc-header svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .disc-header h2 { font-size: 0.72rem; font-weight: 800; }
+  .disc-badge {
+    font-size: 0.48rem; font-weight: 700;
+    padding: 0.1rem 0.3rem; border-radius: 0.2rem; margin-left: auto;
+  }
+  .disc-item { padding: 0.3rem 0; }
+  .disc-item h4 { font-size: 0.62rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
+  .disc-item p { font-size: 0.53rem; color: var(--muted); line-height: 1.5; margin-top: 0.02rem; }
+  .disc-footer { margin-top: 0.4rem; padding-top: 0.35rem; text-align: center; }
+  .disc-footer p { font-size: 0.53rem; font-weight: 600; line-height: 1.6; }
+
+  .disc-memory { background: var(--memory-bg); border: 1.5px solid var(--memory-border); }
+  .disc-memory::before { background: var(--memory); }
+  .disc-memory .disc-header { border-bottom: 1px solid rgba(14, 116, 144, 0.12); }
+  .disc-memory .disc-header svg, .disc-memory .disc-header h2 { color: var(--memory); }
+  .disc-memory .disc-badge { background: rgba(14, 116, 144, 0.1); color: var(--memory); }
+  .disc-memory .disc-item { border-bottom: 1px solid rgba(14, 116, 144, 0.06); }
+  .disc-memory .disc-item:last-of-type { border-bottom: none; }
+  .disc-memory .disc-footer { border-top: 1px dashed rgba(14, 116, 144, 0.15); }
+  .disc-memory .disc-footer p { color: var(--memory); }
+
+  .disc-logging { background: var(--logging-bg); border: 1.5px solid var(--logging-border); }
+  .disc-logging::before { background: var(--logging); }
+  .disc-logging .disc-header { border-bottom: 1px solid rgba(180, 83, 9, 0.12); }
+  .disc-logging .disc-header svg, .disc-logging .disc-header h2 { color: var(--logging); }
+  .disc-logging .disc-badge { background: rgba(180, 83, 9, 0.1); color: var(--logging); }
+  .disc-logging .disc-item { border-bottom: 1px solid rgba(180, 83, 9, 0.06); }
+  .disc-logging .disc-item:last-of-type { border-bottom: none; }
+  .disc-logging .disc-footer { border-top: 1px dashed rgba(180, 83, 9, 0.15); }
+  .disc-logging .disc-footer p { color: var(--logging); }
+
+  .callout {
+    font-size: 0.53rem; font-weight: 600;
+    padding: 0.3rem 0.5rem; border-radius: 0.3rem;
+    line-height: 1.5; margin-top: 0.3rem;
+  }
+  .callout-memory { background: rgba(14, 116, 144, 0.08); color: var(--memory); }
+  .callout-logging { background: rgba(180, 83, 9, 0.08); color: var(--logging); }
+
+  .principles-card {
+    background: #F9FAFB; border: 1.5px solid #E5E7EB;
+    border-radius: 0.75rem; padding: 0.85rem;
+  }
+  .principles-card h2 {
+    font-size: 0.72rem; font-weight: 800; color: var(--ink);
+    margin-bottom: 0.4rem; padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--whisper);
+  }
+  .principle { padding: 0.22rem 0; display: flex; gap: 0.35rem; align-items: flex-start; }
+  .principle-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem; font-weight: 600; color: var(--light-muted);
+    min-width: 0.9rem; padding-top: 0.02rem;
+  }
+  .principle-text { font-size: 0.56rem; color: var(--ink-secondary); line-height: 1.45; font-weight: 500; }
+  .principle-text strong { color: var(--ink); font-weight: 700; }
+
+  .footer {
+    margin-top: 1.25rem; padding-top: 0.75rem;
+    border-top: 1px solid var(--whisper);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .legend { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.2rem; font-size: 0.52rem; color: var(--muted); font-weight: 500; }
+  .ldot { width: 6px; height: 6px; border-radius: 2px; }
+  .footer-right { font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; color: var(--light-muted); }
+
+  @media print {
+    body { padding: 0; background: white; }
+    .page { box-shadow: none; border-radius: 0; padding: 1rem 1.25rem; max-width: 100%; }
+    .step:hover { transform: none; box-shadow: none; }
+  }
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .page { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>AI와 함께 코딩하는 법</h1>
+      <p>아이디어에서 배포까지, 전체 개발 워크플로우</p>
+    </div>
+    <div class="header-right">
+      <span class="tagline">10 STEPS + 2 DISCIPLINES</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- ══════ Column 1: Flow ══════ -->
+    <div class="flow">
+
+      <div class="phase-header">Phase 1 &mdash; 설계</div>
+
+      <div class="step s-plan">
+        <div class="num">01</div>
+        <div>
+          <h3>컨텍스트 수집</h3>
+          <p>코드를 건드리기 전에 기존 코드, 문서, 제약 조건을 먼저 읽는다. AI는 내가 주는 맥락만큼만 똑똑하다.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-plan">
+        <div class="num">02</div>
+        <div>
+          <h3>계획 수립</h3>
+          <p>작업을 작은 단위로 나눈다. 범위, 접근 방식, 완료 기준을 정한다. 코딩 전에 리뷰를 받는다.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-plan">
+        <div class="num">03</div>
+        <div>
+          <h3>계획 리뷰</h3>
+          <p>가정을 의심한다. 엣지 케이스를 검증한다. 잘못된 방향은 2시간 코딩 후가 아니라 지금 잡는다.</p>
+        </div>
+      </div>
+
+      <div class="phase-header">Phase 2 &mdash; 구현</div>
+
+      <div class="step s-exec">
+        <div class="num">04</div>
+        <div>
+          <h3>코드 작성</h3>
+          <p>작은 단위로 구현한다. AI가 만들어낸 가짜 API, 과도한 설계, 범위 초과를 경계한다.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-exec">
+        <div class="num">05</div>
+        <div>
+          <h3>코드 리뷰</h3>
+          <p>AI 결과물을 전부 검토한다. import가 실제로 존재하는지, 요청한 것만 했는지 확인한다.</p>
+        </div>
+      </div>
+
+      <div class="phase-header">Phase 3 &mdash; 검증</div>
+
+      <div class="step s-verify">
+        <div class="num">06</div>
+        <div>
+          <h3>테스트</h3>
+          <p>직접 실행한다. 자동 테스트 + 수동 확인. "될 거야"를 절대 믿지 않는다. 증거를 확보한다.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-verify">
+        <div class="num">07</div>
+        <div>
+          <h3>로그 확인</h3>
+          <p>종료 코드만 보지 말고 전체 출력을 읽는다. 예상이 아닌 실제 결과를 파악한다.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-fix">
+        <div class="num">08</div>
+        <div>
+          <h3>버그 수정</h3>
+          <p>근본 원인을 먼저 파악한다. 작고 정확한 수정. 땜질하지 말고 왜 깨졌는지 이해한다.</p>
+        </div>
+      </div>
+
+      <div class="loop">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l3-3 3 3"/><path d="M6 6v6"/><path d="M13 4v5a3 3 0 01-3 3H6"/></svg>
+        <span>전부 통과할 때까지 04번으로 반복</span>
+      </div>
+
+      <div class="phase-header">Phase 4 &mdash; 강화 &amp; 배포</div>
+
+      <div class="security-gate">
+        <div class="gate-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="gate-content">
+          <h3>09 &mdash; 보안 검증</h3>
+          <p>배포 전 필수 점검. 예외 없음.</p>
+          <div class="gate-checklist">
+            <span class="gate-check">인젝션</span>
+            <span class="gate-check">인증/인가</span>
+            <span class="gate-check">시크릿 노출</span>
+            <span class="gate-check">입력값 검증</span>
+            <span class="gate-check">의존성 점검</span>
+            <span class="gate-check">OWASP Top 10</span>
+          </div>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="step s-secure">
+        <div class="num">10</div>
+        <div>
+          <h3>최종 리뷰</h3>
+          <p>전체 점검. 계획과 일치하는가? 범위가 맞는가? 불필요한 코드 정리. 프로덕션 전 마지막 기회.</p>
+        </div>
+      </div>
+      <div class="conn"><div class="conn-line"></div></div>
+      <div class="ship">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        배포
+      </div>
+    </div>
+
+    <!-- ══════ Column 2: Memory ══════ -->
+    <div class="sidebar">
+
+      <div class="discipline disc-memory">
+        <div class="disc-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          <h2>메모리 &amp; 문서</h2>
+          <span class="disc-badge">필수</span>
+        </div>
+
+        <div class="disc-item">
+          <h4>작업하면서 기록한다</h4>
+          <p>결정 사항, 발견한 것, 맥락. 끝나고가 아니라 하면서.</p>
+        </div>
+        <div class="disc-item">
+          <h4>항상 최신 상태로 유지</h4>
+          <p>낡은 맥락 = 잘못된 AI 결과. 적극적으로 갱신한다.</p>
+        </div>
+        <div class="disc-item">
+          <h4>과감하게 정리한다</h4>
+          <p>오래된 문서와 메모리를 삭제. 적을수록 정확하다.</p>
+        </div>
+        <div class="disc-item">
+          <h4>스스로 개선한다</h4>
+          <p>매 사이클에서 배운 패턴을 규칙으로 승격시킨다.</p>
+        </div>
+
+        <div class="callout callout-memory">
+          AI는 세션 사이에 아무것도 기억 못 한다. 문서가 곧 AI의 뇌다. 문서가 부실하면 AI도 부실하다.
+        </div>
+
+        <div class="disc-footer">
+          <p>모든 단계에 병렬로 진행.<br>단계가 아니라 습관.</p>
+        </div>
+      </div>
+
+      <div class="principles-card">
+        <h2>핵심 원칙</h2>
+        <div class="principle">
+          <span class="principle-num">01</span>
+          <span class="principle-text"><strong>작게 나눠서.</strong> 큰 변경 = 큰 실패.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">02</span>
+          <span class="principle-text"><strong>전부 검증한다.</strong> AI는 없는 API를 만들어낸다.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">03</span>
+          <span class="principle-text"><strong>범위를 지킨다.</strong> AI는 과하게 만든다. "요청한 것만."</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">04</span>
+          <span class="principle-text"><strong>근본 원인 먼저.</strong> 왜 깨졌는지 이해하고 고친다.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">05</span>
+          <span class="principle-text"><strong>보안은 선택이 아니다.</strong> 배포 전 OWASP 필수.</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num">06</span>
+          <span class="principle-text"><strong>증거로 말한다.</strong> 테스트, 로그, 스크린샷.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ Column 3: Logging ══════ -->
+    <div class="sidebar">
+
+      <div class="discipline disc-logging">
+        <div class="disc-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <h2>상세 로깅</h2>
+          <span class="disc-badge">필수</span>
+        </div>
+
+        <div class="disc-item">
+          <h4>로그는 사람이 아니라 AI를 위한 것</h4>
+          <p>사람은 로그를 훑어본다. AI는 한 줄 한 줄 다 읽는다. 상세한 로그가 AI에게 실행 맥락을 준다.</p>
+        </div>
+        <div class="disc-item">
+          <h4>모든 분기점을 기록한다</h4>
+          <p>뭐가 실행됐고, 뭐가 건너뛰어졌고, 왜 그랬는지. 모든 분기, 모든 값.</p>
+        </div>
+        <div class="disc-item">
+          <h4>AI는 맥락이 있으면 100배 잘 고친다</h4>
+          <p>스택 트레이스만으로는 추측이다. 상세한 실행 로그는 정확한 지도다.</p>
+        </div>
+        <div class="disc-item">
+          <h4>한계를 드러낸다</h4>
+          <p>로그가 코드의 한계를 보여준다. 다음에 뭘 만들지 알려주는 신호다.</p>
+        </div>
+
+        <div class="callout callout-logging">
+          AI에게 항상 상세한 로깅이 포함된 코드를 작성하게 한다. AI 디버깅의 가장 큰 생산성 배율기.
+        </div>
+
+        <div class="disc-footer">
+          <p>모든 함수에 내장한다.<br>나중에가 아니라 처음부터.</p>
+        </div>
+      </div>
+
+      <div class="principles-card" style="background: var(--logging-bg); border-color: var(--logging-border);">
+        <h2 style="color: var(--logging);">뭘 로깅할 것인가</h2>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">IN</span>
+          <span class="principle-text">함수 진입 + 입력값 + 현재 상태</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">DO</span>
+          <span class="principle-text">각 단계, 어떤 분기를 탔는지, 계산된 값</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--logging);">OUT</span>
+          <span class="principle-text">결과, 소요 시간, 성공/실패 여부, 이유</span>
+        </div>
+        <div class="principle">
+          <span class="principle-num" style="color: var(--fix);">ERR</span>
+          <span class="principle-text">전체 맥락: 뭘 시도했고, 뭐가 실패했고, 어떤 상태로 남았는지</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background: var(--plan);"></div> 설계</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--exec);"></div> 구현</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--verify);"></div> 검증</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--fix);"></div> 수정</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--secure);"></div> 강화</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--memory);"></div> 메모리</div>
+      <div class="legend-item"><div class="ldot" style="background: var(--logging);"></div> 로깅</div>
+    </div>
+    <div class="footer-right">v2.0 &mdash; 2026</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -50,7 +50,7 @@ Open **two terminals**:
 
 **Terminal 1 - Start Vite Dev Server:**
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev:svelte
 ```
 
@@ -62,7 +62,7 @@ VITE v5.x.x  ready in XXXXms
 
 **Terminal 2 - Launch Electron:**
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev:electron
 ```
 
@@ -75,7 +75,7 @@ This will:
 ### Option 2: Single Command (Launches Both)
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev
 ```
 

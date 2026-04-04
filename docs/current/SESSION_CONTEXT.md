@@ -29,7 +29,7 @@
 - perforce_path_service PATH_TEMPLATES: template pattern (F: replaced at runtime), not fallback
 
 ## Wave 3 — Verify After Build (PENDING)
-1. MegaIndex in Task Manager — verify on PEARL with new build
+1. MegaIndex in Task Manager — verify on <PC_NAME> with new build
 2. Enhanced loading details — MDG-style sub-step logging (deferred)
 3. DDS image thumbnails — verify pillow-dds works end-to-end on Windows
 

@@ -8,11 +8,11 @@
 
 ```bash
 # Terminal 1: Backend (with rate limit disabled)
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 DEV_MODE=true python3 server/main.py
 
 # Terminal 2: Frontend
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev
 ```
 
@@ -89,7 +89,7 @@ To test color tags, import a file with PAColor patterns:
 ## Playwright Headless Tests
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npx playwright test --grep "health" --reporter=list
 ```
 

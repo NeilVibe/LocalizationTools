@@ -3,7 +3,7 @@
 **Date:** 2026-04-02
 **Status:** Draft
 **Scope:** 7 subsystems, ~15 files, ~1500-2000 lines
-**Priority:** CRITICAL — demo-blocking bug (backend timeout on PEARL)
+**Priority:** CRITICAL — demo-blocking bug (backend timeout on <PC_NAME>)
 
 ---
 
@@ -23,7 +23,7 @@ The "Full Admin with PG" build bundles PostgreSQL. On first launch, the Python b
 
 ## Target Environment
 
-- **PEARL PC:** Intel i7-12700 (12C/20T), 64GB RAM, SSD, Windows, offline
+- **<PC_NAME> PC:** Intel i7-12700 (12C/20T), 64GB RAM, SSD, Windows, offline
 - **Use case:** LAN server hosting 10+ simultaneous users
 - **PG target:** 200+ concurrent connections (10 users = ultra fast)
 - **Build type:** Full Admin with PG (GitHub Actions)
@@ -684,7 +684,7 @@ max_parallel_maintenance_workers = {min(4, physical_cores // 3)}
 default_statistics_target = 200
 ```
 
-For PEARL (64GB, 12 cores):
+For <PC_NAME> (64GB, 12 cores):
 - `shared_buffers = 16GB`
 - `effective_cache_size = 48GB`
 - `work_mem = 64MB` (64*1024 / 500 ≈ 131, clamped to 64 for safety)
@@ -1016,8 +1016,8 @@ Log to `startup_telemetry.json` in the LocaNext data dir:
 
 ## Success Criteria
 
-1. **PEARL first launch:** Splash screen shows all 8 steps with progress → PG fully configured → app opens → NEVER times out
-2. **PEARL subsequent launch:** Splash shows "Starting PostgreSQL..." for 3-5s → app opens
+1. **<PC_NAME> first launch:** Splash screen shows all 8 steps with progress → PG fully configured → app opens → NEVER times out
+2. **<PC_NAME> subsequent launch:** Splash shows "Starting PostgreSQL..." for 3-5s → app opens
 3. **10 concurrent users:** PG handles with 4.8% connection usage (12/250), cache hit >99%
 4. **Setup failure:** Clear error in splash with step, message, pg.log, retry button
 5. **Dashboard:** Live connection count, cache ratio, health recommendations

@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/neil1988/LocalizationTools"
+PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
 TEST_DIR="/tmp/xlstransfer_cli_test"
 API_URL="http://localhost:8888"
 
@@ -89,7 +89,7 @@ echo ""
 
 python3 << 'PYTHON_SCRIPT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 try:
     from client.tools.xls_transfer import core
@@ -119,7 +119,7 @@ echo ""
 
 python3 << 'PYTHON_SCRIPT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -158,7 +158,7 @@ echo ""
 
 python3 << 'PYTHON_SCRIPT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 try:
     import numpy as np
@@ -202,7 +202,7 @@ echo ""
 
 python3 << 'PYTHON_SCRIPT'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools')
 
 try:
     from client.tools.xls_transfer import excel_utils

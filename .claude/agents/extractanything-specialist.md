@@ -148,7 +148,7 @@ All tabs use `self.run_in_thread(work_fn)` → daemon thread → queue-based log
 ### GitHub Actions (NOT Gitea!)
 
 ```bash
-echo "Build N: description" >> /home/neil1988/LocalizationTools/EXTRACTANYTHING_BUILD.txt
+echo "Build N: description" >> /home/<USERNAME>/LocalizationTools/EXTRACTANYTHING_BUILD.txt
 git add EXTRACTANYTHING_BUILD.txt && git commit -m "Trigger ExtractAnything Build N" && git push origin main
 ```
 

@@ -20,7 +20,7 @@ from openpyxl import load_workbook, Workbook
 # --------------------------------------------------------------------------- #
 # CONFIG
 # --------------------------------------------------------------------------- #
-SOURCE_FILE = Path(r"C:\Users\PEARL\Desktop\CD SCRIPTS\WorkingScripts\listID.txt")
+SOURCE_FILE = Path(r"C:\Users\<USERNAME>\Desktop\CD SCRIPTS\WorkingScripts\listID.txt")
 VOICE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 EXCEL_OUTPUT = SOURCE_FILE.with_name("sequencer_output.xlsx")
 # --------------------------------------------------------------------------- #

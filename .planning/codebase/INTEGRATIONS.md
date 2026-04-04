@@ -133,7 +133,7 @@
 **Hosting:**
 - **Desktop App (Windows):** NSIS installer (LocaNext.exe)
   - Auto-updater: electron-updater
-  - Release URL: `http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest` (Gitea)
+  - Release URL: `http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest` (Gitea)
 
 **CI Pipelines:**
 - **GitHub Actions:** Frontend/NewScript tools (`build-electron.yml`, `quicktranslate-build.yml`, etc.)

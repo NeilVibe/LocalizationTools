@@ -16,14 +16,14 @@
 #   Export GITEA_TOKEN first:
 #   export GITEA_TOKEN="your_token_here"
 #
-#   Get your token from: http://172.28.150.120:3000/user/settings/applications
+#   Get your token from: http://<GITEA_HOST>:3000/user/settings/applications
 #   Create a new token with "write:repository" permission
 # =============================================================================
 
 set -e
 
-GITEA_URL="${GITEA_URL:-http://172.28.150.120:3000}"
-GITEA_REPO="neilvibe/LocaNext"
+GITEA_URL="${GITEA_URL:-http://localhost:3000}"
+GITEA_REPO="<GIT_USER>/LocaNext"
 API_URL="$GITEA_URL/api/v1/repos/$GITEA_REPO"
 
 # Colors
@@ -285,6 +285,6 @@ case "${1:-}" in
         echo ""
         echo "Setup:"
         echo "  export GITEA_TOKEN=\"your_token\""
-        echo "  Get token from: http://172.28.150.120:3000/user/settings/applications"
+        echo "  Get token from: http://<GITEA_HOST>:3000/user/settings/applications"
         ;;
 esac

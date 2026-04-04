@@ -1,6 +1,6 @@
 # Windows App Bugfix Plan — 2026-03-30
 
-From full Windows app log analysis + user testing on PEARL PC.
+From full Windows app log analysis + user testing on <PC_NAME> PC.
 
 ## Already Fixed (in working tree, not yet committed)
 
@@ -170,7 +170,7 @@ For Korean file (languagedata_KOR.loc.xml):
 
 ---
 
-## NEW Issues from PEARL PC Testing Round 2 (2026-03-30 session 2)
+## NEW Issues from <PC_NAME> PC Testing Round 2 (2026-03-30 session 2)
 
 ### Phase 100 Completed (bugs 1-12 + case-insensitive)
 All committed and built. Post-build review found + fixed: frontend language wiring, image C7 chain, health.py counts, test mocks, inline editor Space/Enter.

@@ -19,7 +19,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 # ------------------ Global Embedding Model ------------------
 # Use the local path to load your model. Use raw string format or double backslashes for Windows paths.
-local_model_path = r"C:\Users\PEARL\Desktop\KRTransformer"
+local_model_path = r"C:\Users\<USERNAME>\Desktop\KRTransformer"
 model = SentenceTransformer(local_model_path)
 
 # ------------------ Utility Functions ------------------

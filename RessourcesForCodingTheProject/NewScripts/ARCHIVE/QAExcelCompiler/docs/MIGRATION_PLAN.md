@@ -295,11 +295,11 @@ After transfer completes, print a summary report showing success rate per tester
 
 Tester              Category      Total   STRINGID+Trans   Trans Only   Success %
 ───────────────────────────────────────────────────────────────────────────────
-김동헌              Quest           245            230           12       98.8%
-김동헌              Knowledge       189            185            4      100.0%
+테스터A              Quest           245            230           12       98.8%
+테스터A              Knowledge       189            185            4      100.0%
 황하연              Quest           245            220           20       97.9%
 황하연              Item            312            290           15       97.8%
-김춘애              Quest           245            198           30       93.1%
+테스터B              Quest           245            198           30       93.1%
 최문석              Knowledge       189            150           25       92.6%
 ...
 ───────────────────────────────────────────────────────────────────────────────
@@ -318,7 +318,7 @@ Legend:
 
 ```python
 transfer_stats = {
-    ("김동헌", "Quest"): {
+    ("테스터A", "Quest"): {
         "total": 245,           # Rows with work in OLD file
         "stringid_match": 230,  # Matched by STRINGID + Translation
         "trans_only": 12,       # Matched by Translation only

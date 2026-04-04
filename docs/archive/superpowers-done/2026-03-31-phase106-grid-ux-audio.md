@@ -1,7 +1,7 @@
 # Phase 106 Spec: Grid UX Overhaul + Audio Fix
 
 > **Date:** 2026-03-31
-> **Source:** Windows app testing on PEARL PC (log analysis + user feedback)
+> **Source:** Windows app testing on <PC_NAME> PC (log analysis + user feedback)
 > **Status:** PLANNING — DO NOT IMPLEMENT UNTIL PLAN APPROVED
 
 ---

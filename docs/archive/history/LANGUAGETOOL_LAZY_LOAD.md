@@ -61,7 +61,7 @@ Move LanguageTool from central server to user's PC:
 
 ```
 Current:
-  LocaNext → Central LanguageTool Server (172.28.150.120:8081)
+  LocaNext → Central LanguageTool Server (<GITEA_HOST>:8081)
 
 Proposed:
   LocaNext → Local LanguageTool (bundled, starts on demand)

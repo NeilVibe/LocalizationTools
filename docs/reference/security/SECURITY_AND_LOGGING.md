@@ -37,13 +37,13 @@ app.add_middleware(
 ### **Option 1: Terminal Console (Real-Time)**
 ```bash
 # Watch backend logs live:
-tail -f /home/neil1988/LocalizationTools/server/logs/localizationtools.log
+tail -f /home/<USERNAME>/LocalizationTools/server/logs/localizationtools.log
 
 # Watch error logs only:
-tail -f /home/neil1988/LocalizationTools/server/logs/error.log
+tail -f /home/<USERNAME>/LocalizationTools/server/logs/error.log
 
 # Watch both:
-tail -f /home/neil1988/LocalizationTools/server/logs/*.log
+tail -f /home/<USERNAME>/LocalizationTools/server/logs/*.log
 ```
 
 ### **Option 2: Filter Specific Events**

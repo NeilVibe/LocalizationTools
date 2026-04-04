@@ -253,7 +253,7 @@ print('All exports OK')
 
 ### Trigger File
 
-**Location:** `/home/neil1988/LocalizationTools/QUICKTRANSLATE_BUILD.txt`
+**Location:** `/home/<USERNAME>/LocalizationTools/QUICKTRANSLATE_BUILD.txt`
 
 ### Trigger Build
 

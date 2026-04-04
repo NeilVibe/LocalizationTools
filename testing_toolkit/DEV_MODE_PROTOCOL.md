@@ -42,11 +42,11 @@ WHEN NOT TO USE:
 
 # Option B: Manual (two terminals)
 # Terminal 1: Backend (DEV_MODE disables rate limiting)
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 DEV_MODE=true python3 server/main.py
 
 # Terminal 2: Frontend
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev
 
 # Browser: http://localhost:5173
@@ -71,7 +71,7 @@ npm run dev
 ### 1.1 Backend Server
 
 ```bash
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 
 # Option A: Standard (with rate limits)
 python3 server/main.py
@@ -97,7 +97,7 @@ Expected output:
 ### 1.2 Frontend Dev Server
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev
 ```
 
@@ -244,7 +244,7 @@ ColorText rendering: {text: "<PAColor0xffe9bd23>100%<PAOldColor>", segments: [..
 ### 5.1 Run Search Test
 
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npx playwright test tests/search-test.spec.ts --reporter=list
 ```
 
@@ -403,7 +403,7 @@ span[style*="color: rgb"]
 ./scripts/check_servers.sh --clear-ratelimit
 
 # Option B: Manual clear
-echo "" > /home/neil1988/LocalizationTools/server/data/logs/security_audit.log
+echo "" > /home/<USERNAME>/LocalizationTools/server/data/logs/security_audit.log
 
 # Option C: Start with DEV_MODE (auto-clears + disables rate limiting)
 ./scripts/start_all_servers.sh
@@ -426,14 +426,14 @@ pkill -f "vite dev" ; pkill -f "python3 server/main"
 sleep 2
 
 # Restart backend
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 DEV_MODE=true python3 server/main.py &
 
 # Wait for backend
 sleep 3
 
 # Restart frontend
-cd /home/neil1988/LocalizationTools/locaNext
+cd /home/<USERNAME>/LocalizationTools/locaNext
 npm run dev
 ```
 
@@ -958,7 +958,7 @@ engine = create_engine("postgresql://admin:admin123@localhost:5432/localization"
 
 # RIGHT - Use server config
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools/server')
 from config import DATABASE_URL
 engine = create_engine(DATABASE_URL)
 ```
@@ -1127,7 +1127,7 @@ unlockRow(fileId, rowId);
 
 **Instant Fix:**
 ```bash
-echo "" > /home/neil1988/LocalizationTools/server/data/logs/security_audit.log
+echo "" > /home/<USERNAME>/LocalizationTools/server/data/logs/security_audit.log
 ```
 
 **Key Insight:** When debugging "server-side state" issues:
@@ -1585,7 +1585,7 @@ curl -H "Authorization: Bearer $TOKEN" ...
 # RIGHT - Use heredoc for Python database queries
 python3 << 'EOF'
 import sys
-sys.path.insert(0, '/home/neil1988/LocalizationTools/server')
+sys.path.insert(0, '/home/<USERNAME>/LocalizationTools/server')
 from config import DATABASE_URL
 # ... query ...
 EOF

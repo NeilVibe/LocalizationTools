@@ -23,7 +23,7 @@ Before triggering ANY rebuild:
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
 for r in c.fetchall():
@@ -38,22 +38,22 @@ for r in c.fetchall():
 
 **Step 1: Find latest build folder**
 ```bash
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
+ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -3
 ```
 
 **Step 2: List log files in that folder**
 ```bash
-ls ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/
+ls ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<FOLDER>/
 ```
 
 **Step 3: Search for errors (check BOTH logs if multiple exist)**
 ```bash
-grep -i "error\|failed\|⨯\|BLOCKED" ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/*.log | head -20
+grep -i "error\|failed\|⨯\|BLOCKED" ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<FOLDER>/*.log | head -20
 ```
 
 **Step 4: Read end of log for final error**
 ```bash
-tail -50 ~/gitea/data/actions_log/neilvibe/LocaNext/<FOLDER>/<NUMBER>.log
+tail -50 ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<FOLDER>/<NUMBER>.log
 ```
 
 ---
@@ -151,14 +151,14 @@ Cannot parse version "2512072249" - must be semver format
 
 1. **Find the build log:**
    ```bash
-   ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
+   ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -5
    # Find the hex folder (e.g., 4a = task 74 in decimal)
-   cat ~/gitea/data/actions_log/neilvibe/LocaNext/4a/74.log
+   cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/4a/74.log
    ```
 
 2. **Search for errors:**
    ```bash
-   grep -i "error\|failed\|⨯" ~/gitea/data/actions_log/neilvibe/LocaNext/4a/74.log
+   grep -i "error\|failed\|⨯" ~/gitea/data/actions_log/<GIT_USER>/LocaNext/4a/74.log
    ```
 
 3. **Check runner status:**

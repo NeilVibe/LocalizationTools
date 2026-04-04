@@ -27,7 +27,7 @@ Cinematic epic + bold provocative. Dark, dramatic, builds tension. Like a game t
 - Single `.html` file (self-contained)
 - All CSS/JS inlined or loaded via CDN (Three.js, GSAP, Google Fonts)
 - No build step, no npm, no framework — opens in any browser
-- Location: `/home/neil1988/LocalizationTools/landing-page/index.html`
+- Location: `/home/<USERNAME>/LocalizationTools/landing-page/index.html`
 
 ## Tech Stack
 

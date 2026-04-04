@@ -120,7 +120,7 @@ grep "FRONTEND" /tmp/locanext/backend.log | tail -10
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status FROM action_run ORDER BY id DESC LIMIT 1')
 STATUS = {1:'SUCCESS', 2:'FAILURE', 6:'RUNNING'}
 r = c.fetchone()

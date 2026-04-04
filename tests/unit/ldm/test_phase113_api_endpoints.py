@@ -183,7 +183,7 @@ class TestAuthLanFallbackLogic:
 
     def test_172_range_is_lan(self):
         """Private 172.x.x.x range is LAN."""
-        pg_host = "172.28.150.120"
+        pg_host = "10.0.0.1"
         is_lan = pg_host not in ("localhost", "127.0.0.1", "::1", "")
         assert is_lan is True
 

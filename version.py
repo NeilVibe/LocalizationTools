@@ -28,7 +28,7 @@ RELEASE_DATE = "2026-03-29"
 RELEASE_NAME = "Performance Optimization + FTS5 + Path Fix"
 
 # Repository info
-REPOSITORY_URL = "https://github.com/NeilVibe/LocalizationTools"
+REPOSITORY_URL = "https://github.com/<GIT_USER>/LocalizationTools"
 ISSUES_URL = f"{REPOSITORY_URL}/issues"
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ async function captureLDM() {
   });
   const page = await context.newPage();
 
-  const baseDir = '/home/neil1988/LocalizationTools/docs/demos';
+  const baseDir = '/home/<USERNAME>/LocalizationTools/docs/demos';
 
   try {
     // 1. Go to main page

@@ -46,8 +46,8 @@ function debugLog(message, data = {}) {
 }
 
 // Configuration
-const UPDATE_BASE_URL = process.env.GITEA_URL || 'http://172.28.150.120:3000';
-const REPO_PATH = 'neilvibe/LocaNext';
+const UPDATE_BASE_URL = process.env.GITEA_URL || 'http://localhost:3000';
+const REPO_PATH = '<GIT_USER>/LocaNext';
 const MANIFEST_URL = `${UPDATE_BASE_URL}/${REPO_PATH}/releases/download/latest/manifest.json`;
 
 // Paths

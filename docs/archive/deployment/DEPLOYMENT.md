@@ -41,7 +41,7 @@ npm install electron-updater
     "productName": "LocaNext",
     "publish": {
       "provider": "github",
-      "owner": "NeilVibe",
+      "owner": "<GIT_USER>",
       "repo": "LocalizationTools"
     },
     "win": {
@@ -87,7 +87,7 @@ This creates:
 **5. Create GitHub Release:**
 
 **Manual Method:**
-1. Go to https://github.com/NeilVibe/LocalizationTools/releases
+1. Go to https://github.com/<GIT_USER>/LocalizationTools/releases
 2. Click "Create a new release"
 3. Tag: `v1.0.0`
 4. Upload files:

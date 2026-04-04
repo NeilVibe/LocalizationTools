@@ -135,7 +135,7 @@ GET /api/v2/admin/rankings/top?period=monthly
 ### 4. Database Status ✅
 
 ```
-Database: /home/neil1988/LocalizationTools/server/data/localizationtools.db
+Database: /home/<USERNAME>/LocalizationTools/server/data/localizationtools.db
 Type: SQLite
 
 Table Statistics:
@@ -407,4 +407,4 @@ The LocalizationTools admin dashboard is **95% complete** and **fully operationa
 **Report Generated:** 2025-11-11 12:32:00
 **Tested By:** Claude Code (Autonomous Testing)
 **Test Environment:** Development (localhost)
-**Database:** SQLite (/home/neil1988/LocalizationTools/server/data/localizationtools.db)
+**Database:** SQLite (/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db)

@@ -1047,8 +1047,8 @@ jobs:
           $pkg = Get-Content $pkgPath -Raw
 
           # Replace Gitea URL with GitHub releases URL
-          $giteaUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
-          $githubUrl = "https://github.com/NeilVibe/LocalizationTools/releases/download/latest"
+          $giteaUrl = "http://localhost:3000/<GIT_USER>/LocaNext/releases/download/latest"
+          $githubUrl = "https://github.com/<GIT_USER>/LocalizationTools/releases/download/latest"
 
           $pkg = $pkg -replace [regex]::Escape($giteaUrl), $githubUrl
 
@@ -1542,7 +1542,7 @@ jobs:
           PKG_PATH="locaNext/package.json"
 
           # Replace Gitea URL with GitHub releases URL
-          sed -i.bak 's|http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest|https://github.com/NeilVibe/LocalizationTools/releases/download/latest|g' "$PKG_PATH"
+          sed -i.bak 's|http://localhost:3000/<GIT_USER>/LocaNext/releases/download/latest|https://github.com/<GIT_USER>/LocalizationTools/releases/download/latest|g' "$PKG_PATH"
 
           echo "[OK] Publish URL changed to GitHub releases"
           grep -o 'github.com[^"]*' "$PKG_PATH" | head -1 || echo "[WARN] Could not verify"

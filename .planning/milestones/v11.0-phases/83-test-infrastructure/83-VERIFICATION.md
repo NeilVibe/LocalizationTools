@@ -91,7 +91,7 @@ None. All 5 success criteria were verifiable programmatically:
 > locanext@25.1214.2330 test:unit
 > vitest run --coverage
 
- RUN  v4.1.1 /home/neil1988/LocalizationTools/locaNext
+ RUN  v4.1.1 /home/<USERNAME>/LocalizationTools/locaNext
 
  Test Files  5 passed (5)
       Tests  169 passed (169)

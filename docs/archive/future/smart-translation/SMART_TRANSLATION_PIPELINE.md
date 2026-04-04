@@ -98,7 +98,7 @@ Before implementing these features, you need:
 
 ## Stage 1: Cluster Preprocessing (Core Glossary)
 
-**Source:** `/home/neil1988/WebTranslatorNew/app/services/glossary_original.py:1345-1500`
+**Source:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary_original.py:1345-1500`
 
 **Function:** `create_core_glossary_via_clustering()`
 
@@ -160,7 +160,7 @@ If you have 100 similar entries in a cluster:
 
 ## Stage 2: Character-Based Phases
 
-**Source:** `/home/neil1988/WebTranslatorNew/app/services/glossary_original.py:1935-2100`
+**Source:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary_original.py:1935-2100`
 
 ### Functions
 
@@ -219,7 +219,7 @@ After each phase, the glossary grows -> better context for next phase
 
 ## Stage 3: Multi-line Refinement
 
-**Source:** `/home/neil1988/WebTranslatorNew/app/services/glossary_enhance.py:5-124`
+**Source:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary_enhance.py:5-124`
 
 **Function:** `refine_translation_line_by_line()`
 
@@ -270,7 +270,7 @@ context_prompt = (
 
 ## Dynamic Glossary Auto-Creation
 
-**Source:** `/home/neil1988/WebTranslatorNew/app/services/glossary_original.py:71-237`
+**Source:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary_original.py:71-237`
 
 ### Key Functions
 
@@ -315,7 +315,7 @@ def translate_candidates(candidates, context_matches, source_lang, target_lang, 
 
 ## Data Preprocessing (NO API calls)
 
-**Source:** `/home/neil1988/WebTranslatorNew/app/services/glossary/preprocessor.py`
+**Source:** `/home/<USERNAME>/WebTranslatorNew/app/services/glossary/preprocessor.py`
 
 **This feature does NOT require API access - can be implemented now.**
 
@@ -370,16 +370,16 @@ def _filter_database_duplicates(self, df, glossary_id):
 
 ```bash
 # Correct path
-/home/neil1988/WebTranslatorNew/
+/home/<USERNAME>/WebTranslatorNew/
 
 # List services
-ls /home/neil1988/WebTranslatorNew/app/services/
+ls /home/<USERNAME>/WebTranslatorNew/app/services/
 
 # Search for functions
-grep -n "def FUNCTION_NAME" /home/neil1988/WebTranslatorNew/app/services/*.py
+grep -n "def FUNCTION_NAME" /home/<USERNAME>/WebTranslatorNew/app/services/*.py
 
 # Read specific lines
-sed -n 'START,ENDp' /home/neil1988/WebTranslatorNew/app/services/FILE.py
+sed -n 'START,ENDp' /home/<USERNAME>/WebTranslatorNew/app/services/FILE.py
 ```
 
 ---

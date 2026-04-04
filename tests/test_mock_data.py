@@ -180,7 +180,7 @@ class TestCLIFlags:
         result = subprocess.run(
             [sys.executable, "scripts/setup_mock_data.py"],
             capture_output=True, text=True,
-            cwd="/home/neil1988/LocalizationTools",
+            cwd="/home/<USERNAME>/LocalizationTools",
         )
         assert result.returncode != 0
 

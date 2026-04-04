@@ -131,7 +131,7 @@ Gitea and act_runner processes can become problematic when:
 │                         CI/CD ARCHITECTURE                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  GITEA SERVER (WSL - 172.28.150.120:3000)                          │
+│  GITEA SERVER (WSL - <GITEA_HOST>:3000)                          │
 │  └── Orchestrates builds, stores artifacts                         │
 │  └── Managed by: systemd (gitea.service)                           │
 │                                                                     │
@@ -161,17 +161,17 @@ Gitea and act_runner processes can become problematic when:
 
 | Component | Platform | Process | Location | Managed By |
 |-----------|----------|---------|----------|------------|
-| **Gitea Server** | WSL | `gitea` | `/home/neil1988/gitea/` | systemd |
-| **Linux Runner** | WSL | `act_runner` | `/home/neil1988/gitea/` | Manual daemon |
+| **Gitea Server** | WSL | `gitea` | `/home/<USERNAME>/gitea/` | systemd |
+| **Linux Runner** | WSL | `act_runner` | `/home/<USERNAME>/gitea/` | Manual daemon |
 | **Windows Runner** | Windows | `act_runner_patched_v15.exe` | `C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\` | NSSM Service |
 
 ### Process Locations
 ```
 LINUX (WSL):
-  Gitea Server:    /home/neil1988/gitea/gitea
-  Linux Runner:    /home/neil1988/gitea/act_runner
-  Database:        /home/neil1988/gitea/data/gitea.db
-  Runner Config:   /home/neil1988/gitea/runner_config.yaml
+  Gitea Server:    /home/<USERNAME>/gitea/gitea
+  Linux Runner:    /home/<USERNAME>/gitea/act_runner
+  Database:        /home/<USERNAME>/gitea/data/gitea.db
+  Runner Config:   /home/<USERNAME>/gitea/runner_config.yaml
 
 WINDOWS:
   Windows Runner:  C:\NEIL_PROJECTS_WINDOWSBUILD\GiteaRunner\act_runner_patched_v15.exe
@@ -336,7 +336,7 @@ ps aux | grep -E "(Z|defunct)"
 
 # Manual (if script fails):
 sudo systemctl restart gitea
-cd /home/neil1988/gitea && ./act_runner daemon --config runner_config.yaml &
+cd /home/<USERNAME>/gitea && ./act_runner daemon --config runner_config.yaml &
 ```
 
 ---
@@ -431,7 +431,7 @@ pgrep -a act_runner
 # If more than 1 line shows up:
 pkill -9 act_runner
 sleep 5
-cd /home/neil1988/gitea && ./act_runner daemon --config runner_config.yaml &
+cd /home/<USERNAME>/gitea && ./act_runner daemon --config runner_config.yaml &
 ```
 
 ### Symptom: Build Stuck Forever
@@ -440,7 +440,7 @@ cd /home/neil1988/gitea && ./act_runner daemon --config runner_config.yaml &
 # 1. Check current build status
 python3 -c "
 import sqlite3, time
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, started FROM action_run WHERE status=6')
 for r in c.fetchall():
     elapsed = (int(time.time()) - r[2]) // 60
@@ -449,7 +449,7 @@ for r in c.fetchall():
 
 # 2. If >20 minutes, it's stuck. Cancel in Gitea UI or:
 # Mark as failed in database (EMERGENCY ONLY)
-# sqlite3 /home/neil1988/gitea/data/gitea.db "UPDATE action_run SET status=2 WHERE id=XXX"
+# sqlite3 /home/<USERNAME>/gitea/data/gitea.db "UPDATE action_run SET status=2 WHERE id=XXX"
 ```
 
 ### Symptom: Port Already in Use
@@ -484,7 +484,7 @@ sleep 10
 # 4. Start via systemd (not script)
 sudo systemctl start gitea
 sleep 5
-cd /home/neil1988/gitea && ./act_runner daemon --config runner_config.yaml &
+cd /home/<USERNAME>/gitea && ./act_runner daemon --config runner_config.yaml &
 
 # 5. Verify
 ./scripts/gitea_control.sh status

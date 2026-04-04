@@ -137,7 +137,7 @@ window.ldmTest.getStatus()      // Check state
 
 ### Run via testing_toolkit:
 ```bash
-cd /home/neil1988/LocalizationTools/testing_toolkit
+cd /home/<USERNAME>/LocalizationTools/testing_toolkit
 node scripts/run_test.js ldm.fullSequence
 ```
 

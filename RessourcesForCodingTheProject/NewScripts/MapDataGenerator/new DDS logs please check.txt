@@ -1,4 +1,4 @@
-18:46:18  INFO      root  Log file: C:\Users\PEARL\Desktop\MapDataGenerator_v26.129.1754_Source\logs\mapdatagenerator_20260129_184618.log
+18:46:18  INFO      root  Log file: C:\Users\<USERNAME>\Desktop\MapDataGenerator_v26.129.1754_Source\logs\mapdatagenerator_20260129_184618.log
 18:46:18  INFO      __main__  Starting MapDataGenerator...
 18:46:18  WARNING   root  pillow-dds not installed. Run: pip install pillow-dds
 18:46:18  INFO      gui.app  Using '맑은 고딕' for Korean text.

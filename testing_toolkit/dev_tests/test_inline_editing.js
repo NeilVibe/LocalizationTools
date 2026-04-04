@@ -6,7 +6,7 @@
 const { chromium } = require('playwright');
 
 const BASE_URL = 'http://localhost:5173';
-const SCREENSHOT_DIR = '/home/neil1988/LocalizationTools/testing_toolkit/dev_tests/screenshots';
+const SCREENSHOT_DIR = '/home/<USERNAME>/LocalizationTools/testing_toolkit/dev_tests/screenshots';
 
 async function testInlineEditing() {
   console.log('🧪 Testing Inline Editing...\n');

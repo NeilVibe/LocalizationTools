@@ -384,7 +384,7 @@ def find_inconsistencies(pairs):
 | Property | Value |
 |----------|-------|
 | Framework | pytest 8.4.2 |
-| Config file | `/home/neil1988/LocalizationTools/pytest.ini` |
+| Config file | `/home/<USERNAME>/LocalizationTools/pytest.ini` |
 | Quick run command | `python3 -m pytest tests/unit -x -q --no-header` |
 | Full suite command | `python3 -m pytest tests/unit tests/stability -x -q --no-header` |
 

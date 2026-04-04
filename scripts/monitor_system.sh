@@ -114,7 +114,7 @@ import sqlite3
 import sys
 
 try:
-    db_path = '/home/neil1988/LocalizationTools/server/data/localizationtools.db'
+    db_path = '/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db'
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -154,13 +154,13 @@ echo
 # 7. Check for errors in logs
 echo "7. RECENT LOG ERRORS"
 echo "--------------------"
-ERROR_COUNT=$(tail -100 /home/neil1988/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | wc -l)
+ERROR_COUNT=$(tail -100 /home/<USERNAME>/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | wc -l)
 if [ "$ERROR_COUNT" -eq 0 ]; then
     echo -e "${GREEN}✓${NC} No recent errors in server log"
 else
     echo -e "${YELLOW}⚠${NC} Found $ERROR_COUNT error(s) in last 100 log lines"
     echo "  Last 3 errors:"
-    tail -100 /home/neil1988/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | tail -3 | sed 's/^/  /'
+    tail -100 /home/<USERNAME>/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | tail -3 | sed 's/^/  /'
 fi
 echo
 

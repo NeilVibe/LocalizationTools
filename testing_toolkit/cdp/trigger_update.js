@@ -4,7 +4,7 @@
  * Purpose: Update the running LocaNext app to the latest version without full reinstall.
  *
  * Usage (from Windows PowerShell):
- *   Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+ *   Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
  *   node trigger_update.js
  *
  * Or from WSL (if interop works):

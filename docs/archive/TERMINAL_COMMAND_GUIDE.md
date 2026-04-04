@@ -8,8 +8,8 @@
 
 | Task | Correct Command |
 |------|-----------------|
-| Playwright test | `cd /home/neil1988/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts` |
-| Database query | `cd /home/neil1988/LocalizationTools && python3 << 'EOF' ... EOF` |
+| Playwright test | `cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts` |
+| Database query | `cd /home/<USERNAME>/LocalizationTools && python3 << 'EOF' ... EOF` |
 | Backend health | `curl -s http://localhost:8888/health \| jq` |
 | Frontend check | `curl -s http://localhost:5173` |
 
@@ -19,7 +19,7 @@
 
 ### ALWAYS use this pattern:
 ```bash
-cd /home/neil1988/LocalizationTools && python3 << 'EOF'
+cd /home/<USERNAME>/LocalizationTools && python3 << 'EOF'
 import sys
 sys.path.insert(0, 'server')
 from sqlalchemy import create_engine, text
@@ -51,7 +51,7 @@ EOF
 
 ### Check Schema First
 ```bash
-cd /home/neil1988/LocalizationTools && python3 << 'EOF'
+cd /home/<USERNAME>/LocalizationTools && python3 << 'EOF'
 import sys
 sys.path.insert(0, 'server')
 from sqlalchemy import create_engine, text
@@ -78,19 +78,19 @@ EOF
 
 ### ALWAYS run from locaNext directory:
 ```bash
-cd /home/neil1988/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts --reporter=list
+cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test tests/xxx.spec.ts --reporter=list
 ```
 
 ### Common test commands:
 ```bash
 # Run specific test
-cd /home/neil1988/LocalizationTools/locaNext && npx playwright test tests/search-proue.spec.ts --reporter=list
+cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test tests/search-proue.spec.ts --reporter=list
 
 # Run all tests
-cd /home/neil1988/LocalizationTools/locaNext && npx playwright test --reporter=list
+cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test --reporter=list
 
 # Run with UI
-cd /home/neil1988/LocalizationTools/locaNext && npx playwright test --ui
+cd /home/<USERNAME>/LocalizationTools/locaNext && npx playwright test --ui
 ```
 
 ### WRONG (will fail):
@@ -99,7 +99,7 @@ cd /home/neil1988/LocalizationTools/locaNext && npx playwright test --ui
 npx playwright test tests/xxx.spec.ts
 
 # Without cd - NO!
-npx playwright test /home/neil1988/LocalizationTools/locaNext/tests/xxx.spec.ts
+npx playwright test /home/<USERNAME>/LocalizationTools/locaNext/tests/xxx.spec.ts
 ```
 
 ---
@@ -118,10 +118,10 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:5173
 ### Start servers:
 ```bash
 # Backend (with DEV_MODE)
-cd /home/neil1988/LocalizationTools && DEV_MODE=true python3 server/main.py
+cd /home/<USERNAME>/LocalizationTools && DEV_MODE=true python3 server/main.py
 
 # Frontend
-cd /home/neil1988/LocalizationTools/locaNext && npm run dev
+cd /home/<USERNAME>/LocalizationTools/locaNext && npm run dev
 ```
 
 ### Kill servers:
@@ -204,7 +204,7 @@ systemctl is-active gitea
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
 for r in c.fetchall():
@@ -218,12 +218,12 @@ for r in c.fetchall():
 
 | Purpose | Path |
 |---------|------|
-| Project root | `/home/neil1988/LocalizationTools` |
-| Frontend | `/home/neil1988/LocalizationTools/locaNext` |
-| Backend | `/home/neil1988/LocalizationTools/server` |
-| Tests | `/home/neil1988/LocalizationTools/locaNext/tests` |
-| Docs | `/home/neil1988/LocalizationTools/docs` |
-| WIP docs | `/home/neil1988/LocalizationTools/docs/wip` |
+| Project root | `/home/<USERNAME>/LocalizationTools` |
+| Frontend | `/home/<USERNAME>/LocalizationTools/locaNext` |
+| Backend | `/home/<USERNAME>/LocalizationTools/server` |
+| Tests | `/home/<USERNAME>/LocalizationTools/locaNext/tests` |
+| Docs | `/home/<USERNAME>/LocalizationTools/docs` |
+| WIP docs | `/home/<USERNAME>/LocalizationTools/docs/wip` |
 
 ---
 

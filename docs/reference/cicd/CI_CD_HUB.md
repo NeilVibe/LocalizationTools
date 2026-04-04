@@ -166,7 +166,7 @@ Smart checkpoint that **persists across CI runs**:
 6. Do Build QA for official release
 ```
 
-**Checkpoint location:** `/home/neil1988/.locanext_checkpoint`
+**Checkpoint location:** `/home/<USERNAME>/.locanext_checkpoint`
 
 ---
 
@@ -238,7 +238,7 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
 for r in c.fetchall():
@@ -251,7 +251,7 @@ for r in c.fetchall():
 
 ```bash
 # Log files (if SQL fails)
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
+ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -5
 
 # Check checkpoint
 cat ~/.locanext_checkpoint
@@ -282,7 +282,7 @@ Windows CI Pipeline:
 
 | Secret | Purpose | Value |
 |--------|---------|-------|
-| `CI_DB_HOST` | PostgreSQL server address | `172.28.150.120` |
+| `CI_DB_HOST` | PostgreSQL server address | `<GITEA_HOST>` |
 | `CI_TEST_USER` | Test user (role=user, NOT admin) | `ci_tester` |
 | `CI_TEST_PASS` | Test user password | (encrypted in Gitea) |
 
@@ -377,7 +377,7 @@ Build Success:
 ```json
 "publish": {
   "provider": "generic",
-  "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+  "url": "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest"
 }
 ```
 

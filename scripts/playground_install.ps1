@@ -15,7 +15,7 @@
 # ============================================================================
 
 param(
-    [string]$GiteaHost = "172.28.150.120",
+    [string]$GiteaHost = $env:GITEA_HOST ?? "localhost",
     [int]$GiteaPort = 3000,
     [string]$PlaygroundPath = "C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground",
     [string]$Version = "",  # Empty = latest
@@ -47,7 +47,7 @@ function Log {
 function Get-LatestRelease {
     Log "Fetching latest release info from Gitea..."
 
-    $releasesUrl = "http://${GiteaHost}:${GiteaPort}/api/v1/repos/neilvibe/LocaNext/releases"
+    $releasesUrl = "http://${GiteaHost}:${GiteaPort}/api/v1/repos/<GIT_USER>/LocaNext/releases"
 
     try {
         $releases = Invoke-RestMethod -Uri $releasesUrl -Method Get -TimeoutSec 30
@@ -321,7 +321,7 @@ function Wait-ForLoginPage {
 
 function Configure-CentralServer {
     param(
-        [string]$PostgresHost = "172.28.150.120",
+        [string]$PostgresHost = $env:GITEA_HOST ?? "localhost",
         [int]$PostgresPort = 5432,
         [string]$PostgresUser = "localization_admin",
         [string]$PostgresPassword = "locanext_dev_2025",
@@ -475,7 +475,7 @@ try {
     Log "============================================"
     $configSuccess = Configure-CentralServer
     if ($configSuccess) {
-        Log "Central server configured for PostgreSQL at 172.28.150.120:5432" -Level "OK"
+        Log "Central server configured for PostgreSQL at ${PostgresHost}:5432" -Level "OK"
     }
     else {
         Log "Central server configuration failed - app will run in offline mode" -Level "WARN"

@@ -1023,7 +1023,7 @@ PHASE E: FRONTEND CDP DEBUGGING (Browser Console)
 
 ### ✅ Gitea Fully Configured:
 ```
-Location: /home/neil1988/gitea/
+Location: /home/<USERNAME>/gitea/
 ├── gitea           # Binary v1.22.3 (137MB)
 ├── custom/conf/    # Config (app.ini)
 ├── data/           # SQLite database
@@ -1034,7 +1034,7 @@ Location: /home/neil1988/gitea/
 Start: cd ~/gitea && ./start.sh
 Stop:  cd ~/gitea && ./stop.sh
 URL:   http://localhost:3000
-Admin: neilvibe (created)
+Admin: <GIT_USER> (created)
 ```
 
 ### ✅ SSH Setup:
@@ -1045,16 +1045,16 @@ Admin: neilvibe (created)
 Host gitea-local
     HostName localhost
     Port 2222
-    User neil1988        ← NOT 'git'!
+    User <USERNAME>        ← NOT 'git'!
     IdentityFile ~/.ssh/id_ed25519
 
-Test: ssh -T neil1988@gitea-local
+Test: ssh -T <USERNAME>@gitea-local
 ```
 
 ### ✅ Dual Remote Configured:
 ```
-origin → GitHub (git@github.com:NeilVibe/LocalizationTools.git)
-gitea  → Local Gitea (neil1988@gitea-local:neilvibe/LocaNext.git)
+origin → GitHub (git@github.com:<GIT_USER>/LocalizationTools.git)
+gitea  → Local Gitea (<USERNAME>@gitea-local:<GIT_USER>/LocaNext.git)
 ```
 
 ---
@@ -1131,7 +1131,7 @@ cd /mnt/d/LocaNext && ./LocaNext.exe --remote-debugging-port=9222 &
 curl -s http://localhost:9222/json | jq '.[].url'
 
 # Run backend tests
-cd /home/neil1988/LocalizationTools
+cd /home/<USERNAME>/LocalizationTools
 RUN_API_TESTS=1 python3 -m pytest -v
 
 # Check app health
@@ -2006,11 +2006,11 @@ P13 TASKS:
 │   ├── [✅] Install Gitea binary (v1.22.3 @ ~/gitea/)
 │   ├── [✅] Configure SQLite + ports (3000 web, 2222 SSH)
 │   ├── [✅] Create start.sh / stop.sh helpers
-│   ├── [✅] Admin user created (neilvibe)
+│   ├── [✅] Admin user created (<GIT_USER>)
 │   └── [✅] SSH keys configured
 │
 ├── ✅ 13.2: Repository Migration COMPLETE
-│   ├── [✅] Repo pushed to Gitea (neilvibe/LocaNext)
+│   ├── [✅] Repo pushed to Gitea (<GIT_USER>/LocaNext)
 │   ├── [✅] Dual remote: origin (GitHub) + gitea (local)
 │   └── [✅] Push/pull workflow verified
 │

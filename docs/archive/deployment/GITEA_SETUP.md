@@ -76,30 +76,30 @@ Create `~/gitea/custom/conf/app.ini`:
 
 ```ini
 [server]
-APP_DATA_PATH = /home/neil1988/gitea/data
+APP_DATA_PATH = /home/<USERNAME>/gitea/data
 HTTP_PORT = 3000
-ROOT_URL = http://172.28.150.120:3000/
-SSH_DOMAIN = 172.28.150.120
+ROOT_URL = http://<GITEA_HOST>:3000/
+SSH_DOMAIN = <GITEA_HOST>
 SSH_PORT = 2222
 START_SSH_SERVER = true
-DOMAIN = 172.28.150.120
+DOMAIN = <GITEA_HOST>
 DISABLE_SSH = false
 
 [database]
 ; This is Gitea's INTERNAL database for storing repos/users/issues
 ; NOT related to LocaNext data (which uses PostgreSQL)
 DB_TYPE = sqlite3
-PATH = /home/neil1988/gitea/data/gitea.db
+PATH = /home/<USERNAME>/gitea/data/gitea.db
 
 [repository]
-ROOT = /home/neil1988/gitea/data/gitea-repositories
+ROOT = /home/<USERNAME>/gitea/data/gitea-repositories
 
 [actions]
 ENABLED = true
 DEFAULT_ACTIONS_URL = https://github.com
 
 [log]
-ROOT_PATH = /home/neil1988/gitea/data/log
+ROOT_PATH = /home/<USERNAME>/gitea/data/log
 MODE = console, file
 LEVEL = Info
 ```
@@ -109,7 +109,7 @@ LEVEL = Info
 **~/gitea/start.sh:**
 ```bash
 #!/bin/bash
-cd /home/neil1988/gitea
+cd /home/<USERNAME>/gitea
 nohup ./gitea web > gitea.log 2>&1 &
 echo "Gitea started on http://localhost:3000"
 ```
@@ -127,7 +127,7 @@ echo "Gitea stopped"
 cd ~/gitea && ./start.sh
 # Open http://localhost:3000
 # Complete setup wizard:
-#   - Admin username: neilvibe
+#   - Admin username: <GIT_USER>
 #   - Admin email: your@email.com
 #   - Admin password: (your choice)
 ```
@@ -149,14 +149,14 @@ cd ~/gitea && ./start.sh
 cd ~/LocalizationTools
 
 # Add Gitea as second remote
-git remote add gitea neil1988@172.28.150.120:2222/neilvibe/LocaNext.git
+git remote add gitea <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git
 
 # Verify remotes
 git remote -v
-# origin  git@github.com:NeilVibe/LocalizationTools.git (fetch)
-# origin  git@github.com:NeilVibe/LocalizationTools.git (push)
-# gitea   neil1988@172.28.150.120:2222/neilvibe/LocaNext.git (fetch)
-# gitea   neil1988@172.28.150.120:2222/neilvibe/LocaNext.git (push)
+# origin  git@github.com:<GIT_USER>/LocalizationTools.git (fetch)
+# origin  git@github.com:<GIT_USER>/LocalizationTools.git (push)
+# gitea   <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git (fetch)
+# gitea   <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git (push)
 
 # Push to both
 git push origin main   # GitHub
@@ -210,7 +210,7 @@ chmod +x act_runner
 **~/gitea/start_runner.sh:**
 ```bash
 #!/bin/bash
-cd /home/neil1988/gitea
+cd /home/<USERNAME>/gitea
 nohup ./act_runner daemon > runner.log 2>&1 &
 echo "Runner started"
 ```
@@ -439,13 +439,13 @@ git push origin main  # Syncs to GitHub
 
 ```bash
 # List recent logs
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -5
+ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -5
 
 # Watch live
-tail -f $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
+tail -f $(ls -t ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -1)
 
 # Check result
-strings $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | grep -E "Job succeeded|Job failed"
+strings $(ls -t ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -1) | grep -E "Job succeeded|Job failed"
 ```
 
 ### 6.3 Service Management
@@ -478,7 +478,7 @@ Restart-Service GiteaActRunner       # Restart
 | "Job failed" after success | NUL bytes in GITHUB_OUTPUT | Use patched runner v15 |
 | "git not recognized" | Git not in Windows PATH | `choco install git -y --params "/GitAndUnixToolsOnPath"` |
 | Runner not picking up jobs | Wrong labels | Check runner labels match workflow `runs-on` |
-| SSH connection refused | Wrong port/username | Use `neil1988@host:2222` not `git@host` |
+| SSH connection refused | Wrong port/username | Use `<USERNAME>@host:2222` not `git@host` |
 | Build timeout | Service not running | Install as Windows Service |
 | Windows runner won't connect | NSSM service stopped | Start service manually (see 7.4) |
 | Token expiration | Registration token expired | Re-register runner (see 7.5) |
@@ -699,7 +699,7 @@ git add -A && git commit -m "Trigger build" && git push gitea main
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
 for r in c.fetchall():

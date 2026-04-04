@@ -139,7 +139,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
     ```bash
     python3 -c "
     import sqlite3
-    c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+    c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
     c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
     STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
     for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
@@ -219,7 +219,7 @@ Full protocol: [docs/protocols/PRXR.md](docs/protocols/PRXR.md)
 |---------|-----|
 | Backend | http://localhost:8888 |
 | API Docs | http://localhost:8888/docs |
-| Gitea | http://172.28.150.120:3000 |
+| Gitea | http://<GITEA_HOST>:3000 |
 
 ---
 

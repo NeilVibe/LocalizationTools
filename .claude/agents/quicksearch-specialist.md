@@ -315,7 +315,7 @@ python main.py
 
 ### Trigger File
 
-**Location:** `/home/neil1988/LocalizationTools/QUICKSEARCH_BUILD.txt`
+**Location:** `/home/<USERNAME>/LocalizationTools/QUICKSEARCH_BUILD.txt`
 
 ### Trigger Build
 

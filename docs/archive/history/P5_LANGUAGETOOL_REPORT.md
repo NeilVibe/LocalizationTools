@@ -1,7 +1,7 @@
 # P5 LanguageTool - Test Report
 
 **Date:** 2025-12-26
-**Server:** LanguageTool 6.6 on 172.28.150.120:8081
+**Server:** LanguageTool 6.6 on <GITEA_HOST>:8081
 
 ---
 

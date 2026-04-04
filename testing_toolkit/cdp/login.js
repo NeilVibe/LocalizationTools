@@ -2,7 +2,7 @@
  * CDP Login Script - Login to LocaNext via CDP
  *
  * Usage (from Windows PowerShell):
- *   Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+ *   Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
  *   node login.js
  *
  * Credentials:

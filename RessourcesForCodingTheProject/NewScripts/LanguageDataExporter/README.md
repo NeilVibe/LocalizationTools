@@ -193,7 +193,7 @@ LanguageDataExporter/
 | CI System | GitHub Actions |
 | Trigger File | `LANGUAGEDATAEXPORTER_BUILD.txt` |
 | Push To | **GitHub only** (NOT Gitea) |
-| Check Status | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
+| Check Status | [GitHub Actions](https://github.com/<GIT_USER>/LocalizationTools/actions) |
 
 ### Trigger Build
 ```bash

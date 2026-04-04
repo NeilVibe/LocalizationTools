@@ -288,7 +288,7 @@ bash scripts/monitor_logs_realtime.sh --errors-only
 **Find ALL XLSTransfer operations in last 30 minutes:**
 
 ```bash
-tail -2000 /home/neil1988/LocalizationTools/server/data/logs/server.log | \
+tail -2000 /home/<USERNAME>/LocalizationTools/server/data/logs/server.log | \
   grep -E "POST.*xlstransfer|ActiveOperation|operation_start|Background task" | \
   grep -E "23:[3-5][0-9]|00:0[0-2]"  # Adjust time range as needed
 ```

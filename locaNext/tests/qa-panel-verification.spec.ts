@@ -18,7 +18,7 @@ const TEST_PASS = process.env.PLAYWRIGHT_TEST_PASS || 'admin123';
 
 // Use simple test data that will trigger QA issues
 // This file has duplicate source texts with different translations (triggers LINE check)
-const TEST_FILE_PATH = '/home/neil1988/LocalizationTools/tests/fixtures/qa_test_simple.txt';
+const TEST_FILE_PATH = '/home/<USERNAME>/LocalizationTools/tests/fixtures/qa_test_simple.txt';
 
 // Helper to get auth token
 async function getAuthToken(request: any): Promise<string> {

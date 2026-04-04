@@ -57,7 +57,7 @@ while true; do
     python3 << 'PYEOF' 2>/dev/null
 import sqlite3
 try:
-    conn = sqlite3.connect('/home/neil1988/LocalizationTools/server/data/localizationtools.db')
+    conn = sqlite3.connect('/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db')
     c = conn.cursor()
 
     # Active operations
@@ -88,13 +88,13 @@ PYEOF
     echo
 
     # Recent log errors
-    ERROR_COUNT=$(tail -50 /home/neil1988/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | wc -l)
+    ERROR_COUNT=$(tail -50 /home/<USERNAME>/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | wc -l)
     if [ "$ERROR_COUNT" -eq 0 ]; then
         echo -e "${GREEN}✓ Logs: No recent errors${NC}"
     else
         echo -e "${YELLOW}⚠ Logs: $ERROR_COUNT error(s) in last 50 lines${NC}"
         echo "  Last error:"
-        tail -50 /home/neil1988/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | tail -1 | sed 's/^/  /' | cut -c1-80
+        tail -50 /home/<USERNAME>/LocalizationTools/server_output.log 2>/dev/null | grep -i "ERROR" | tail -1 | sed 's/^/  /' | cut -c1-80
     fi
     echo
 

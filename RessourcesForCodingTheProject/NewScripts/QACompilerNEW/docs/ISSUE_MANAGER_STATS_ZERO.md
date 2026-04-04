@@ -101,7 +101,7 @@ From `LOG FOR CLAUDE 0123 1647.txt` lines 521-534:
 
 ```
 === SCRIPT [EN] ===
-Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Script.xlsx
+Master file: C:\Users\<USERNAME>\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Script.xlsx
 Sheets found: ['STATUS', 'English Script', 'Work Transform']
   Sheet 'English Script': rows=1778, cols=16
     STATUS_ columns: ['유지윤', '조서영']

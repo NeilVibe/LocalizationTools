@@ -130,7 +130,7 @@ $ curl http://localhost:8888/api/v2/admin/rankings/apps?period=all_time
 ### 5. Database Connection
 **Result:** ✅ Connected
 - Type: SQLite
-- Location: `/home/neil1988/LocalizationTools/server/data/localizationtools.db`
+- Location: `/home/<USERNAME>/LocalizationTools/server/data/localizationtools.db`
 
 ### 6. WebSocket Endpoint
 **Result:** ✅ Available

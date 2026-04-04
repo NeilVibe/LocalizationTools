@@ -74,7 +74,7 @@ class TestDatabaseConnectivity:
         sock.settimeout(2)
         try:
             # Try to connect to PostgreSQL (may timeout if not on network)
-            result = sock.connect_ex(("172.28.150.120", 5432))
+            result = sock.connect_ex(("10.0.0.1", 5432))
             # Any result is fine - we're just testing socket works
         except socket.timeout:
             pass  # Timeout is OK - server may not be reachable

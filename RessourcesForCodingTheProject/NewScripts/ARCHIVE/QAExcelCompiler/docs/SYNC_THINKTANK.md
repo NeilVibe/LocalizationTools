@@ -405,7 +405,7 @@ We CANNOT afford to lose QA work. Before building the full tool:
 ```
 PHASE 1: STRINGID Analysis (No code, just investigation)
 ────────────────────────────────────────────────────────
-1. Take ONE real tester file (e.g., 김동헌_Character.xlsx)
+1. Take ONE real tester file (e.g., 테스터A_Character.xlsx)
 2. Open in Excel, examine STRINGID column:
    - Are values present for all rows?
    - Are they unique?
@@ -508,12 +508,12 @@ For each category (Character, Quest, etc.):
 ```
 QAExcelCompiler/
 ├── sync_input_old/              # INPUT 1: Old QA files with work
-│   ├── 김동헌_Character/
+│   ├── 테스터A_Character/
 │   │   ├── LQA.xlsx             # Has STATUS, COMMENT, SCREENSHOT filled
 │   │   └── bug.png
 │   ├── 황하연_Character/
 │   │   └── LQA.xlsx
-│   ├── 김동헌_Quest/
+│   ├── 테스터A_Quest/
 │   │   └── LQA.xlsx
 │   └── ...
 │
@@ -526,7 +526,7 @@ QAExcelCompiler/
 │   └── Gimmick_LQA.xlsx
 │
 └── sync_output/                 # OUTPUT: Synchronized files
-    ├── 김동헌_Character/
+    ├── 테스터A_Character/
     │   ├── LQA.xlsx             # Work transferred to new structure!
     │   └── bug.png              # Images copied
     ├── 황하연_Character/
@@ -540,9 +540,9 @@ QAExcelCompiler/
 
 ```python
 # Parse folder name - same logic as existing compiler
-folder_name = "김동헌_Character"
+folder_name = "테스터A_Character"
 parts = folder_name.split('_')
-username = parts[0]              # "김동헌"
+username = parts[0]              # "테스터A"
 category = '_'.join(parts[1:])   # "Character"
 
 # Match to template
@@ -884,7 +884,7 @@ BY CATEGORY
 
 NOT FOUND ROWS (Manual Review Required)
 ───────────────────────────────────────
-  [김동헌_Character] Row 145
+  [테스터A_Character] Row 145
     Korean: "은색 비지오네 쓴 환자"
     STRINGID: 4295864944164912
     STATUS: ISSUE
@@ -909,7 +909,7 @@ NOT FOUND ROWS (Manual Review Required)
 Current format: `{Username}_{Category}/`
 
 Examples:
-- `김동헌_Character/`
+- `테스터A_Character/`
 - `황하연_Quest/`
 - `Alice_Knowledge/`
 
@@ -918,13 +918,13 @@ Examples:
 ```python
 # Parse folder name
 parts = folder.name.split('_')
-username = parts[0]          # "김동헌"
+username = parts[0]          # "테스터A"
 category = '_'.join(parts[1:])  # "Character" or "EN_Item"
 ```
 
 ### Special Cases
 
-- `김동헌_EN_Item/` → username="김동헌", category="EN_Item"
+- `테스터A_EN_Item/` → username="테스터A", category="EN_Item"
 - `Test_User_Quest/` → username="Test", category="User_Quest" (WRONG!)
 
 **Risk:** Usernames with underscores will break parsing.

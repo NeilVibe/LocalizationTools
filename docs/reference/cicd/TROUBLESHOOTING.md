@@ -48,14 +48,14 @@ npm install
 
 ```bash
 # Get latest run number
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions" | grep -oE 'actions/runs/[0-9]+' | head -1
+curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions" | grep -oE 'actions/runs/[0-9]+' | head -1
 # Output: actions/runs/346
 
 # Stream live logs (replace 346 with run number, job 0=trigger, 1=tests, 2=windows)
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | tail -50
+curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/346/jobs/1/logs" | tail -50
 
 # Filter for test results only
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | grep -E "(PASSED|FAILED|passed|failed)" | tail -30
+curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/346/jobs/1/logs" | grep -E "(PASSED|FAILED|passed|failed)" | tail -30
 ```
 
 ### Quick Build Status Check
@@ -64,7 +64,7 @@ curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/lo
 # One-liner: Check latest build status
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 1')
 r = c.fetchone()
 STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
@@ -78,13 +78,13 @@ print(f'Run {r[0]}: {STATUS.get(r[1], r[1])} - {r[2]}')"
 
 ```bash
 # SSH to runner and find latest log
-ssh neil1988@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3"
+ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -3"
 
 # Read the log file (replace <folder> with actual folder name)
-ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E 'FAILED|Error|assert' | tail -50"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<folder>/*.log | grep -E 'FAILED|Error|assert' | tail -50"
 
 # Or just get the last failure line
-ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep FAILED | tail -1"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<folder>/*.log | grep FAILED | tail -1"
 ```
 
 ### Quick Reference
@@ -114,7 +114,7 @@ echo $GITEA_TOKEN
 
 If token is missing or expired:
 
-1. Go to: http://172.28.150.120:3000/user/settings/applications
+1. Go to: http://<GITEA_HOST>:3000/user/settings/applications
 2. Click "Generate New Token"
 3. Name: `release-manager` (or any name)
 4. Permissions: Select "write:repository"
@@ -147,15 +147,15 @@ Use the release manager script for common operations:
 
 ```bash
 # List releases
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases" \
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases" \
   -H "Authorization: token $GITEA_TOKEN" | python3 -c "import sys,json; [print(f\"{r['id']}: {r['tag_name']}\") for r in json.load(sys.stdin)]"
 
 # Delete a release
-curl -s -X DELETE "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID" \
+curl -s -X DELETE "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases/RELEASE_ID" \
   -H "Authorization: token $GITEA_TOKEN"
 
 # Upload asset to release
-curl -s -X POST "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID/assets?name=FILE_NAME" \
+curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases/RELEASE_ID/assets?name=FILE_NAME" \
   -H "Authorization: token $GITEA_TOKEN" \
   -H "Content-Type: application/octet-stream" \
   --data-binary @/path/to/file
@@ -169,10 +169,10 @@ Windows builds run on a separate runner. Check these logs for Windows-specific f
 
 ```bash
 # Find Windows build logs (usually "fe" folder for Windows job)
-ssh neil1988@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5"
+ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -5"
 
 # Check specific folder for Windows errors
-ssh neil1988@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/fe/*.log | grep -E 'FAILED|Error|Traceback' | tail -20"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/fe/*.log | grep -E 'FAILED|Error|Traceback' | tail -20"
 ```
 
 Common Windows errors:
@@ -238,7 +238,7 @@ git add -A && git commit -m "TROUBLESHOOT" && git push gitea main
 
 ### WINDOWS_BUILD Checkpoint
 
-**Location:** `/home/neil1988/.locanext_checkpoint`
+**Location:** `/home/<USERNAME>/.locanext_checkpoint`
 
 If Linux tests pass but Windows build fails:
 1. Windows build automatically saves `WINDOWS_BUILD` to checkpoint at start
@@ -251,17 +251,17 @@ If Linux tests pass but Windows build fails:
 
 **Create WINDOWS_BUILD checkpoint manually:**
 ```bash
-echo "WINDOWS_BUILD" > /home/neil1988/.locanext_checkpoint
+echo "WINDOWS_BUILD" > /home/<USERNAME>/.locanext_checkpoint
 ```
 
 **Clear checkpoint:**
 ```bash
-rm /home/neil1988/.locanext_checkpoint
+rm /home/<USERNAME>/.locanext_checkpoint
 ```
 
 **⚠️ Known Issue:** Auto-clear from Windows doesn't work (WSL path access issue). After Windows build succeeds, manually clear the checkpoint:
 ```bash
-rm /home/neil1988/.locanext_checkpoint
+rm /home/<USERNAME>/.locanext_checkpoint
 ```
 
 This prevents re-running 900+ tests when only Windows is failing.
@@ -289,13 +289,13 @@ This prevents re-running 900+ tests when only Windows is failing.
 
 ```bash
 # Check checkpoint
-cat /home/neil1988/.locanext_checkpoint
+cat /home/<USERNAME>/.locanext_checkpoint
 
 # Clear checkpoint (restart from beginning)
-rm /home/neil1988/.locanext_checkpoint
+rm /home/<USERNAME>/.locanext_checkpoint
 
 # Force Windows build (skip tests)
-echo "WINDOWS_BUILD" > /home/neil1988/.locanext_checkpoint
+echo "WINDOWS_BUILD" > /home/<USERNAME>/.locanext_checkpoint
 ```
 
 ### Recreate Checkpoint from Last Fail
@@ -347,7 +347,7 @@ When Claude runs TROUBLESHOOT mode autonomously:
    sleep 40
 
 3. CHECK LIVE LOGS
-   curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -80
+   curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -80
 
 4. ANALYZE
    - If "All tests passed! Checkpoint cleared" → DONE
@@ -364,13 +364,13 @@ When Claude runs TROUBLESHOOT mode autonomously:
 
 ```bash
 # Get latest run number
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
+curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
 
 # Check test progress (filter PASSED/FAILED)
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining|passed|failed)" | tail -40
+curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining|passed|failed)" | tail -40
 
 # Quick status
-curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -20
+curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -20
 ```
 
 ### Common Test Fixes
@@ -600,7 +600,7 @@ When log files haven't appeared yet or you need to check if jobs are running/wai
 ```bash
 python3 -c "
 import sqlite3
-conn = sqlite3.connect('/home/neil1988/gitea/data/gitea.db')
+conn = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db')
 cursor = conn.cursor()
 
 # Get latest runs
@@ -618,7 +618,7 @@ conn.close()
 ```bash
 python3 -c "
 import sqlite3
-conn = sqlite3.connect('/home/neil1988/gitea/data/gitea.db')
+conn = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db')
 cursor = conn.cursor()
 
 # Replace 346 with your run ID
@@ -678,7 +678,7 @@ conn.close()
 # GET CURRENT STAGE AND TIME
 python3 -c "
 import sqlite3, time
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('''
     SELECT j.name, j.status, j.started
     FROM action_run_job j
@@ -724,7 +724,7 @@ else:
 # Check if build is stuck (ran > 10 min)
 python3 -c "
 import sqlite3, time
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, started FROM action_run ORDER BY id DESC LIMIT 1')
 r = c.fetchone()
 elapsed = int(time.time()) - r[2] if r[2] else 0
@@ -787,19 +787,19 @@ Gitea 1.25.x changed action log storage to use zstd compression (`.log.zst` file
 # STEP 1: Check latest runs in database (NOT curl - database is truth)
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title, started, stopped FROM action_run ORDER BY id DESC LIMIT 3')
 for r in c.fetchall():
     status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING'}
     print(f'Run {r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]}')"
 
 # STEP 2: Check Gitea's main log for errors (NOT /tmp/gitea.log)
-tail -50 /home/neil1988/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|does not exist)"
+tail -50 /home/<USERNAME>/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|does not exist)"
 
 # STEP 3: Check task step details for failed run
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, name, status, log_length FROM action_task_step WHERE task_id=(SELECT MAX(id) FROM action_task)')
 for r in c.fetchall():
     print(f'Step {r[0]}: {r[1]}, status={r[2]}, log_length={r[3]}')"
@@ -829,13 +829,13 @@ sleep 3
 ps aux | grep -E "(gitea|act_runner)" | grep -v grep  # Should be empty
 
 # 5. Start Gitea with GOGC=200
-cd /home/neil1988/gitea && GOGC=200 GITEA_WORK_DIR="/home/neil1988/gitea" nohup ./gitea web > /tmp/gitea.log 2>&1 &
+cd /home/<USERNAME>/gitea && GOGC=200 GITEA_WORK_DIR="/home/<USERNAME>/gitea" nohup ./gitea web > /tmp/gitea.log 2>&1 &
 
 # 6. Wait for Gitea to initialize
 sleep 5
 
 # 7. Start runner
-cd /home/neil1988/gitea && nohup ./act_runner daemon --config runner_config.yaml > /tmp/act_runner.log 2>&1 &
+cd /home/<USERNAME>/gitea && nohup ./act_runner daemon --config runner_config.yaml > /tmp/act_runner.log 2>&1 &
 
 # 8. Retrigger build
 echo "Build NNN: Verify fix" >> /path/to/GITEA_TRIGGER.txt
@@ -845,11 +845,11 @@ git add -A && git commit -m "Build NNN: Verify fix" && git push gitea main
 **Verification:**
 ```bash
 # Check if .zst files are being created
-find /home/neil1988/gitea/data/actions_log/neilvibe/LocaNext/ -name "*.zst" -mmin -5
+find /home/<USERNAME>/gitea/data/actions_log/<GIT_USER>/LocaNext/ -name "*.zst" -mmin -5
 # Should show recent .zst files
 
 # Verify logs accessible via curl (no 500 error)
-curl -s "http://172.28.150.120:3000/neilvibe/LocaNext/actions/runs/XXX/jobs/0/logs" | head -10
+curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/XXX/jobs/0/logs" | head -10
 # Should show log content, not HTML error page
 ```
 
@@ -878,7 +878,7 @@ When asked "did we build today?" or "is there a new build?", Claude incorrectly 
 python3 -c "
 import sqlite3
 from datetime import datetime
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title, started FROM action_run ORDER BY id DESC LIMIT 5')
 status_map = {0: 'UNK', 1: 'OK', 2: 'FAIL', 3: 'CANCEL', 4: 'SKIP', 5: 'WAIT', 6: 'RUN'}
 for r in c.fetchall():
@@ -969,7 +969,7 @@ git log --oneline --format="%h | %ci | %s" -10
 
 | ❌ WRONG | ✅ CORRECT | Why |
 |----------|-----------|-----|
-| `tail /tmp/gitea.log` | `tail /home/neil1988/gitea/log/gitea.log` | /tmp may be empty or stale |
+| `tail /tmp/gitea.log` | `tail /home/<USERNAME>/gitea/log/gitea.log` | /tmp may be empty or stale |
 | `curl .../jobs/0/logs` (for debugging) | Query database directly | curl returns 500 if storage broken |
 | `grep -r "error"` everywhere | Check specific log files first | Too many false positives |
 | Restart immediately | Stop → Clean → Investigate → Fix → Start | Restart masks the real issue |
@@ -986,13 +986,13 @@ ps aux | grep -E "(gitea|act_runner)" | grep -v grep
 # 2. DATABASE (10 sec) - What's the REAL status?
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
 status_map = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN'}
 for r in c.fetchall(): print(f'{r[0]}: {status_map.get(r[1], r[1])} - {r[2][:40]}')"
 
 # 3. ERRORS (15 sec) - What went wrong?
-tail -30 /home/neil1988/gitea/log/gitea.log | grep -iE "(error|fail|cannot|does not)"
+tail -30 /home/<USERNAME>/gitea/log/gitea.log | grep -iE "(error|fail|cannot|does not)"
 
 # 4. RUNNER (5 sec) - Is runner picking up jobs?
 tail -10 /tmp/act_runner.log
@@ -1001,7 +1001,7 @@ tail -10 /tmp/act_runner.log
 **If run is FAILURE with no logs (log_length=0):**
 ```bash
 # Check for storage/dependency issues
-grep "dbfs\|zstd\|file does not exist" /home/neil1988/gitea/log/gitea.log | tail -5
+grep "dbfs\|zstd\|file does not exist" /home/<USERNAME>/gitea/log/gitea.log | tail -5
 ```
 
 ### Quick Decision Tree
@@ -1038,7 +1038,7 @@ ps aux | grep -E "(gitea|act_runner)" | grep -v grep
 # 2. Get latest runs from database (source of truth)
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 3')
 status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING'}
 for r in c.fetchall():
@@ -1049,7 +1049,7 @@ for r in c.fetchall():
 
 ```bash
 # Main Gitea log (NOT /tmp/gitea.log which may be empty)
-tail -30 /home/neil1988/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|failed|500)"
+tail -30 /home/<USERNAME>/gitea/log/gitea.log | grep -E "(error|Error|Warning|cannot|failed|500)"
 
 # Runner log
 cat /tmp/act_runner.log | tail -20
@@ -1061,7 +1061,7 @@ cat /tmp/act_runner.log | tail -20
 # Get jobs for a specific run (replace XXX with run ID)
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, name, status FROM action_run_job WHERE run_id=XXX')
 status_map = {0: 'UNKNOWN', 1: 'SUCCESS', 2: 'FAILURE', 3: 'CANCELLED', 4: 'SKIPPED', 5: 'WAITING', 6: 'RUNNING', 7: 'BLOCKED'}
 for r in c.fetchall():
@@ -1073,7 +1073,7 @@ for r in c.fetchall():
 | DO | DON'T |
 |----|-------|
 | Check database directly (source of truth) | Rely solely on curl (can return 500s) |
-| Check /home/neil1988/gitea/log/gitea.log | Check only /tmp/gitea.log (may be empty) |
+| Check /home/<USERNAME>/gitea/log/gitea.log | Check only /tmp/gitea.log (may be empty) |
 | Stop runner BEFORE stopping Gitea | Kill Gitea while runner is mid-job |
 | Clean restart with 3s+ delays | Rapid restart without cleanup |
 | Verify fix with new build trigger | Assume fix worked without test |
@@ -1099,7 +1099,7 @@ import sqlite3
 import time
 for attempt in range(3):
     try:
-        c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db', timeout=10)
+        c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db', timeout=10)
         c.execute('PRAGMA busy_timeout = 5000')
         cursor = c.cursor()
         cursor.execute(\"DELETE FROM action_runner WHERE name LIKE '%ephemeral%'\")
@@ -1126,7 +1126,7 @@ When checking if builds are running, Claude incorrectly tries:
 | `find /mnt/c -name "runner.db"` | Slow, searches all of C: drive |
 | `Get-Service gitea-runner` via PowerShell | Service may not be a Windows service |
 | `curl` the Gitea API | Requires authentication token |
-| `ls /home/neil1988/gitea-runner/runner.db` | Wrong path |
+| `ls /home/<USERNAME>/gitea-runner/runner.db` | Wrong path |
 
 ### The Correct Approach
 
@@ -1135,14 +1135,14 @@ When checking if builds are running, Claude incorrectly tries:
 ```bash
 python3 -c "
 import sqlite3
-c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
+c = sqlite3.connect('/home/<USERNAME>/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
 status_map = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN'}
 for r in c.fetchall(): print(f'{r[0]}: {status_map.get(r[1], r[1])} - {r[2][:50]}')"
 ```
 
 **Key points:**
-- Database path: `/home/neil1988/gitea/data/gitea.db`
+- Database path: `/home/<USERNAME>/gitea/data/gitea.db`
 - This shows build status directly from source of truth
 - No authentication, curl, or complex paths needed
 
@@ -1173,7 +1173,7 @@ Each build creates **two releases** on Gitea:
 
 ```
 1. App launches
-2. Checks: http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest/latest.yml
+2. Checks: http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml
 3. Compares version in latest.yml with installed version
 4. If newer → Downloads installer from 'latest' release
 5. Prompts user to restart
@@ -1184,7 +1184,7 @@ Each build creates **two releases** on Gitea:
 ```json
 "publish": {
   "provider": "generic",
-  "url": "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+  "url": "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest"
 }
 ```
 
@@ -1202,13 +1202,13 @@ cat "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/resources/app-
 **Correct output:**
 ```yaml
 provider: generic
-url: http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest
+url: http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest
 ```
 
 **Wrong output (old broken config):**
 ```yaml
 provider: github
-owner: NeilVibe
+owner: <GIT_USER>
 repo: LocalizationTools
 ```
 
@@ -1245,7 +1245,7 @@ source ~/.bashrc  # Load GITEA_TOKEN
 
 # Create latest release pointing to current version
 VERSION=$(grep -oP 'VERSION = "\K[^"]+' version.py)
-curl -s -X POST "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases" \
+curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases" \
   -H "Authorization: token $GITEA_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"tag_name\":\"latest\",\"name\":\"Latest Release (v$VERSION)\"}"

@@ -4,7 +4,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/neil1988/LocalizationTools"
+PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Parse options

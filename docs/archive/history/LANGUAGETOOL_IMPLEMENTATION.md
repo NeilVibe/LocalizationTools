@@ -23,7 +23,7 @@ Self-hosted spelling/grammar/style checking for target text in LDM.
 ## Architecture: Central Server
 
 ```
-Central Server (172.28.150.120)
+Central Server (<GITEA_HOST>)
 ├── PostgreSQL (:5432)        ← already running
 └── LanguageTool Server (:8081) ← NEW
 
@@ -68,13 +68,13 @@ LocaNext.exe (User PC)
 
 | Step | Task | Command/Details |
 |------|------|-----------------|
-| 1.1 | SSH to central server | `ssh user@172.28.150.120` |
+| 1.1 | SSH to central server | `ssh user@<GITEA_HOST>` |
 | 1.2 | Install Java (if needed) | `sudo apt install openjdk-17-jre-headless` |
 | 1.3 | Download LanguageTool | Get ZIP from GitHub releases (~200MB) |
 | 1.4 | Extract | `unzip LanguageTool-*.zip -d /opt/languagetool` |
 | 1.5 | Create systemd service | Auto-start on boot |
 | 1.6 | Start server | `systemctl start languagetool` |
-| 1.7 | Test endpoint | `curl http://172.28.150.120:8081/v2/check` |
+| 1.7 | Test endpoint | `curl http://<GITEA_HOST>:8081/v2/check` |
 | 1.8 | Open firewall | Port 8081 for internal network |
 
 **Systemd service file:** `/etc/systemd/system/languagetool.service`
@@ -95,7 +95,7 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-**Health check URL:** `http://172.28.150.120:8081/v2/check?language=en-US&text=test`
+**Health check URL:** `http://<GITEA_HOST>:8081/v2/check?language=en-US&text=test`
 
 ---
 
@@ -112,7 +112,7 @@ import httpx
 from typing import Optional
 from server.utils.logger import logger
 
-LANGUAGETOOL_URL = "http://172.28.150.120:8081/v2/check"
+LANGUAGETOOL_URL = "http://<GITEA_HOST>:8081/v2/check"
 
 class LanguageToolClient:
     """Client for LanguageTool API."""

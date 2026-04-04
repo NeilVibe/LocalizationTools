@@ -98,7 +98,7 @@ require('electron').ipcRenderer.invoke('check-for-updates')
 taskkill /F /IM LocaNext.exe /T
 
 # 2. Download latest installer from Gitea
-$release = Invoke-RestMethod "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1"
+$release = Invoke-RestMethod "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1"
 $installer = $release[0].assets | Where-Object { $_.name -like "*Setup.exe" }
 Invoke-WebRequest $installer.browser_download_url -OutFile "$env:TEMP\LocaNext_Setup.exe"
 
@@ -142,7 +142,7 @@ Shortcuts:
 /mnt/c/Windows/System32/curl.exe -s http://127.0.0.1:9222/json > /dev/null && echo "Running"
 
 # 2. Trigger update via CDP script
-cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+cd /home/<USERNAME>/LocalizationTools/testing_toolkit/cdp
 /mnt/c/Program\ Files/nodejs/node.exe trigger_update.js
 
 # 3. App downloads update and restarts automatically
@@ -160,7 +160,7 @@ cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
 sleep 10
 
 # 3. Login via CDP
-cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+cd /home/<USERNAME>/LocalizationTools/testing_toolkit/cdp
 /mnt/c/Program\ Files/nodejs/node.exe login.js
 ```
 

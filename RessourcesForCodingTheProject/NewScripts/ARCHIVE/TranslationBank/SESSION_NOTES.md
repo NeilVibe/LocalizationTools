@@ -207,7 +207,7 @@ gh run list --workflow=translationbank-build.yml --limit 3
 - TranslationBank_v26.130.2233_Portable.zip (13 MB)
 - TranslationBank_v26.130.2233_Source.zip (<1 MB)
 
-**GitHub Release:** https://github.com/NeilVibe/LocalizationTools/releases/tag/translationbank-v26.130.2233
+**GitHub Release:** https://github.com/<GIT_USER>/LocalizationTools/releases/tag/translationbank-v26.130.2233
 
 ---
 

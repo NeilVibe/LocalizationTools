@@ -79,7 +79,7 @@ Options:
 .\scripts\playground_install.ps1 [params]
 
 Parameters:
-  -GiteaHost       Gitea server IP (default: 172.28.150.120)
+  -GiteaHost       Gitea server IP (default: <GITEA_HOST>)
   -GiteaPort       Gitea server port (default: 3000)
   -PlaygroundPath  Install location (default: C:\...\Playground)
   -LaunchAfterInstall  Launch app after install
@@ -102,7 +102,7 @@ Parameters:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. GET RELEASE                                             │
-│     └─> Gitea API: /api/v1/repos/neilvibe/LocaNext/releases │
+│     └─> Gitea API: /api/v1/repos/<GIT_USER>/LocaNext/releases │
 │     └─> Get: tag_name, installer URL                        │
 │                                                             │
 │  2. CLEAN PLAYGROUND                                        │
@@ -123,7 +123,7 @@ Parameters:
 │                                                             │
 │  5. CONFIGURE CENTRAL SERVER                                │
 │     └─> Create: %APPDATA%\LocaNext\server-config.json       │
-│     └─> Host: 172.28.150.120:5432 (PostgreSQL)              │
+│     └─> Host: <GITEA_HOST>:5432 (PostgreSQL)              │
 │     └─> User: localization_admin                            │
 │     └─> IMPORTANT: Write UTF-8 without BOM                  │
 │                                                             │
@@ -169,7 +169,7 @@ The install script automatically creates `%APPDATA%\LocaNext\server-config.json`
 
 ```json
 {
-  "postgres_host": "172.28.150.120",
+  "postgres_host": "<GITEA_HOST>",
   "postgres_port": 5432,
   "postgres_user": "localization_admin",
   "postgres_password": "locanext_dev_2025",
@@ -279,10 +279,10 @@ netstat -an | grep 9222
 ### Download fails
 ```powershell
 # Check Gitea is reachable
-Test-NetConnection -ComputerName 172.28.150.120 -Port 3000
+Test-NetConnection -ComputerName <GITEA_HOST> -Port 3000
 
 # Manual download
-Invoke-WebRequest -Uri "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/v25.1216.1251/LocaNext_v25.1216.1251_Light_Setup.exe" -OutFile "$env:TEMP\installer.exe"
+Invoke-WebRequest -Uri "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/v25.1216.1251/LocaNext_v25.1216.1251_Light_Setup.exe" -OutFile "$env:TEMP\installer.exe"
 ```
 
 ---
@@ -385,7 +385,7 @@ This will:
 3. Login via backend API as admin/admin123
 4. Report success/failure
 
-The app auto-connects to the central PostgreSQL server at `172.28.150.120:5432`.
+The app auto-connects to the central PostgreSQL server at `<GITEA_HOST>:5432`.
 
 ### WSL2 Network Limitation
 
@@ -399,7 +399,7 @@ curl http://127.0.0.1:9222/json              # Connection refused!
 **Run CDP tests from Windows PowerShell instead:**
 
 ```powershell
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 node login.js
 node quick_check.js
 ```
@@ -430,7 +430,7 @@ See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for ful
 2. Configure (server-config.json created automatically)
 3. Launch (CDP enabled)
 4. First Time Setup (~5 min on first run)
-5. Backend connects to PostgreSQL (172.28.150.120:5432)
+5. Backend connects to PostgreSQL (<GITEA_HOST>:5432)
 6. Auto-login as admin/admin123
 7. App ready in ONLINE mode
 ```
@@ -439,9 +439,9 @@ See [testing_toolkit/cdp/README.md](../../testing_toolkit/cdp/README.md) for ful
 
 | Requirement | Details |
 |-------------|---------|
-| PostgreSQL | Running on 172.28.150.120:5432 |
+| PostgreSQL | Running on <GITEA_HOST>:5432 |
 | User | localization_admin with correct password |
-| pg_hba.conf | Allow connections from 172.28.0.0/16 |
+| pg_hba.conf | Allow connections from LAN subnet |
 
 ---
 

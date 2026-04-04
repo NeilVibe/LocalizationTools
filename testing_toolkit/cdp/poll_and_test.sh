@@ -19,7 +19,7 @@ for i in {1..60}; do
     echo "Running Node.js tests..."
     echo ""
 
-    cd /home/neil1988/LocalizationTools/testing_toolkit/cdp
+    cd /home/<USERNAME>/LocalizationTools/testing_toolkit/cdp
 
     echo "=== quick_check.js ==="
     node quick_check.js

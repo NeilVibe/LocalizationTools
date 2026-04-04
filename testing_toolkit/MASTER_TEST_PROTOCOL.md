@@ -129,10 +129,10 @@ git push origin main && git push gitea main
 
 ```bash
 # Check if build completed (via releases API)
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0] | {tag_name, created_at, name}'
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r '.[0] | {tag_name, created_at, name}'
 
 # Watch mode (check every 30s)
-watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r ".[0].tag_name"'
+watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r ".[0].tag_name"'
 ```
 
 **DO NOT install/test until:** A new release with expected version appears.
@@ -151,10 +151,10 @@ Or manually:
 
 ```bash
 # PostgreSQL (central database)
-pg_isready -h 172.28.150.120 -p 5432 && echo "PostgreSQL: ✅" || echo "PostgreSQL: ❌"
+pg_isready -h <GITEA_HOST> -p 5432 && echo "PostgreSQL: ✅" || echo "PostgreSQL: ❌"
 
 # Gitea (releases/CI)
-curl -s -o /dev/null -w "%{http_code}" http://172.28.150.120:3000/api/v1/version | grep -q 200 && echo "Gitea: ✅" || echo "Gitea: ❌"
+curl -s -o /dev/null -w "%{http_code}" http://<GITEA_HOST>:3000/api/v1/version | grep -q 200 && echo "Gitea: ✅" || echo "Gitea: ❌"
 
 # Backend (if running locally for dev)
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/health | grep -q 200 && echo "Backend: ✅" || echo "Backend: ❌"
@@ -238,7 +238,7 @@ After installing a new build, do a **hard refresh** in the app:
 
 ```powershell
 # Access test scripts via UNC path
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 
 # Login first (if at login screen)
 node login.js
@@ -406,16 +406,16 @@ Update these files:
 git push origin main && git push gitea main
 
 # 2. WAIT & MONITOR (from WSL)
-watch -n 30 'curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
+watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
 
 # 3. CHECK RELEASE (from WSL)
-curl -s "http://172.28.150.120:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
 
 # 4. INSTALL (from Windows PowerShell)
 .\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
 
 # 5. TEST (from Windows PowerShell - NOT WSL!)
-Push-Location '\\wsl.localhost\Ubuntu2\home\neil1988\LocalizationTools\testing_toolkit\cdp'
+Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
 node login.js && node test_server_status.js
 ```
 
@@ -438,7 +438,7 @@ LocaNext.exe --remote-debugging-port=9222
 
 | What | Windows | WSL |
 |------|---------|-----|
-| Repo | `D:\LocalizationTools` | `/home/neil1988/LocalizationTools` |
+| Repo | `D:\LocalizationTools` | `/home/<USERNAME>/LocalizationTools` |
 | Playground | `C:\NEIL_PROJECTS_WINDOWSBUILD\LocaNextProject\Playground\LocaNext` | `/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/LocaNext` |
 | CDP Tests | `testing_toolkit\cdp\` | `testing_toolkit/cdp/` |
 | Install Script | `scripts\playground_install.ps1` | `scripts/playground_install.sh` |
@@ -491,7 +491,7 @@ curl -s http://127.0.0.1:9222/json
 ### Build Failed
 ```bash
 # Check Gitea Actions
-http://172.28.150.120:3000/neilvibe/LocaNext/actions
+http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions
 
 # TROUBLESHOOT mode (resume from checkpoint)
 echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt

@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/neil1988/LocalizationTools"
+PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
 SCRIPTS_DIR="$PROJECT_ROOT/scripts"
 
 # Colors

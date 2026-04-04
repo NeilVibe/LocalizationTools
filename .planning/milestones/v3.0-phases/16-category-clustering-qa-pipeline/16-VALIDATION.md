@@ -19,8 +19,8 @@ created: 2026-03-15
 |----------|-------|
 | **Framework** | pytest 8.x (backend) + vitest (frontend) |
 | **Config file** | `tests/conftest.py` (backend), `locaNext/vitest.config.ts` (frontend) |
-| **Quick run command** | `cd /home/neil1988/LocalizationTools && python -m pytest tests/unit/ldm/ -x -q --tb=short` |
-| **Full suite command** | `cd /home/neil1988/LocalizationTools && python -m pytest tests/ -x -q --tb=short` |
+| **Quick run command** | `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/unit/ldm/ -x -q --tb=short` |
+| **Full suite command** | `cd /home/<USERNAME>/LocalizationTools && python -m pytest tests/ -x -q --tb=short` |
 | **Estimated runtime** | ~15 seconds |
 
 ---

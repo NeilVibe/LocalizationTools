@@ -35,8 +35,8 @@ echo "========================================="
 # Backend Server Logs
 echo ""
 echo "🖥️  BACKEND SERVER:"
-if [ -f "/home/neil1988/LocalizationTools/server/data/logs/server.log" ]; then
-  tail -10 /home/neil1988/LocalizationTools/server/data/logs/server.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+if [ -f "/home/<USERNAME>/LocalizationTools/server/data/logs/server.log" ]; then
+  tail -10 /home/<USERNAME>/LocalizationTools/server/data/logs/server.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
     if echo "$line" | grep -q "ERROR"; then
       echo "  ❌ $line"
     elif echo "$line" | grep -q "WARNING"; then
@@ -54,8 +54,8 @@ fi
 # LocaNext App Logs
 echo ""
 echo "💻 LOCANEXT APP:"
-if [ -f "/home/neil1988/LocalizationTools/logs/locanext_app.log" ]; then
-  tail -10 /home/neil1988/LocalizationTools/logs/locanext_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+if [ -f "/home/<USERNAME>/LocalizationTools/logs/locanext_app.log" ]; then
+  tail -10 /home/<USERNAME>/LocalizationTools/logs/locanext_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
     if echo "$line" | grep -q "ERROR"; then
       echo "  ❌ $line"
     elif echo "$line" | grep -q "WARNING"; then
@@ -73,8 +73,8 @@ fi
 # Dashboard Logs
 echo ""
 echo "📊 ADMIN DASHBOARD:"
-if [ -f "/home/neil1988/LocalizationTools/logs/dashboard_app.log" ]; then
-  tail -10 /home/neil1988/LocalizationTools/logs/dashboard_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
+if [ -f "/home/<USERNAME>/LocalizationTools/logs/dashboard_app.log" ]; then
+  tail -10 /home/<USERNAME>/LocalizationTools/logs/dashboard_app.log | grep -E "(INFO|WARNING|ERROR|SUCCESS)" | while read line; do
     if echo "$line" | grep -q "ERROR"; then
       echo "  ❌ $line"
     elif echo "$line" | grep -q "WARNING"; then

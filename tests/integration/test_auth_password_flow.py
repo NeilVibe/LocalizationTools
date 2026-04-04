@@ -11,7 +11,7 @@ def test_token_response_includes_must_change_password():
         access_token="eyJ...",
         token_type="bearer",
         user_id=3,
-        username="seonchile",
+        username="testuser",
         role="user",
         must_change_password=True,
     )

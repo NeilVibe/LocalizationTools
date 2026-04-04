@@ -15,7 +15,7 @@ set -e
 
 # Configuration
 GITEA_URL="${GITEA_URL:-http://localhost:3000}"
-GITEA_REPO="neilvibe/LocaNext"
+GITEA_REPO="<GIT_USER>/LocaNext"
 KEEP_COUNT="${KEEP_COUNT:-2}"
 
 # Check for token

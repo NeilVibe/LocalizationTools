@@ -63,7 +63,7 @@ Verify these are gitignored:
 
 ## Priority
 
-LOW — cosmetic cleanup, doesn't block Phase 110. Do AFTER auth fix is confirmed working on PEARL.
+LOW — cosmetic cleanup, doesn't block Phase 110. Do AFTER auth fix is confirmed working on <PC_NAME>.
 
 ## Approach
 
