@@ -8,23 +8,23 @@ from fastapi.testclient import TestClient
 def test_cors_origins_cover_admin_ip():
     """Generated CORS origins must include admin's own IP on all ports."""
     from server.config import _build_lan_cors_origins
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     # Admin FastAPI
-    assert "http://10.35.34.61:8888" in origins
-    assert "https://10.35.34.61:8888" in origins
+    assert "http://10.0.0.1:8888" in origins
+    assert "https://10.0.0.1:8888" in origins
     # Admin dashboard
-    assert "http://10.35.34.61:8885" in origins
-    assert "https://10.35.34.61:8885" in origins
+    assert "http://10.0.0.1:8885" in origins
+    assert "https://10.0.0.1:8885" in origins
     # Vite dev
-    assert "http://10.35.34.61:5173" in origins
-    assert "https://10.35.34.61:5173" in origins
+    assert "http://10.0.0.1:5173" in origins
+    assert "https://10.0.0.1:5173" in origins
 
 
 def test_cors_origins_cover_electron():
     """Electron app:// origin must always be in the CORS list."""
     from server.config import _build_lan_cors_origins
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
     assert "app://." in origins
 
 
@@ -45,7 +45,7 @@ def test_cors_origins_various_lan_ips():
     """Function should work with any valid LAN IP."""
     from server.config import _build_lan_cors_origins
 
-    for ip in ["10.0.0.1", "192.168.1.100", "172.16.0.50", "10.35.34.61"]:
+    for ip in ["10.0.0.1", "192.168.1.100", "172.16.0.50", "10.0.0.1"]:
         origins = _build_lan_cors_origins(ip)
         assert f"http://{ip}:8888" in origins
         assert f"https://{ip}:8888" in origins
@@ -54,29 +54,29 @@ def test_cors_origins_various_lan_ips():
 
 
 def test_cross_subnet_user_electron_origin():
-    """User at 10.35.46.81 sends Origin: app://. — must be allowed by Admin's CORS."""
+    """User at 10.0.1.1 sends Origin: app://. — must be allowed by Admin's CORS."""
     from server.config import _build_lan_cors_origins
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     # User's Electron app sends this origin regardless of their IP
     assert "app://." in origins
 
 
 def test_user_browser_origin_matches_admin_url():
-    """Browser accessing http://10.35.34.61:8888 sends Origin: http://10.35.34.61:8888."""
+    """Browser accessing http://10.0.0.1:8888 sends Origin: http://10.0.0.1:8888."""
     from server.config import _build_lan_cors_origins
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     # Browser Origin = the URL the user typed = admin's address
-    assert "http://10.35.34.61:8888" in origins
-    assert "https://10.35.34.61:8888" in origins
+    assert "http://10.0.0.1:8888" in origins
+    assert "https://10.0.0.1:8888" in origins
 
 
 def test_fastapi_cors_with_electron_origin():
     """Real FastAPI + CORSMiddleware: request with Origin: app://. must get CORS headers."""
     from server.config import _build_lan_cors_origins
 
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     app = FastAPI()
     app.add_middleware(
@@ -112,7 +112,7 @@ def test_fastapi_cors_blocks_unknown_origin():
     """Real FastAPI + CORSMiddleware: request from unknown origin must NOT get CORS headers."""
     from server.config import _build_lan_cors_origins
 
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     app = FastAPI()
     app.add_middleware(
@@ -140,7 +140,7 @@ def test_fastapi_cors_allows_admin_browser_origin():
     """Real FastAPI: browser accessing admin URL gets proper CORS headers."""
     from server.config import _build_lan_cors_origins
 
-    origins = _build_lan_cors_origins("10.35.34.61")
+    origins = _build_lan_cors_origins("10.0.0.1")
 
     app = FastAPI()
     app.add_middleware(
@@ -156,5 +156,5 @@ def test_fastapi_cors_allows_admin_browser_origin():
         return {"status": "ok"}
 
     client = TestClient(app)
-    response = client.get("/health", headers={"Origin": "http://10.35.34.61:8888"})
-    assert response.headers.get("access-control-allow-origin") == "http://10.35.34.61:8888"
+    response = client.get("/health", headers={"Origin": "http://10.0.0.1:8888"})
+    assert response.headers.get("access-control-allow-origin") == "http://10.0.0.1:8888"

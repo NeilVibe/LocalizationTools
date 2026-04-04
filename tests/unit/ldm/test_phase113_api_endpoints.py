@@ -149,7 +149,7 @@ class TestAuthLanFallbackLogic:
 
     def test_remote_pg_sqlite_is_fallback(self):
         """Remote PG host + SQLite active = LAN fallback."""
-        pg_host = "10.35.34.61"
+        pg_host = "10.0.0.1"
         is_lan = pg_host not in ("localhost", "127.0.0.1", "::1", "")
         db_type = "sqlite"
         assert is_lan is True
@@ -164,7 +164,7 @@ class TestAuthLanFallbackLogic:
 
     def test_remote_pg_postgresql_is_not_fallback(self):
         """Remote PG + PostgreSQL active = connected, NOT fallback."""
-        pg_host = "10.35.34.61"
+        pg_host = "10.0.0.1"
         is_lan = pg_host not in ("localhost", "127.0.0.1", "::1", "")
         db_type = "postgresql"
         assert is_lan is True

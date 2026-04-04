@@ -61,9 +61,9 @@
 │ Server Connection               │
 │                                 │
 │ [Online ✓] Connected to PEARL   │
-│ LAN IP: 10.35.34.61            │
+│ LAN IP: 10.0.0.1            │
 │                                 │
-│ Server Address: [10.35.34.61 ] │
+│ Server Address: [10.0.0.1 ] │
 │                                 │
 │ [Test Connection] [Save]        │
 │                                 │

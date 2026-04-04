@@ -29,15 +29,15 @@ class TestGetSubnet:
 
     def test_normal_ip_returns_16(self):
         from server.setup.network import get_subnet
-        result = get_subnet("10.35.34.61")
-        assert result == "10.35.0.0/16"
+        result = get_subnet("10.0.0.1")
+        assert result == "10.0.0.0/16"
 
     def test_different_third_octet_same_16(self):
-        """Admin 10.35.34.x and User 10.35.46.x must be in same /16."""
+        """Admin 10.0.0.x and User 10.0.1.x must be in same /16."""
         from server.setup.network import get_subnet
-        admin = get_subnet("10.35.34.61")
-        user = get_subnet("10.35.46.81")
-        assert admin == user  # Both 10.35.0.0/16
+        admin = get_subnet("10.0.0.1")
+        user = get_subnet("10.0.1.1")
+        assert admin == user  # Both 10.0.0.0/16
 
     def test_loopback_returns_none(self):
         from server.setup.network import get_subnet
@@ -64,11 +64,11 @@ class TestGetSubnet:
 
     def test_invalid_ip_three_parts(self):
         from server.setup.network import get_subnet
-        assert get_subnet("10.35.34") is None
+        assert get_subnet("10.0.0") is None
 
     def test_invalid_ip_five_parts(self):
         from server.setup.network import get_subnet
-        assert get_subnet("10.35.34.61.99") is None
+        assert get_subnet("10.0.0.1.99") is None
 
     def test_empty_string(self):
         from server.setup.network import get_subnet
@@ -77,8 +77,8 @@ class TestGetSubnet:
     def test_third_and_fourth_octets_zeroed(self):
         """Output must zero out the 3rd and 4th octets."""
         from server.setup.network import get_subnet
-        result = get_subnet("10.35.99.250")
-        assert result == "10.35.0.0/16"
+        result = get_subnet("10.0.99.250")
+        assert result == "10.0.0.0/16"
         assert ".99." not in result
         assert ".250" not in result
 
@@ -98,7 +98,7 @@ class TestPgHbaStaleDetection:
         content = (
             "# LocaNext -- managed by setup wizard\n"
             "host    all    postgres    127.0.0.1/32    trust\n"
-            "host    localizationtools    locanext_service    10.35.34.0/24    scram-sha-256\n"
+            "host    localizationtools    locanext_service    10.0.0.0/24    scram-sha-256\n"
             "host    all    all    0.0.0.0/0    reject\n"
         )
         assert self.STALE_24_RE.search(content) is not None
@@ -107,7 +107,7 @@ class TestPgHbaStaleDetection:
         """127.0.0.1/32 should NOT trigger /24 detection."""
         content = (
             "host    all    postgres    127.0.0.1/32    trust\n"
-            "host    localizationtools    locanext_service    10.35.0.0/16    scram-sha-256\n"
+            "host    localizationtools    locanext_service    10.0.0.0/16    scram-sha-256\n"
         )
         assert self.STALE_24_RE.search(content) is None
 
@@ -115,13 +115,13 @@ class TestPgHbaStaleDetection:
         """Comment mentioning /24 should NOT trigger."""
         content = (
             "# Previously used /24 subnet\n"
-            "host    localizationtools    locanext_service    10.35.0.0/16    scram-sha-256\n"
+            "host    localizationtools    locanext_service    10.0.0.0/16    scram-sha-256\n"
         )
         assert self.STALE_24_RE.search(content) is None
 
     def test_no_false_positive_on_16(self):
         """Already migrated /16 should NOT trigger."""
-        content = "host    localizationtools    locanext_service    10.35.0.0/16    scram-sha-256\n"
+        content = "host    localizationtools    locanext_service    10.0.0.0/16    scram-sha-256\n"
         assert self.STALE_24_RE.search(content) is None
 
     def test_detects_192_168_stale_24(self):
@@ -217,7 +217,7 @@ class TestAuthLanFallback:
         return pg_host not in self.LOCAL_HOSTS
 
     def test_lan_ip_is_lan_configured(self):
-        assert self._is_lan_configured("10.35.34.61") is True
+        assert self._is_lan_configured("10.0.0.1") is True
 
     def test_localhost_not_lan(self):
         assert self._is_lan_configured("localhost") is False
@@ -233,7 +233,7 @@ class TestAuthLanFallback:
 
     def test_lan_fallback_should_503(self):
         """When LAN configured + SQLite active → 503 (not 401)."""
-        pg_host = "10.35.34.61"
+        pg_host = "10.0.0.1"
         db_type = "sqlite"
         is_lan = self._is_lan_configured(pg_host)
         should_503 = is_lan and db_type == "sqlite"
@@ -241,7 +241,7 @@ class TestAuthLanFallback:
 
     def test_lan_with_postgres_should_not_503(self):
         """When LAN configured + PG active → normal 401 path."""
-        pg_host = "10.35.34.61"
+        pg_host = "10.0.0.1"
         db_type = "postgresql"
         is_lan = self._is_lan_configured(pg_host)
         should_503 = is_lan and db_type == "sqlite"
