@@ -1,6 +1,6 @@
 {
   "name": "locanext",
-  "version": "26.405.0405",
+  "version": "26.405.0431",
   "description": "LocaNext - Professional Desktop Platform for Localization Tools",
   "main": "electron/bootstrap.js",
   "type": "module",
