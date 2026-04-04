@@ -9,9 +9,10 @@
   import AppModal from './common/AppModal.svelte';
   import { api } from "$lib/api/client.js";
   import { logger } from "$lib/utils/logger.js";
+  import { mustChangePassword } from '$lib/stores/app.js';
 
   // Svelte 5: Props
-  let { open = $bindable(false) } = $props();
+  let { open = $bindable(false), forced = false } = $props();
 
   // Svelte 5: State
   let currentPassword = $state('');
@@ -31,6 +32,8 @@
   }
 
   function handleClose() {
+    // Cannot close if forced (must change password first)
+    if (forced) return;
     resetForm();
     open = false;
   }
@@ -57,10 +60,12 @@
 
       logger.success("Password changed successfully");
       success = true;
+      mustChangePassword.set(false);
 
       // Close modal after a short delay
       setTimeout(() => {
-        handleClose();
+        resetForm();
+        open = false;
       }, 2000);
     } catch (err) {
       logger.error("Password change failed", { error: err.message });
@@ -73,15 +78,24 @@
 
 <AppModal
   bind:open
-  modalHeading="Change Password"
+  modalHeading={forced ? "Change Your Password" : "Change Password"}
   primaryButtonText="Change Password"
-  secondaryButtonText="Cancel"
+  secondaryButtonText={forced ? "" : "Cancel"}
   primaryButtonDisabled={loading || success}
   onprimary={handleSubmit}
-  onsecondary={handleClose}
+  onsecondary={forced ? undefined : handleClose}
   onclose={handleClose}
+  preventCloseOnClickOutside={forced}
   size="sm"
 >
+  {#if forced && !success}
+    <InlineNotification
+      kind="warning"
+      title="Password Change Required"
+      subtitle="You must change your password before continuing."
+      hideCloseButton
+    />
+  {/if}
   {#if success}
     <InlineNotification
       kind="success"

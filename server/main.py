@@ -468,6 +468,10 @@ else:
         allow_headers=config.CORS_ALLOW_HEADERS,
     )
 
+# Add security headers middleware (CSP, X-Frame-Options, HSTS, etc.)
+from server.middleware.security_headers import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware, ssl_enabled=config.SSL_ENABLED)
+
 # Add IP Range Filter middleware (Internal Enterprise Security)
 # This blocks requests from IPs outside the allowed ranges
 if config.ALLOWED_IP_RANGE:
@@ -1092,6 +1096,7 @@ if __name__ == "__main__":
                         "lan_ip": lan_ip,
                         "secret_key": secrets.token_urlsafe(32),
                         "admin_token": secrets.token_urlsafe(32),
+                        "security_mode": "strict",
                         "origin_admin_ip": "127.0.0.1",
                     }
                     config_path = state_dir / "server-config.json"

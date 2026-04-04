@@ -158,7 +158,8 @@ def login(
         token_type="bearer",
         user_id=user.user_id,
         username=user.username,
-        role=user.role
+        role=user.role,
+        must_change_password=bool(user.must_change_password),
     )
 
 

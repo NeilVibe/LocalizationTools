@@ -15,6 +15,9 @@ export const isAuthenticated = writable(false);
 // When true, user works in local Offline Storage only
 export const offlineMode = writable(false);
 
+// Force password change (set when backend returns must_change_password=true)
+export const mustChangePassword = writable(false);
+
 // Server connection
 export const serverUrl = writable('http://localhost:8888');
 export const isConnected = writable(false);

@@ -188,6 +188,31 @@ def get_user_config() -> dict:
 _USER_CONFIG = _load_user_config()
 USER_CONFIG_PATH = _get_user_config_path()
 
+# Build CORS origins for LAN server mode
+def _build_lan_cors_origins(lan_ip: str) -> list[str]:
+    """Build CORS origins for LAN server mode.
+
+    Covers: Electron app://, localhost dev, admin LAN IP on all relevant ports.
+    Both HTTP and HTTPS variants so the same config works before and after TLS is enabled.
+    """
+    origins = [
+        "app://.",                              # Electron origin
+        "http://localhost:5173",                # Vite dev
+        "https://localhost:5173",
+        "http://localhost:8888",                # Local FastAPI
+        "https://localhost:8888",
+        "http://localhost:8885",                # Local admin dashboard
+        "https://localhost:8885",
+        f"http://{lan_ip}:5173",               # LAN Vite (unlikely but safe)
+        f"https://{lan_ip}:5173",
+        f"http://{lan_ip}:8888",               # LAN FastAPI
+        f"https://{lan_ip}:8888",
+        f"http://{lan_ip}:8885",               # Admin dashboard
+        f"https://{lan_ip}:8885",
+    ]
+    return origins
+
+
 # Apply LAN server mode overrides from user config
 def _apply_lan_server_overrides():
     """Apply settings overrides when in LAN server mode (Option B).
@@ -195,7 +220,7 @@ def _apply_lan_server_overrides():
     Option B: Admin's FastAPI serves LAN clients directly.
     Light Build frontends connect to this server over HTTP.
     """
-    global DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT, DB_POOL_RECYCLE, CORS_ALLOW_ALL, SERVER_HOST
+    global DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_TIMEOUT, DB_POOL_RECYCLE, CORS_ALLOW_ALL, CORS_ORIGINS, ALLOWED_ORIGINS, SERVER_HOST
     if _USER_CONFIG.get("server_mode") == "lan_server":
         # Option B: Bind to all interfaces so LAN clients can reach us
         if not os.getenv("SERVER_HOST"):
@@ -210,10 +235,17 @@ def _apply_lan_server_overrides():
             DB_POOL_TIMEOUT = 20    # Fail fast if pool exhausted
         if not os.getenv("DB_POOL_RECYCLE"):
             DB_POOL_RECYCLE = 1800  # Recycle every 30 min
-        # Allow all CORS origins for LAN (internal tool, Electron app:// origins vary)
-        # Respect explicit CORS_ORIGINS env var if admin wants to restrict
+        # Auto-populate CORS origins for LAN instead of allowing all.
+        # Explicit CORS_ORIGINS env var takes precedence (admin override).
         if not os.getenv("CORS_ORIGINS"):
-            CORS_ALLOW_ALL = True
+            lan_ip = _USER_CONFIG.get("lan_ip", "")
+            if lan_ip:
+                CORS_ORIGINS = _build_lan_cors_origins(lan_ip)
+                CORS_ALLOW_ALL = False
+                ALLOWED_ORIGINS = CORS_ORIGINS
+            else:
+                # No LAN IP yet (first launch before setup wizard) — allow all temporarily
+                CORS_ALLOW_ALL = True
 
 # NOTE: _apply_lan_server_overrides() called AFTER DB_POOL_SIZE is defined below
 
@@ -299,7 +331,7 @@ _DEFAULT_API_KEY = "dev-key-change-in-production"
 _DEFAULT_ADMIN_PASSWORD = "admin123"
 
 # Security mode: "strict" will fail on insecure defaults, "warn" will only log warnings
-SECURITY_MODE = os.getenv("SECURITY_MODE", "warn")  # "strict" or "warn"
+SECURITY_MODE = os.getenv("SECURITY_MODE", _USER_CONFIG.get("security_mode", "warn"))  # "strict" or "warn"
 
 # OFFLINE_MODE token acceptance (Electron launcher "Start Offline" button)
 # Always blocked in PostgreSQL mode regardless of this setting.
@@ -567,10 +599,10 @@ def check_security_config() -> dict:
     if DEFAULT_ADMIN_PASSWORD == _DEFAULT_ADMIN_PASSWORD:
         warnings.append("Default admin password 'admin123' should be changed after first login!")
 
-    # Check IP filter + CORS (skip in LAN server mode -- FastAPI is localhost-only, only PG is on LAN)
+    # Check IP filter + CORS
     if _USER_CONFIG.get("server_mode") == "lan_server":
-        # LAN server: FastAPI on localhost:8888 (not exposed). PG on LAN (pg_hba.conf secured).
-        pass  # No IP range or CORS warnings needed
+        if CORS_ALLOW_ALL and _USER_CONFIG.get("lan_ip"):
+            warnings.append("CORS allows all origins in LAN mode -- lan_ip is set but origins weren't generated")
     else:
         if not ALLOWED_IP_RANGE:
             warnings.append("ALLOWED_IP_RANGE not set - server accepts connections from any IP")

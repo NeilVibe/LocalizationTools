@@ -4,7 +4,7 @@
  */
 
 import { get } from 'svelte/store';
-import { serverUrl, user, isAuthenticated, offlineMode } from '$lib/stores/app.js';
+import { serverUrl, user, isAuthenticated, offlineMode, mustChangePassword } from '$lib/stores/app.js';
 
 class APIClient {
   constructor() {
@@ -117,6 +117,9 @@ class APIClient {
       role: response.role
     });
     isAuthenticated.set(true);
+
+    // Force password change if backend says so (default admin password, admin-reset users)
+    mustChangePassword.set(response.must_change_password || false);
 
     return response;
   }

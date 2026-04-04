@@ -14,7 +14,7 @@
   import { Button, InlineLoading, ProgressBar, TextInput, PasswordInput, Checkbox, InlineNotification } from 'carbon-components-svelte';
   import { CloudOffline, Login as LoginIcon, Checkmark, Close, Restart, Flash, CloudApp, Settings } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
-  import { serverUrl, isAuthenticated, user } from '$lib/stores/app.js';
+  import { serverUrl, isAuthenticated, user, mustChangePassword } from '$lib/stores/app.js';
   import { api } from '$lib/api/client.js';
   import {
     launcherPhase,
@@ -352,11 +352,18 @@
     loginLoading = true;
 
     try {
-      await api.login(username, password);
+      const response = await api.login(username, password);
 
       saveCredentials();
 
       logger.success('Launcher: Login successful');
+
+      // Check if user must change their password before proceeding
+      if (response.must_change_password) {
+        logger.info('Launcher: User must change password before proceeding');
+        mustChangePassword.set(true);
+      }
+
       startOnline();
     } catch (err) {
       loginError = err.message || 'Login failed';

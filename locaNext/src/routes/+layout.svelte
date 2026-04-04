@@ -11,7 +11,7 @@
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
-  import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
+  import { currentApp, currentView, isAuthenticated, user, mustChangePassword } from "$lib/stores/app.js";
   import { currentPage, goToFiles, goToTM, goToGameDev, goToWorldMap, goToItemCodex, goToCharacterCodex, goToAudioCodex, goToRegionCodex, goToQuestCodex, goToSkillCodex, goToGimmickCodex, goToKnowledgeCodex, goToStatus, selectedProject } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
@@ -682,6 +682,11 @@
 
     <!-- Change Password Modal -->
     <ChangePassword bind:open={showChangePassword} />
+
+    <!-- Forced password change (blocks all interaction until changed) -->
+    {#if $mustChangePassword}
+      <ChangePassword open={true} forced={true} />
+    {/if}
 
     <!-- About Modal -->
     <AboutModal bind:open={showAbout} />

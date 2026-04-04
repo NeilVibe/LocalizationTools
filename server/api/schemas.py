@@ -35,6 +35,7 @@ class Token(BaseModel):
     user_id: int
     username: str
     role: str
+    must_change_password: bool = False
 
 
 class UserResponse(BaseModel):
