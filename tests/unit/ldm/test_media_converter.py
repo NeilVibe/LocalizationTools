@@ -16,12 +16,13 @@ FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "mock_gamedata
 DDS_FIXTURE = FIXTURES_DIR / "texture" / "image" / "character_kira.dds"
 WEM_FIXTURE = FIXTURES_DIR / "sound" / "windows" / "English(US)" / "play_kira_taunt_01.wem"
 
-# Check if Pillow can read DDS (not available on all platforms)
+# Check if Pillow can read DDS (needs pillow-dds plugin)
 _CAN_READ_DDS = False
 try:
-    from PIL import Image
-    import io
-    if DDS_FIXTURE.exists():
+    from server.tools.ldm.services.media_converter import _PILLOW_DDS_AVAILABLE
+    if _PILLOW_DDS_AVAILABLE and DDS_FIXTURE.exists():
+        from PIL import Image
+        import io
         with open(DDS_FIXTURE, 'rb') as f:
             try:
                 Image.open(io.BytesIO(f.read()))

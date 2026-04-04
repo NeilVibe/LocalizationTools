@@ -206,7 +206,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
             RuntimeError: If a build is already in progress (concurrent build guard).
         """
         if not self._build_lock.acquire(blocking=False):
-            logger.warning("[MEGAINDEX] Build already in progress — skipping duplicate request")
+            logger.warning("[MEGAINDEX] Build already in progress -- skipping duplicate request")
             raise RuntimeError("MegaIndex build already in progress")
 
         try:
@@ -215,7 +215,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
             self._build_lock.release()
 
     def _build_locked(self, preload_langs: Optional[List[str]], on_progress: Any) -> None:
-        """Internal build implementation — must be called with _build_lock held."""
+        """Internal build implementation -- must be called with _build_lock held."""
         if preload_langs is None:
             preload_langs = ["eng", "kor"]
 
@@ -232,35 +232,45 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
             logger.warning(f"[MEGAINDEX] Could not resolve paths: {e}")
             paths = {}
 
-        # Resolve key folders with graceful fallback
-        knowledge_folder = paths.get("knowledge_folder", Path("/nonexistent"))
-        character_folder = paths.get("character_folder", Path("/nonexistent"))
-        faction_folder = paths.get("faction_folder", Path("/nonexistent"))
-        texture_folder = paths.get("texture_folder", Path("/nonexistent"))
-        audio_folder = paths.get("audio_folder", Path("/nonexistent"))
-        audio_folder_kr = paths.get("audio_folder_kr", Path("/nonexistent"))
-        audio_folder_zh = paths.get("audio_folder_zh", Path("/nonexistent"))
-        export_folder = paths.get("export_folder", Path("/nonexistent"))
-        loc_folder = paths.get("loc_folder", Path("/nonexistent"))
+        # Resolve key folders -- None if path not configured (never use hardcoded fallback)
+        def _path_or_none(key: str):
+            v = paths.get(key)
+            if v is None:
+                logger.warning(f"[MEGAINDEX] Path not configured: {key}")
+                return None
+            if not isinstance(v, (str, Path)):
+                logger.error(f"[MEGAINDEX] Path {key} has unexpected type {type(v)}: {v}")
+                return None
+            return Path(v) if isinstance(v, str) else v
+
+        knowledge_folder = _path_or_none("knowledge_folder")
+        character_folder = _path_or_none("character_folder")
+        faction_folder = _path_or_none("faction_folder")
+        texture_folder = _path_or_none("texture_folder")
+        audio_folder = _path_or_none("audio_folder")
+        audio_folder_kr = _path_or_none("audio_folder_kr")
+        audio_folder_zh = _path_or_none("audio_folder_zh")
+        export_folder = _path_or_none("export_folder")
+        loc_folder = _path_or_none("loc_folder")
 
         # StaticInfo root = parent of knowledge_folder (for skill, gimmick, devmemo)
-        staticinfo_folder = knowledge_folder.parent if knowledge_folder != Path("/nonexistent") else Path("/nonexistent")
+        staticinfo_folder = knowledge_folder.parent if knowledge_folder else None
         # Item folder = sibling of other staticinfo folders
-        item_folder = staticinfo_folder / "iteminfo"
+        item_folder = staticinfo_folder / "iteminfo" if staticinfo_folder else None
 
         # Log ALL resolved paths for debugging
-        logger.info(f"[MEGAINDEX] Resolved paths:")
-        logger.info(f"  knowledge_folder: {knowledge_folder} (exists={knowledge_folder.is_dir() if knowledge_folder != Path('/nonexistent') else False})")
-        logger.info(f"  character_folder: {character_folder} (exists={character_folder.is_dir() if character_folder != Path('/nonexistent') else False})")
-        logger.info(f"  faction_folder:   {faction_folder} (exists={faction_folder.is_dir() if faction_folder != Path('/nonexistent') else False})")
-        logger.info(f"  item_folder:      {item_folder} (exists={item_folder.is_dir()})")
-        logger.info(f"  staticinfo_folder:{staticinfo_folder} (exists={staticinfo_folder.is_dir() if staticinfo_folder != Path('/nonexistent') else False})")
-        logger.info(f"  texture_folder:   {texture_folder} (exists={texture_folder.is_dir() if texture_folder != Path('/nonexistent') else False})")
-        logger.info(f"  audio_folder:     {audio_folder} (exists={audio_folder.is_dir() if audio_folder != Path('/nonexistent') else False})")
-        logger.info(f"  audio_folder_kr:  {audio_folder_kr} (exists={audio_folder_kr.is_dir() if audio_folder_kr != Path('/nonexistent') else False})")
-        logger.info(f"  audio_folder_zh:  {audio_folder_zh} (exists={audio_folder_zh.is_dir() if audio_folder_zh != Path('/nonexistent') else False})")
-        logger.info(f"  export_folder:    {export_folder} (exists={export_folder.is_dir() if export_folder != Path('/nonexistent') else False})")
-        logger.info(f"  loc_folder:       {loc_folder} (exists={loc_folder.is_dir() if loc_folder != Path('/nonexistent') else False})")
+        _folders = {
+            "knowledge_folder": knowledge_folder, "character_folder": character_folder,
+            "faction_folder": faction_folder, "item_folder": item_folder,
+            "staticinfo_folder": staticinfo_folder, "texture_folder": texture_folder,
+            "audio_folder": audio_folder, "audio_folder_kr": audio_folder_kr,
+            "audio_folder_zh": audio_folder_zh, "export_folder": export_folder,
+            "loc_folder": loc_folder,
+        }
+        logger.info("[MEGAINDEX] Resolved paths:")
+        for name, folder in _folders.items():
+            exists = folder.is_dir() if folder else False
+            logger.info(f"  {name}: {folder or 'NOT CONFIGURED'} (exists={exists})")
 
         # Determine build context for logging
         drive = path_svc.get_status().get("drive", "?")
@@ -278,11 +288,19 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
                     logger.warning(f"[MEGAINDEX] Progress callback failed at phase {phase}: {e}")
 
         # ----- Phase 1: Foundation -----
-        self._scan_dds_textures(texture_folder)
-        self._scan_wem_files_all_languages(audio_folder, audio_folder_kr, audio_folder_zh)
+        if texture_folder:
+            self._scan_dds_textures(texture_folder)
+        # Scan each audio language independently (some may be unconfigured)
+        if audio_folder:
+            self._scan_wem_into(audio_folder, self.wem_by_event_en, "EN")
+        if audio_folder_kr:
+            self._scan_wem_into(audio_folder_kr, self.wem_by_event_kr, "KR")
+        if audio_folder_zh:
+            self._scan_wem_into(audio_folder_zh, self.wem_by_event_zh, "ZH")
         self.wem_by_event = self.wem_by_event_en  # Backward compat alias
-        self._parse_knowledge_info(knowledge_folder)
-        _progress(1, "Foundation — textures, audio, knowledge", (
+        if knowledge_folder:
+            self._parse_knowledge_info(knowledge_folder)
+        _progress(1, "Foundation -- textures, audio, knowledge", (
             f"{len(self.knowledge_by_strkey)} knowledge, "
             f"{len(self.dds_by_stem)} DDS, WEM EN={len(self.wem_by_event_en)} "
             f"KR={len(self.wem_by_event_kr)} ZH={len(self.wem_by_event_zh)}, "
@@ -290,13 +308,17 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         ))
 
         # ----- Phase 2: Entity Parse -----
-        self._parse_character_info(character_folder)
-        self._parse_item_info(item_folder, knowledge_folder)
-        self._parse_faction_info(faction_folder)
-        self._parse_skill_info(staticinfo_folder)
-        self._parse_gimmick_info(staticinfo_folder)
-        self._parse_quest_info(staticinfo_folder)
-        _progress(2, "Entity Parse — characters, items, factions, skills, quests", (
+        if character_folder:
+            self._parse_character_info(character_folder)
+        if item_folder and knowledge_folder:
+            self._parse_item_info(item_folder, knowledge_folder)
+        if faction_folder:
+            self._parse_faction_info(faction_folder)
+        if staticinfo_folder:
+            self._parse_skill_info(staticinfo_folder)
+            self._parse_gimmick_info(staticinfo_folder)
+            self._parse_quest_info(staticinfo_folder)
+        _progress(2, "Entity Parse -- characters, items, factions, skills, quests", (
             f"{len(self.character_by_strkey)} characters, "
             f"{len(self.item_by_strkey)} items, {len(self.region_by_strkey)} regions, "
             f"{len(self.faction_by_strkey)} factions, {len(self.skill_by_strkey)} skills, "
@@ -304,11 +326,13 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         ))
 
         # ----- Phase 3: Localization -----
-        self._parse_loc_strorigin(loc_folder)
-        self._parse_loc_translations(loc_folder, preload_langs)
-        self._parse_export_events(export_folder)
-        self._parse_export_loc(export_folder)
-        _progress(3, "Localization — strings, translations, exports", (
+        if loc_folder:
+            self._parse_loc_strorigin(loc_folder)
+            self._parse_loc_translations(loc_folder, preload_langs)
+        if export_folder:
+            self._parse_export_events(export_folder)
+            self._parse_export_loc(export_folder)
+        _progress(3, "Localization -- strings, translations, exports", (
             f"{len(self.stringid_to_strorigin)} strorigins, "
             f"{len(self.event_to_stringid)} event->stringid, "
             f"{len(self.export_file_stringids)} export files"
@@ -323,8 +347,9 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         _progress(4, "VRS reorder", "chronological order applied")
 
         # ----- Phase 5: Broad Scan -----
-        self._scan_devmemo(staticinfo_folder)
-        _progress(5, "Broad Scan — developer memos", (
+        if staticinfo_folder:
+            self._scan_devmemo(staticinfo_folder)
+        _progress(5, "Broad Scan -- developer memos", (
             f"{len(self.strkey_to_devmemo)} devmemo entries"
         ))
 
@@ -336,7 +361,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         self._build_source_file_to_strkeys()
         self._build_strorigin_to_stringids()
         self._build_group_key_to_items()
-        _progress(6, "Reverse Dicts — R1-R7 lookup indexes", (
+        _progress(6, "Reverse Dicts -- R1-R7 lookup indexes", (
             f"R1={len(self.name_kr_to_strkeys)}, "
             f"R2={len(self.knowledge_key_to_entities)}, R3={len(self.stringid_to_event)}, "
             f"R4={len(self.ui_texture_to_strkeys)}, R5={len(self.source_file_to_strkeys)}, "
@@ -351,7 +376,7 @@ class MegaIndex(DataParsersMixin, EntityParsersMixin, BuildersMixin, ApiMixin):
         self._build_event_to_script_eng()
         self._build_entity_strkey_to_stringids()
         self._build_stringid_to_entity_map()
-        _progress(7, "Composed Dicts — C1-C7 image/audio/entity chains", (
+        _progress(7, "Composed Dicts -- C1-C7 image/audio/entity chains", (
             f"C1={len(self.strkey_to_image_path)}, "
             f"C2={len(self.strkey_to_audio_path)}, C3={len(self.stringid_to_audio_path)}, "
             f"C4={len(self.event_to_script_kr)}, C5={len(self.event_to_script_eng)}, "

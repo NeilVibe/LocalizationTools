@@ -95,6 +95,18 @@ def login(
     user = result.scalar_one_or_none()
 
     if not user:
+        # Phase 113: Detect LAN fallback -- configured for remote PG but running on SQLite
+        from server import config as _cfg
+        pg_host = getattr(_cfg, "POSTGRES_HOST", "localhost")
+        is_lan_configured = pg_host not in ("localhost", "127.0.0.1", "::1", "")
+        db_type = getattr(_cfg, "ACTIVE_DATABASE_TYPE", "unknown")
+        logger.info(f"User not found: '{credentials.username}' (db_type={db_type}, lan={is_lan_configured}, pg_host={pg_host})")
+        if is_lan_configured and db_type == "sqlite":
+            logger.warning(f"LAN fallback detected: configured for PG at {pg_host} but using SQLite")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Cannot reach database server. Check network connection to Admin PC.",
+            )
         logger.warning(f"Login attempt with non-existent username: {credentials.username}")
         # Audit log: failed login (user not found)
         log_login_failure(credentials.username, client_ip, "User not found")

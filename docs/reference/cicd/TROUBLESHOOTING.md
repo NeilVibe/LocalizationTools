@@ -14,6 +14,34 @@
 
 ---
 
+## Known CI Issues & Fixes
+
+### Admin Dashboard `npm install` fails on Windows (rollup missing)
+
+**Symptom:** `Cannot find module @rollup/rollup-win32-x64-msvc`
+
+**Root cause:** `package-lock.json` was generated on Linux. It lacks Windows-specific optional deps. Even `npm install` uses the stale lock if present.
+
+**Fix (in `build-electron.yml`):** Delete lock file before install:
+```powershell
+Remove-Item -Path package-lock.json -ErrorAction SilentlyContinue
+npm install
+```
+
+**Prevention:** The dashboard's `package-lock.json` is generated on WSL/Linux. The CI step always deletes it before `npm install` so npm resolves fresh with Windows-native deps.
+
+### BUILD_TRIGGER.txt not detected (silent no-op "success")
+
+**Symptom:** Build shows "success" but only the "Check Build Trigger" job ran. No tests, no installer.
+
+**Root cause:** Trigger file content doesn't match the regex `^Build( Admin| User| QA| Light)?$|^TROUBLESHOOT`. Freeform text like `"trigger: fix something"` won't match.
+
+**Fix:** Write EXACT keyword: `printf "Build Admin\n" > BUILD_TRIGGER.txt`
+
+**Verification:** After push, check: `gh run view <id> --log | grep "Trigger line:"`. If empty = not detected.
+
+---
+
 ## Checking Logs
 
 ### Live Logs (While Running) - USE CURL

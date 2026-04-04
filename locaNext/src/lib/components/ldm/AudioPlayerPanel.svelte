@@ -77,16 +77,23 @@
       </div>
     </div>
 
-    <!-- MDG Row 3: ENG Script (reference — cool blue background, 40% space) -->
+    <!-- MDG Row 3: Selected language script (replaces ENG when non-English selected) -->
     <div class="script-section eng-section">
-      <span class="section-label">Script Line (ENG)</span>
-      <div class="script-box eng">
-        {#if audio.script_eng}
-          <p class="script-text">{audio.script_eng}</p>
-        {:else}
-          <p class="script-empty">(No English script)</p>
-        {/if}
-      </div>
+      {#if audio.script_lang}
+        <span class="section-label">Script Line ({audio.script_lang_code?.toUpperCase() || 'ENG'})</span>
+        <div class="script-box eng">
+          <p class="script-text">{audio.script_lang}</p>
+        </div>
+      {:else}
+        <span class="section-label">Script Line (ENG)</span>
+        <div class="script-box eng">
+          {#if audio.script_eng}
+            <p class="script-text">{audio.script_eng}</p>
+          {:else}
+            <p class="script-empty">(No English script)</p>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- MDG Row 4: Separator -->

@@ -49,11 +49,21 @@ router = APIRouter(prefix="/codex/audio", tags=["Codex Audio"])
 def _build_audio_card(event_name: str, mega, language: str = "eng") -> AudioCardResponse:
     """Build an AudioCardResponse from MegaIndex lookups."""
     event_lower = event_name.lower()
+    string_id = mega.event_to_stringid_lookup(event_name)
+    # D13: look up translation for selected language (if not kor/eng)
+    script_lang = None
+    script_lang_code = None
+    if string_id and language not in ("kor", "eng"):
+        script_lang = mega.get_translation(string_id, language)
+        if script_lang:
+            script_lang_code = language
     return AudioCardResponse(
         event_name=event_name,
-        string_id=mega.event_to_stringid_lookup(event_name),
+        string_id=string_id,
         script_kr=mega.get_script_kr(event_name),
         script_eng=mega.get_script_eng(event_name),
+        script_lang=script_lang,
+        script_lang_code=script_lang_code,
         export_path=mega.event_to_export_path.get(event_lower),
         has_wem=mega.get_audio_path_by_event_for_lang(event_name, language) is not None,
         xml_order=mega.event_to_xml_order.get(event_lower),
@@ -140,6 +150,8 @@ async def cleanup_audio_cache(
         converter = get_media_converter()
         count = converter.cleanup_wav_cache()
         return {"count": count}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"[Audio Codex] cleanup_audio_cache failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
@@ -179,6 +191,8 @@ async def stop_audio(
         from server.tools.ldm.services.audio_playback import get_audio_playback
         player = get_audio_playback()
         return player.stop()
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"[Audio Codex] stop_audio failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
@@ -193,6 +207,8 @@ async def get_playback_status(
         from server.tools.ldm.services.audio_playback import get_audio_playback
         player = get_audio_playback()
         return player.get_status()
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"[Audio Codex] get_playback_status failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
@@ -229,6 +245,8 @@ async def get_audio_categories(
             categories=categories,
             total_events=total_events,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"[Audio Codex] get_audio_categories failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
@@ -310,11 +328,21 @@ async def get_audio_detail(
         has_wem = wem_path is not None
         event_lower = event_name.lower()
 
+        # D13: look up translation for selected language
+        script_lang = None
+        script_lang_code = None
+        if string_id and language not in ("kor", "eng"):
+            script_lang = mega.get_translation(string_id, language)
+            if script_lang:
+                script_lang_code = language
+
         return AudioDetailResponse(
             event_name=event_name,
             string_id=string_id,
             script_kr=mega.get_script_kr(event_name),
             script_eng=mega.get_script_eng(event_name),
+            script_lang=script_lang,
+            script_lang_code=script_lang_code,
             export_path=mega.event_to_export_path.get(event_lower),
             has_wem=has_wem,
             xml_order=mega.event_to_xml_order.get(event_lower),
@@ -400,6 +428,8 @@ async def list_audio(
             total=len(items),
             category_filter=category,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"[Audio Codex] list_audio failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))

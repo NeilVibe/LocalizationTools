@@ -79,7 +79,7 @@ class CodexService:
             try:
                 mega.build()
             except RuntimeError:
-                logger.warning("[CODEX] MegaIndex build already in progress — using current state")
+                logger.warning("[CODEX] MegaIndex build already in progress -- using current state")
 
         self._populate_from_mega_index()
         self._resolve_cross_refs()

@@ -16,8 +16,8 @@ def detect_lan_ip() -> str:
 
 
 def get_subnet(ip: str) -> str | None:
-    """Get /24 subnet. '192.168.1.100' -> '192.168.1.0/24'. Returns None for loopback."""
+    """Get /16 subnet. '192.168.1.100' -> '192.168.0.0/16'. Returns None for loopback."""
     parts = ip.split(".")
     if len(parts) == 4 and not ip.startswith("127."):
-        return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
+        return f"{parts[0]}.{parts[1]}.0.0/16"
     return None

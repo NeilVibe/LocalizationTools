@@ -24,6 +24,14 @@ import sys
 from loguru import logger
 from PIL import Image
 
+# Register DDS format handler (same pattern as MDG core/dds_handler.py)
+_PILLOW_DDS_AVAILABLE = False
+try:
+    import pillow_dds  # noqa: F401 -- registers DDS handler with Pillow
+    _PILLOW_DDS_AVAILABLE = True
+except ImportError:
+    logger.warning("pillow-dds not installed -- DDS image thumbnails disabled")
+
 # Suppress console window popup on Windows for subprocess calls
 _SUBPROCESS_KWARGS = (
     {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
@@ -77,6 +85,10 @@ class MediaConverter:
         try:
             if not dds_path.exists():
                 logger.warning("DDS file not found: {}", dds_path)
+                return None
+
+            if dds_path.suffix.lower() == ".dds" and not _PILLOW_DDS_AVAILABLE:
+                logger.warning("Cannot convert DDS file {} -- pillow-dds not installed", dds_path.name)
                 return None
 
             img = Image.open(dds_path)

@@ -55,13 +55,13 @@ class TestDetectLanIp:
 
 
 class TestGetSubnet:
-    """get_subnet converts an IP to its /24 CIDR notation."""
+    """get_subnet converts an IP to its /16 CIDR notation (Phase 113: /24->/16)."""
 
     def test_normal_ip(self):
-        assert get_subnet("192.168.1.100") == "192.168.1.0/24"
+        assert get_subnet("192.168.1.100") == "192.168.0.0/16"
 
     def test_another_ip(self):
-        assert get_subnet("10.0.5.42") == "10.0.5.0/24"
+        assert get_subnet("10.0.5.42") == "10.0.0.0/16"
 
     def test_invalid_ip_returns_none(self):
         assert get_subnet("not-an-ip") is None

@@ -277,20 +277,26 @@ def step_configure_access(config: SetupConfig) -> StepResult:
     hba_path = paths.data_dir / "pg_hba.conf"
     conf_path = paths.data_dir / "postgresql.conf"
 
-    # Pre-check: skip if marker exists AND no stale hostssl rule
+    # Pre-check: skip if marker exists AND no stale rules
+    _needs_migration = False
     if hba_path.exists():
         content = hba_path.read_text(encoding="utf-8")
-        if _HBA_MARKER in content and "hostssl" not in content:
+        has_marker = _HBA_MARKER in content
+        has_hostssl = "hostssl" in content
+        has_stale_24 = bool(re.search(r'host\s+\S+\s+\S+\s+\d+\.\d+\.\d+\.\d+/24\s', content))
+        if has_marker and not has_hostssl and not has_stale_24:
             return StepResult(
                 step=step, status="skipped", duration_ms=_ms_since(t0),
                 message="pg_hba.conf already configured (marker found)",
             )
         # Phase 112: hostssl->host migration for LAN compatibility
-        _is_migration = False
-        if _HBA_MARKER in content and "hostssl" in content:
+        if has_marker and has_hostssl:
             logger.info("[SETUP] Migrating pg_hba.conf: hostssl -> host (LAN compatibility)")
-            _is_migration = True
-            # Fall through to rewrite
+            _needs_migration = True
+        # Phase 113: /24->/16 migration for cross-subnet LAN
+        if has_marker and has_stale_24:
+            logger.info("[SETUP] Migrating pg_hba.conf: /24 -> /16 (cross-subnet LAN)")
+            _needs_migration = True
 
     # Backup originals
     hba_backup = hba_path.with_suffix(".conf.bak") if hba_path.exists() else None
@@ -358,7 +364,7 @@ def step_configure_access(config: SetupConfig) -> StepResult:
         )
 
     # Phase 112: If PG is already running AND this was a migration, reload config
-    if _is_migration:
+    if _needs_migration:
         try:
             from server.setup.pg_lifecycle import is_pg_running
             if is_pg_running(paths.pg_isready, config.pg_port):

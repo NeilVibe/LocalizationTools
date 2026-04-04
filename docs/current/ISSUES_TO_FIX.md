@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-03-26 | **Build:** GREEN | **Open:** 0
+**Last Updated:** 2026-04-04 | **Build:** PENDING | **Open:** 0
 
 ---
 
@@ -9,13 +9,66 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 0 |
-| **FIXED/CLOSED** | 171 |
+| **FIXED/CLOSED** | 184 |
 
 ---
 
 ## OPEN ISSUES
 
 None.
+
+---
+
+## RECENTLY FIXED (Phase 113 — 2026-04-04)
+
+### LAN-1: pg_hba.conf /24 blocks cross-subnet LAN users (BLOCKER) ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Root cause:** `get_subnet()` returned /24 but Admin and User on different /24 subnets
+- **Fix:** Changed to /16 + auto-migration for existing pg_hba.conf files
+
+### LAN-2: First-launch SERVER_HOST stuck at 127.0.0.1 ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Fix:** Override SERVER_HOST to 0.0.0.0 after setup wizard saves lan_server config
+
+### LAN-3: Login shows "Incorrect password" when DB unreachable ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 2
+- **Fix:** Returns 503 "Cannot reach database server" instead of 401. Login button disabled.
+
+### IMG-1: ZERO images in Codex — pillow-dds missing ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Fix:** Added pillow-dds import to media_converter.py + build yml + requirements
+
+### UNICODE-1: Em-dash crashes on Korean Windows (cp949) ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Fix:** Replaced all em-dashes with ASCII in 7 server Python files
+
+### SEC-1: DB URL password in logs ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Fix:** Regex redaction before logging (handles passwords with @)
+
+### SEC-2: HTTPS support for FastAPI ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 1
+- **Fix:** SSL cert detection + uvicorn HTTPS. Backward compatible (plain HTTP if no certs).
+
+### AUDIO-1: Translation text doesn't change with language ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 2
+- **Fix:** D13 translation lookup via MegaIndex, new script_lang field in schemas + UI
+
+### PATH-1: /nonexistent hardcoded fallback paths in MegaIndex ✅ FIXED
+- **Fixed:** 2026-04-04, Phase 113 Wave 2
+- **Fix:** Replaced with None + explicit guards. Zero hardcoded paths remain.
+
+### DASH-1: ORIGIN_ADMIN token crashes on PostgreSQL ✅ FIXED
+- **Fixed:** 2026-04-03, Phase 110
+- **Fix:** Queries DB for real superadmin/admin user instead of synthetic ID
+
+### DASH-2: Audio Codex tree fully unfolded ✅ FIXED
+- **Fixed:** 2026-04-03, Phase 110
+- **Fix:** AUTO_EXPAND_DEPTH=2, backslash normalization
+
+### DASH-3: Server/DB Health in Status menu ✅ FIXED
+- **Fixed:** 2026-04-03, Phase 110
+- **Fix:** New /api/health/server-health endpoint + StatusPage card
 
 ---
 

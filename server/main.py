@@ -88,7 +88,10 @@ def setup_logging():
 
     logger.info(f"Starting {config.APP_NAME} v{config.APP_VERSION}")
     logger.info(f"Database Mode: {config.DATABASE_MODE}")
-    logger.info(f"Database URL: {config.DATABASE_URL}")
+    # Redact password from database URL before logging (SECURITY: never log credentials)
+    import re as _re
+    _safe_url = _re.sub(r'://([^:]+):(.+)@(?=[^@]*$)', r'://\1:***@', str(config.DATABASE_URL))
+    logger.info(f"Database URL: {_safe_url}")
 
 
 # Setup logging
@@ -753,6 +756,7 @@ async def health_check(request: Request):
         "version": config.APP_VERSION,
         "timestamp": datetime.utcnow().isoformat(),
         "server_mode": _user_cfg.get("server_mode", "standalone"),
+        "ssl_enabled": config.SSL_ENABLED,
     }
 
     # Phase 112: Detect LAN fallback -- PG was configured but unreachable
@@ -1102,6 +1106,10 @@ if __name__ == "__main__":
                     config.POSTGRES_DATABASE_URL = (
                         f"postgresql://locanext_service:{db_password}@localhost:5432/localizationtools"
                     )
+                    # Phase 113: Override SERVER_HOST on first launch
+                    # (config.py evaluated before setup wizard ran, so it's still 127.0.0.1)
+                    config.SERVER_HOST = "0.0.0.0"
+                    logger.info("[SETUP] SERVER_HOST overridden to 0.0.0.0 for LAN server mode")
                     logger.success(f"=== SETUP COMPLETE: LAN server ready at {lan_ip} ===")
             else:
                 # Subsequent launch -- check if PG is already running first
@@ -1168,7 +1176,19 @@ if __name__ == "__main__":
         import sys as _sys
         _sys.exit(1)
 
-    logger.info(f"Starting server on {config.SERVER_HOST}:{config.SERVER_PORT}")
+    # TLS: If setup wizard generated certs, run HTTPS. Otherwise plain HTTP.
+    # Re-evaluate at runtime (config.SSL_ENABLED is stale if setup wizard just generated certs)
+    ssl_kwargs = {}
+    if config.SSL_CERT_FILE.exists() and config.SSL_KEY_FILE.exists():
+        ssl_kwargs["ssl_certfile"] = str(config.SSL_CERT_FILE)
+        ssl_kwargs["ssl_keyfile"] = str(config.SSL_KEY_FILE)
+        logger.success(
+            f"[TLS] HTTPS enabled -- using {config.SSL_CERT_FILE.name} + {config.SSL_KEY_FILE.name}"
+        )
+        logger.info(f"Starting server on https://{config.SERVER_HOST}:{config.SERVER_PORT}")
+    else:
+        logger.info(f"Starting server on http://{config.SERVER_HOST}:{config.SERVER_PORT}")
+        logger.info("[TLS] No certificates found -- running plain HTTP (generate via setup wizard)")
 
     # Keep silence timer alive while uvicorn starts
     try:
@@ -1183,4 +1203,5 @@ if __name__ == "__main__":
         port=config.SERVER_PORT,
         reload=False,  # Disable reload when using wrapped app
         log_level=config.LOG_LEVEL.lower(),
+        **ssl_kwargs,
     )

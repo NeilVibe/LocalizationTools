@@ -1394,6 +1394,28 @@ app.whenReady().then(async () => {
     paths: paths
   });
 
+  // Accept self-signed TLS certificates for LAN connections.
+  // The setup wizard generates self-signed certs for PostgreSQL + FastAPI.
+  // Without this, Electron's Chromium rejects HTTPS to self-signed servers.
+  // Only affects LAN (private IP) connections — public certs are still validated normally.
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+    try {
+      const urlObj = new URL(url);
+      const host = urlObj.hostname;
+      // Allow self-signed only for private/LAN IPs and localhost
+      const isPrivate = host === 'localhost' || host === '127.0.0.1' || host === '::1'
+        || host.startsWith('10.') || host.startsWith('192.168.')
+        || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+      if (isPrivate) {
+        event.preventDefault();
+        callback(true);  // Accept the self-signed cert
+        logger.debug('Accepted self-signed TLS cert for LAN connection', { host });
+        return;
+      }
+    } catch { /* invalid URL — reject */ }
+    callback(false);  // Reject for public hosts
+  });
+
   // Check for pending updates that weren't applied (swap script may have failed)
   if (hasPendingUpdates()) {
     logger.warning('Found pending updates on startup - swap script may have failed');

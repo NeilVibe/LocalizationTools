@@ -24,6 +24,8 @@ class AudioCardResponse(BaseModel):
     string_id: Optional[str] = None
     script_kr: Optional[str] = None
     script_eng: Optional[str] = None
+    script_lang: Optional[str] = None
+    script_lang_code: Optional[str] = None
     export_path: Optional[str] = None
     has_wem: bool = False
     xml_order: Optional[int] = None
@@ -41,6 +43,8 @@ class AudioDetailResponse(BaseModel):
     string_id: Optional[str] = None
     script_kr: Optional[str] = None
     script_eng: Optional[str] = None
+    script_lang: Optional[str] = None
+    script_lang_code: Optional[str] = None
     export_path: Optional[str] = None
     has_wem: bool = False
     xml_order: Optional[int] = None

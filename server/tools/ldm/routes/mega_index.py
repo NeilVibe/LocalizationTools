@@ -85,7 +85,7 @@ async def build_megaindex_with_progress(
             "username": "system",
             "tool_name": "MegaIndex",
             "function_name": "build",
-            "operation_name": f"MegaIndex {build_type} — {build_label}",
+            "operation_name": f"MegaIndex {build_type} -- {build_label}",
             "status": "running",
             "progress_percentage": 0.0,
             "started_at": started_at_str,
@@ -99,7 +99,7 @@ async def build_megaindex_with_progress(
     except Exception as e:
         logger.warning(f"[MEGAINDEX] Failed to emit operation_start: {e}")
 
-    # Thread-safe progress callback — called from build thread
+    # Thread-safe progress callback -- called from build thread
     loop = asyncio.get_running_loop()
 
     def on_progress(phase: int, total: int, description: str, stats: str) -> None:
@@ -111,7 +111,7 @@ async def build_megaindex_with_progress(
                 "username": "system",
                 "tool_name": "MegaIndex",
                 "function_name": "build",
-                "operation_name": f"MegaIndex {build_type} — {build_label}",
+                "operation_name": f"MegaIndex {build_type} -- {build_label}",
                 "status": "running",
                 "progress_percentage": float(pct),
                 "current_step": f"Phase {phase}/{total}: {description}",
@@ -144,7 +144,7 @@ async def build_megaindex_with_progress(
         except Exception as e:
             logger.error(
                 f"[MEGAINDEX] MapDataService init after {build_type} FAILED: {e} "
-                f"— image/audio lookups may be stale"
+                f"-- image/audio lookups may be stale"
             )
 
         result_stats = mi.stats()
@@ -156,7 +156,7 @@ async def build_megaindex_with_progress(
                 "username": "system",
                 "tool_name": "MegaIndex",
                 "function_name": "build",
-                "operation_name": f"MegaIndex {build_type} — {build_label}",
+                "operation_name": f"MegaIndex {build_type} -- {build_label}",
                 "status": "completed",
                 "progress_percentage": 100.0,
                 "current_step": f"Done in {mi._build_time:.1f}s",
@@ -186,7 +186,7 @@ async def build_megaindex_with_progress(
                 "username": "system",
                 "tool_name": "MegaIndex",
                 "function_name": "build",
-                "operation_name": f"MegaIndex {build_type} — {build_label}",
+                "operation_name": f"MegaIndex {build_type} -- {build_label}",
                 "status": "failed",
                 "progress_percentage": 0.0,
                 "error_message": str(e),

@@ -114,7 +114,7 @@ class MapDataService:
         mega = get_mega_index()
         if not mega._built:
             logger.warning(
-                "[MAPDATA] Cannot initialize — MegaIndex not yet built. "
+                "[MAPDATA] Cannot initialize -- MegaIndex not yet built. "
                 "Image/audio lookups will return empty results."
             )
 
@@ -130,7 +130,7 @@ class MapDataService:
                 source_file=e.source_file,
             )
 
-        # DDS index from MegaIndex D9 — independent copy so _reset() won't clear it
+        # DDS index from MegaIndex D9 -- independent copy so _reset() won't clear it
         self._dds_index = dict(mega.dds_by_stem)
 
         # Image chains from MegaIndex C1 (strkey_to_image_path)

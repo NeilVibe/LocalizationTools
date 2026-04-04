@@ -403,14 +403,14 @@ async def configure_mapdata(
         task.add_done_callback(_log_build_task_exception)
     else:
         logger.debug(
-            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) — skipping rebuild"
+            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) -- skipping rebuild"
         )
 
     return ConfigureResponse(
         success=success,
         branch=branch,
         drive=drive,
-        message=f"MapData service configured: {drive}:/{branch} — MegaIndex rebuild started"
+        message=f"MapData service configured: {drive}:/{branch} -- MegaIndex rebuild started"
         if success
         else "Configuration failed - paths may not exist",
     )
@@ -496,7 +496,7 @@ async def configure_paths(
         task.add_done_callback(_log_build_task_exception)
     else:
         logger.debug(
-            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) — skipping rebuild"
+            f"[MAPDATA] Drive/branch unchanged ({drive}:/{branch}) -- skipping rebuild"
         )
 
     return PathStatusResponse(**path_service.get_status())

@@ -36,6 +36,7 @@
   let savedRemote = $state(false);
   let remoteError = $state(null);
   let hasRemoteConfig = $state(false);
+  let detectedProtocol = $state('http');  // Auto-detected: 'https' if admin has TLS certs
   // LAN login (to fetch PG creds from Admin's server automatically)
   let lanUsername = $state("");
   let lanPassword = $state("");
@@ -134,42 +135,64 @@
       return;
     }
 
-    const url = `http://${address}:8888/health`;
+    // Try HTTPS first (admin server with TLS certs), fallback to HTTP (old installs)
+    let url = null;
+    let protocol = 'https';
+    let data = null;
 
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        try {
-          const data = await res.json();
-          if (!data.version) {
-            remoteTestResult = { success: false, message: "Server responded but doesn't appear to be LocaNext" };
-          } else {
-            remoteServerInfo = {
-              version: data.version,
-              server_mode: data.server_mode || "standalone",
-              database_type: data.database_type || "unknown",
-              status: data.status || "unknown",
-            };
-            remoteTestResult = {
-              success: true,
-              message: `Connected — LocaNext v${data.version}`,
-            };
-            logger.info("Remote server test passed", { address, version: data.version });
-          }
-        } catch {
-          remoteTestResult = { success: false, message: "Server responded but returned invalid data — is this a LocaNext server?" };
-        }
-      } else {
-        remoteTestResult = { success: false, message: `Server responded with HTTP ${res.status}` };
+      const httpsRes = await fetch(`https://${address}:8888/health`, { signal: AbortSignal.timeout(3000) });
+      if (httpsRes.ok) {
+        data = await httpsRes.json();
+        url = `https://${address}:8888`;
       }
-    } catch (e) {
-      remoteTestResult = {
-        success: false,
-        message: `Cannot reach ${address}:8888 — check the address and ensure the admin server is running`,
-      };
-    } finally {
-      testingRemote = false;
+    } catch {
+      // HTTPS failed — try HTTP
+      protocol = 'http';
     }
+
+    if (!data) {
+      try {
+        const httpRes = await fetch(`http://${address}:8888/health`, { signal: AbortSignal.timeout(5000) });
+        if (httpRes.ok) {
+          data = await httpRes.json();
+          url = `http://${address}:8888`;
+        } else {
+          remoteTestResult = { success: false, message: `Server responded with HTTP ${httpRes.status}` };
+          testingRemote = false;
+          return;
+        }
+      } catch (e) {
+        remoteTestResult = {
+          success: false,
+          message: `Cannot reach ${address}:8888 — check the address and ensure the admin server is running`,
+        };
+        testingRemote = false;
+        return;
+      }
+    }
+
+    if (data && data.version) {
+      remoteServerInfo = {
+        version: data.version,
+        server_mode: data.server_mode || "standalone",
+        database_type: data.database_type || "unknown",
+        status: data.status || "unknown",
+        ssl_enabled: data.ssl_enabled || false,
+      };
+      const tlsLabel = data.ssl_enabled ? ' (TLS secured)' : ' (no TLS)';
+      remoteTestResult = {
+        success: true,
+        message: `Connected — LocaNext v${data.version}${tlsLabel}`,
+      };
+      // Store the working protocol for connectToServer
+      detectedProtocol = protocol;
+      logger.info("Remote server test passed", { address, version: data.version, protocol, ssl: data.ssl_enabled });
+    } else {
+      remoteTestResult = { success: false, message: "Server responded but returned invalid data — is this a LocaNext server?" };
+    }
+
+    testingRemote = false;
   }
 
   async function connectToServer() {
@@ -180,12 +203,12 @@
       return;
     }
 
-    const url = `http://${address}:8888`;
+    const url = `${detectedProtocol}://${address}:8888`;
     connecting = true;
     remoteError = null;
 
     try {
-      // 1. Login to Admin's server
+      // 1. Login to Admin's server (uses HTTPS if detected, HTTP otherwise)
       const loginRes = await fetch(`${url}/api/v2/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

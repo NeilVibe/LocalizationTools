@@ -493,7 +493,7 @@
           labelText="Password"
           placeholder="Enter password"
           disabled={loginLoading}
-          onkeydown={(e) => e.key === 'Enter' && handleLogin()}
+          onkeydown={(e) => e.key === 'Enter' && !lanFallbackWarning && handleLogin()}
         />
 
         <Checkbox
@@ -506,7 +506,7 @@
           <Button kind="secondary" onclick={handleBackClick} disabled={loginLoading}>
             Back
           </Button>
-          <Button kind="primary" onclick={handleLogin} disabled={loginLoading || !username || !password}>
+          <Button kind="primary" onclick={handleLogin} disabled={loginLoading || !username || !password || !!lanFallbackWarning}>
             {#if loginLoading}
               <InlineLoading description="Logging in..." />
             {:else}
@@ -529,11 +529,11 @@
         <button
           class="launcher-btn login-btn"
           onclick={handleLoginClick}
-          disabled={$serverStatus !== 'connected'}
+          disabled={$serverStatus !== 'connected' || !!lanFallbackWarning}
         >
           <LoginIcon size={32} />
           <span class="btn-title">Login</span>
-          <span class="btn-subtitle">Connect to server</span>
+          <span class="btn-subtitle">{lanFallbackWarning ? 'Database unreachable' : 'Connect to server'}</span>
         </button>
       </div>
 
