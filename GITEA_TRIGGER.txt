@@ -1,1 +1,1 @@
-trigger: Build Admin + User (Phase 114 OWASP security hardening)
+Build
