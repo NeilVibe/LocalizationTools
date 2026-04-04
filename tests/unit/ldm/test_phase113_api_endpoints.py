@@ -240,13 +240,13 @@ class TestPillowDdsIntegration:
         from server.tools.ldm.services.media_converter import _PILLOW_DDS_AVAILABLE
         assert isinstance(_PILLOW_DDS_AVAILABLE, bool)
 
-    def test_early_out_for_dds_without_pillow(self, tmp_path):
-        """DDS file without pillow-dds installed returns None."""
+    def test_early_out_for_dds_without_plugin(self, tmp_path):
+        """DDS file without DDS plugin returns None."""
         from server.tools.ldm.services.media_converter import (
             MediaConverter, _PILLOW_DDS_AVAILABLE,
         )
         if _PILLOW_DDS_AVAILABLE:
-            pytest.skip("pillow-dds installed, can't test early-out")
+            pytest.skip("DDS plugin available, can't test early-out")
         converter = MediaConverter()
         fake_dds = tmp_path / "texture.dds"
         fake_dds.write_bytes(b"DDS " + b"\x00" * 124)

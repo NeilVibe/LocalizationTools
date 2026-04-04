@@ -24,13 +24,13 @@ import sys
 from loguru import logger
 from PIL import Image
 
-# Register DDS format handler (same pattern as MDG core/dds_handler.py)
+# Register DDS format handler (Pillow 10+ has built-in DDS support)
 _PILLOW_DDS_AVAILABLE = False
 try:
-    import pillow_dds  # noqa: F401 -- registers DDS handler with Pillow
+    from PIL import DdsImagePlugin  # noqa: F401 -- ensures DDS handler is loaded
     _PILLOW_DDS_AVAILABLE = True
 except ImportError:
-    logger.warning("pillow-dds not installed -- DDS image thumbnails disabled")
+    logger.warning("Pillow DDS plugin not available -- DDS image thumbnails disabled")
 
 # Suppress console window popup on Windows for subprocess calls
 _SUBPROCESS_KWARGS = (
