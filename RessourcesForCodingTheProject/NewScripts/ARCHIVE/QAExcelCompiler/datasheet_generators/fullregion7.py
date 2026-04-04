@@ -494,7 +494,7 @@ def parse_standalone_factions(
 ) -> List[FactionData]:
     """
     Parse Faction elements that are NOT inside any FactionGroup.
-    These are standalone factions (like Faction_Empty_Akapen, Faction_Empty_Crimson_Desert).
+    These are standalone factions (like Faction_Empty_Akapen, Faction_Empty_SampleRegion).
     
     Args:
         folder: Path to XML files

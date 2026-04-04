@@ -10,7 +10,7 @@
 - Phase 93: Codex infinite loop (822 calls), remote logger cascade (825x), v13.0 E2E verification
 - Phase 94: TM upload broken, TM assignment UI missing, yellow cell default → grey
 - Phase 95: Merge button relocation from top-level nav
-- Phase 96: GameData categories → tabs (QACompiler pattern), CrimsonDesert.gg visual reference
+- Phase 96: GameData categories → tabs (QACompiler pattern), visual polish
 
 **Protocols (immediate):** Debug protocol upgrades, Playwright → Qwen+CDP
 

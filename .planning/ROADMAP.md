@@ -166,7 +166,7 @@ Plans:
 **Plans:** TBD
 
 ### Phase 96: GameData Category Tabs + Visual Polish
-**Goal**: GameData categories display as auto-detected tabs, visual quality moves toward CrimsonDesert.gg
+**Goal**: GameData categories display as auto-detected tabs, high visual quality
 **Depends on**: Phase 95
 **Requirements**: GD-01, GD-02
 **Plans:** TBD

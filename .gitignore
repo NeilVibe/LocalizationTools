@@ -278,3 +278,6 @@ cookies.txt
 query
 console_errors_report.json
 error_capture_report.json
+
+# -------------------- Sensitive Game Data (local only) --------------------
+**/EXPORT PATH TREE.txt

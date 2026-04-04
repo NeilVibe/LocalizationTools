@@ -21,8 +21,8 @@ The platform delivers real, working localization workflows — real XML parsing,
 - [ ] TMUX-03: Fix yellow cell default → neutral grey
 - [ ] NAV-01: Relocate Merge button from top-level nav
 - [ ] GD-01: GameData categories → auto-parsed TABS
-- [ ] GD-02: CrimsonDesert.gg visual reference style
-**Research needed:** QACompiler generator tab logic (cluster/mega-root-parent), CrimsonDesert.gg data presentation patterns, TM assignment UX patterns.
+- [ ] GD-02: Visual reference style for data presentation
+**Research needed:** QACompiler generator tab logic (cluster/mega-root-parent), data presentation patterns, TM assignment UX patterns.
 
 **Protocols (apply immediately):**
 - PROTO-01: Debug protocol upgrades — sequential thinking, Viking+Ruflo wiring

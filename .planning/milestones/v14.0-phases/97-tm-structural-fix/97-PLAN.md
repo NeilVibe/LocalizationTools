@@ -22,7 +22,7 @@ NUKED CLEAN. 0 TMs, 0 entries, 0 assignments. Fresh start.
 **What:** The header Upload TM button should pass the current folder scope
 **Files:** TMExplorerGrid.svelte (getCurrentScope export), TMPage.svelte (header button onclick)
 **Test:**
-1. Navigate to TM > PC > CrimsonDesert > Korean
+1. Navigate to TM > PC > SampleProject > Korean
 2. Click header Upload TM button
 3. Check browser DevTools: does the upload modal receive targetScope?
 **Pass criteria:** Modal heading shows "Upload TM to Korean"

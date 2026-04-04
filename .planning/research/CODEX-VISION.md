@@ -1,7 +1,7 @@
 # Codex Vision — Interactive Game Encyclopedia
 
 **Source:** User request (2026-03-26)
-**Inspiration:** crimsondesert.gg interactive map/encyclopedia
+**Inspiration:** Interactive game map/encyclopedia sites
 
 ## Concept
 
@@ -64,7 +64,7 @@ World Map
 - Region boundary polygons from MapPlot data
 - Entity pins on map from WorldPosition
 - Per-generator Codex navigation (not just by entity type)
-- crimsondesert.gg-style visual quality
+- High visual quality for encyclopedia pages
 
 ## Priority
 - This is a FUTURE milestone feature (v14.0+), NOT v13.0
