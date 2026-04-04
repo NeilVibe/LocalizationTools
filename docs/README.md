@@ -54,7 +54,7 @@ docs/
 ## Entry Points
 
 1. **CLAUDE.md** (project root) - Master navigation
-2. **Roadmap.md** (project root) - Current priorities
+2. **Memory `active/_INDEX.md`** - Current phase + priorities
 3. **docs/current/SESSION_CONTEXT.md** - Session state
 4. **testing_toolkit/cdp/README.md** - CDP testing
 

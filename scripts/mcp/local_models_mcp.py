@@ -33,6 +33,7 @@ from typing import Optional
 
 import torch
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 # =============================================================================
@@ -521,9 +522,9 @@ class UnloadModelsInput(BaseModel):
 
 @mcp.tool(
     name="local_generate_image",
-    annotations={"title": "Generate Image (Z-Image Turbo NF4, Local GPU)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False),
 )
-async def local_generate_image(params: GenerateImageInput) -> str:
+async def local_generate_image(params: GenerateImageInput):
     """Generate an image from text using Z-Image Turbo on local GPU (FREE).
 
     Returns JSON with path, timings breakdown, VRAM usage, and GPU telemetry.
@@ -639,9 +640,9 @@ async def local_generate_image(params: GenerateImageInput) -> str:
 
 @mcp.tool(
     name="local_vram_status",
-    annotations={"title": "GPU VRAM + Telemetry", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False),
 )
-async def local_vram_status() -> str:
+async def local_vram_status():
     """Check GPU VRAM usage, loaded models, temperature, power, utilization."""
     return json.dumps({
         "vram": _vram_dict(),
@@ -653,9 +654,9 @@ async def local_vram_status() -> str:
 
 @mcp.tool(
     name="local_unload_models",
-    annotations={"title": "Unload All Models (Free VRAM)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False),
 )
-async def local_unload_models(params: UnloadModelsInput) -> str:
+async def local_unload_models(params: UnloadModelsInput):
     """Unload all loaded models and free GPU VRAM."""
     if not params.confirm:
         return json.dumps({"status": "cancelled"})
@@ -668,9 +669,9 @@ async def local_unload_models(params: UnloadModelsInput) -> str:
 
 @mcp.tool(
     name="local_save_cache",
-    annotations={"title": "Save NF4 Cache (one-time)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False),
 )
-async def local_save_cache() -> str:
+async def local_save_cache():
     """Save currently loaded Z-Image model's quantized components to disk cache.
 
     After this, cold starts drop from ~10 min to ~30-60s.
@@ -747,9 +748,9 @@ class Generate3DInput(BaseModel):
 
 @mcp.tool(
     name="local_generate_3d",
-    annotations={"title": "Generate 3D Mesh (Hunyuan3D 2 Mini, Local GPU)", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False),
 )
-async def local_generate_3d(params: Generate3DInput) -> str:
+async def local_generate_3d(params: Generate3DInput):
     """Generate a 3D mesh (.glb) from an image using Hunyuan3D 2 Mini on local GPU (FREE).
 
     Workflow: Use local_generate_image first to create an image from text, then pass that image here.
@@ -900,9 +901,9 @@ async def local_generate_3d(params: Generate3DInput) -> str:
 
 @mcp.tool(
     name="local_perf_report",
-    annotations={"title": "Performance Report", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+    annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False),
 )
-async def local_perf_report() -> str:
+async def local_perf_report():
     """Full performance report: load history, generation history, averages, GPU telemetry, recent logs.
 
     Call this to diagnose slowness. Shows every phase breakdown.
@@ -957,9 +958,9 @@ class VisionReviewInput(BaseModel):
 
 @mcp.tool(
     name="local_vision_review",
-    annotations={"title": "Qwen3-VL Vision Review (FREE, local GPU)", "readOnlyHint": True},
+    annotations=ToolAnnotations(read_only_hint=True),
 )
-async def local_vision_review(params: VisionReviewInput) -> str:
+async def local_vision_review(params: VisionReviewInput):
     """Review an image using Qwen3-VL via local Ollama. FREE, runs on GPU.
 
     Use for: UI screenshots, landing page checks, generated assets, layout review.
@@ -1028,9 +1029,9 @@ class GeminiVisionInput(BaseModel):
 
 @mcp.tool(
     name="gemini_vision_review",
-    annotations={"title": "Gemini 3 Pro Vision Review (PAID, cloud)", "readOnlyHint": True},
+    annotations=ToolAnnotations(read_only_hint=True),
 )
-async def gemini_vision_review(params: GeminiVisionInput) -> str:
+async def gemini_vision_review(params: GeminiVisionInput):
     """Deep design critique using Google Gemini 3 Pro vision. PAID (Google API).
 
     More powerful than Qwen3-VL — hundreds of billions of parameters.
@@ -1129,7 +1130,7 @@ if __name__ == "__main__":
 
     if "--http" in sys.argv:
         _log("Mode: HTTP (port 8765)")
-        mcp.run(transport="streamable_http", port=8765)
+        mcp.run(transport="streamable-http")
     else:
         _log("Mode: stdio (Claude Code)")
         mcp.run()

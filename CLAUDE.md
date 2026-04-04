@@ -9,16 +9,16 @@
 | Need | Go To |
 |------|-------|
 | **Docs hub** | [docs/INDEX.md](docs/INDEX.md) |
+| **Memory (rules, state)** | `~/.claude/.../memory/MEMORY.md` → rules/, active/, reference/, archive/ |
 | **Session context?** | [docs/current/SESSION_CONTEXT.md](docs/current/SESSION_CONTEXT.md) |
 | **Open bugs?** | [docs/current/ISSUES_TO_FIX.md](docs/current/ISSUES_TO_FIX.md) |
-| **Current task?** | [Roadmap.md](Roadmap.md) |
+| **Current task?** | Memory `active/_INDEX.md` (current phase, blockers, next steps) |
 | **Architecture?** | [docs/architecture/ARCHITECTURE_SUMMARY.md](docs/architecture/ARCHITECTURE_SUMMARY.md) |
 | **Offline/Online?** | [docs/architecture/OFFLINE_ONLINE_MODE.md](docs/architecture/OFFLINE_ONLINE_MODE.md) |
 | **Bug hunting?** | [docs/protocols/GRANULAR_DEBUG_PROTOCOL.md](docs/protocols/GRANULAR_DEBUG_PROTOCOL.md) (GDP) |
 | **PRXR Protocol?** | [docs/protocols/PRXR.md](docs/protocols/PRXR.md) |
 | **DEV Testing** | [testing_toolkit/DEV_MODE_PROTOCOL.md](testing_toolkit/DEV_MODE_PROTOCOL.md) |
 | **Build → Test** | [testing_toolkit/MASTER_TEST_PROTOCOL.md](testing_toolkit/MASTER_TEST_PROTOCOL.md) |
-| **Install vs Update?** | [docs/history/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md](docs/history/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) |
 | **CI/CD debug?** | [docs/reference/cicd/TROUBLESHOOTING.md](docs/reference/cicd/TROUBLESHOOTING.md) |
 | **Enterprise?** | [docs/reference/enterprise/HUB.md](docs/reference/enterprise/HUB.md) |
 | **DB Management?** | `./scripts/db_manager.sh help` |
@@ -169,7 +169,7 @@ cd locaNext && npm run electron:dev           # Desktop app
 ## New Session Checklist
 
 1. `./scripts/check_servers.sh`
-2. Read [Roadmap.md](Roadmap.md)
+2. Read Memory `active/_INDEX.md` (current phase + blockers)
 3. Read [SESSION_CONTEXT.md](docs/current/SESSION_CONTEXT.md)
 4. Check [ISSUES_TO_FIX.md](docs/current/ISSUES_TO_FIX.md)
 5. Ask user what to do
