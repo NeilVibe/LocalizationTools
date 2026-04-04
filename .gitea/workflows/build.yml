@@ -133,9 +133,15 @@ jobs:
           # Update package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" locaNext/package.json
 
+          # Inject real Gitea URL for auto-updater (public repo has localhost placeholder)
+          sed -i "s|http://localhost:3000|${GITEA_URL}|g" locaNext/package.json
+          sed -i "s|http://localhost:3000|${GITEA_URL}|g" locaNext/electron/updater.js
+          sed -i "s|http://localhost:3000|${GITEA_URL}|g" locaNext/electron/patch-updater.js
+
           # NOTE: Inno Setup .iss files deprecated (P28) - using electron-builder NSIS now
 
           echo "[OK] All files updated to version: $VERSION"
+          echo "[OK] Gitea URL injected: ${GITEA_URL}"
           grep "VERSION" version.py | head -1
 
       # Host mode: Use system Python 3.11 and Node directly (no setup actions needed)
