@@ -20,8 +20,8 @@
  * - Installs on restart
  *
  * SERVERS:
- * - Gitea:  http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases (PRIMARY)
- * - GitHub: https://github.com/<GIT_USER>/LocalizationTools/releases (backup)
+ * - Gitea:  http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases (PRIMARY)
+ * - GitHub: https://github.com/neilvibe/LocalizationTools/releases (backup)
  */
 
 // Determine update source from environment (default: gitea)
@@ -38,13 +38,13 @@ if (UPDATE_SERVER === 'gitea') {
   // Uses generic provider with Gitea's release asset URL
   autoUpdaterConfig = {
     provider: 'generic',
-    url: `${GITEA_URL}/<GIT_USER>/LocaNext/releases/download/latest`,
+    url: `${GITEA_URL}/neilvibe/LocaNext/releases/download/latest`,
   };
 } else if (UPDATE_SERVER === 'github') {
   // GitHub Releases (backup - public)
   autoUpdaterConfig = {
     provider: 'github',
-    owner: '<GIT_USER>',
+    owner: 'neilvibe',
     repo: 'LocalizationTools',
   };
 } else {

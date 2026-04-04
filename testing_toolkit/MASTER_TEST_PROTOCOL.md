@@ -129,10 +129,10 @@ git push origin main && git push gitea main
 
 ```bash
 # Check if build completed (via releases API)
-curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r '.[0] | {tag_name, created_at, name}'
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0] | {tag_name, created_at, name}'
 
 # Watch mode (check every 30s)
-watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r ".[0].tag_name"'
+watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r ".[0].tag_name"'
 ```
 
 **DO NOT install/test until:** A new release with expected version appears.
@@ -406,10 +406,10 @@ Update these files:
 git push origin main && git push gitea main
 
 # 2. WAIT & MONITOR (from WSL)
-watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
+watch -n 30 'curl -s "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/actions/runs" | jq ".[0] | {status, conclusion}"'
 
 # 3. CHECK RELEASE (from WSL)
-curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1" | jq -r '.[0].tag_name'
 
 # 4. INSTALL (from Windows PowerShell)
 .\scripts\playground_install.ps1 -LaunchAfterInstall -EnableCDP -AutoLogin
@@ -491,7 +491,7 @@ curl -s http://127.0.0.1:9222/json
 ### Build Failed
 ```bash
 # Check Gitea Actions
-http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions
+http://<GITEA_HOST>:3000/neilvibe/LocaNext/actions
 
 # TROUBLESHOOT mode (resume from checkpoint)
 echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt

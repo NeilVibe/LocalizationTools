@@ -2590,7 +2590,7 @@ Phase 4: Production Ready (Week 7-8)
 - [x] Create configuration files (client/config.py, server/config.py)
 - [x] Create skeleton main.py files (client and server)
 - [x] Create README.md with professional overview
-- [x] Push to GitHub (https://github.com/<GIT_USER>/LocalizationTools)
+- [x] Push to GitHub (https://github.com/NeilVibe/LocalizationTools)
 - [ ] Set up virtual environment (NEXT STEP)
 - [ ] Install core dependencies from requirements.txt (NEXT STEP)
 - [ ] Download and cache Korean BERT model locally (NEXT STEP)

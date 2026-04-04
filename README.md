@@ -468,7 +468,7 @@ RUN_API_TESTS=1 python3 -m pytest -v
 
 ```bash
 # Clone repository
-git clone git@github.com:<GIT_USER>/LocalizationTools.git
+git clone git@github.com:NeilVibe/LocalizationTools.git
 cd LocalizationTools
 
 # Backend setup

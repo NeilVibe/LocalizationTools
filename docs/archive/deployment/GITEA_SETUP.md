@@ -127,7 +127,7 @@ echo "Gitea stopped"
 cd ~/gitea && ./start.sh
 # Open http://localhost:3000
 # Complete setup wizard:
-#   - Admin username: <GIT_USER>
+#   - Admin username: NeilVibe
 #   - Admin email: your@email.com
 #   - Admin password: (your choice)
 ```
@@ -149,14 +149,14 @@ cd ~/gitea && ./start.sh
 cd ~/LocalizationTools
 
 # Add Gitea as second remote
-git remote add gitea <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git
+git remote add gitea <USERNAME>@<GITEA_HOST>:2222/neilvibe/LocaNext.git
 
 # Verify remotes
 git remote -v
-# origin  git@github.com:<GIT_USER>/LocalizationTools.git (fetch)
-# origin  git@github.com:<GIT_USER>/LocalizationTools.git (push)
-# gitea   <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git (fetch)
-# gitea   <USERNAME>@<GITEA_HOST>:2222/<GIT_USER>/LocaNext.git (push)
+# origin  git@github.com:NeilVibe/LocalizationTools.git (fetch)
+# origin  git@github.com:NeilVibe/LocalizationTools.git (push)
+# gitea   <USERNAME>@<GITEA_HOST>:2222/neilvibe/LocaNext.git (fetch)
+# gitea   <USERNAME>@<GITEA_HOST>:2222/neilvibe/LocaNext.git (push)
 
 # Push to both
 git push origin main   # GitHub
@@ -439,13 +439,13 @@ git push origin main  # Syncs to GitHub
 
 ```bash
 # List recent logs
-ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -5
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -5
 
 # Watch live
-tail -f $(ls -t ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -1)
+tail -f $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1)
 
 # Check result
-strings $(ls -t ~/gitea/data/actions_log/<GIT_USER>/LocaNext/*/*.log | head -1) | grep -E "Job succeeded|Job failed"
+strings $(ls -t ~/gitea/data/actions_log/neilvibe/LocaNext/*/*.log | head -1) | grep -E "Job succeeded|Job failed"
 ```
 
 ### 6.3 Service Management

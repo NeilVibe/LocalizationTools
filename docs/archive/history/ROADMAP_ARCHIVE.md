@@ -1034,7 +1034,7 @@ Location: /home/<USERNAME>/gitea/
 Start: cd ~/gitea && ./start.sh
 Stop:  cd ~/gitea && ./stop.sh
 URL:   http://localhost:3000
-Admin: <GIT_USER> (created)
+Admin: NeilVibe (created)
 ```
 
 ### ✅ SSH Setup:
@@ -1053,8 +1053,8 @@ Test: ssh -T <USERNAME>@gitea-local
 
 ### ✅ Dual Remote Configured:
 ```
-origin → GitHub (git@github.com:<GIT_USER>/LocalizationTools.git)
-gitea  → Local Gitea (<USERNAME>@gitea-local:<GIT_USER>/LocaNext.git)
+origin → GitHub (git@github.com:NeilVibe/LocalizationTools.git)
+gitea  → Local Gitea (<USERNAME>@gitea-local:neilvibe/LocaNext.git)
 ```
 
 ---
@@ -2006,11 +2006,11 @@ P13 TASKS:
 │   ├── [✅] Install Gitea binary (v1.22.3 @ ~/gitea/)
 │   ├── [✅] Configure SQLite + ports (3000 web, 2222 SSH)
 │   ├── [✅] Create start.sh / stop.sh helpers
-│   ├── [✅] Admin user created (<GIT_USER>)
+│   ├── [✅] Admin user created (NeilVibe)
 │   └── [✅] SSH keys configured
 │
 ├── ✅ 13.2: Repository Migration COMPLETE
-│   ├── [✅] Repo pushed to Gitea (<GIT_USER>/LocaNext)
+│   ├── [✅] Repo pushed to Gitea (neilvibe/LocaNext)
 │   ├── [✅] Dual remote: origin (GitHub) + gitea (local)
 │   └── [✅] Push/pull workflow verified
 │

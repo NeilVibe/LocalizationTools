@@ -202,7 +202,7 @@ git push origin main
 git push gitea main
 ```
 
-**Build Status:** https://github.com/<GIT_USER>/LocalizationTools/actions
+**Build Status:** https://github.com/NeilVibe/LocalizationTools/actions
 
 ---
 

@@ -134,7 +134,7 @@ gh auth status
 
 **Expected:**
 ```
-✓ Logged in to github.com as <GIT_USER>
+✓ Logged in to github.com as NeilVibe
 ✓ Git operations configured
 ```
 

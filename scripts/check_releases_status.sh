@@ -38,7 +38,7 @@ echo ""
 # ---- GITEA ----
 echo "=== GITEA ==="
 GITEA_URL="${GITEA_URL:-http://localhost:3000}"
-GITEA_REPO="<GIT_USER>/LocaNext"
+GITEA_REPO="neilvibe/LocaNext"
 
 if [ -n "$GITEA_TOKEN" ]; then
     GITEA_RELEASES=$(curl -s "$GITEA_URL/api/v1/repos/$GITEA_REPO/releases" \

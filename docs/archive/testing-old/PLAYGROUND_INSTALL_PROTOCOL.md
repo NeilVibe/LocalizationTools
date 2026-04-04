@@ -102,7 +102,7 @@ Parameters:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. GET RELEASE                                             │
-│     └─> Gitea API: /api/v1/repos/<GIT_USER>/LocaNext/releases │
+│     └─> Gitea API: /api/v1/repos/neilvibe/LocaNext/releases │
 │     └─> Get: tag_name, installer URL                        │
 │                                                             │
 │  2. CLEAN PLAYGROUND                                        │
@@ -282,7 +282,7 @@ netstat -an | grep 9222
 Test-NetConnection -ComputerName <GITEA_HOST> -Port 3000
 
 # Manual download
-Invoke-WebRequest -Uri "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/v25.1216.1251/LocaNext_v25.1216.1251_Light_Setup.exe" -OutFile "$env:TEMP\installer.exe"
+Invoke-WebRequest -Uri "http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases/download/v25.1216.1251/LocaNext_v25.1216.1251_Light_Setup.exe" -OutFile "$env:TEMP\installer.exe"
 ```
 
 ---

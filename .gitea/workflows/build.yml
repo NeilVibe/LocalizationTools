@@ -24,7 +24,7 @@ on:
 
 env:
   GITEA_URL: ${{ secrets.GITEA_URL || 'http://localhost:3000' }}
-  GITEA_REPO: <GIT_USER>/LocaNext
+  GITEA_REPO: neilvibe/LocaNext
 
 jobs:
   # ============================================================
@@ -2539,7 +2539,7 @@ jobs:
           $VERSION = "${{ needs.check-build-trigger.outputs.version }}"
           $TAG = "v$VERSION"
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
-          $GITEA_REPO = "<GIT_USER>/LocaNext"
+          $GITEA_REPO = "neilvibe/LocaNext"
 
           Write-Host "Version: $VERSION"
           Write-Host "Tag: $TAG"
@@ -2677,7 +2677,7 @@ jobs:
           Write-Host "============================================" -ForegroundColor Cyan
 
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
-          $GITEA_REPO = "<GIT_USER>/LocaNext"
+          $GITEA_REPO = "neilvibe/LocaNext"
 
           if (-not $env:GITEA_TOKEN) {
             Write-Host "[SKIP] No GITEA_TOKEN - skipping latest release" -ForegroundColor Yellow
@@ -2809,7 +2809,7 @@ jobs:
           # Keep last 10 releases (~1.5GB max)
           $MAX_RELEASES = 10
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
-          $GITEA_REPO = "<GIT_USER>/LocaNext"
+          $GITEA_REPO = "neilvibe/LocaNext"
 
           if (-not $env:GITEA_TOKEN) {
             Write-Host "[SKIP] No GITEA_TOKEN - skipping cleanup" -ForegroundColor Yellow

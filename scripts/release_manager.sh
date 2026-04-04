@@ -23,7 +23,7 @@
 set -e
 
 GITEA_URL="${GITEA_URL:-http://localhost:3000}"
-GITEA_REPO="<GIT_USER>/LocaNext"
+GITEA_REPO="neilvibe/LocaNext"
 API_URL="$GITEA_URL/api/v1/repos/$GITEA_REPO"
 
 # Colors

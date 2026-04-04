@@ -251,7 +251,7 @@ for r in c.fetchall():
 
 ```bash
 # Log files (if SQL fails)
-ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -5
+ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5
 
 # Check checkpoint
 cat ~/.locanext_checkpoint
@@ -377,7 +377,7 @@ Build Success:
 ```json
 "publish": {
   "provider": "generic",
-  "url": "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest"
+  "url": "http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases/download/latest"
 }
 ```
 

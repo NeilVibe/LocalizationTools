@@ -47,7 +47,7 @@ function Log {
 function Get-LatestRelease {
     Log "Fetching latest release info from Gitea..."
 
-    $releasesUrl = "http://${GiteaHost}:${GiteaPort}/api/v1/repos/<GIT_USER>/LocaNext/releases"
+    $releasesUrl = "http://${GiteaHost}:${GiteaPort}/api/v1/repos/neilvibe/LocaNext/releases"
 
     try {
         $releases = Invoke-RestMethod -Uri $releasesUrl -Method Get -TimeoutSec 30

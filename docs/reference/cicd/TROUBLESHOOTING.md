@@ -48,14 +48,14 @@ npm install
 
 ```bash
 # Get latest run number
-curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions" | grep -oE 'actions/runs/[0-9]+' | head -1
+curl -s "http://<GITEA_HOST>:3000/neilvibe/LocaNext/actions" | grep -oE 'actions/runs/[0-9]+' | head -1
 # Output: actions/runs/346
 
 # Stream live logs (replace 346 with run number, job 0=trigger, 1=tests, 2=windows)
-curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/346/jobs/1/logs" | tail -50
+curl -s "http://<GITEA_HOST>:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | tail -50
 
 # Filter for test results only
-curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/346/jobs/1/logs" | grep -E "(PASSED|FAILED|passed|failed)" | tail -30
+curl -s "http://<GITEA_HOST>:3000/neilvibe/LocaNext/actions/runs/346/jobs/1/logs" | grep -E "(PASSED|FAILED|passed|failed)" | tail -30
 ```
 
 ### Quick Build Status Check
@@ -78,13 +78,13 @@ print(f'Run {r[0]}: {STATUS.get(r[1], r[1])} - {r[2]}')"
 
 ```bash
 # SSH to runner and find latest log
-ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -3"
+ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3"
 
 # Read the log file (replace <folder> with actual folder name)
-ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<folder>/*.log | grep -E 'FAILED|Error|assert' | tail -50"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep -E 'FAILED|Error|assert' | tail -50"
 
 # Or just get the last failure line
-ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/<folder>/*.log | grep FAILED | tail -1"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/<folder>/*.log | grep FAILED | tail -1"
 ```
 
 ### Quick Reference
@@ -147,15 +147,15 @@ Use the release manager script for common operations:
 
 ```bash
 # List releases
-curl -s "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases" \
+curl -s "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases" \
   -H "Authorization: token $GITEA_TOKEN" | python3 -c "import sys,json; [print(f\"{r['id']}: {r['tag_name']}\") for r in json.load(sys.stdin)]"
 
 # Delete a release
-curl -s -X DELETE "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases/RELEASE_ID" \
+curl -s -X DELETE "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID" \
   -H "Authorization: token $GITEA_TOKEN"
 
 # Upload asset to release
-curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases/RELEASE_ID/assets?name=FILE_NAME" \
+curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases/RELEASE_ID/assets?name=FILE_NAME" \
   -H "Authorization: token $GITEA_TOKEN" \
   -H "Content-Type: application/octet-stream" \
   --data-binary @/path/to/file
@@ -169,10 +169,10 @@ Windows builds run on a separate runner. Check these logs for Windows-specific f
 
 ```bash
 # Find Windows build logs (usually "fe" folder for Windows job)
-ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/<GIT_USER>/LocaNext/ | head -5"
+ssh <USERNAME>@localhost "ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -5"
 
 # Check specific folder for Windows errors
-ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/<GIT_USER>/LocaNext/fe/*.log | grep -E 'FAILED|Error|Traceback' | tail -20"
+ssh <USERNAME>@localhost "cat ~/gitea/data/actions_log/neilvibe/LocaNext/fe/*.log | grep -E 'FAILED|Error|Traceback' | tail -20"
 ```
 
 Common Windows errors:
@@ -347,7 +347,7 @@ When Claude runs TROUBLESHOOT mode autonomously:
    sleep 40
 
 3. CHECK LIVE LOGS
-   curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -80
+   curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -80
 
 4. ANALYZE
    - If "All tests passed! Checkpoint cleared" → DONE
@@ -364,13 +364,13 @@ When Claude runs TROUBLESHOOT mode autonomously:
 
 ```bash
 # Get latest run number
-curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions" | grep -oP 'runs/\d+' | head -1
 
 # Check test progress (filter PASSED/FAILED)
-curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining|passed|failed)" | tail -40
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | grep -E "(PASSED|FAILED|remaining|passed|failed)" | tail -40
 
 # Quick status
-curl -s "http://localhost:3000/<GIT_USER>/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -20
+curl -s "http://localhost:3000/neilvibe/LocaNext/actions/runs/<N>/jobs/1/logs" | tail -20
 ```
 
 ### Common Test Fixes
@@ -845,11 +845,11 @@ git add -A && git commit -m "Build NNN: Verify fix" && git push gitea main
 **Verification:**
 ```bash
 # Check if .zst files are being created
-find /home/<USERNAME>/gitea/data/actions_log/<GIT_USER>/LocaNext/ -name "*.zst" -mmin -5
+find /home/<USERNAME>/gitea/data/actions_log/neilvibe/LocaNext/ -name "*.zst" -mmin -5
 # Should show recent .zst files
 
 # Verify logs accessible via curl (no 500 error)
-curl -s "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/actions/runs/XXX/jobs/0/logs" | head -10
+curl -s "http://<GITEA_HOST>:3000/neilvibe/LocaNext/actions/runs/XXX/jobs/0/logs" | head -10
 # Should show log content, not HTML error page
 ```
 
@@ -1173,7 +1173,7 @@ Each build creates **two releases** on Gitea:
 
 ```
 1. App launches
-2. Checks: http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml
+2. Checks: http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases/download/latest/latest.yml
 3. Compares version in latest.yml with installed version
 4. If newer → Downloads installer from 'latest' release
 5. Prompts user to restart
@@ -1184,7 +1184,7 @@ Each build creates **two releases** on Gitea:
 ```json
 "publish": {
   "provider": "generic",
-  "url": "http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest"
+  "url": "http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases/download/latest"
 }
 ```
 
@@ -1202,13 +1202,13 @@ cat "/mnt/c/NEIL_PROJECTS_WINDOWSBUILD/LocaNextProject/Playground/resources/app-
 **Correct output:**
 ```yaml
 provider: generic
-url: http://<GITEA_HOST>:3000/<GIT_USER>/LocaNext/releases/download/latest
+url: http://<GITEA_HOST>:3000/neilvibe/LocaNext/releases/download/latest
 ```
 
 **Wrong output (old broken config):**
 ```yaml
 provider: github
-owner: <GIT_USER>
+owner: NeilVibe
 repo: LocalizationTools
 ```
 
@@ -1245,7 +1245,7 @@ source ~/.bashrc  # Load GITEA_TOKEN
 
 # Create latest release pointing to current version
 VERSION=$(grep -oP 'VERSION = "\K[^"]+' version.py)
-curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases" \
+curl -s -X POST "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases" \
   -H "Authorization: token $GITEA_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"tag_name\":\"latest\",\"name\":\"Latest Release (v$VERSION)\"}"

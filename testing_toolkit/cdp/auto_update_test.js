@@ -86,7 +86,7 @@ async function main() {
   log('=== Step 1: Check Gitea latest.yml ===');
 
   await new Promise((resolve) => {
-    http.get(`http://${process.env.GITEA_HOST || 'localhost'}:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml`, (res) => {
+    http.get(`http://${process.env.GITEA_HOST || 'localhost'}:3000/neilvibe/LocaNext/releases/download/latest/latest.yml`, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {

@@ -14,7 +14,7 @@
 #define MyAppName "LocaNext"
 #define MyAppVersion "25.1213.1540"
 #define MyAppPublisher "Neil Schmitt"
-#define MyAppURL "https://github.com/<GIT_USER>/LocalizationTools"
+#define MyAppURL "https://github.com/NeilVibe/LocalizationTools"
 #define MyAppExeName "LocaNext.exe"
 
 [Setup]

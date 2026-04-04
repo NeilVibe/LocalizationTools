@@ -98,7 +98,7 @@ require('electron').ipcRenderer.invoke('check-for-updates')
 taskkill /F /IM LocaNext.exe /T
 
 # 2. Download latest installer from Gitea
-$release = Invoke-RestMethod "http://<GITEA_HOST>:3000/api/v1/repos/<GIT_USER>/LocaNext/releases?limit=1"
+$release = Invoke-RestMethod "http://<GITEA_HOST>:3000/api/v1/repos/neilvibe/LocaNext/releases?limit=1"
 $installer = $release[0].assets | Where-Object { $_.name -like "*Setup.exe" }
 Invoke-WebRequest $installer.browser_download_url -OutFile "$env:TEMP\LocaNext_Setup.exe"
 

@@ -17,9 +17,9 @@
 set -e
 
 # Configuration
-GITHUB_REPO="<GIT_USER>/LocalizationTools"
+GITHUB_REPO="neilvibe/LocalizationTools"
 GITEA_URL="${GITEA_URL:-http://localhost:3000}"
-GITEA_REPO="<GIT_USER>/LocaNext"
+GITEA_REPO="neilvibe/LocaNext"
 
 # Check for token
 if [ -z "$GITEA_TOKEN" ]; then

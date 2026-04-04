@@ -90,7 +90,7 @@ echo ""
 echo "=== GITEA ==="
 
 GITEA_URL="${GITEA_URL:-http://localhost:3000}"
-GITEA_REPO="<GIT_USER>/LocaNext"
+GITEA_REPO="neilvibe/LocaNext"
 
 if [ -z "$GITEA_TOKEN" ]; then
     echo "[SKIP] GITEA_TOKEN not set"

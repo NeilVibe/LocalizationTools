@@ -13,7 +13,7 @@
 const https = require('https');
 const http = require('http');
 
-const GITEA_URL = `http://${process.env.GITEA_HOST || 'localhost'}:3000/<GIT_USER>/LocaNext/releases/download/latest/latest.yml`;
+const GITEA_URL = `http://${process.env.GITEA_HOST || 'localhost'}:3000/neilvibe/LocaNext/releases/download/latest/latest.yml`;
 const INSTALLED_VERSION = process.argv[2] || '26.102.1001';
 
 console.log('=== Auto-Update Test ===\n');
