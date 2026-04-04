@@ -23,7 +23,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-tail -f /home/<USERNAME>/LocalizationTools/server_output.log | while read line; do
+tail -f "$HOME/LocalizationTools/server_output.log" | while read line; do
     # TaskManager API calls
     if echo "$line" | grep -q "/api/progress/operations"; then
         if echo "$line" | grep -q "GET"; then

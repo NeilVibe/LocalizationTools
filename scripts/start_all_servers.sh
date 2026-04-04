@@ -18,7 +18,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-PROJECT_DIR="/home/<USERNAME>/LocalizationTools"
+PROJECT_DIR="$HOME/LocalizationTools"
 LOG_DIR="/tmp/locanext"
 AUDIT_LOG="$PROJECT_DIR/server/data/logs/security_audit.log"
 

@@ -5,7 +5,7 @@
 set -e
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
+PROJECT_ROOT="$HOME/LocalizationTools"
 ARCHIVE_DIR="$PROJECT_ROOT/logs/archive/$TIMESTAMP"
 
 echo "=========================================="

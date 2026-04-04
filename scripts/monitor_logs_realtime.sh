@@ -8,7 +8,7 @@
 
 set -e
 
-PROJECT_ROOT="/home/<USERNAME>/LocalizationTools"
+PROJECT_ROOT="$HOME/LocalizationTools"
 SESSION_ID=$(date +%Y%m%d_%H%M%S)
 
 # Colors

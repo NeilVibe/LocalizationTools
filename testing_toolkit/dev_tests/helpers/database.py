@@ -12,10 +12,11 @@ Usage:
 
 import sys
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, List, Optional
 
 # Add server path to import config
-sys.path.insert(0, '/home/<USERNAME>/LocalizationTools/server')
+sys.path.insert(0, str(Path.home() / 'LocalizationTools' / 'server'))
 
 from sqlalchemy import create_engine, text
 from config import DATABASE_URL

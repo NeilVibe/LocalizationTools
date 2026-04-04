@@ -30,6 +30,7 @@ Examples:
 """
 from __future__ import annotations
 
+import os
 import sys
 import json
 import time
@@ -546,7 +547,7 @@ def cmd_offline_files():
 def cmd_offline_folders():
     """List offline folders via SQLite."""
     import sqlite3
-    db_path = "/home/<USERNAME>/.local/share/locanext/offline.db"
+    db_path = os.path.expanduser("~/.local/share/locanext/offline.db")
     try:
         db = sqlite3.connect(db_path)
         cur = db.cursor()
@@ -643,7 +644,7 @@ def cmd_e2e_offline():
     print("\n[6/7] Check offline TMs (SQLite)")
     import sqlite3
     try:
-        db = sqlite3.connect("/home/<USERNAME>/.local/share/locanext/offline.db")
+        db = sqlite3.connect(os.path.expanduser("~/.local/share/locanext/offline.db"))
         cur = db.cursor()
         cur.execute("SELECT COUNT(*) FROM offline_tms")
         tm_count = cur.fetchone()[0]

@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Configuration
 BASE_URL = "http://localhost:8888"
-TEST_FILE = "/home/<USERNAME>/LocalizationTools/RessourcesForCodingTheProject/datausedfortesting/test123.txt"
+TEST_FILE = str(Path.home() / "LocalizationTools/RessourcesForCodingTheProject/datausedfortesting/test123.txt")
 
 class Colors:
     GREEN = '\033[92m'

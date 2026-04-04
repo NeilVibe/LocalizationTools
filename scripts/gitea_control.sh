@@ -9,7 +9,7 @@
 #
 # WARNING: This is CRITICAL INFRASTRUCTURE. Read GITEA_CLEAN_KILL_PROTOCOL.md first!
 
-GITEA_DIR="/home/<USERNAME>/gitea"
+GITEA_DIR="$HOME/gitea"
 GITEA_DB="$GITEA_DIR/data/gitea.db"
 WIN_RUNNER_SERVICE="GiteaActRunner"
 

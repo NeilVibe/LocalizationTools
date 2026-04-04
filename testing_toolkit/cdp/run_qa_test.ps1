@@ -5,7 +5,7 @@ Write-Host "=== LocaNext QA Comprehensive Test ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Set credentials from .env.local
-$envFile = "\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\.env.local"
+$envFile = "\\wsl.localhost\Ubuntu2\home\$env:USERNAME\LocalizationTools\.env.local"
 if (Test-Path $envFile) {
     Write-Host "Loading credentials from .env.local..." -ForegroundColor Yellow
     Get-Content $envFile | ForEach-Object {
@@ -29,7 +29,7 @@ Write-Host "Running test..." -ForegroundColor Cyan
 Write-Host ""
 
 # Run the test
-Push-Location '\\wsl.localhost\Ubuntu2\home\<USERNAME>\LocalizationTools\testing_toolkit\cdp'
+Push-Location "\\wsl.localhost\Ubuntu2\home\$env:USERNAME\LocalizationTools\testing_toolkit\cdp"
 node test_qa_comprehensive.js
 Pop-Location
 

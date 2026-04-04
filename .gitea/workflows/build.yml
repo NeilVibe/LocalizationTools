@@ -10,7 +10,7 @@
 # Architecture: Small installer + first-run setup downloads Python deps + AI model
 #
 # VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
-# CHECKPOINT: Stored at /home/<USERNAME>/.locanext_checkpoint (persistent)
+# CHECKPOINT: Stored at $HOME/.locanext_checkpoint (persistent)
 # ============================================================================
 
 name: Build LocaNext Installer
@@ -664,7 +664,7 @@ jobs:
 
           # PERSISTENT checkpoint (survives across CI runs - host mode)
           # Use absolute path to avoid $HOME override issues
-          CHECKPOINT_FILE="/home/<USERNAME>/.locanext_checkpoint"
+          CHECKPOINT_FILE="$HOME/.locanext_checkpoint"
 
           # ============================================================
           # P33 CI OVERHAUL: Focus on REAL tests that catch REAL bugs
@@ -1994,7 +1994,7 @@ jobs:
       - name: Build Complete + Cache Summary
         run: |
           # Clear WINDOWS_BUILD checkpoint on success
-          $checkpointFile = "\\wsl.localhost\Ubuntu-22.04\home\<USERNAME>\.locanext_checkpoint"
+          $checkpointFile = "\\wsl.localhost\Ubuntu-22.04\home\$env:USERNAME\.locanext_checkpoint"
           if (Test-Path $checkpointFile) {
             Remove-Item $checkpointFile -Force -ErrorAction SilentlyContinue
             Write-Host "[CHECKPOINT] Cleared (build succeeded)" -ForegroundColor Green

@@ -4,8 +4,8 @@
 # Run this before starting new Claude sessions to avoid confusion
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-ARCHIVE_DIR="/home/<USERNAME>/LocalizationTools/logs/archive/${TIMESTAMP}"
-LOG_DIR="/home/<USERNAME>/LocalizationTools/server/data/logs"
+ARCHIVE_DIR="$HOME/LocalizationTools/logs/archive/${TIMESTAMP}"
+LOG_DIR="$HOME/LocalizationTools/server/data/logs"
 
 # Colors
 GREEN='\033[0;32m'
@@ -54,19 +54,19 @@ echo "Archiving backend logs..."
 echo "─────────────────────────────────────────────────────────────"
 archive_log "$LOG_DIR/error.log"
 archive_log "$LOG_DIR/server.log"
-archive_log "/home/<USERNAME>/LocalizationTools/server_output.log"
+archive_log "$HOME/LocalizationTools/server_output.log"
 
 echo ""
 echo "Archiving frontend logs..."
 echo "─────────────────────────────────────────────────────────────"
-archive_log "/home/<USERNAME>/LocalizationTools/logs/locanext_error.log"
-archive_log "/home/<USERNAME>/LocalizationTools/logs/locanext_app.log"
+archive_log "$HOME/LocalizationTools/logs/locanext_error.log"
+archive_log "$HOME/LocalizationTools/logs/locanext_app.log"
 
 echo ""
 echo "Archiving other logs..."
 echo "─────────────────────────────────────────────────────────────"
-archive_log "/home/<USERNAME>/LocalizationTools/logs/dashboard_app.log"
-archive_log "/home/<USERNAME>/LocalizationTools/logs/dashboard_error.log"
+archive_log "$HOME/LocalizationTools/logs/dashboard_app.log"
+archive_log "$HOME/LocalizationTools/logs/dashboard_error.log"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"

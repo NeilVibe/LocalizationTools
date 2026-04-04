@@ -8,7 +8,7 @@ import os
 import subprocess
 from pathlib import Path
 
-BASE_DIR = Path("/home/<USERNAME>/LocalizationTools")
+BASE_DIR = Path.home() / "LocalizationTools"
 LOG_FILE = BASE_DIR / "server/logs/localizationtools.log"
 ERROR_LOG = BASE_DIR / "server/logs/error.log"
 
