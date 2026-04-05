@@ -470,7 +470,7 @@ def merge_corrections_to_xml(
         correction_lookup_nospace = defaultdict(list)  # Fallback for whitespace variations
         for i, c in enumerate(corrections):
             sid_lower = c["string_id"].lower()
-            origin_norm = normalize_text(c.get("str_origin", ""))
+            origin_norm = normalize_for_matching(c.get("str_origin", ""))
             origin_nospace = normalize_nospace(origin_norm)
             category = c.get("category", "Uncategorized")
             correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
@@ -514,7 +514,7 @@ def merge_corrections_to_xml(
             # Case-insensitive attribute access
             sid = get_attr(loc, STRINGID_ATTRS).strip()
             orig_raw = get_attr(loc, STRORIGIN_ATTRS)
-            orig = normalize_text(orig_raw)
+            orig = normalize_for_matching(orig_raw)
 
             # Golden rule: empty StrOrigin = never write Str
             if not orig.strip():
