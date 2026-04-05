@@ -1325,6 +1325,10 @@ def _fast_folder_merge(
 
                 sid_lower = sid.lower()
                 orig_nospace = normalize_nospace(orig)
+                # Apply user normalization (ignore spaces/punctuation) to match lookup keys
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
                 key = (sid_lower, orig)
                 key_nospace = (sid_lower, orig_nospace)
 
@@ -1385,6 +1389,9 @@ def _fast_folder_merge(
                     continue
 
                 orig_nospace = normalize_nospace(orig)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
 
                 match_data = correction_lookup.get(orig)
                 if match_data is None:
@@ -1481,6 +1488,11 @@ def _fast_folder_merge(
                     continue
                 orig_nospace = normalize_nospace(orig)
                 desc_nospace = normalize_nospace(desc)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    desc = _apply_normalization(desc, ignore_spaces, ignore_punctuation)
+                    orig_nospace = _apply_normalization(orig_nospace, ignore_spaces, ignore_punctuation)
+                    desc_nospace = _apply_normalization(desc_nospace, ignore_spaces, ignore_punctuation)
                 key = (orig, desc)
                 key_nospace = (orig_nospace, desc_nospace)
 
@@ -1544,6 +1556,10 @@ def _fast_folder_merge(
                 filepath = _fp_index.get(sid_lower, "")
                 desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
                 desc = normalize_for_matching(desc_raw)
+                if ignore_spaces or ignore_punctuation:
+                    orig = _apply_normalization(orig, ignore_spaces, ignore_punctuation)
+                    if desc:
+                        desc = _apply_normalization(desc, ignore_spaces, ignore_punctuation)
 
                 # PASS1: (StrOrigin, filepath, DescOrigin) -- only if desc present
                 match_entries = []
