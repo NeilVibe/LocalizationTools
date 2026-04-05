@@ -44,8 +44,12 @@ def _reset_all_qt_state():
 def _clear_qt_caches():
     """Clear QT module-level caches before AND after each test."""
     _reset_all_qt_state()  # BEFORE — cleans contamination from prior test modules
+    # Clear source scanner language code cache (stale cache causes missed language detection)
+    from server.services.merge.source_scanner import clear_language_code_cache
+    clear_language_code_cache()
     yield
     _reset_all_qt_state()  # AFTER — cleans up for next test
+    clear_language_code_cache()
 
 
 @pytest.fixture()

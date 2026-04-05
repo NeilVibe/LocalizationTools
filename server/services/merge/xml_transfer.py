@@ -1319,7 +1319,7 @@ def _fast_folder_merge(
             orig_raw = get_attr(loc, STRORIGIN_ATTRS)
 
             if match_mode == "strict":
-                orig = normalize_text(orig_raw)
+                orig = normalize_for_matching(orig_raw)
                 if not orig.strip():
                     continue
 
