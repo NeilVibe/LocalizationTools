@@ -31,7 +31,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Do NOT use http: https: — that would allow XSS data exfiltration to any server.
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self'; "
+                "script-src 'self' 'unsafe-inline'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "connect-src 'self' ws: wss:; "
                 "img-src 'self' data: blob:; "
