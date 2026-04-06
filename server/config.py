@@ -165,17 +165,32 @@ def _load_user_config() -> dict:
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
+        except json.JSONDecodeError as e:
+            logger.error(f"Malformed user config at {config_path}: {e}. All values fall back to defaults.")
+        except IOError as e:
+            logger.warning(f"Cannot read user config at {config_path}: {e}. Using defaults.")
     return {}
 
 def save_user_config(config: dict) -> bool:
-    """Save user server configuration to file."""
+    """Save user server configuration to file (with restrictive permissions)."""
     config_path = _get_user_config_path()
     try:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
+        # Restrict permissions — file contains credentials
+        if sys.platform == "win32":
+            import subprocess
+            try:
+                subprocess.run(["icacls", str(config_path), "/inheritance:r", "/grant:r", f"{os.getlogin()}:F"],
+                               capture_output=True, timeout=5)
+            except Exception:
+                pass
+        else:
+            try:
+                os.chmod(str(config_path), 0o600)
+            except OSError:
+                pass
         return True
     except IOError:
         return False
@@ -331,7 +346,10 @@ _DEFAULT_API_KEY = "dev-key-change-in-production"
 _DEFAULT_ADMIN_PASSWORD = "admin123"
 
 # Security mode: "strict" will fail on insecure defaults, "warn" will only log warnings
-SECURITY_MODE = os.getenv("SECURITY_MODE", _USER_CONFIG.get("security_mode", "warn"))  # "strict" or "warn"
+SECURITY_MODE = os.getenv("SECURITY_MODE", _USER_CONFIG.get("security_mode", "warn")).lower().strip()
+if SECURITY_MODE not in ("strict", "warn"):
+    logger.warning(f"SECURITY_MODE '{SECURITY_MODE}' is not valid (expected 'strict' or 'warn'). Defaulting to 'warn'.")
+    SECURITY_MODE = "warn"
 
 # OFFLINE_MODE token acceptance (Electron launcher "Start Offline" button)
 # Always blocked in PostgreSQL mode regardless of this setting.
@@ -350,7 +368,7 @@ if DEV_MODE and PRODUCTION:
     DEV_MODE = False
 
 # API Key for client-server communication
-API_KEY = os.getenv("API_KEY", "dev-key-change-in-production")
+API_KEY = os.getenv("API_KEY", _USER_CONFIG.get("api_key", "dev-key-change-in-production"))
 
 # Password hashing
 BCRYPT_ROUNDS = 12  # Higher = more secure but slower
@@ -594,6 +612,8 @@ def check_security_config() -> dict:
             errors.append(msg)
         else:
             warnings.append(msg)
+    elif len(API_KEY) < 32:
+        warnings.append(f"API_KEY is only {len(API_KEY)} characters. Recommend at least 32 characters.")
 
     # Check admin password
     if DEFAULT_ADMIN_PASSWORD == _DEFAULT_ADMIN_PASSWORD:

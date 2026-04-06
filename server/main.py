@@ -1095,6 +1095,7 @@ if __name__ == "__main__":
                         "server_mode": "lan_server",
                         "lan_ip": lan_ip,
                         "secret_key": secrets.token_urlsafe(32),
+                        "api_key": secrets.token_urlsafe(48),
                         "admin_token": secrets.token_urlsafe(32),
                         "security_mode": "strict",
                         "origin_admin_ip": "127.0.0.1",
@@ -1111,6 +1112,10 @@ if __name__ == "__main__":
                     config.POSTGRES_DATABASE_URL = (
                         f"postgresql://locanext_service:{db_password}@localhost:5432/localizationtools"
                     )
+                    # Override security keys for first launch (config.py evaluated before setup wizard)
+                    config.SECRET_KEY = server_config_data["secret_key"]
+                    config.API_KEY = server_config_data["api_key"]
+                    config.SECURITY_MODE = "strict"
                     # Phase 113: Override SERVER_HOST on first launch
                     # (config.py evaluated before setup wizard ran, so it's still 127.0.0.1)
                     config.SERVER_HOST = "0.0.0.0"
